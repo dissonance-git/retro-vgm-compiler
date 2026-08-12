@@ -1,0 +1,205 @@
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -74,6 +74,35 @@ typedef void (*VGM_COMMAND_OBSERVER_CB)(void* userParam,
+ 		const VGM_COMMAND_OBSERVER_EVENT* event);
+ 
++#define LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER 1
++
++enum VGM_DAC_STREAM_SOURCE_EVENT_TYPE
++{
++	VGMDSE_SETUP = 0,
++	VGMDSE_SET_DATA = 1,
++	VGMDSE_SET_FREQUENCY = 2,
++	VGMDSE_START = 3,
++	VGMDSE_STOP = 4,
++};
++
++struct VGM_DAC_STREAM_SOURCE_EVENT
++{
++	UINT8 type;
++	UINT8 streamID;
++	UINT8 chipType;
++	UINT8 chipID;
++	UINT16 chipCommand;
++	UINT8 bankID;
++	UINT8 stepSize;
++	UINT8 stepBase;
++	UINT8 playMode;
++	UINT32 frequency;
++	UINT32 startOffset;
++	UINT32 length;
++	const UINT8* data;
++	UINT32 dataLen;
++};
++
++typedef void (*VGM_DAC_STREAM_SOURCE_CB)(void* userParam,
++		const VGM_DAC_STREAM_SOURCE_EVENT* event);
++
+ 
+ class VGMPlayer : public PlayerBase
+@@ -113,6 +142,11 @@ public:
+ 		UINT8 pbMode;
+ 		UINT32 freq;
++		UINT8 chipType;
++		UINT8 chipID;
++		UINT16 chipCommand;
++		UINT8 stepSize;
++		UINT8 stepBase;
+ 		UINT32 lastItem;
+ 		UINT32 maxItems;
+@@ -202,6 +236,7 @@ public:
+ 	const std::vector<DACSTRM_DEV>& GetStreamDevInfo(void) const;
+ 	void SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam);
++	void SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam);
+ 	
+ 	UINT8 Start(void);
+@@ -251,6 +286,8 @@ protected:
+ 	void NotifyCommandObserverReset(void);
+ 	void NotifyYM2612DAC(UINT32 tick, UINT8 command, UINT8 data);
++	void NotifyDACStreamSource(UINT8 type, const DACSTRM_DEV& stream,
++		UINT32 startOffset = 0, UINT32 length = 0);
+ 
+ 	void ParseFileForFMClocks();
+@@ -349,6 +386,8 @@ protected:
+ 	VGM_COMMAND_OBSERVER_CB _commandObserver;
+ 	void* _commandObserverParam;
++	VGM_DAC_STREAM_SOURCE_CB _dacStreamObserver;
++	void* _dacStreamObserverParam;
+ 	//PLAYER_EVENT_CB _eventCbFunc;
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -153,6 +153,8 @@ VGMPlayer::VGMPlayer() :
+ 	_psTrigger(0x00),
+ 	_commandObserver(NULL),
+-	_commandObserverParam(NULL)
++	_commandObserverParam(NULL),
++	_dacStreamObserver(NULL),
++	_dacStreamObserverParam(NULL)
+ {
+@@ -208,6 +210,8 @@ VGMPlayer::~VGMPlayer()
+ 	_commandObserver = NULL;
+ 	_commandObserverParam = NULL;
++	_dacStreamObserver = NULL;
++	_dacStreamObserverParam = NULL;
+ 	
+@@ -936,6 +940,46 @@ void VGMPlayer::SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam)
+ 	return;
+ }
+ 
++void VGMPlayer::SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam)
++{
++	_dacStreamObserver = cbFunc;
++	_dacStreamObserverParam = cbParam;
++	return;
++}
++
++void VGMPlayer::NotifyDACStreamSource(UINT8 type, const DACSTRM_DEV& stream,
++		UINT32 startOffset, UINT32 length)
++{
++	if (_dacStreamObserver == NULL)
++		return;
++
++	VGM_DAC_STREAM_SOURCE_EVENT event;
++	event.type = type;
++	event.streamID = stream.streamID;
++	event.chipType = stream.chipType;
++	event.chipID = stream.chipID;
++	event.chipCommand = stream.chipCommand;
++	event.bankID = stream.bankID;
++	event.stepSize = stream.stepSize;
++	event.stepBase = stream.stepBase;
++	event.playMode = stream.pbMode;
++	event.frequency = stream.freq;
++	event.startOffset = startOffset;
++	event.length = length;
++	event.data = NULL;
++	event.dataLen = 0;
++	if (stream.bankID < _PCM_BANK_COUNT)
++	{
++		const PCM_BANK& bank = _pcmBank[stream.bankID];
++		if (! bank.data.empty())
++		{
++			event.data = &bank.data[0];
++			event.dataLen = (UINT32)bank.data.size();
++		}
++	}
++	_dacStreamObserver(_dacStreamObserverParam, &event);
++	return;
++}
++
+ void VGMPlayer::NotifyCommandObserver(UINT8 command)
+ {
+diff --git a/player/vgmplayer_cmdhandler.cpp b/player/vgmplayer_cmdhandler.cpp
+--- a/player/vgmplayer_cmdhandler.cpp
++++ b/player/vgmplayer_cmdhandler.cpp
+@@ -890,6 +890,11 @@ void VGMPlayer::Cmd_DACCtrl_Setup(void)
+ 		dacStrm.bankID = 0xFF;
+ 		dacStrm.pbMode = 0x00;
+ 		dacStrm.freq = 0;
++		dacStrm.chipType = 0xFF;
++		dacStrm.chipID = 0;
++		dacStrm.chipCommand = 0;
++		dacStrm.stepSize = 1;
++		dacStrm.stepBase = 0;
+ 		dacStrm.lastItem = (UINT32)-1;
+@@ -908,6 +913,9 @@ void VGMPlayer::Cmd_DACCtrl_Setup(void)
+ 	if (destChip == NULL)
+ 		return;
+ 	
++	dacStrm->chipType = chipType;
++	dacStrm->chipID = chipID;
++	dacStrm->chipCommand = chipCmd;
+ 	daccontrol_setup_chip(dacStrm->defInf.dataPtr, &destChip->base.defInf, destChip->chipType, chipCmd);
++	NotifyDACStreamSource(VGMDSE_SETUP, *dacStrm);
+ 	return;
+ }
+@@ -924,11 +932,15 @@ void VGMPlayer::Cmd_DACCtrl_SetData(void)
+ 	PCM_BANK* pcmBnk = &_pcmBank[dacStrm->bankID];
+ 	
+ 	dacStrm->maxItems = (UINT32)pcmBnk->bankOfs.size();
++	dacStrm->stepSize = fData[0x03];
++	dacStrm->stepBase = fData[0x04];
+ 	if (pcmBnk->data.empty())
+ 		daccontrol_set_data(dacStrm->defInf.dataPtr, NULL, 0, fData[0x03], fData[0x04]);
+ 	else
+ 		daccontrol_set_data(dacStrm->defInf.dataPtr, &pcmBnk->data[0], (UINT32)pcmBnk->data.size(), fData[0x03], fData[0x04]);
++	NotifyDACStreamSource(VGMDSE_SET_DATA, *dacStrm);
+ 	return;
+ }
+@@ -943,6 +955,7 @@ void VGMPlayer::Cmd_DACCtrl_SetFrequency(void)
+ 	
+ 	dacStrm->freq = ReadLE32(&fData[0x02]);
+ 	daccontrol_set_frequency(dacStrm->defInf.dataPtr, dacStrm->freq);
++	NotifyDACStreamSource(VGMDSE_SET_FREQUENCY, *dacStrm);
+ 	return;
+ }
+@@ -958,6 +971,7 @@ void VGMPlayer::Cmd_DACCtrl_PlayData_Loc(void)
+ 	dacStrm->lastItem = (UINT32)-1;
+ 	dacStrm->pbMode = fData[0x06];
+ 	daccontrol_start(dacStrm->defInf.dataPtr, startOfs, dacStrm->pbMode, soundLen);
++	NotifyDACStreamSource(VGMDSE_START, *dacStrm, startOfs, soundLen);
+ 	return;
+ }
+@@ -970,6 +984,7 @@ void VGMPlayer::Cmd_DACCtrl_Stop(void)
+ 		{
+ 			DACSTRM_DEV* dacStrm = &_dacStreams[curStrm];
+ 			dacStrm->lastItem = (UINT32)-1;
+ 			daccontrol_stop(dacStrm->defInf.dataPtr);
++			NotifyDACStreamSource(VGMDSE_STOP, *dacStrm);
+ 		}
+@@ -984,6 +999,7 @@ void VGMPlayer::Cmd_DACCtrl_Stop(void)
+ 	DACSTRM_DEV* dacStrm = &_dacStreams[dsID];
+ 	
+ 	dacStrm->lastItem = (UINT32)-1;
+ 	daccontrol_stop(dacStrm->defInf.dataPtr);
++	NotifyDACStreamSource(VGMDSE_STOP, *dacStrm);
+ 	return;
+ }
+@@ -1005,6 +1021,7 @@ void VGMPlayer::Cmd_DACCtrl_PlayData_Blk(void)
+ 					((fData[0x04] & 0x01) << 7);	// Looping
+ 	daccontrol_start(dacStrm->defInf.dataPtr, startOfs, dacStrm->pbMode, soundLen);
++	NotifyDACStreamSource(VGMDSE_START, *dacStrm, startOfs, soundLen);
+ 	return;
+ }
