@@ -4,20 +4,24 @@
 
 VGM Tooling studies one musical phenomenon through many source families and research traditions. The project therefore needs a strict answer to a deceptively simple question:
 
-> What can we legitimately know at each layer?
+> What can we legitimately know at each layer, and how strongly can we know it?
 
-This document is the durable synthesis for that question. Detailed source mining belongs in `research/cases/` and source-family docs; this file records the constraints that survived comparison across executable game-music sources, music cognition, music psychology, music theory, computational music analysis, digital musicology, and MIR implementations.
+Detailed archaeology belongs in `research/cases/`. This document records the durable evidence rules that survived comparison across executable game-music sources, music cognition, expressive-performance research, music theory, MIR, digital musicology, synthesis research and practitioner history.
 
-## The central law
+## Central law
 
 Later abstraction is not automatically greater truth.
 
 ```text
-source bytes/state
+source representation
         ↓
-execution
+authored program
         ↓
-performance
+driver execution
+        ↓
+synthesis
+        ↓
+musical performance
         ↓
 musical structure
         ↓
@@ -28,277 +32,238 @@ auditory interpretation
 listener response
 
 musicological context
-↕ links artifacts, structures, performances, documents, and external evidence
-  across the pipeline rather than sitting after it
+↕ cross-cuts artifacts, structures, performances, renders and external evidence
 ```
 
-Each layer answers a different question. The arrows show relationships, not a mandatory serial cognitive pipeline and not a ladder of increasing truth.
+The arrows show common relationships, not a mandatory serial pipeline and not a ladder of increasing truth.
 
 Separately:
 
 ```text
 exact
- derived
- hypothesis
+
+derived
+
+hypothesis
 ```
 
 states how strongly one claim is supported.
 
-And provenance records why the claim is supported, which source/model/observer produced it, and what limitations apply.
+And provenance records why the claim is supported, which source/model/observer produced it, what evidence it depends on, and what limitations apply.
 
 Therefore:
 
 ```text
-semantic layer != evidence status != provenance
+semantic layer
+!= evidence status
+!= provenance
+!= source/capture quality
 ```
 
-The same piece of music may support exact claims, derived claims, and several incompatible hypotheses simultaneously.
+The same piece can support exact facts, deterministic derivations and several incompatible hypotheses at once.
 
 ## Layer-relative knowledge
 
 ### Source representation
 
-Legitimate claims include facts that are directly present in the source artifact:
+Legitimate claims include bytes, file/container structure, addresses, explicit metadata, stored CPU/RAM/DSP state, command/log order, embedded sample/data blocks and source-local identifiers.
 
-- bytes;
-- file/container structure;
-- addresses;
-- explicit metadata;
-- stored CPU/RAM/DSP state;
-- command/log order;
-- embedded samples/data blocks;
-- source-level identifiers.
+An exact source fact is exact **relative to that source artifact**. Capture completeness is a separate question.
 
-An exact source fact is exact **relative to that source**. Capture completeness remains a separate question.
+### Authored program
 
-### Authored program / score / symbolic source
-
-When the source actually preserves authored semantics, legitimate claims can include:
-
-- notes/rests/ties;
-- written pitch/rhythm;
-- explicit part/track identity;
-- tempo/meter commands;
-- instrument/program selection;
-- loops/macros/control flow;
-- articulations/modulation instructions.
+When preserved directly, legitimate claims can include notes/rests/ties, written pitch/rhythm, parts/tracks, tempo/meter, instrument/program selection, loops/macros/control flow, articulation and modulation instructions.
 
 Do not reconstruct this layer by fiat from a lower trace merely because an authored representation would be convenient.
 
 ### Driver execution
 
-Legitimate claims can include:
+Legitimate claims can include validated logical tracks, scheduler state, sequence position, runtime program points, control flow, allocation policy and one realized execution trace.
 
-- validated logical tracks;
-- scheduler state;
-- control flow;
-- sequence event order;
-- allocation policy;
-- runtime program points;
-- one realized execution path.
-
-A static program and one runtime traversal remain distinct.
+```text
+static program
+!= legal transitions
+!= one runtime traversal
+```
 
 ### Synthesis
 
-Legitimate claims can include:
-
-- instrument/sample/patch objects;
-- physical synthesis resources;
-- bounded voice instances;
-- oscillator/operator/sample state;
-- device parameters;
-- routing/effects state;
-- exact or rebuildable device-state views.
+Legitimate claims can include patch/sample/synthesis objects, physical synthesis resources, bounded running voice instances, oscillator/operator/sample state, device parameters, routing/effects state and rebuildable device-state views.
 
 Physical resource identity is not automatically musical identity.
 
 ### Musical performance
 
-Legitimate claims can include, when evidence supports them:
+Legitimate claims can include note-like or pitched-activity events, performed timing, pitch/control trajectories, dynamics, articulation, persistent musical parts when supported and higher performance gestures derived from exact programmed controls.
 
-- note-like or pitched-activity events;
-- performance timing;
-- pitch/control trajectories;
-- dynamics/articulation;
-- persistent musical parts;
-- performance gestures.
-
-A performance event can be derived from execution without proving its authored notation.
+A performance event can be derived from execution without proving authored notation.
 
 ### Musical structure
 
-This layer contains analyses such as:
+This layer contains analyses such as beat/meter, key/tonal center, harmony, voice leading, motifs, phrases, sections, form, syntax/prolongation, repetition, equivalence, texture and other relations above individual events.
 
-- beat/meter hierarchy;
-- key/tonal center;
-- chord/harmony relations;
-- tonal function;
-- voice leading;
-- motifs and transformations;
-- phrases/sections/form;
-- syntax/prolongation;
-- repetition and equivalence relations.
+These claims may depend on a theory, representation, segmentation, style or corpus. Several analyses may legitimately coexist.
 
-These claims often depend on an analytical theory, representation, segmentation, style, or corpus. Several analyses may legitimately coexist.
-
-A useful rule is:
-
-> structural analysis must identify the analytical assumptions that make the result meaningful.
+> Structural analysis must identify the assumptions that make the result meaningful.
 
 ### Acoustic realization
 
-Legitimate claims include measurable properties of produced sound:
+Legitimate claims include waveform/spectrum, loudness, spectral envelope, partials, transients, rendered timing, overlap, spatial cues and other measurable properties of the produced sound.
 
-- waveform/spectrum;
-- loudness/level;
-- spectral envelope;
-- partials;
-- transients;
-- spatial cues;
-- rendered timing;
-- masking and overlap measurements.
-
-When exact source state is available, audio-derived estimates must not replace it. They remain observations of a different projection.
+When exact source state exists, audio-derived estimates do not replace it. They are observations of another projection.
 
 ### Auditory interpretation
 
-This layer describes perceptual organization of the acoustic realization.
+This layer describes how an acoustic realization may be organized perceptually into events and streams.
 
-Legitimate hypotheses can include:
-
-- concurrent auditory events;
-- sequential auditory streams;
-- fusion/segregation;
-- perceived source continuity;
-- salience and masking when treated as perceptual organization;
-- perceived beat/meter;
-- attention-dependent grouping when the claim concerns which acoustic events are organized together.
+Candidate claims include concurrent grouping, sequential streams, fusion/segregation, perceived continuity, foreground/background, masking/salience, perceived beat/meter, and pitch/timbre/spatial organization.
 
 These are listener/model claims, not source facts.
-
-A perceptual model should retain its assumed listener population, cultural exposure, model identity, corpus/training context, and input representation when those matter.
 
 ### Listener response
 
 `listener_response` is distinct from auditory organization.
 
-It represents how a listener or explicit listener model responds to the perceived music. Candidate claims include:
-
-- expectation and predictive uncertainty;
-- information content / surprise;
-- familiarity and recognition;
-- memory activation;
-- felt or perceived emotional response, with the response construct stated explicitly;
-- pleasure;
-- groove / urge to move;
-- motor entrainment;
-- attention state when the question is what the listener attends to rather than how sound is grouped;
-- aesthetic judgment.
-
-These outputs may depend strongly on:
-
-- short-term musical context;
-- long-term learned statistics;
-- corpus/style exposure;
-- cultural background;
-- familiarity with the piece;
-- episodic associations;
-- preference;
-- training;
-- movement/dance experience;
-- task and current context;
-- the psychological mechanism or prediction model being used.
-
-Therefore:
-
-```text
-musical feature
-!= listener response
-```
-
-and:
+It covers expectation, predictive uncertainty, surprise/information content, familiarity, recognition, memory activation, emotion, pleasure, groove/urge to move, motor entrainment, attention and aesthetic judgment under an explicit listener/model context.
 
 ```text
 same source + same performance + same acoustic realization
-can legitimately produce different listener-response hypotheses
-under different listener/model contexts.
+can support different listener-response hypotheses
+under different learning / cultural / memory / task contexts
 ```
-
-The detailed pressure pass is recorded in `research/cases/music-affect-memory-entrainment.md`.
 
 ### Musicological context
 
-`musicological_context` is cross-cutting rather than a downstream listener layer.
+`musicological_context` is cross-cutting rather than a final downstream layer.
 
-It represents contextual, historical, documentary, source-critical, versioning, and attribution claims that relate artifacts and musical objects across the other layers.
+It includes work/version identity, arrangements/revisions, ports/adaptations, source witnesses, derivation/transmission hypotheses, release chronology, credits, stylistic attribution and archival/catalog context.
 
-Candidate claims include:
-
-- work identity;
-- version/revision identity;
-- arrangement identity;
-- port/adaptation relations;
-- source-witness relations;
-- derivation/transmission hypotheses;
-- release chronology;
-- documented composer/arranger credits;
-- stylistic attribution hypotheses;
-- archival/catalog identifiers;
-- external historical context.
-
-A central distinction is:
+Core distinction:
 
 ```text
 artifact identity
 != musical similarity
-!= musicological work/version identity
+!= work/version identity
+!= authorship
 ```
 
-Two files can be exact different artifacts while strongly structurally similar. Strong similarity can support a same-work hypothesis without proving historical identity. External documentation can provide a stronger independent evidence route.
+## Evidence states
 
-Likewise:
+### Exact
+
+Directly represented or deterministically recovered from a validated source/executor.
+
+Examples:
+
+- exact VGM register write and source tick;
+- exact SPC RAM/DSP register image;
+- MIDI note-on message;
+- explicit MML command;
+- validated driver opcode;
+- exact event-time BRR bytes under proven RAM-generation continuity;
+- exact external catalog annotation relative to that source.
+
+### Derived
+
+Deterministic or strongly constrained transformation of exact state.
+
+Examples:
+
+- device pitch relation from exact register state;
+- conservative pitched-activity observation;
+- bounded physical voice episode from validated lifecycle boundaries;
+- rebuildable device state from ordered transitions;
+- exact-to-derived musical gesture when the mapping is explicitly defined;
+- structural repetition from validated control flow;
+- measured similarity under a declared representation.
+
+### Hypothesis
+
+Interpretation with plausible alternatives.
+
+Examples:
+
+- persistent musical-part assignment without stronger authored/driver identity;
+- bass/melody/accompaniment role;
+- phrase boundary or harmonic function;
+- semantic instrument name;
+- listener stream assignment;
+- listener-response prediction;
+- same-work/derivation relation inferred from similarity;
+- role-relative attribution candidate.
+
+Hypotheses carry confidence and provenance and must never overwrite lower exact evidence.
+
+## Capture quality is separate
+
+An observation can be exact relative to an imperfect preservation object.
+
+A VGM or other capture may be:
+
+- complete or incomplete;
+- transformed;
+- missing initialization/pre-roll;
+- affected by logging artifacts;
+- externally annotated.
+
+Capture quality and exact/derived/hypothesis status therefore remain orthogonal.
+
+## Identity law
+
+The word `identity` must always be scoped.
 
 ```text
-stylistic similarity
-!= composer identity
+artifact identity
+!= source-object identity
+!= sample/patch identity
+!= physical voice episode
+!= persistent musical-part identity
+!= auditory-stream identity
+!= work/version identity
 ```
 
-Musicological claims must preserve their documentary, analytical, or external provenance. See `research/cases/musicological-version-identity.md`.
+The same work may appear in several byte-distinct artifacts. One musical part may move across physical channels. Several physical sources may fuse into one heard stream. None of those relationships is safe to infer from an implementation coordinate alone.
 
-## Perceptual grouping versus musical identity
+## Programmed expression is not implementation residue
 
-Music psychology repeatedly supports cues such as:
-
-- onset synchrony;
-- harmonicity;
-- common fate/common modulation;
-- pitch proximity;
-- timbre similarity;
-- temporal continuity;
-- spatial/lateralization similarity;
-- tempo-dependent grouping.
-
-Those cues are valuable for auditory-stream hypotheses and sometimes for unresolved persistent-part hypotheses.
-
-But:
+Current practitioner and expressive-performance research makes one boundary especially important:
 
 ```text
-part
-!= voice_instance
-!= physical_slot
-!= auditory_stream
+exact programmed control
+!= derived musical gesture
+!= higher expressive interpretation
 ```
 
-A listener can fuse several sources into one stream or segregate one authored source into several perceptual components.
+A pitch envelope, gate length, volume trajectory, vibrato, detune, duty-cycle change, FM operator change, sample retrigger, rhythmic echo or other programmed behavior can be exact execution evidence and still participate in higher musical expression.
 
-And even one fixed auditory organization can support different listener responses because familiarity, expectation, preference, memory, culture, or task differs.
+Calling an exact pitch envelope a `scooped attack` is a musical interpretation supported by the envelope. The interpretation does not replace the control history.
 
-## Music-theory claims need theory provenance
+This is protected by `tests/model/creative_role_attribution_test.cpp`.
 
-Common labels can conceal different epistemic strength.
+## Timbre and instrument identity
 
-### Example: harmony
+The same exact synthesis object can produce different acoustic descriptors across pitch, dynamics and context. Conversely, perceptually similar sounds can arise from different synthesis parameters or algorithms.
+
+Therefore:
+
+```text
+synthesis-object identity
+!= acoustic descriptor value
+!= perceptual instrument-family label
+!= historical acoustic-instrument identity
+```
+
+An authored label such as `strings` may be exact at the authored layer. An audio classifier output such as `violin_family` remains a perceptual/model hypothesis. Neither proves one literal reference instrument.
+
+A higher-quality reconstruction remains an acoustic-realization candidate, not recovered historical source truth.
+
+This boundary is protected by `tests/model/timbre_instrument_identity_test.cpp`.
+
+## Musical theory requires theory provenance
+
+Common labels can hide very different epistemic routes.
+
+### Harmony
 
 ```text
 exact simultaneous pitch state
@@ -309,37 +274,26 @@ chord spelling / root analysis
         ↓
 harmonic-function interpretation
         ↓
-expectation / tension response under a specified listener/model
+expectation / tension under a listener model
 ```
 
-The first claim can be source/performance truth. Later claims increasingly depend on analytical or listener models.
-
-### Example: meter and groove
+### Meter and groove
 
 ```text
 explicit authored meter          exact authored
 validated driver meter           exact/derived driver
 meter inferred from events       structural hypothesis
-beat/meter heard from audio      auditory-interpretation hypothesis
-syncopation/complexity analysis  structural/model-dependent analysis
+beat/meter heard from audio      auditory hypothesis
 urge to move / groove            listener-response hypothesis
 ```
 
-One familiar label must not collapse those routes.
+No familiar label should collapse those routes.
 
-## Multiple interpretations are a feature, not an error
+## Competing interpretations are normal
 
-Music-analysis research provides strong independent support for preserving competing interpretations:
+Music analysis, voice separation, beat/meter tracking, listener models and source/version research all provide cases where several interpretations fit the same lower evidence.
 
-- multiple harmonic analyses can satisfy shared low-level constraints;
-- hierarchical analyses can differ among expert/theoretical systems;
-- voice-separation models can propose alternate trajectories;
-- expectation models can differ by corpus, context, or listener assumptions;
-- meter/beat models can disagree while the exact event timing remains fixed;
-- emotion/groove responses can differ across listeners over identical musical evidence;
-- source/version genealogies can differ while the observed artifact differences stay fixed.
-
-VGM Tooling should therefore prefer:
+VGM Tooling therefore prefers:
 
 ```text
 lower evidence
@@ -349,94 +303,87 @@ several explicit hypotheses
 comparison / later discrimination
 ```
 
-rather than forcing one early answer because a downstream projection wants a scalar label.
+rather than selecting one early answer merely because a projection wants a scalar label.
 
-## Enculturation and cross-cultural scope
+## Cross-cultural scope
 
-A major guardrail from cross-cultural music cognition is that VGM Tooling must not mistake familiar Western theory for universal ontology.
+Do not mistake familiar Western theory for universal ontology.
 
-Some lower-level perceptual mechanisms may generalize broadly, while tonal hierarchies, metric expectations, harmonic syntax, stylistic conventions, and aesthetic judgments can be learned or culture-dependent.
+No default model may silently assume Western common-practice tonality, major/minor harmony, Roman-numeral function, four-part voice-leading rules, one meter prior, Western consonance preference or one universal scale/chord vocabulary.
 
-Therefore no default model may silently assume:
+Theory/cognition outputs should declare cultural/style/corpus scope when it matters.
 
-- Western common-practice tonality;
-- major/minor harmony;
-- Roman-numeral function;
-- four-part voice-leading rules;
-- a specific meter prior;
-- Western consonance preference;
-- one universal scale/chord vocabulary.
+## Role-relative attribution
 
-Theory/cognition outputs should declare their scope when it matters.
+A single `composer fingerprint` is unsafe, especially for retro executable music where composition and technical realization may be divided differently from project to project.
 
-## Musicology and historical evidence
-
-Execution alone cannot answer every musically important question.
-
-Musicology can introduce evidence about:
-
-- work/version identity;
-- arrangements and revisions;
-- source witnesses;
-- transmission;
-- release chronology;
-- performance practice;
-- composer/arranger credits;
-- archival documentation;
-- cultural/historical context;
-- style and attribution.
-
-These claims belong to `musicological_context` when represented as analytical/contextual claims, while the external documents/artifacts supporting them remain source objects/annotations.
-
-For example:
+The current analytical coordinates are:
 
 ```text
-file hash                  exact source identity
-musical diff               derived structural relation
-same work/arrangement      musicological-context claim
-stylistic similarity       analytical result
-composer attribution       musicological-context claim with external/model evidence
+COMPOSITION
+melody • rhythm • harmony • form • motivic habits
+
+ARRANGEMENT / SOUND PROGRAMMING
+register • voicing • texture • channel roles • modulation • articulation
+effects • envelopes • control idioms • machine-specific realization choices
+
+DRIVER / TOOLCHAIN
+command grammar • scheduler/allocation behavior • data layout • compiler/driver artifacts
+
+PATCH / SAMPLE DESIGN
+FM topology/parameters • waveforms • sample preparation • loop strategy
+
+RENDERING
+levels • echo/reverb strategy • mixing • hardware-specific realization
 ```
 
-Do not upgrade stylistic resemblance into authorship.
+`ARRANGEMENT / SOUND PROGRAMMING` is intentionally one coordinate. Historical credits may distinguish arranger, programmer, sound designer and composer, but the analytical fingerprint should not invent a universal boundary where retro workflows often had none.
 
-This is especially relevant to the Sonic 3 attribution work.
-
-## Work identity versus artifact identity
-
-Different media can witness one conceptual musical object:
+The same person may occupy several coordinates and several people may contribute to one cue.
 
 ```text
-prototype driver sequence
-final driver sequence
-port
-SPC/VGM capture
-MIDI transcription
-rendered audio
-score reconstruction
+strong arrangement / sound-programming match
+!= composer proof
+
+strong driver match
+!= composition proof
+
+shared patch/sample habits
+!= authorship proof
 ```
 
-Conversely, similar bytes or musical fragments do not automatically prove one causal lineage.
+`tests/model/creative_role_attribution_test.cpp` protects the narrower executable requirement that technical realization evidence may coexist with an independent composition-style hypothesis while composer attribution remains unresolved.
 
-Cross-version comparison should distinguish musical structure from container/serialization accidents, and similarity from historical identity.
+## Whole-song reasoning
 
-Useful comparison dimensions can include:
+The evidence model exists so VGM Tooling can reason about the song as music without losing the machine underneath it.
 
-- source/artifact identity;
-- program/control-flow similarity;
-- performance-event similarity;
-- instrument/sample/synthesis similarity;
-- form/structural similarity;
-- acoustic similarity;
-- documented work/version/arrangement relations.
+At one aligned span, a song-level analysis may combine:
 
-A single scalar similarity should not erase which dimensions were compared or which invariances were allowed.
+```text
+source / driver evidence
++ synthesis / sample / patch state
++ programmed expression
++ physical voice episodes
++ performance events / part hypotheses
++ acoustic measurements
++ auditory grouping
++ texture / role / motif / phrase / section / form
++ loop / repetition behavior
++ historical / attribution context
+```
 
-## Feature systems
+This is a synchronized projection over the evidence field, not a new canonical ontology.
 
-GitHub/literature comparisons with jSymbolic, music21, Humdrum, hrep, Essentia, madmom, Partitura, OpenMusic, MIRtoolbox, pyIDyOM, MusicDiff-related tooling, OpenMPT, and related systems support several design constraints for analysis features.
+The safe rule is:
 
-An analysis feature explicitly distinguishes:
+> **reason holistically, claim locally.**
+
+A whole-song account may synthesize many layers, but each statement keeps its own evidence scope and provenance.
+
+## Source-relative feature carrier
+
+`model/analysis_feature.h` keeps analysis questions explicit through:
 
 ```text
 feature name
@@ -444,8 +391,8 @@ claim layer
 availability
 value
 evidence status / confidence
-provenance / model context
-supporting graph nodes/edges
+provenance
+supporting graph nodes / edges
 ```
 
 Availability is one of:
@@ -457,108 +404,39 @@ unavailable
 not_applicable
 ```
 
-A missing feature is not zero.
+A missing feature is not numeric zero or false.
 
-A feature that is exact for one source family may be unavailable or hypothetical in another.
+## Current executable controls
 
-Example:
+Current regressions protect, among other boundaries:
 
-```text
-MML authored pitch      explicit authored
-tracker note pitch      explicit authored
-YM2612 pitch relation   derived synthesis/device state
-SPC pitch-rate relation synthesis truth conditional on runtime observation
-performed SPC pitch     may remain unknown without sample/tuning continuity
-audio pitch estimate    inverse-analysis output
-felt emotion            listener response, unavailable from source alone
-shared work identity    musicological context, may be hypothesis or documented externally
-```
-
-The project should prefer the strongest available source evidence and fall back only when the source stops answering the question.
-
-## Observatories added by the current passes
-
-The current comparison set now includes, among others:
-
-- music psychology / auditory organization;
-- music cognition and expectation;
-- music emotion mechanisms;
-- groove and sensorimotor entrainment;
-- memory, familiarity, and statistical learning;
-- cross-cultural music cognition;
-- harmonic/tonal cognition;
-- computational voice leading;
-- probabilistic and multiple-interpretation harmonic analysis;
-- hierarchical music analysis;
-- computational music-analysis epistemology;
-- digital musicology / source comparison / versions;
-- MusicDiff/source-witness comparison and multi-source visualization;
-- cover/version identification and transformation-invariant similarity;
-- symbolic feature systems such as jSymbolic;
-- Humdrum symbolic topology;
-- hrep's symbolic/acoustic/sensory harmony representations;
-- Essentia/madmom audio-MIR pipelines;
-- MIRtoolbox emotion/feature pipelines;
-- pyIDyOM expectation/viewpoint/corpus machinery;
-- OpenMPT tracker semantics.
-
-See:
-
-- `research/cases/music-cognition-theory-musicology.md`
-- `research/cases/music-affect-memory-entrainment.md`
-- `research/cases/tracker-semantic-pressure.md`
-- `research/cases/musicological-version-identity.md`
-
-## What the current model now supports
-
-Two deeper research passes justified semantic distinctions not captured cleanly by the earlier eight-layer graph:
-
-```text
-auditory_interpretation
-!= listener_response
-
-source identity / structural similarity
-!= musicological_context
-```
-
-`musicological_context` is cross-cutting rather than another stage after listening.
-
-No new node kind or edge kind was required for either distinction.
-
-Existing vocabulary plus the source-relative `analysis_feature` carrier is sufficient for the current controls:
-
-- `musical_structure` + `musical_relation` for theory-level analyses and measured structural relations;
-- `auditory_interpretation` + `auditory_event` / `auditory_stream` for perceptual organization;
-- `listener_response` analysis features for expectation, memory, emotion, groove, pleasure, attention, and related listener/model outputs;
-- `musicological_context` relation nodes/features for work, version, arrangement, chronology and attribution claims;
-- `part`, `voice_instance`, and `physical_slot` for identity separation;
-- exact/derived/hypothesis evidence states;
-- provenance-bearing nodes/edges/features;
-- `external_annotation` for externally supplied evidence.
-
-This keeps the graph small while allowing materially different questions to remain visibly different.
-
-## Executable controls
-
-Current model regressions protect:
-
+- static program structure versus runtime traversal;
+- trace order versus timestamp;
+- capture completeness and semantic resynchronization;
+- device transitions versus musical-performance observations;
+- bounded physical voice episodes versus persistent parts;
+- competing persistent-part/voice-separation hypotheses;
+- source-relative feature availability across Genesis, SPC and tracker-shaped evidence;
 - competing theory-level analyses over unchanged performance evidence;
 - competing auditory-stream interpretations over unchanged acoustic evidence;
-- external historical/attribution annotations without contaminating execution truth;
-- source-relative feature availability across Genesis, SPC, and tracker-shaped evidence;
-- explicit feature claim layers;
-- identical lower musical evidence producing different listener-response hypotheses under different modeled listener/learning contexts;
-- two exact different artifacts carrying separate structural-similarity, same-work, documented-arrangement, chronology and attribution claims without collapsing them into one identity flag.
+- different listener-response hypotheses over identical lower evidence;
+- artifact identity versus structural similarity versus work/version/history claims;
+- cross-cultural pitch/rhythm scope;
+- timbre/synthesis identity versus perceptual instrument interpretation;
+- technical realization attribution versus composition-style attribution;
+- exact programmed controls versus derived musical gestures.
 
-The next analysis algorithm should consume these evidence-bearing features rather than invent a lowest-common-denominator representation.
+No new generic graph primitive was required by the most recent timbre/attribution/listening passes.
 
 ## Related documents
 
+- `README.md`
 - `docs/musical-execution-model.md`
 - `docs/music-representation-systems.md`
 - `docs/persistent-musical-identity.md`
 - `docs/openmusic-libraries.md`
 - `research/cases/music-cognition-theory-musicology.md`
 - `research/cases/music-affect-memory-entrainment.md`
-- `research/cases/tracker-semantic-pressure.md`
 - `research/cases/musicological-version-identity.md`
+- `research/cases/timbre-instrument-organology.md`
+- `research/cases/retro-composition-programming-listening.md`
