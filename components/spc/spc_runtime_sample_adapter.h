@@ -100,12 +100,6 @@ inline vgmtooling::model::edge_id add_spc_runtime_sample_reference(
     reference.kind = edge_kind::references;
     reference.from = observation.trace_event_id;
     reference.to = sample_id;
-    reference.active = time_span{{
-        time_domain::device,
-        observation.tick,
-        observation.tick_rate,
-        0,
-    }, std::nullopt};
     reference.attributes.push_back({
         "reference_kind",
         std::string{"runtime_sample_source"},
@@ -119,6 +113,20 @@ inline vgmtooling::model::edge_id add_spc_runtime_sample_reference(
         evidence_status::exact,
         1.0,
         "slot",
+    });
+    reference.attributes.push_back({
+        "observation_tick",
+        static_cast<std::int64_t>(observation.tick),
+        evidence_status::exact,
+        1.0,
+        "device_tick",
+    });
+    reference.attributes.push_back({
+        "observation_tick_rate",
+        observation.tick_rate,
+        evidence_status::exact,
+        1.0,
+        "ticks_per_second",
     });
     reference.attributes.push_back({
         "ram_write_serial",
@@ -160,12 +168,6 @@ inline vgmtooling::model::node_id add_spc_runtime_sample_node(
     sample.layer = semantic_layer::synthesis;
     sample.flow = flow_kind::value;
     sample.label = "BRR runtime RAM version";
-    sample.active = time_span{{
-        time_domain::device,
-        observation.tick,
-        observation.tick_rate,
-        0,
-    }, std::nullopt};
     sample.attributes.push_back({"encoding", std::string{"BRR"}, evidence_status::exact, 1.0, ""});
     sample.attributes.push_back({"identity_scope", std::string{"runtime_ram_version"}, evidence_status::derived, 1.0, ""});
     sample.attributes.push_back({"start_address", static_cast<std::uint64_t>(scan.start_address), evidence_status::exact, 1.0, "address"});
@@ -182,6 +184,8 @@ inline vgmtooling::model::node_id add_spc_runtime_sample_node(
         1.0,
         "",
     });
+    sample.attributes.push_back({"first_observation_tick", static_cast<std::int64_t>(observation.tick), evidence_status::exact, 1.0, "device_tick"});
+    sample.attributes.push_back({"first_observation_tick_rate", observation.tick_rate, evidence_status::exact, 1.0, "ticks_per_second"});
     sample.attributes.push_back({"event_ram_write_serial", observation.ram_write_serial, evidence_status::exact, 1.0, "write_sequence"});
     sample.attributes.push_back({"shadow_write_serial", shadow.synchronized_write_serial(), evidence_status::exact, 1.0, "write_sequence"});
     sample.attributes.push_back({"event_time_ram_exact", true, evidence_status::derived, 1.0, ""});
