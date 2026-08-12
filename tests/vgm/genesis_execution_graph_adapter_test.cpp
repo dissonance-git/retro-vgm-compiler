@@ -7,6 +7,9 @@ using gameaudio::vgm::append_genesis_trace_event;
 using gameaudio::vgm::begin_genesis_execution_trace;
 using gameaudio::vgm::command_event;
 using gameaudio::vgm::command_event_kind;
+using gameaudio::vgm::command_trace_capture;
+using gameaudio::vgm::genesis_state;
+using gameaudio::vgm::materialize_genesis_command_capture;
 using namespace vgmtooling::model;
 
 #define CHECK(expression) do { if (!(expression)) return __LINE__; } while (false)
@@ -113,6 +116,34 @@ int main() {
     CHECK(!reset.device_transition_id.has_value());
     CHECK(handle.shadow.ym2612().channels[0].fnum == 0);
     CHECK(handle.source_trace.next_trace_index == 7);
+
+    // The same semantic lift consumes the allocation-free realtime capture
+    // directly, closing the callback -> capture -> graph path.
+    command_trace_capture capture;
+    capture.begin_window();
+    genesis_state realtime_state;
+    realtime_state.set_event_tap(&command_trace_capture::tap, &capture);
+    realtime_state.observe(command_event{command_event_kind::command, 200, 0x300, 0x52, fnum_high, 2});
+    realtime_state.observe(command_event{command_event_kind::command, 200, 0x303, 0x52, fnum_low, 2});
+    realtime_state.observe(command_event{command_event_kind::command, 210, 0x306, 0x50, psg_latch, 1});
+    realtime_state.observe(command_event{command_event_kind::command, 210, 0x308, 0x50, psg_data, 1});
+    CHECK(capture.count() == 4);
+
+    musical_execution_graph capture_graph;
+    const auto captured = materialize_genesis_command_capture(
+        capture_graph,
+        capture,
+        "captured.vgm",
+        to_flags(provenance_flag::runtime_capture));
+    CHECK(captured.source_trace.next_trace_index == 4);
+    CHECK(capture_graph.edges_from(captured.source_trace.trace_id, edge_kind::contains).size() == 4);
+    CHECK(captured.ym2612_nodes[0].has_value());
+    CHECK(captured.psg_nodes[0].has_value());
+    CHECK(captured.shadow.ym2612().channels[0].fnum == 0x434);
+    CHECK(captured.shadow.ym2612().channels[0].block == 5);
+    CHECK(captured.shadow.psg().channels[0].tone_period == 0x125);
+    CHECK(capture_graph.edges_from(*captured.ym2612_nodes[0], edge_kind::contains).size() == 2);
+    CHECK(capture_graph.edges_from(*captured.psg_nodes[0], edge_kind::contains).size() == 2);
 
     return 0;
 }
