@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Keep source-native enhancement additions outside the historical upstream
+    vcxproj. MSBuild imports Directory.Build.targets after the project, so the
+    original foo_input_vgm project can stay close to upstream while this repo's
+    realtime engine participates in the same DLL build.
+  -->
+  <ItemGroup>
+    <ClCompile Include="src\input_vgm_shadow.cpp" />
+    <ClCompile Include="..\enhancement\genesis_state.cpp" />
+    <ClCompile Include="..\enhancement\sn76489_enhanced.cpp" />
+    <ClCompile Include="..\enhancement\sn76489_advance.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\enhancement\vgm_command_event.h" />
+    <ClInclude Include="..\enhancement\genesis_state.h" />
+    <ClInclude Include="..\enhancement\sn76489_enhanced.h" />
+    <ClInclude Include="..\enhancement\psg_block_capture.h" />
+  </ItemGroup>
+</Project>
