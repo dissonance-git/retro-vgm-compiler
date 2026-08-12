@@ -1,189 +1,264 @@
-# foobar2000-game-audio
+# VGM Tooling
 
-Realtime, source-native enhanced playback for game-music formats in foobar2000.
+Executable understanding, analysis, and source-native rendering of digital game music.
 
-This repository develops two separate foobar2000 input components in one shared research and implementation home:
+This repository is the implementation home for the **VGM Tooling** project. `VGM` in the project name is historical shorthand for video game music tooling; the project is not limited to the `.vgm` file format.
 
-- **SPC**: SNES SPC700 / SNESAPU playback.
-- **VGM/VGZ**: chip-log playback built around libvgm.
+The long-term objective is stronger than playback:
 
-The components remain separate DLLs. They share enhancement, mixing, spatial, resampling, diagnostics, and validation infrastructure where the underlying mechanism is genuinely common.
+> **Understand supported digital game music deeply enough to run it as an explicit internal musical machine, inspect every meaningful layer while it runs, and render the same encoded work through both accurate/reference and higher-quality source-native paths.**
 
-## Objective
-
-The accurate renderer is the **reference and foundation, not the ceiling**.
-
-The default enhanced path aims for the highest-quality plausible **realtime realization of the music encoded by the source**, rather than merely reproducing the limitations of the original playback hardware.
-
-The project may remove or reduce limitations imposed by sample storage, interpolation, DAC precision, bandwidth, channel mixing, aliasing, output filtering, effect hardware, and other historical constraints when doing so makes the encoded musical intent clearer or more expressive.
-
-It must preserve the musical decisions that define the work:
-
-- notes and timing
-- rhythm and groove
-- phrasing
-- instrument identity
-- authored modulation and automation
-- musical hierarchy
-- deliberate effects and coloration
-- intentional spatial relationships
-
-A hardware artifact that materially defines an instrument is part of the instrument and may be retained. A hardware limitation is not automatically artistic intent.
-
-## Realtime only
-
-This is a playback engine, not a compiler or offline remastering tool.
+A supported object should not have to collapse immediately into stereo PCM. Where the source permits it, the system should retain the route from musical program to physical synthesis to rendered sound.
 
 ```text
-source file
+music container / executable source
+        ↓
+driver / sequence / performance state
+        ↓
+instrument / sample / patch state
+        ↓
+physical device voices and effects
+        ↓
+reference or enhanced synthesis
+        ↓
+source-aware mix
+        ↓
+stereo / stems / structured telemetry
+        ↓
+consumer
+```
+
+The foobar2000 components in this repository are important realtime frontends, not the definition of the project.
+
+## Levels of truth
+
+Do not collapse these layers:
+
+```text
+FORMAT
+VGM, SPC, MIDI, native sequence/container, ROM-derived data
+
+DRIVER / PERFORMANCE
+SMPS, GEMS, N-SPC and other sequencers, track state, note events,
+program changes, voice allocation, modulation, loops
+
+DEVICE / SYNTHESIS
+YM2612, SN76489, S-DSP, QSound, OPL/OPN/OPM, PCM/ADPCM,
+registers, operators, envelopes, sample memory, effect state
+
+RENDER
+reference hardware behavior or source-native enhanced realization
+
+AUDITORY INTERPRETATION
+what a listener hears as persistent objects, streams, fields, rhythm,
+foreground/background, masking, motion, and environment
+```
+
+A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A perceptual stream is not automatically one physical source. Confidence and provenance must survive transitions between layers.
+
+## Project relationship
+
+VGM Tooling is an independent implementation project connected to Helix, libaural, Omniphony, and downstream research without being absorbed by them.
+
+```text
+                         Helix
+             project state / research / tests
+                           │
+                           ▼
+                     VGM Tooling
+        executable source + synthesis understanding
+              │             │             │
+              ▼             ▼             ▼
+          foobar2000     libaural      attribution
+          playback       testground     / forensics
+              │             │
+              ▼             ▼
+          Omniphony     artificial hearing
+```
+
+### Helix
+
+Helix owns project orientation, research questions, exact evidence, negative results, cross-project transfer, and re-entry state. This repository owns executable game-music code and its local tests/history.
+
+### libaural
+
+libaural owns general artificial hearing. VGM Tooling can provide unusually strong ground truth because it can know the exact source/driver/device state that generated a waveform and compare it with what libaural infers from the resulting audio.
+
+This makes supported game music a programmable auditory-scene laboratory rather than merely a music corpus.
+
+### Omniphony
+
+Omniphony owns general headphone spatial presentation. It should not absorb YM2612, S-DSP, BRR, SMPS, GEMS, QSound-register, or other source-specific machinery.
+
+The primary contract is excellent PCM. A later compact bridge may expose source-supported evidence such as multiplicity, directness, extent, stable motion, environmental energy, and confidence.
+
+## Realtime playback and executable analysis
+
+Normal playback remains realtime. Do not require whole-song preprocessing, offline stem export, or reverse compilation before audio can begin.
+
+But the broader project may contain **analysis and driver-understanding tools** that recover structure not present in a plain register log. Those tools are source-knowledge machinery, not a mandatory preprocessing stage for the foobar player.
+
+For realtime playback:
+
+```text
+source stream
    ↓
-live decoder / register / DSP state
+live driver/register/DSP state
    ↓
-chip- or system-specific enhanced renderer
+chip- or system-specific renderer
    ↓
 source-aware realtime mix
    ↓
 foobar2000 PCM
-   ↓
-optional Omniphony processing
 ```
 
-No enhancement stage may require reverse-compiling a song, exporting stems, scanning the whole track before playback, or preparing an offline master. Small causal state and bounded lookahead are allowed where they are justified for realtime audio quality.
+## Accuracy is the foundation, not the ceiling
 
-## Why source-native enhancement
+The accurate renderer is the scientific reference.
 
-SPC and VGM contain far more information than the final stereo waveform.
+It is not the default quality ceiling for enhanced playback.
 
-Depending on the source, the player may know live information such as:
+Enhanced rendering may remove or reduce historical limitations in sample storage, interpolation, synthesis precision, DAC behavior, bandwidth, channel mixing, aliasing, output filtering, and effects realization when the result remains traceable to the encoded musical work.
 
-- independent voices or chip channels
-- pitch and modulation
-- envelopes and key state
-- FM operators, algorithms, feedback, and register automation
-- PCM/ADPCM sample memory and playback state
-- authored pan
-- echo/effect routing
-- DAC streams
-- loop state
-- device and clock identity
+Preserve:
 
-The project should exploit that information **before it is collapsed into stereo** whenever possible.
+- notes and exact timing
+- rhythm, groove, and phrasing
+- instrument/patch identity
+- authored modulation and automation
+- musical hierarchy
+- deliberate effects and coloration
+- meaningful hardware behavior that became part of the instrument
 
-A generic post-EQ, bus compressor, stereo widener, or AI remaster after emulation is not the design center.
+Enhance where evidence supports it:
 
-## Components
+- source reconstruction
+- bandwidth and interpolation
+- transient fidelity and low-frequency body
+- synthesis precision
+- masking and separation
+- mixing precision and headroom
+- source extent
+- environmental rendering
+- stereo presentation
 
-### SPC
+A hardware limitation is not automatically artistic intent. A hardware artifact that materially defines the programmed instrument may be.
 
-The SPC path uses SNESAPU as its editable rendering foundation.
+## Current design centers
 
-The first obligation is to reconcile the editable SNESAPU source with the newest known SPCPlay/SNESAPU behavior before adding enhancement work. The supplied `spcplay-2.21.3.9130` build is a behavioral/version reference, not the foobar component source.
+### Mega Drive / Genesis
 
-After parity is established, the enhancement frontier includes:
+The current VGM frontier tracks live YM2612 and SN76489 state before final stereo collapse.
 
-- BRR/sample reconstruction
-- improved interpolation and high-rate rendering
-- loop/sustain reconstruction
-- transient and low-frequency restoration
-- per-voice de-masking
-- source-aware mixing
-- dry/echo separation
-- higher-quality realization of authored SNES echo intent
-- source-aware spatial presentation
+Implemented or in active development:
 
-The original eight-voice and DSP structure should remain available to the realtime enhancement layer rather than being discarded at the stereo boundary.
+- exact YM2612 register state and four-operator patch state
+- sample-accurate YM2612 register timelines
+- isolated FM backend contract for six channels
+- enhanced SN76489-family tone/noise stems
+- resolved classic YM2612 DAC playback
+- direct VGM source-bank PCM streams with high-quality resampling
+- authored left/right routing baseline
+- high-precision source summation
 
-### VGM/VGZ
+The next major synthesis milestone is a mature six-channel YM2612 renderer that preserves exact patch/envelope/algorithm/feedback/LFO behavior before experiments remove selected hardware constraints.
 
-VGM/VGZ is the design center of the VGM component.
+### SPC / Super NES
 
-Legacy GYM, DRO, and S98 support may remain for compatibility, but they are not enhancement priorities.
+The SPC path should retain both driver-level and S-DSP-level knowledge when available.
 
-Enhancement is selected by **active chip/source type**, not by one generic VGM effect:
+The editable SNESAPU source is the implementation foundation. The supplied SPCPlay/SNESAPU 2.21.3.9130 build is a newer behavioral reference.
 
-- FM: high-quality synthesis from live register state, preserving patch identity
-- PSG/wavetable: clean band-limited or high-resolution realization of authored oscillators/waves
-- PCM/ADPCM/DAC: sample-aware reconstruction, interpolation, transient/body restoration, and high-precision mixing
-- authored spatial processors such as QSound: preserve their intended behavior while using them as research references for stronger generalized source-domain spatial rendering
+Important future source layers include:
+
+- eight S-DSP voices
+- BRR sample identity and decode state
+- pitch and interpolation
+- envelopes/key state
+- per-voice L/R routing
+- noise and pitch modulation
+- dry/echo distinction
+- FIR/feedback/echo-buffer state
+- higher-level driver/sequence state where recoverable, such as N-SPC tracks, instruments, notes, ties, modulation, and percussion mapping
 
 ## QSound
 
-QSound is important in two ways.
+QSound is both a supported device family and an unusually valuable research system.
 
-1. Native QSound VGM playback must preserve the authored QSound DSP behavior.
-2. Its deeper architecture can inform a **generalized per-source stereo presentation layer** for other VGM chips.
+Its explicit PCM voices, pan state, per-voice echo, FIR filters, wet/dry delays, and final stereo stage provide a controlled example of source-domain spatial processing.
 
-The goal is not to run every VGM through a literal QSound emulator. The goal is to study and generalize useful ideas such as per-source spatial positioning, source-dependent pan laws, spectral/phase localization cues, direct/environment separation, and effect sends before final summation.
+Native QSound playback must preserve authored behavior. Separately, its mechanisms may inform generalized source-domain stereo rendering for other systems. Generalize principles, not QSound branding or coloration.
 
-That generalized layer can create a much stronger stereo substrate for Omniphony than ordinary console stereo.
+## Sonic 3 subproject
 
-## Omniphony relationship
+**Sonic 3 Music Attribution** is a bounded VGM Tooling subproject/case in Helix.
 
-This repository owns source-native game-audio reconstruction and rendering.
+It is useful in two directions:
 
-Omniphony remains a general headphone spatial renderer and must not absorb SNES, YM2612, BRR, QSound-register, or other chip-specific implementation logic.
+1. VGM Tooling can give Sonic 3 research much stronger technical evidence about SMPS tracks, persistent musical identity, voice allocation, FM patches, PSG behavior, DAC samples, modulation, and prototype/final realization.
+2. Sonic 3 provides a demanding real soundtrack on which VGM Tooling must prove that driver state, physical channel state, musical identity, and arranger fingerprints are not carelessly conflated.
 
-The normal contract is enhanced PCM. A later optional bridge may expose compact perceptual evidence such as source multiplicity, directness, source extent, stable motion, and environmental energy. Omniphony decides the 3D presentation.
+The attribution evidence hierarchy remains stricter than technical resemblance. VGM Tooling can produce evidence; it does not convert similarity into authorship confirmation.
 
-```text
-game-audio source
-      ↓
-source-native enhanced renderer
-      ↓
-source-aware stereo master
-      ↓
-Omniphony
-      ↓
-full-sphere headphone presentation
-```
+## Historical lineage
 
-## libaural relationship
+This repository supersedes the earlier private `dissonance-git/vgmspc` implementation line.
 
-libaural may use the same chip/source state as unusually strong ground truth for artificial-hearing research. Large learned or research systems do not belong in the realtime playback path unless a small validated mechanism is distilled from them.
+The old project already explored:
+
+- VGM register shadowing
+- YM2612 and SN76489 source state
+- SPC eight-voice telemetry
+- OPM/OPN/OPL family adapters
+- persistent source IDs
+- semantic/role experiments
+- realtime foobar playback experiments
+
+Useful state/provenance ideas survive. Premature role heuristics and old spatial-rendering architecture are historical evidence, not current truth.
+
+The intended Git history migration is a true unrelated-history merge that preserves the original `vgmspc` commits as ancestors while retaining the current VGM Tooling working tree. See `docs/HISTORY.md`.
 
 ## Repository shape
 
+The tree should converge only as real code justifies it:
+
 ```text
-components/
-  spc/
-  vgm/
-core/
-  realtime/
-  enhancement/
-  mixing/
-  spatial/
-  resampling/
-  diagnostics/
-systems/
-  snes/
-  fm/
-  psg/
-  pcm/
-  qsound/
+formats/       file/container semantics
+
+drivers/       SMPS, GEMS, N-SPC, etc.
+
+devices/       YM2612, SN76489, S-DSP, QSound, OPL/OPN/OPM, PCM...
+
+model/         source/performance/device state and provenance
+
+render/
+  reference/
+  enhanced/
+
+frontends/
+  foobar2000/
+
+bridges/
+  libaural/
+  omniphony/
+
+research/      fixtures, references, bounded experiments
+
 tests/
-docs/
 ```
 
-The tree will grow from the imported upstream component sources rather than forcing them into this shape immediately. Refactor only after baseline builds and behavior are captured.
-
-## Initial milestones
-
-1. Import the two existing foobar component source trees with provenance and licenses intact.
-2. Establish reproducible baseline builds.
-3. Bring the editable SNESAPU source forward to the supplied `2.21.3.9130` behavior and verify parity.
-4. Update libvgm and the VGM component baseline without changing audible behavior.
-5. Expose stable per-source/per-channel realtime state at the renderer boundary.
-6. Add chip-specific enhanced renderers one mechanism at a time with reference-vs-enhanced A/B tests.
-7. Add a shared source-aware realtime mixer only after repeated mechanisms justify sharing.
-8. Generalize useful QSound spatial principles without imposing QSound coloration on unrelated systems.
-9. Feed the resulting enhanced stereo into Omniphony, then evaluate a compact optional source-evidence bridge.
+Do not refactor existing imported component trees merely to match this diagram. First preserve and validate working code; move only when ownership is clear.
 
 ## Validation law
 
-Every audible enhancement must be compared against the accurate/reference render.
+Every audible enhancement must remain reversible and be compared with the accurate/reference render.
 
-A change survives when it makes the encoded music more intelligible, powerful, spacious, coherent, or natural without erasing musical identity. If an enhancement sounds impressive but changes the composition, groove, characteristic instrument identity, or intended effect behavior, it fails.
+Measurements should catch structural regressions, but listening remains decisive for perceptual quality.
 
-The long-term target is simple:
+The long-term playback target is:
 
-> Every supported soundtrack should aim to sound like the highest-quality realization its original musical data can support.
+> **Every supported soundtrack should aim to sound like the highest-quality realization its original musical data can support.**
+
+The broader research target is:
+
+> **Helix should be able to inspect a supported game-music object as an executable musical system rather than seeing only the stereo waveform it eventually produces.**
