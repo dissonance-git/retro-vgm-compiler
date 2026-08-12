@@ -6,7 +6,7 @@ VGM Tooling studies one musical phenomenon through many source families and rese
 
 > What can we legitimately know at each layer, and how strongly can we know it?
 
-Detailed archaeology belongs in `research/cases/`. This document records the durable evidence rules that survived comparison across executable game-music sources, music cognition, expressive-performance research, music theory, MIR, digital musicology, synthesis research and practitioner history.
+Detailed archaeology belongs in `research/cases/`. This document records the durable evidence rules that survived comparison across executable game-music sources, music cognition, expressive-performance research, music theory, MIR, digital musicology, synthesis research, practitioner history and human musical discourse.
 
 ## Central law
 
@@ -58,9 +58,10 @@ semantic layer
 != evidence status
 != provenance
 != source/capture quality
+!= discourse register
 ```
 
-The same piece can support exact facts, deterministic derivations and several incompatible hypotheses at once.
+The same piece can support exact facts, deterministic derivations, several incompatible hypotheses and several natural ways of talking about those claims at once.
 
 ## Layer-relative knowledge
 
@@ -381,6 +382,103 @@ The safe rule is:
 
 A whole-song account may synthesize many layers, but each statement keeps its own evidence scope and provenance.
 
+## Human discourse preserves evidence status
+
+How a claim is phrased does not change how strongly it is known.
+
+Human musical discourse is a projection over evidence, not a semantic layer and not a new evidence state.
+
+```text
+supported musical / acoustic / perceptual comparison
+        ↓
+listener / critic / composer / producer / engineer / forensic wording
+```
+
+For example, a support bundle containing increased upper-register activity, additional simultaneous parts and reduced masking may justify the natural description:
+
+```text
+it opens up here
+```
+
+That sentence does not make `open` an exact source fact. The underlying observations retain their own layers, evidence states and provenance.
+
+Likewise:
+
+```text
+this sounds heavy
+```
+
+may be a listener/perceptual description supported by low-frequency balance, articulation, density, transient behavior, rhythm and context. It is not equivalent to any one of those measurements.
+
+### Many-to-many discourse law
+
+```text
+one technical / musical change
+→ several plausible natural descriptions
+
+one natural description
+← several plausible support bundles
+```
+
+Therefore human descriptors must not be implemented as universal feature-to-word mappings.
+
+### Discourse acts have different obligations
+
+The system must distinguish at least:
+
+```text
+description
+comparison
+interpretation
+evaluation
+diagnosis
+direction
+mechanistic explanation
+reported creator intent
+```
+
+Important boundaries:
+
+```text
+description
+!= evaluation
+
+audible effect
+!= documented intent
+
+natural metaphor
+!= exact source fact
+
+production diagnosis
+!= objective necessity
+```
+
+Creator-intent language requires documentary evidence. Critical evaluation requires an explicit or inferable evaluative perspective. Engineering/production diagnoses should remain linked to the observations that motivated them.
+
+### Progressive disclosure
+
+Default human-facing language should be musically natural and concise, with technical depth available on demand.
+
+```text
+What happens here?
+→ It opens up and starts pushing harder.
+
+What changed?
+→ A higher part comes in, the bass gets more pointed, and the sound spreads out.
+
+Technically why?
+→ exact driver / envelope / routing / synthesis explanation with provenance
+```
+
+The project must avoid both failure modes:
+
+```text
+technically correct but linguistically alien
+natural-sounding but unsupported
+```
+
+See `docs/human-musical-discourse.md`.
+
 ## Source-relative feature carrier
 
 `model/analysis_feature.h` keeps analysis questions explicit through:
@@ -426,13 +524,14 @@ Current regressions protect, among other boundaries:
 - technical realization attribution versus composition-style attribution;
 - exact programmed controls versus derived musical gestures.
 
-No new generic graph primitive was required by the most recent timbre/attribution/listening passes.
+Human discourse currently remains a reasoning/projection rule rather than a new graph primitive. No generic graph primitive was required by the recent timbre, attribution, listening, or discourse passes.
 
 ## Related documents
 
 - `README.md`
 - `docs/musical-execution-model.md`
 - `docs/music-representation-systems.md`
+- `docs/human-musical-discourse.md`
 - `docs/persistent-musical-identity.md`
 - `docs/openmusic-libraries.md`
 - `research/cases/music-cognition-theory-musicology.md`
@@ -440,3 +539,4 @@ No new generic graph primitive was required by the most recent timbre/attributio
 - `research/cases/musicological-version-identity.md`
 - `research/cases/timbre-instrument-organology.md`
 - `research/cases/retro-composition-programming-listening.md`
+- `research/cases/human-musical-discourse.md`
