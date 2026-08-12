@@ -1,6 +1,8 @@
 # Upstream provenance
 
-This file records the starting sources and reference builds used by this repository.
+This file records the starting sources, reference builds, and major research/reference systems used by this repository.
+
+The list is deliberately broader than the runtime dependency set. VGM Tooling treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
 
 ## VGM foobar2000 component
 
@@ -62,6 +64,7 @@ These are research inputs, not automatically vendored dependencies.
 - `ValleyBell/qsound-hle`: QSound DSP behavior and source-domain spatial architecture
 - `munt/munt`: MT-32/CM-32L family synthesis and device behavior
 - `nukeykt/Nuked-SC55`: low-level Sound Canvas reference implementation; licensing/ROM restrictions mean research reference unless a legally compatible route is established
+- MAME: whole-machine and device implementations that preserve system context around sound hardware and can expose behavior omitted by isolated music players
 
 ### Driver and sequence semantics
 
@@ -69,7 +72,7 @@ These are research inputs, not automatically vendored dependencies.
 - `ValleyBell/GEMSPlay`: GEMS sequence/driver behavior and dynamic FM/PSG/DAC allocation
 - `vgmtrans/vgmtrans`: driver-aware recovery of sequence, instrument and sample collections across many game formats
 - Hoot / Hoot Archive: broad Japanese-computer driver corpus and examples of running original game music drivers/data inside an emulated target environment
-- VGMRips sound-driver documentation: driver identity, file formats, commands, platform-specific extraction and playback knowledge
+- VGMRips sound-driver documentation and development forums: driver identity, file formats, commands, platform-specific extraction, playback knowledge, preservation history and obscure implementation details
 
 The Hoot/VGMRips corpus is especially useful for understanding the layer above chip registers: which driver is running, what data it consumes, and how a song is commanded to play. Hoot itself is not treated as a VGM logging reference because historical Hoot logging routes have known timing/emulation limitations.
 
@@ -89,26 +92,109 @@ These converters are not the target architecture. MIDI is too small to preserve 
 - `stuerp/foo_midi`: broad realtime MIDI playback/component architecture and multiple historical synth backends
 - `Wohlstand/OPN2BankEditor`: YM2612/OPN-family instrument extraction, conversion and comparison
 
-### Broad game-music execution
+### Broad game-music execution and integration
 
 - `libgme/game-music-emu`: common playback interface across multiple executable/ripped game-music formats
 - `tildearrow/furnace`: multi-system tracker/emulation architecture with extensive chip/channel state and multiple emulator cores
 - Hoot: broad PC-88/PC-98/X68000/FM Towns/MSX/arcade/home-system driver execution, including external MIDI-module routes
+- Modizer and its integrated audio-library set: useful integration archaeology for how many independent replay/emulation engines, formats and system-specific assumptions can coexist behind one practical player
 
-A research reference does not grant permission to copy code. Check its license before reuse.
+Broad players are valuable because they reveal the **integration boundary**: where supposedly similar engines genuinely share a contract and where source-specific behavior resists normalization. VGM Tooling should learn from those boundaries without reproducing a giant switchboard of opaque third-party engines as its own conceptual model.
 
-## Representation research
+## Music representation and production research
 
-The architecture in `docs/musical-execution-model.md` should also be compared with established research on:
+These systems pressure-test the layers above device execution.
+
+### Symbolic and score representations
+
+- music21: computational musicology and higher musical relations above individual note events
+- Partitura: score/performance representation, parts, voices, time points and explicit mappings between musical time coordinates
+- MEI / Music Encoding Initiative: structured music notation and metadata/provenance representation
+- MusicXML and Humdrum: additional notation/analysis interchange references to inspect where materially useful
+
+The purpose is not to make VGM Tooling a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
+
+### Computer-assisted composition
+
+- OpenMusic: explicit musical objects, transformations and compositional/analytical structure above raw event execution
+
+OpenMusic is particularly useful as a pressure test for the upper half of the common model: whether recovered musical objects and relations can remain explicit and transformable while retaining provenance back to executable source truth.
+
+### DAWs, session systems and audio graphs
+
+- LMMS: arrangement, pattern, automation, instrument, mixer and effect distinctions
+- Ardour: session identity, regions/playlists, routing, tempo/meter maps, buses and processing topology
+- AudioKit: node graphs, runtime object identity, parameters and sample-offset event scheduling
+
+These systems reinforce that a final mix is a projection of a larger graph and that arrangement, automation, synthesis, routing and effects are not properties of a single note list.
+
+### Inverse transcription and analysis
+
+- `spotify/basic-pitch`: useful inverse case where frame/onset/pitch-contour evidence is richer than the eventual MIDI projection
+- chord/progression corpora such as `ldrolez/free-midi-chords`: potential fixtures for harmony and transposition tests rather than architecture
+
+The key lesson is that an output format may be smaller than the internal evidence used to derive it. VGM Tooling should preserve the richer evidence when source execution provides it.
+
+### Algorithmic sequencing
+
+- `hundredrabbits/Orca`: executable pattern/state generation and event-network behavior
+
+This is useful for game music because future events can be generated by running state and control flow rather than stored as a pre-expanded note list.
+
+See `docs/music-representation-systems.md`.
+
+## Audio programming language research
+
+Audio and synthesis languages expose the machinery between musical instruction and PCM.
+
+Important comparisons include:
+
+- MPEG-4 Structured Audio / SAOL / SASL: synthesis language, score/control language, samples/MIDI semantics and scheduler as separable concepts
+- SuperCollider: instrument definitions, running synth instances, unit-generator graphs, buses and execution order
+- Max/MSP and Pure Data: explicit control/message versus signal-rate graphs and mutable realtime processing topology
+- Csound: initialization, control-rate and audio-rate computation
+- ChucK: explicit logical time and concurrent temporal execution
+- Faust: semantic DSP/signal graphs independent of generated target code
+- Cmajor: distinct stream, event and persistent-value endpoints
+- TidalCycles: symbolic patterns as time-domain processes rather than flat note arrays
+- Sonic Pi, Extempore/Impromptu and related live-coding systems: dynamic musical programs whose state evolves while time continues
+- Alda, ABC, LilyPond and other text/notation languages where they expose useful authored structure
+
+The project does not need their languages or user interfaces. Their value is the execution distinctions they make explicit.
+
+See `docs/audio-programming-languages.md`.
+
+## Representation research and literature
+
+The architecture in `docs/musical-execution-model.md` should continue to be compared with established research on:
 
 - symbolic-music versus audio representations;
 - score/audio alignment and performance realization;
 - note/performance ontologies;
+- music information retrieval;
 - auditory scene analysis;
 - concurrent and sequential auditory grouping;
-- differentiable/controllable synthesis and resynthesis.
+- differentiable/controllable synthesis and resynthesis;
+- score-informed source separation;
+- music cognition and computational musicology;
+- provenance-aware digital music preservation.
 
 The project should borrow established terminology and experimentally useful distinctions rather than invent new names for ordinary concepts.
+
+## Source use and licensing rule
+
+A research reference does not grant permission to copy code.
+
+For every external implementation:
+
+1. record what question it helps answer;
+2. inspect its license before any reuse;
+3. distinguish conceptual influence from imported implementation;
+4. preserve attribution and original licenses for code that is legitimately imported;
+5. prefer independent project-owned implementation for the common execution/reasoning model;
+6. keep source-specific upstream code source-specific rather than laundering it into a supposedly universal abstraction.
+
+The goal is to synthesize a stronger model from established evidence, not to assemble a dependency collage.
 
 ## Omniphony
 
