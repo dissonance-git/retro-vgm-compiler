@@ -1,0 +1,23 @@
+#pragma once
+
+#include <../pfc/pfc.h>
+#include <SDK/foobar2000.h>
+#include <helpers/foobar2000+atl.h>
+#include <helpers/atl-misc.h>
+#include <zlib.h>
+#include <utils/DataLoader.h>
+#include <utils/MemoryLoader.h>
+#include <emu/SoundDevs.h>
+#include <emu/SoundEmu.h>
+#include <emu/Resampler.h>
+#include <emu/EmuCores.h>
+#include <emu/EmuStructs.h>
+#include <player/playerbase.hpp>
+#include <player/vgmplayer.hpp>
+#include <player/s98player.hpp>
+#include <player/droplayer.hpp>
+#include <player/gymplayer.hpp>
+#include <player/playera.hpp>
+//#include <optional>
+#include <new>
+#include <vector>
