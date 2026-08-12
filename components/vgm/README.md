@@ -1,36 +1,110 @@
 # VGM component
 
-This directory is the development home for the foobar2000 VGM/VGZ input component.
+This directory is the development home for the VGM/VGZ foobar2000 path and the current Genesis-focused source-state/enhancement core.
 
-## Bootstrap
+The imported upstream wrapper remains the reference playback foundation. Project-owned analysis and enhanced-rendering work must stay traceable to exact VGM command/device state and must not silently replace reference behavior.
 
-The exact supplied source archive is preserved at:
+For full engineering status, see `../../docs/vgm-frontier.md`. For the common semantic model, see `../../docs/musical-execution-model.md`.
 
-`../../imports/foo_input_vgm.7z`
+## Current execution path
 
-Expand that archive here while preserving its original `LICENSE`, Visual Studio project files, and source layout. Do not redesign the wrapper before it has a reproducible baseline build.
+The current project-owned vertical slice is:
 
-The supplied tree contains the active VGM input plus legacy GYM, DRO, and S98 handlers. Keep the legacy handlers working where practical, but VGM/VGZ is the enhancement design center.
+```text
+VGM command stream
+        ↓
+allocation-free ordered command capture
+        ↓
+decoded Genesis device transitions
+        ↓
+rebuildable YM2612 / SN76489 state
+        ↓
+bounded physical voice episodes
+        ↓
+conservative pitched-activity observations
+        ↓
+device-native pitch/control history
+        ↓
+higher musical identity / structure only when stronger evidence supports it
+```
 
-## First engineering sequence
+The source trace remains canonical evidence. Replayed device state is a rebuildable view, not a replacement for ordered transition history.
 
-1. Expand the supplied source unchanged.
-2. Establish a clean reference build.
-3. Pin/document the libvgm revision actually used by that build.
-4. Verify reference playback before changing audible behavior.
-5. Identify the narrowest realtime seam that exposes per-device/per-channel state before final stereo summation.
-6. Add diagnostics/A-B capture at that seam.
-7. Begin enhanced rendering by source family, not with a bus-level effect.
+Capture gaps, truncated payloads and stateful-command ambiguity fail closed rather than fabricating later semantic continuity.
 
-## Enhancement order
+## Genesis state currently represented
 
-Initial priority:
+YM2612 coverage includes register state, operator/key masks, F-number/block semantics, algorithm/feedback, routing, AMS/FMS/LFO, channel-3 special-mode state, operator parameters, DAC enable and resolved DAC source activity.
 
-1. YM2612 / OPN-family FM state and rendering.
-2. Genesis DAC + PSG path, with Sonic 3-class material as an early stress case.
-3. General PCM/ADPCM/DAC source handling across VGM devices.
-4. Source-aware mixing and masking control.
-5. QSound as both native authored spatial DSP and a research substrate for generalized source-domain spatial rendering.
-6. Broader FM/PSG/wavetable families.
+SN76489-family state includes tone periods, attenuation, noise state/control and stereo routing where available.
 
-The goal is still ordinary realtime foobar2000 playback. No song compilation or offline reconstruction stage.
+The current semantic adapters deliberately distinguish:
+
+```text
+device transition
+!= physical voice episode
+!= musical note
+!= persistent part
+```
+
+A physical channel is an execution coordinate, not a permanent musical identity.
+
+## Enhanced source engines
+
+Project-owned source-domain work currently includes:
+
+- `sn76489_enhanced` for isolated high-quality PSG tone/noise stems;
+- `ym2612_dac_enhanced` for classic YM2612 DAC playback;
+- `ym2612_pcm_stream` for modern source-bank PCM streams with source-rate reconstruction;
+- exact YM2612 register timeline capture and an isolated six-channel FM backend contract;
+- explicit authored stereo routing and high-precision source summation primitives.
+
+These cores are not evidence that foobar playback has already switched to an audible enhanced renderer. Reference playback, source-state infrastructure, testable enhancement cores and retained listening wins are separate evidence states.
+
+## Current FM frontier
+
+The next major audible Genesis milestone remains a mature six-channel YM2612 renderer with:
+
+- exact patch/operator semantics;
+- exact register/control timing;
+- isolated channel output before final stereo summation;
+- reference-comparable behavior;
+- reversible substitution behind an experimental path.
+
+Do not use a simplistic approximation merely to make sound sooner.
+
+Only after a mature source-faithful FM path is validated should selected hardware limitations be relaxed experimentally.
+
+## Musical-analysis relationship
+
+The VGM path now contributes more than chip telemetry. It can provide exact lower evidence for higher questions about programmed expression, persistent musical identity, texture, parts and whole-song structure.
+
+But a register trace usually cannot prove the original driver track or composer-facing score. Higher claims remain source-relative and provenance-bearing.
+
+The intended song-level analysis is therefore:
+
+```text
+exact VGM execution
+        ↓
+conservative source/performance evidence
+        ↓
+persistent-part / structure hypotheses
+        ↓
+synchronized listening-level account
+```
+
+not:
+
+```text
+VGM -> MIDI -> canonical song model
+```
+
+## Realtime law
+
+Normal foobar2000 playback remains realtime. Do not require offline song compilation, stem export or whole-song analysis before audio begins.
+
+Offline/forensic/song-level analysis may operate over captured evidence separately.
+
+## Legacy handlers
+
+The imported wrapper also contains GYM, DRO and S98 compatibility paths. Keep them working where practical, but VGM/VGZ remains the active trace-format design center unless explicitly redirected.
