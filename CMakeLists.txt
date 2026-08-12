@@ -45,6 +45,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         source_analysis_feature_adapter_test
         tracker_analysis_feature_test
         listener_response_feature_test
+        musicological_identity_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
         genesis_execution_graph_adapter_test
@@ -77,6 +78,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(source_analysis_feature_adapter_test tests/model/source_analysis_feature_adapter_test.cpp)
     add_executable(tracker_analysis_feature_test tests/model/tracker_analysis_feature_test.cpp)
     add_executable(listener_response_feature_test tests/model/listener_response_feature_test.cpp)
+    add_executable(musicological_identity_test tests/model/musicological_identity_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
@@ -98,6 +100,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(source_analysis_feature_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(tracker_analysis_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(listener_response_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(musicological_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -125,6 +128,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME source_analysis_feature_adapter COMMAND source_analysis_feature_adapter_test)
     add_test(NAME tracker_analysis_feature COMMAND tracker_analysis_feature_test)
     add_test(NAME listener_response_feature COMMAND listener_response_feature_test)
+    add_test(NAME musicological_identity COMMAND musicological_identity_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
