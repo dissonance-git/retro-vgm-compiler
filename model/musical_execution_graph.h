@@ -1,0 +1,235 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <variant>
+#include <vector>
+
+namespace vgmtooling::model {
+
+using node_id = std::uint64_t;
+using edge_id = std::uint64_t;
+
+enum class evidence_status : std::uint8_t {
+    exact = 0,
+    derived = 1,
+    hypothesis = 2,
+};
+
+enum class semantic_layer : std::uint8_t {
+    source_representation = 0,
+    authored_program,
+    driver_execution,
+    synthesis,
+    musical_performance,
+    acoustic_realization,
+    auditory_interpretation,
+};
+
+enum class flow_kind : std::uint8_t {
+    none = 0,
+    event,
+    value,
+    control,
+    stream,
+};
+
+enum class node_kind : std::uint8_t {
+    source_object = 0,
+    section,
+    pattern,
+    part,
+    musical_event,
+    instrument_definition,
+    synthesis_object,
+    voice_instance,
+    physical_slot,
+    parameter,
+    sample_buffer,
+    effect,
+    bus,
+    acoustic_contribution,
+    auditory_event,
+    auditory_stream,
+};
+
+enum class edge_kind : std::uint8_t {
+    contains = 0,
+    causes,
+    schedules,
+    instantiates,
+    realizes,
+    occupies,
+    controls,
+    routes_to,
+    transforms,
+    contributes_to,
+    groups_into,
+    derived_from,
+    same_identity_as,
+    repeats,
+};
+
+enum class time_domain : std::uint8_t {
+    source = 0,
+    authored,
+    driver,
+    device,
+    sample,
+    acoustic,
+    perceptual,
+};
+
+// Exact integer time coordinate in a declared clock domain.
+//
+// `tick_rate` is units per second when that mapping is known. A value of zero
+// means the native clock is intentionally left uninterpreted. Do not silently
+// convert one clock domain into another; an adapter must supply that mapping.
+struct time_coordinate {
+    time_domain domain = time_domain::source;
+    std::int64_t tick = 0;
+    std::uint64_t tick_rate = 0;
+    std::int64_t loop_iteration = 0;
+
+    friend bool operator==(const time_coordinate& lhs, const time_coordinate& rhs) noexcept {
+        return lhs.domain == rhs.domain && lhs.tick == rhs.tick && lhs.tick_rate == rhs.tick_rate &&
+               lhs.loop_iteration == rhs.loop_iteration;
+    }
+
+    friend bool operator!=(const time_coordinate& lhs, const time_coordinate& rhs) noexcept {
+        return !(lhs == rhs);
+    }
+};
+
+struct time_span {
+    time_coordinate start{};
+    std::optional<time_coordinate> end{};
+};
+
+struct provenance_ref {
+    evidence_status status = evidence_status::exact;
+    double confidence = 1.0;
+    std::string source;
+    std::optional<std::uint64_t> byte_offset{};
+    std::string detail;
+};
+
+using attribute_value = std::variant<bool, std::int64_t, std::uint64_t, double, std::string>;
+
+struct attribute {
+    std::string key;
+    attribute_value value;
+    evidence_status status = evidence_status::exact;
+    double confidence = 1.0;
+    std::string unit;
+};
+
+struct node {
+    node_id id = 0;
+    node_kind kind = node_kind::source_object;
+    semantic_layer layer = semantic_layer::source_representation;
+    flow_kind flow = flow_kind::none;
+    std::string label;
+    std::optional<time_span> active{};
+    std::vector<attribute> attributes;
+    std::vector<provenance_ref> provenance;
+};
+
+struct edge {
+    edge_id id = 0;
+    edge_kind kind = edge_kind::contains;
+    node_id from = 0;
+    node_id to = 0;
+    std::optional<time_span> active{};
+    std::vector<provenance_ref> provenance;
+};
+
+class musical_execution_graph {
+public:
+    node_id add_node(node value) {
+        value.id = next_node_id_++;
+        nodes_.push_back(std::move(value));
+        return nodes_.back().id;
+    }
+
+    edge_id add_edge(edge value) {
+        if (find_node(value.from) == nullptr || find_node(value.to) == nullptr) {
+            throw std::invalid_argument("musical execution edge references an unknown node");
+        }
+
+        value.id = next_edge_id_++;
+        edges_.push_back(std::move(value));
+        return edges_.back().id;
+    }
+
+    const node* find_node(node_id id) const noexcept {
+        for (const auto& value : nodes_) {
+            if (value.id == id) {
+                return &value;
+            }
+        }
+        return nullptr;
+    }
+
+    node* find_node(node_id id) noexcept {
+        for (auto& value : nodes_) {
+            if (value.id == id) {
+                return &value;
+            }
+        }
+        return nullptr;
+    }
+
+    const edge* find_edge(edge_id id) const noexcept {
+        for (const auto& value : edges_) {
+            if (value.id == id) {
+                return &value;
+            }
+        }
+        return nullptr;
+    }
+
+    std::vector<const node*> nodes_of_kind(node_kind kind) const {
+        std::vector<const node*> result;
+        for (const auto& value : nodes_) {
+            if (value.kind == kind) {
+                result.push_back(&value);
+            }
+        }
+        return result;
+    }
+
+    std::vector<const edge*> edges_from(node_id from, std::optional<edge_kind> kind = std::nullopt) const {
+        std::vector<const edge*> result;
+        for (const auto& value : edges_) {
+            if (value.from == from && (!kind.has_value() || value.kind == *kind)) {
+                result.push_back(&value);
+            }
+        }
+        return result;
+    }
+
+    std::vector<const edge*> edges_to(node_id to, std::optional<edge_kind> kind = std::nullopt) const {
+        std::vector<const edge*> result;
+        for (const auto& value : edges_) {
+            if (value.to == to && (!kind.has_value() || value.kind == *kind)) {
+                result.push_back(&value);
+            }
+        }
+        return result;
+    }
+
+    const std::vector<node>& nodes() const noexcept { return nodes_; }
+    const std::vector<edge>& edges() const noexcept { return edges_; }
+
+private:
+    node_id next_node_id_ = 1;
+    edge_id next_edge_id_ = 1;
+    std::vector<node> nodes_;
+    std::vector<edge> edges_;
+};
+
+} // namespace vgmtooling::model
