@@ -65,6 +65,7 @@ enum class node_kind : std::uint8_t {
 
 enum class edge_kind : std::uint8_t {
     contains = 0,
+    references,
     causes,
     schedules,
     instantiates,
