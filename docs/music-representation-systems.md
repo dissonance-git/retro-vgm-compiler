@@ -2,13 +2,44 @@
 
 ## Purpose
 
-This document records architectural lessons from mature music-production, sequencing, transcription and symbolic-analysis systems that can improve VGM Tooling's internal model.
+This document records architectural lessons from mature music-production, sequencing, transcription, symbolic-analysis and computer-assisted-composition systems that can improve VGM Tooling's internal model.
 
 These projects are research inputs, not runtime dependencies. Their code is not copied into VGM Tooling. The objective is to identify durable representation obligations and implement the needed mechanisms independently.
 
 The central question is:
 
 > What musical information must remain explicit so that a machine can reason across composition, performance, synthesis, routing, audio and perception without collapsing them into one representation?
+
+## Research-source method
+
+The comparison set is intentionally broad because different systems expose different strata of one musical process.
+
+```text
+score / notation system
+→ exposes authored and structural music
+
+driver / sequencer / tracker
+→ exposes executable performance logic
+
+synth / audio language
+→ exposes synthesis and control semantics
+
+DAW / routing graph
+→ exposes arrangement, automation and signal topology
+
+VGM / SPC / executable rip
+→ exposes preserved execution from below
+
+transcription / MIR system
+→ exposes inverse recovery from audio
+
+music cognition / perception
+→ exposes organization after acoustic rendering
+```
+
+No one system is expected to supply the VGM Tooling ontology. The useful question is which distinctions repeatedly survive when the same phenomenon is viewed from several of these strata.
+
+A concept earns common-model status only when it solves a real cross-source problem without destroying source-specific evidence.
 
 ## DAW and session systems
 
@@ -77,11 +108,11 @@ Basic Pitch is useful primarily as a comparison for the inverse direction:
 
 ```text
 audio
--> frame activity
--> onset activity
--> pitch contours
--> note hypotheses
--> MIDI projection
+→ frame activity
+→ onset activity
+→ pitch contours
+→ note hypotheses
+→ MIDI projection
 ```
 
 Its internal representation is richer than the MIDI it ultimately exports. Continuous pitch contours and overlapping note behavior can exceed what a simple MIDI projection represents cleanly.
@@ -130,6 +161,49 @@ Candidate reasoning objects include:
 - transformations and equivalence relations.
 
 VGM Tooling does not need to reproduce every musicological feature. It does need a place to represent such analyses without pretending they are device state or auditory-stream truth.
+
+### MEI
+
+The Music Encoding Initiative is useful from a different direction: it treats musical notation and related structure as a richly encoded document rather than assuming a flat note list is sufficient.
+
+Useful lesson:
+
+- notation is itself structured data with hierarchy and relationships;
+- score identity, written structure and performed realization should remain distinguishable;
+- metadata and provenance can travel with musical objects without becoming the musical objects themselves;
+- interchange formats can preserve substantial structure while still remaining projections rather than universal internal truth.
+
+MEI is therefore a valuable comparison target for score-facing export/import and provenance questions. VGM Tooling should not force executable game-music state into an MEI-shaped ontology.
+
+## Computer-assisted composition
+
+### OpenMusic
+
+OpenMusic is useful because it treats composition and musical analysis as transformations over explicit musical objects rather than merely as playback commands.
+
+For VGM Tooling, the important comparison is not the visual interface. It is the ability to reason about objects and relations above individual events while still connecting them to executable or acoustic processes.
+
+Useful lessons include:
+
+- musical structure can itself be manipulated as data;
+- pitch, rhythm, voice, phrase and transformation relations may need explicit objects above raw performance events;
+- one musical object can have several useful projections without becoming several unrelated identities;
+- analysis and generation can share representations while remaining distinct operations;
+- symbolic structure can drive later synthesis without becoming identical to synthesis state.
+
+This makes OpenMusic a useful pressure test on the upper half of the execution graph:
+
+```text
+musical object / structure
+        ↓
+transformation / organization
+        ↓
+performance or synthesis control
+        ↓
+acoustic realization
+```
+
+VGM Tooling should be able to recover or represent the upper objects when the evidence supports them, but must retain the lower source/driver/device route that justifies each recovered claim.
 
 ## Harmony corpora
 
@@ -226,6 +300,7 @@ Examples:
 - MIDI export;
 - piano roll;
 - notation/score view;
+- MEI or another interchange projection;
 - chord timeline;
 - source stem;
 - register dump;
@@ -236,13 +311,13 @@ Examples:
 
 ```text
 common execution / musical graph
-        |
-        +-> MIDI projection
-        +-> score projection
-        +-> chip-state projection
-        +-> audio/stem projection
-        +-> harmonic-analysis projection
-        +-> perceptual projection
+        │
+        ├─→ MIDI projection
+        ├─→ score / notation projection
+        ├─→ chip-state projection
+        ├─→ audio / stem projection
+        ├─→ harmonic-analysis projection
+        └─→ perceptual projection
 ```
 
 No projection becomes canonical merely because it is convenient to inspect.
@@ -294,6 +369,21 @@ without replacing any of them.
 
 The implementation lives in `model/musical_execution_graph.h` and should stay small until real adapters force additional abstractions.
 
+## What the current comparison set has established
+
+The present research corpus supports several durable constraints:
+
+1. **MIDI cannot be the canonical model.** It is a useful projection but loses source-specific synthesis and some continuous-control structure.
+2. **A chronological event list is insufficient.** Persistent values, trajectories, streams, graphs and executable patterns are distinct kinds of state.
+3. **Physical channel identity is not musical identity.** Logical parts and synthesis objects may move, split or fuse across implementation slots.
+4. **Rendered audio is a projection.** Routing, automation, effects and source identity can exist before final summation.
+5. **Musical structure requires a layer above raw performance.** Harmony, meter, phrase, motif and form should not be stuffed into device state.
+6. **Source quality and evidence status are different axes.** An exact observation can still come from an incomplete capture.
+7. **Forward and inverse models should meet where possible.** Authored/known execution can become an answer key for recovery from traces or audio.
+8. **The common model must stay descendable.** Every higher representation must retain a route back to the source bytes, commands, addresses, states or annotations that support it.
+
+These are stronger than any one repository's data model because they have survived comparison across several independent source families.
+
 ## Sources to continue mining
 
 High-value source classes still include:
@@ -301,10 +391,12 @@ High-value source classes still include:
 - DAW session models and automation;
 - symbolic-music analysis systems;
 - MusicXML, MEI and Humdrum semantics;
+- OpenMusic and related computer-assisted composition environments;
 - tracker engines and pattern effects;
 - MML dialects and compilers;
 - native game sound drivers;
 - whole-machine emulators;
+- broad multi-engine players and integration layers;
 - VGM/SPC/MIDI conversion tools;
 - automatic music transcription;
 - score-informed source separation;
