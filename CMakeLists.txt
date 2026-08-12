@@ -48,6 +48,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         spc_brr_sample_test
         spc_runtime_voice_adapter_test
         spc_runtime_source_transition_test
+        spc_ram_generation_test
     )
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
@@ -69,6 +70,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_brr_sample_test tests/spc/spc_brr_sample_test.cpp)
     add_executable(spc_runtime_voice_adapter_test tests/spc/spc_runtime_voice_adapter_test.cpp)
     add_executable(spc_runtime_source_transition_test tests/spc/spc_runtime_source_transition_test.cpp)
+    add_executable(spc_ram_generation_test tests/spc/spc_ram_generation_test.cpp)
     target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
@@ -100,4 +102,5 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME spc_brr_sample COMMAND spc_brr_sample_test)
     add_test(NAME spc_runtime_voice_adapter COMMAND spc_runtime_voice_adapter_test)
     add_test(NAME spc_runtime_source_transition COMMAND spc_runtime_source_transition_test)
+    add_test(NAME spc_ram_generation COMMAND spc_ram_generation_test)
 endif()
