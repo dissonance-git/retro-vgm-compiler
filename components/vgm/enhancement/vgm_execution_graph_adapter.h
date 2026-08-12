@@ -127,6 +127,29 @@ inline vgmtooling::model::node_id append_vgm_trace_record(
         1.0,
         "ordinal",
     });
+    observed.attributes.push_back({
+        "payload_prefix_size",
+        static_cast<std::uint64_t>(event.payload_prefix_size),
+        evidence_status::exact,
+        1.0,
+        "bytes",
+    });
+    observed.attributes.push_back({
+        "payload_truncated",
+        event.payload_truncated,
+        evidence_status::exact,
+        1.0,
+        "",
+    });
+    for (std::size_t i = 0; i < event.payload_prefix_size; ++i) {
+        observed.attributes.push_back({
+            std::string{"payload_byte_"} + std::to_string(i),
+            static_cast<std::uint64_t>(event.payload_prefix[i]),
+            evidence_status::exact,
+            1.0,
+            "byte",
+        });
+    }
 
     std::optional<std::uint64_t> byte_offset{};
     if (event.kind != command_event_kind::reset)
