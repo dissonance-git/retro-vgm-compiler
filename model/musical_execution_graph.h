@@ -28,6 +28,7 @@ enum class semantic_layer : std::uint8_t {
     musical_structure,
     acoustic_realization,
     auditory_interpretation,
+    listener_response,
 };
 
 enum class flow_kind : std::uint8_t {
