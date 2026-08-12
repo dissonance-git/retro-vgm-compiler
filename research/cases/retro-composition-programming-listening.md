@@ -167,13 +167,12 @@ The new conclusion is that these should not all be evaluated as “ways to get n
 
 Expressive-performance research consistently shows that a performed piece contains systematic timing, dynamics, articulation, and intonation choices that are not reducible to the nominal score.
 
-Cancino-Chacón et al.'s review of computational expressive-performance models emphasizes tempo, timing, dynamics, intonation, and articulation as shaped performance parameters. Gabrielsson's timing work likewise treats timing variation as a major carrier of perceived structure and motion. Work on onset deviations has even found short timing-deviation sequences predictive of the piece being played across performers, showing that expressive timing can reflect composition-level structure as well as performer individuality.
+Cancino-Chacón et al.'s review of computational expressive-performance models emphasizes tempo, timing, dynamics, intonation, and articulation as shaped performance parameters. Gabrielsson's performance research likewise treats deviations from strict metrical timing together with articulation, dynamics, intonation, and spectral variation as interacting aspects of musical realization. Work on onset deviations has even found short timing-deviation sequences predictive of the piece being played across performers, showing that expressive timing can reflect composition-level structure as well as performer individuality.
 
 Useful literature:
 - Cancino-Chacón et al., “Computational Models of Expressive Music Performance: A Comprehensive and Critical Review,” Frontiers in Digital Humanities, 2018. DOI: 10.3389/fdigh.2018.00025
 - Joan Serrà et al., “Note Onset Deviations as Musical Piece Signatures,” PLOS ONE, 2013. DOI: 10.1371/journal.pone.0069268
-- Alf Gabrielsson, “Timing in music: Performance and experience,” JASA, 1987. DOI: 10.1121/1.2024469
-- Panayotis Mavromatis, “A Multi-tiered Approach for Analyzing Expressive Timing in Music Performance,” 2009. DOI: 10.1007/978-3-642-02394-1_18
+- Alf Gabrielsson, “Timing in music performance and its relations to music experience,” in *Generative Processes in Music*, 2001. DOI: 10.1093/acprof:oso/9780198508465.003.0002
 
 For retro executable music, the analogous expressive variables can include:
 
@@ -236,8 +235,8 @@ Ludomusicology adds a dimension that ordinary music analysis misses: game music 
 Research on looping and adaptive game audio shows that repetition is not merely a storage artifact. It can create continuity, situational memory, immersion, pacing, and formal behavior specific to play. Work on open-world and adaptive music further treats music as tied to game-world context and player state rather than as a passive linear soundtrack.
 
 Useful literature:
-- Karen Collins, “In the Loop: Creativity and Constraint in 8-bit Video Game Audio,” Twentieth-Century Music, 2008. DOI: 10.1017/S1478572208000510
-- Mathew Arnold, “Inside the Loop: The Audio Functionality of Inside,” Games and Culture / game-audio study, 2018. DOI: 10.1007/s40869-018-0071-x
+- Karen Collins, “In the Loop: Creativity and Constraint in 8-bit Video Game Audio,” *Twentieth-Century Music*, 2007. DOI: 10.1017/S1478572208000510
+- Mathew Arnold, “Inside the Loop: The Audio Functionality of Inside,” *The Computer Games Journal*, 2018. DOI: 10.1007/s40869-018-0071-x
 - Patrick Hutchings & Jon McCormack, “Adaptive Music Composition for Games,” IEEE Transactions on Games, 2020. DOI: 10.1109/TG.2019.2921979
 - Ailbhe Warde-Brown, “Waltzing on Rooftops and Cobblestones: Sonic Immersion through Spatiotemporal Involvement in the Assassin’s Creed Series,” Journal of Sound and Music in Games, 2021. DOI: 10.1525/JSMG.2021.2.3.34
 
@@ -258,7 +257,7 @@ effect on immersion/pacing            ludomusicological/perceptual analysis
 Music-perception research directly supports the user's stronger target. A listener does not perceive an unordered list of note tokens. Perception constructs event attributes such as pitch, timbre, loudness, and timing; groups events into chords, voices, streams, and phrases; relates those groups into larger form; and combines them with memory and expectation.
 
 Useful literature:
-- Althea F. P. Moore, “Music Perception,” Oxford Research Encyclopedia of Psychology, 2023. DOI: 10.1093/acrefore/9780190236557.013.890
+- Marcus T. Pearce, “Music Perception,” Oxford Research Encyclopedia of Psychology, 2023. DOI: 10.1093/acrefore/9780190236557.013.890
 - Stephen McAdams, “Timbre as a structuring force in music,” JASA, 2013. DOI: 10.1121/1.4806102
 - Stefan Koelsch, “Neural Basis of Music Perception: Melody, Harmony, and Timbre,” Oxford Handbook chapter, 2019. DOI: 10.1093/oxfordhb/9780198804123.013.9
 
@@ -345,7 +344,7 @@ This is directly useful for vague or incomplete credits.
 The 2025 systematic survey of symbolic composer attribution also supplies a general warning: attribution research often suffers from imbalanced corpora, weak validation, and accuracy-only reporting. Any future VGM attribution model should use held-out evaluation, source-family controls, balanced metrics where appropriate, and explicit confound tests.
 
 Useful literature:
-- Federico Simonetta, “Style-based Composer Identification and Attribution of Symbolic Music Scores: a Systematic Survey,” 2025. arXiv:2506.12440
+- Federico Simonetta, “Style-based Composer Identification and Attribution of Symbolic Music Scores: a Systematic Survey,” *Transactions of the International Society for Music Information Retrieval*, 2025. DOI: 10.5334/tismir.240
 - McKay, Cumming & Fujinaga, “jSymbolic 2.2,” ISMIR 2018.
 
 ## 8. GitHub observatories for the next implementation frontier
