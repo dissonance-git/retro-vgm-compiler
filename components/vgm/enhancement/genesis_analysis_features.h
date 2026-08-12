@@ -176,10 +176,10 @@ inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analy
         "a bounded Genesis physical episode does not establish persistent musical-part identity",
         event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
     features.add(unresolved_feature(
-        "normalized_absolute_pitch",
+        "performed_pitch_frequency_hz",
         semantic_layer::musical_performance,
         feature_availability::unknown,
-        "device-native pitch is preserved, but this extractor does not invent an authored or normalized absolute pitch",
+        "device-native pitch is preserved, but this extractor has not established a performance frequency in hertz from the required device clock/context",
         event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
     features.add(unresolved_feature(
         "original_driver_track",
