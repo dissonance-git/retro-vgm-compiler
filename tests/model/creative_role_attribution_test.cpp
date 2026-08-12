@@ -25,6 +25,59 @@ int main() {
     assert(execution.find("driver_family_id")->status == evidence_status::exact);
     assert(execution.find("driver_family_id")->claim_layer == semantic_layer::driver_execution);
 
+    // Metadata values are exact only relative to the source that supplied
+    // them. A stale embedded artist tag and a curated external-library artist
+    // tag may disagree without either value becoming composer proof.
+    analysis_feature_set metadata;
+    auto embedded_artist = present_feature(
+        "embedded_artist_tag",
+        semantic_layer::source_representation,
+        attribute_value{std::string{"legacy-artist-string"}},
+        evidence_status::exact,
+        1.0);
+    embedded_artist.provenance.push_back({
+        evidence_status::exact,
+        1.0,
+        "embedded-game-music-metadata",
+        std::nullopt,
+        "exact as artifact metadata only; not authoritative attribution evidence",
+    });
+    metadata.add(std::move(embedded_artist));
+
+    auto external_artist = present_feature(
+        "external_library_artist_tag",
+        semantic_layer::musicological_context,
+        attribute_value{std::string{"curated-artist-string"}},
+        evidence_status::exact,
+        1.0);
+    external_artist.provenance.push_back({
+        evidence_status::exact,
+        1.0,
+        "helix-foobar-external-tags",
+        std::nullopt,
+        "curated user-facing library metadata; exact relative to the external tag source, not composer proof",
+    });
+    metadata.add(std::move(external_artist));
+
+    metadata.add(present_feature(
+        "sound_team_metadata",
+        semantic_layer::musicological_context,
+        attribute_value{std::string{"team-A"}},
+        evidence_status::exact,
+        1.0));
+    metadata.add(unresolved_feature(
+        "metadata_only_composer_attribution",
+        semantic_layer::musicological_context,
+        feature_availability::unknown,
+        "embedded artist, external library artist, and sound-team metadata do not establish track-level composition authorship",
+        "metadata-attribution-boundary"));
+
+    assert(std::get<std::string>(metadata.find("embedded_artist_tag")->value.value()) !=
+           std::get<std::string>(metadata.find("external_library_artist_tag")->value.value()));
+    assert(metadata.find("embedded_artist_tag")->claim_layer == semantic_layer::source_representation);
+    assert(metadata.find("external_library_artist_tag")->claim_layer == semantic_layer::musicological_context);
+    assert(metadata.find("metadata_only_composer_attribution")->availability == feature_availability::unknown);
+
     // A technical fingerprint may support a sound-programming attribution
     // hypothesis. Its role scope is explicit in the feature identity and its
     // provenance. It does not become a composer attribution.
