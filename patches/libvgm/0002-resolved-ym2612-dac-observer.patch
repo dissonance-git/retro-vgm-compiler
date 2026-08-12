@@ -1,0 +1,57 @@
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -55,4 +55,5 @@ enum VGM_COMMAND_OBSERVER_EVENT_TYPE
+ {
+ 	VGMCOE_RESET = 0,
+ 	VGMCOE_COMMAND = 1,
++	VGMCOE_YM2612_DAC = 2,
+ };
+@@ -250,5 +251,6 @@ protected:
+ 	void ParseFile(UINT32 ticks);
+ 	void NotifyCommandObserver(UINT8 command);
+ 	void NotifyCommandObserverReset(void);
++	void NotifyYM2612DAC(UINT32 tick, UINT8 command, UINT8 data);
+ 
+ 	void ParseFileForFMClocks();
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -974,5 +974,20 @@ void VGMPlayer::NotifyCommandObserverReset(void)
+ 	return;
+ }
+ 
++void VGMPlayer::NotifyYM2612DAC(UINT32 tick, UINT8 command, UINT8 data)
++{
++	if (_commandObserver == NULL)
++		return;
++	VGM_COMMAND_OBSERVER_EVENT event;
++	event.type = VGMCOE_YM2612_DAC;
++	event.tick = tick;
++	event.filePos = _filePos;
++	event.command = command;
++	event.payload = &data;
++	event.payloadLen = 1;
++	_commandObserver(_commandObserverParam, &event);
++	return;
++}
++
+ /*static*/ void VGMPlayer::PlayerLogCB(void* userParam, void* source, UINT8 level, const char* message)
+ {
+diff --git a/player/vgmplayer_cmdhandler.cpp b/player/vgmplayer_cmdhandler.cpp
+--- a/player/vgmplayer_cmdhandler.cpp
++++ b/player/vgmplayer_cmdhandler.cpp
+@@ -834,5 +834,6 @@ void VGMPlayer::Cmd_YM2612PCM_Delay(void)
+ {
+ 	CHIP_DEVICE* cDev = GetDevicePtr(0x02, 0);
++	UINT32 commandTick = _fileTick;
+ 	_fileTick += (fData[0x00] & 0x0F);
+ 	
+ 	if (cDev == NULL || cDev->write8 == NULL)
+@@ -843,5 +844,6 @@ void VGMPlayer::Cmd_YM2612PCM_Delay(void)
+ 		return;
+ 	
+ 	UINT8 data = _pcmBank[0].data[_ym2612pcm_bnkPos];
++	NotifyYM2612DAC(commandTick, fData[0x00], data);
+ 	SendYMCommand(cDev, 0x00, 0x2A, data);
+ 	_ym2612pcm_bnkPos ++;
