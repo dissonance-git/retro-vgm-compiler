@@ -1,0 +1,27 @@
+diff --git a/components/vgm/foo_input_vgm/src/input_vgm_shadow.cpp b/components/vgm/foo_input_vgm/src/input_vgm_shadow.cpp
+--- a/components/vgm/foo_input_vgm/src/input_vgm_shadow.cpp
++++ b/components/vgm/foo_input_vgm/src/input_vgm_shadow.cpp
+@@ -95,6 +95,7 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command_event& event) noexcept
+ 	if (self->m_source_capture_active)
+ 	{
+ 		self->m_psg_capture.observe(event, absolute_sample);
++		self->m_ym2612_capture.observe(event, absolute_sample);
+ 		self->m_dac_capture.observe(event, absolute_sample);
+ 		return;
+ 	}
+@@ -245,6 +246,10 @@ void input_vgm::replay_captured_sources(uint_fast32_t rendered_samples) noexcept
+ {
+ 	for (size_t instance = 0; instance < m_enhanced_psg.size(); ++instance)
+ 	{
++		if (m_ym2612_capture.overflowed(instance))
++			m_fm_shadow_valid[instance] = false;
++
+ 		if (m_psg_present[instance] && m_psg_shadow_valid[instance])
+ 		{
+@@ -315,6 +320,7 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
+ 	advance_shadow_to(block_start);
+ 	advance_pcm_streams_to(block_start);
+ 	m_psg_capture.begin_block(block_start);
++	m_ym2612_capture.begin_block(block_start);
+ 	m_dac_capture.begin_block(block_start);
+ 	m_source_capture_active = true;
