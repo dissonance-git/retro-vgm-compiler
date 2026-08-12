@@ -7,6 +7,20 @@
 
 namespace gameaudio::vgm {
 
+struct ym2612_operator_state {
+    std::uint8_t detune = 0;
+    std::uint8_t multiple = 0;
+    std::uint8_t total_level = 0;
+    std::uint8_t key_scale = 0;
+    std::uint8_t attack_rate = 0;
+    bool amplitude_modulation = false;
+    std::uint8_t decay_rate = 0;
+    std::uint8_t sustain_rate = 0;
+    std::uint8_t sustain_level = 0;
+    std::uint8_t release_rate = 0;
+    std::uint8_t ssg_eg = 0;
+};
+
 struct ym2612_channel_state {
     bool key_on = false;
     std::uint8_t operator_key_mask = 0;
@@ -20,11 +34,25 @@ struct ym2612_channel_state {
     std::uint8_t feedback = 0;
     std::uint8_t ams = 0;
     std::uint8_t fms = 0;
+
+    std::array<ym2612_operator_state, 4> operators{};
 };
 
 struct ym2612_state {
     std::array<ym2612_channel_state, 6> channels{};
     std::array<std::array<std::uint8_t, 256>, 2> registers{};
+
+    // YM2612 frequency writes use shared high-byte latches. A4/AC update the
+    // latch; A0/A8 commit it to a channel/operator frequency.
+    std::uint8_t fnum_high_latch = 0;
+    std::uint8_t ch3_fnum_high_latch = 0;
+    std::array<std::uint16_t, 3> ch3_fnum{};
+    std::array<std::uint8_t, 3> ch3_block{};
+
+    bool lfo_enabled = false;
+    std::uint8_t lfo_frequency = 0;
+    std::uint8_t channel3_mode = 0;
+    bool csm_enabled = false;
 
     bool dac_enabled = false;
     std::uint8_t last_dac_sample = 0x80;
