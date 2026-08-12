@@ -7,7 +7,6 @@ namespace gameaudio::vgm {
 
 namespace {
 
-constexpr double pi = 3.141592653589793238462643383279502884;
 constexpr double minimum_rate = 1.0;
 constexpr std::uint16_t maximum_period = 0x03FF;
 
@@ -210,6 +209,45 @@ void sn76489_enhanced::render(float* const outputs[stem_count], std::size_t fram
             if (outputs[channel] != nullptr)
                 outputs[channel][frame] = static_cast<float>(accumulated[channel] * inv_oversample);
         }
+    }
+}
+
+void sn76489_enhanced::render_timed(
+    const sn76489_timed_write* writes,
+    std::size_t write_count,
+    float* const outputs[stem_count],
+    std::size_t frames) noexcept {
+    std::size_t cursor = 0;
+
+    for (std::size_t index = 0; index < write_count; ++index) {
+        const sn76489_timed_write& event = writes[index];
+        const std::size_t event_offset = std::min(event.sample_offset, frames);
+
+        // Ignore out-of-order events rather than rewinding oscillator state.
+        // The block collector is responsible for preserving observer order.
+        if (event_offset < cursor)
+            continue;
+
+        const std::size_t segment_frames = event_offset - cursor;
+        if (segment_frames != 0) {
+            float* segment_outputs[stem_count]{};
+            for (std::size_t channel = 0; channel < stem_count; ++channel)
+                segment_outputs[channel] = outputs[channel] != nullptr ? outputs[channel] + cursor : nullptr;
+            render(segment_outputs, segment_frames);
+            cursor = event_offset;
+        }
+
+        if (event.kind == sn76489_write_kind::stereo_mask)
+            write_stereo_mask(event.data);
+        else
+            write(event.data);
+    }
+
+    if (cursor < frames) {
+        float* segment_outputs[stem_count]{};
+        for (std::size_t channel = 0; channel < stem_count; ++channel)
+            segment_outputs[channel] = outputs[channel] != nullptr ? outputs[channel] + cursor : nullptr;
+        render(segment_outputs, frames - cursor);
     }
 }
 
