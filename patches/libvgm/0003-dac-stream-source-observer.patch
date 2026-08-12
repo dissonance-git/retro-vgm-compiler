@@ -1,7 +1,7 @@
 diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
 --- a/player/vgmplayer.hpp
 +++ b/player/vgmplayer.hpp
-@@ -74,6 +74,35 @@ typedef void (*VGM_COMMAND_OBSERVER_CB)(void* userParam,
+@@ -74,6 +74,36 @@ typedef void (*VGM_COMMAND_OBSERVER_CB)(void* userParam,
  		const VGM_COMMAND_OBSERVER_EVENT* event);
  
 +#define LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER 1
@@ -18,6 +18,7 @@ diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
 +struct VGM_DAC_STREAM_SOURCE_EVENT
 +{
 +	UINT8 type;
++	UINT32 tick;
 +	UINT8 streamID;
 +	UINT8 chipType;
 +	UINT8 chipID;
@@ -38,7 +39,7 @@ diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
 +
  
  class VGMPlayer : public PlayerBase
-@@ -113,6 +142,11 @@ public:
+@@ -113,6 +143,11 @@ public:
  		UINT8 pbMode;
  		UINT32 freq;
 +		UINT8 chipType;
@@ -48,20 +49,20 @@ diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
 +		UINT8 stepBase;
  		UINT32 lastItem;
  		UINT32 maxItems;
-@@ -202,6 +236,7 @@ public:
+@@ -202,6 +237,7 @@ public:
  	const std::vector<DACSTRM_DEV>& GetStreamDevInfo(void) const;
  	void SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam);
 +	void SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam);
  	
  	UINT8 Start(void);
-@@ -251,6 +286,8 @@ protected:
+@@ -251,6 +287,8 @@ protected:
  	void NotifyCommandObserverReset(void);
  	void NotifyYM2612DAC(UINT32 tick, UINT8 command, UINT8 data);
 +	void NotifyDACStreamSource(UINT8 type, const DACSTRM_DEV& stream,
 +		UINT32 startOffset = 0, UINT32 length = 0);
  
  	void ParseFileForFMClocks();
-@@ -349,6 +386,8 @@ protected:
+@@ -349,6 +387,8 @@ protected:
  	VGM_COMMAND_OBSERVER_CB _commandObserver;
  	void* _commandObserverParam;
 +	VGM_DAC_STREAM_SOURCE_CB _dacStreamObserver;
@@ -84,7 +85,7 @@ diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
 +	_dacStreamObserver = NULL;
 +	_dacStreamObserverParam = NULL;
  	
-@@ -936,6 +940,46 @@ void VGMPlayer::SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam)
+@@ -936,6 +940,47 @@ void VGMPlayer::SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam)
  	return;
  }
  
@@ -103,6 +104,7 @@ diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
 +
 +	VGM_DAC_STREAM_SOURCE_EVENT event;
 +	event.type = type;
++	event.tick = _fileTick;
 +	event.streamID = stream.streamID;
 +	event.chipType = stream.chipType;
 +	event.chipID = stream.chipID;
