@@ -1,0 +1,16 @@
+diff --git a/emu/dac_control.c b/emu/dac_control.c
+--- a/emu/dac_control.c
++++ b/emu/dac_control.c
+@@ -379,7 +379,13 @@ void daccontrol_start(void* info, UINT32 DataPos, UINT8 LenMode, UINT32 Length)
+ 		break;
+ 	case DCTRL_LMODE_MSEC:
+-		dacCtrl->CmdsToSend = 1000 * Length / dacCtrl->Frequency;
++		// Length is milliseconds and Frequency is source commands/second.
++		// Convert time to command count with Hz * ms / 1000. The previous
++		// inverse formula had incompatible units and shortened common streams.
++		if (dacCtrl->Frequency == 0)
++			dacCtrl->CmdsToSend = 0;
++		else
++			dacCtrl->CmdsToSend = (UINT32)(((UINT64)dacCtrl->Frequency * Length) / 1000);
+ 		break;
+ 	case DCTRL_LMODE_TOEND:
