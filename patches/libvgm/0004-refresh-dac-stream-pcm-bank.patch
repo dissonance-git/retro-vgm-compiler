@@ -1,0 +1,26 @@
+diff --git a/player/vgmplayer_cmdhandler.cpp b/player/vgmplayer_cmdhandler.cpp
+--- a/player/vgmplayer_cmdhandler.cpp
++++ b/player/vgmplayer_cmdhandler.cpp
+@@ -733,7 +733,20 @@ void VGMPlayer::Cmd_DataBlock(void)
+ 			else
+ 			{
+ 				memcpy(&pcmBnk->data[oldLen], dataPtr, dataLen);
+ 			}
+-			
+-			// TODO: refresh DAC Stream pointers (call daccontrol_refresh_data)
++
++			// std::vector growth may move the PCM bank. Refresh every DAC stream
++			// already bound to this bank so neither libvgm nor source observers
++			// retain a stale pointer after an appended data block.
++			for (size_t curStrm = 0; curStrm < _dacStreams.size(); curStrm ++)
++			{
++				DACSTRM_DEV& dacStrm = _dacStreams[curStrm];
++				if (dacStrm.bankID != (dblkType & 0x3F))
++					continue;
++				dacStrm.maxItems = (UINT32)pcmBnk->bankOfs.size();
++				daccontrol_refresh_data(dacStrm.defInf.dataPtr,
++					&pcmBnk->data[0], (UINT32)pcmBnk->data.size());
++				NotifyDACStreamSource(VGMDSE_SET_DATA, dacStrm);
++			}
+ 		}
+ 		break;
