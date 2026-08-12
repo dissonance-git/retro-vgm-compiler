@@ -9,25 +9,50 @@
 namespace gameaudio::vgm {
 
 // Allocation-free copy of the command metadata needed to reconstruct a source
-// execution trace later. Payload bytes are intentionally not copied on the
-// realtime thread; file_offset and payload_size preserve the route back to the
-// exact source bytes.
+// execution trace later. The first two payload bytes are retained because many
+// register-oriented commands are completely described by one or two bytes.
+// Larger payloads remain explicitly partial and are recoverable through the
+// file offset/source route rather than being silently truncated as if complete.
 struct command_trace_record {
+    static constexpr std::size_t payload_prefix_capacity = 2;
+
     command_event_kind kind = command_event_kind::command;
     std::uint64_t tick = 0;
     std::uint32_t file_offset = 0;
     std::uint8_t command = 0;
     std::uint32_t payload_size = 0;
+    std::array<std::uint8_t, payload_prefix_capacity> payload_prefix{};
+    std::uint8_t payload_prefix_size = 0;
+    bool payload_truncated = false;
 };
 
-constexpr command_trace_record make_command_trace_record(const command_event& event) noexcept {
-    return {
-        event.kind,
-        event.tick,
-        event.file_offset,
-        event.command,
-        event.payload_size,
-    };
+inline command_trace_record make_command_trace_record(const command_event& event) noexcept {
+    command_trace_record record;
+    record.kind = event.kind;
+    record.tick = event.tick;
+    record.file_offset = event.file_offset;
+    record.command = event.command;
+    record.payload_size = event.payload_size;
+
+    if (event.payload != nullptr) {
+        const std::size_t available = static_cast<std::size_t>(event.payload_size);
+        const std::size_t copied = available < command_trace_record::payload_prefix_capacity
+            ? available
+            : command_trace_record::payload_prefix_capacity;
+        for (std::size_t i = 0; i < copied; ++i)
+            record.payload_prefix[i] = event.payload[i];
+        record.payload_prefix_size = static_cast<std::uint8_t>(copied);
+        record.payload_truncated = available > copied;
+    } else {
+        record.payload_truncated = event.payload_size != 0;
+    }
+
+    return record;
+}
+
+constexpr bool has_complete_payload(const command_trace_record& record) noexcept {
+    return !record.payload_truncated &&
+        record.payload_prefix_size == record.payload_size;
 }
 
 // Fixed-capacity capture window suitable for genesis_state::event_tap and other
