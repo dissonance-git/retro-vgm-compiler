@@ -12,6 +12,7 @@
     <ClCompile Include="..\enhancement\sn76489_enhanced.cpp" />
     <ClCompile Include="..\enhancement\sn76489_advance.cpp" />
     <ClCompile Include="..\enhancement\ym2612_dac_enhanced.cpp" />
+    <ClCompile Include="..\enhancement\ym2612_pcm_stream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\enhancement\vgm_command_event.h" />
@@ -20,5 +21,7 @@
     <ClInclude Include="..\enhancement\psg_block_capture.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_enhanced.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_block_capture.h" />
+    <ClInclude Include="..\enhancement\dac_stream_source.h" />
+    <ClInclude Include="..\enhancement\ym2612_pcm_stream.h" />
   </ItemGroup>
 </Project>
