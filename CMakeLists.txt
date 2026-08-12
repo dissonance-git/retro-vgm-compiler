@@ -44,6 +44,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         genesis_execution_graph_adapter_test
         genesis_performance_adapter_test
         genesis_pitch_control_adapter_test
+        spc_snapshot_test
     )
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
@@ -61,6 +62,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
     add_executable(genesis_performance_adapter_test tests/vgm/genesis_performance_adapter_test.cpp)
     add_executable(genesis_pitch_control_adapter_test tests/vgm/genesis_pitch_control_adapter_test.cpp)
+    add_executable(spc_snapshot_test tests/spc/spc_snapshot_test.cpp)
     target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
@@ -88,4 +90,5 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
     add_test(NAME genesis_performance_adapter COMMAND genesis_performance_adapter_test)
     add_test(NAME genesis_pitch_control_adapter COMMAND genesis_pitch_control_adapter_test)
+    add_test(NAME spc_snapshot COMMAND spc_snapshot_test)
 endif()
