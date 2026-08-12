@@ -14,6 +14,8 @@ namespace gameaudio::vgm {
 // or persistent musical-source identity.
 struct genesis_performance_graph_handle {
     genesis_execution_graph_handle execution;
+    std::array<std::array<bool, 6>, 2> ym_pitched_activity_open{};
+    std::array<std::array<bool, 3>, 2> psg_pitched_activity_open{};
 };
 
 struct genesis_performance_append_result {
@@ -28,6 +30,13 @@ inline genesis_performance_graph_handle begin_genesis_performance_trace(
     genesis_performance_graph_handle handle;
     handle.execution = begin_genesis_execution_trace(graph, std::move(source), flags);
     return handle;
+}
+
+inline void clear_genesis_performance_activity(genesis_performance_graph_handle& handle) noexcept {
+    for (auto& instance : handle.ym_pitched_activity_open)
+        instance.fill(false);
+    for (auto& instance : handle.psg_pitched_activity_open)
+        instance.fill(false);
 }
 
 inline bool ym_simple_pitched_channel(const ym2612_state& state, std::size_t channel) noexcept {
@@ -189,22 +198,58 @@ inline genesis_performance_append_result append_genesis_performance_record(
 
     result.execution = append_genesis_trace_record(graph, handle.execution, record);
 
-    if (!before_valid || !handle.execution.shadow_continuation_valid ||
-        !result.execution.device_transition_id.has_value()) {
+    if (record.kind == command_event_kind::reset) {
+        clear_genesis_performance_activity(handle);
         return result;
     }
 
+    if (!before_valid || !handle.execution.shadow_continuation_valid) {
+        // A lost/unreplayable interval invalidates not only the device shadow but
+        // any open activity episode that depended on continuous observation.
+        clear_genesis_performance_activity(handle);
+        return result;
+    }
+
+    if (!result.execution.device_transition_id.has_value())
+        return result;
+
+    // If the state leaves the subset where a simple channel-level pitched
+    // interpretation is valid, forget the local episode rather than manufacturing
+    // a release. A later exact gate transition may establish a new episode.
+    for (std::size_t instance = 0; instance < 2; ++instance) {
+        const auto& after_ym = handle.execution.shadow.ym2612(instance);
+        for (std::size_t channel = 0; channel < after_ym.channels.size(); ++channel) {
+            if (handle.ym_pitched_activity_open[instance][channel] &&
+                !ym_simple_pitched_channel(after_ym, channel)) {
+                handle.ym_pitched_activity_open[instance][channel] = false;
+            }
+        }
+
+        const auto& after_psg = handle.execution.shadow.psg(instance);
+        for (std::size_t channel = 0; channel < 3; ++channel) {
+            if (handle.psg_pitched_activity_open[instance][channel] &&
+                (after_psg.channels[channel].tone_period == 0 ||
+                 !psg_tone_channel_routed(after_psg, channel))) {
+                handle.psg_pitched_activity_open[instance][channel] = false;
+            }
+        }
+    }
+
     // YM2612: only the strongest ordinary channel-level case is promoted.
-    // Full four-operator 0 -> F gate is a pitched-activity onset; F -> 0 is a
-    // release. Partial operator re-keying remains device truth because whether
-    // it constitutes a new musical note depends on algorithm/carrier context.
+    // Full four-operator 0 -> F gate is a pitched-activity onset. Once such an
+    // onset has been observed, a later all-operators-off boundary closes that
+    // episode even if partial operator re-keying occurred in between.
     for (std::size_t instance = 0; instance < 2; ++instance) {
         const auto& after = handle.execution.shadow.ym2612(instance);
         const auto& before = before_ym[instance];
         for (std::size_t channel = 0; channel < before.channels.size(); ++channel) {
             const std::uint8_t old_mask = before.channels[channel].operator_key_mask;
             const std::uint8_t new_mask = after.channels[channel].operator_key_mask;
-            if (old_mask == 0 && new_mask == 0x0F && ym_simple_pitched_channel(after, channel)) {
+            auto& episode_open = handle.ym_pitched_activity_open[instance][channel];
+
+            if (!episode_open && old_mask == 0 && new_mask == 0x0F &&
+                ym_simple_pitched_channel(after, channel)) {
+                episode_open = true;
                 result.performance_event_id = add_genesis_performance_event(
                     graph,
                     handle,
@@ -219,7 +264,9 @@ inline genesis_performance_append_result append_genesis_performance_record(
                     new_mask);
                 return result;
             }
-            if (old_mask == 0x0F && new_mask == 0 && ym_simple_pitched_channel(before, channel)) {
+            if (episode_open && old_mask != 0 && new_mask == 0 &&
+                ym_simple_pitched_channel(before, channel)) {
+                episode_open = false;
                 result.performance_event_id = add_genesis_performance_event(
                     graph,
                     handle,
@@ -246,8 +293,11 @@ inline genesis_performance_append_result append_genesis_performance_record(
         for (std::size_t channel = 0; channel < 3; ++channel) {
             const bool was_off = before.channels[channel].attenuation == 0x0F;
             const bool is_off = after.channels[channel].attenuation == 0x0F;
-            if (was_off && !is_off && after.channels[channel].tone_period != 0 &&
+            auto& episode_open = handle.psg_pitched_activity_open[instance][channel];
+
+            if (!episode_open && was_off && !is_off && after.channels[channel].tone_period != 0 &&
                 psg_tone_channel_routed(after, channel)) {
+                episode_open = true;
                 result.performance_event_id = add_genesis_performance_event(
                     graph,
                     handle,
@@ -262,8 +312,9 @@ inline genesis_performance_append_result append_genesis_performance_record(
                     after.channels[channel].attenuation);
                 return result;
             }
-            if (!was_off && is_off && before.channels[channel].tone_period != 0 &&
+            if (episode_open && !was_off && is_off && before.channels[channel].tone_period != 0 &&
                 psg_tone_channel_routed(before, channel)) {
+                episode_open = false;
                 result.performance_event_id = add_genesis_performance_event(
                     graph,
                     handle,
@@ -298,8 +349,10 @@ inline void append_genesis_performance_capture(
     apply_vgm_capture_quality(graph, handle.execution.source_trace, capture);
     for (std::size_t i = 0; i < capture.count(); ++i)
         append_genesis_performance_record(graph, handle, capture.records()[i]);
-    if (capture.overflowed())
+    if (capture.overflowed()) {
         handle.execution.shadow_continuation_valid = false;
+        clear_genesis_performance_activity(handle);
+    }
 }
 
 } // namespace gameaudio::vgm
