@@ -42,6 +42,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         voice_separation_hypothesis_test
         musical_inference_evidence_test
         analysis_feature_test
+        source_analysis_feature_adapter_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
         genesis_execution_graph_adapter_test
@@ -71,6 +72,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(voice_separation_hypothesis_test tests/model/voice_separation_hypothesis_test.cpp)
     add_executable(musical_inference_evidence_test tests/model/musical_inference_evidence_test.cpp)
     add_executable(analysis_feature_test tests/model/analysis_feature_test.cpp)
+    add_executable(source_analysis_feature_adapter_test tests/model/source_analysis_feature_adapter_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
@@ -89,6 +91,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(voice_separation_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_inference_evidence_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(analysis_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(source_analysis_feature_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -113,6 +116,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME voice_separation_hypothesis COMMAND voice_separation_hypothesis_test)
     add_test(NAME musical_inference_evidence COMMAND musical_inference_evidence_test)
     add_test(NAME analysis_feature COMMAND analysis_feature_test)
+    add_test(NAME source_analysis_feature_adapter COMMAND source_analysis_feature_adapter_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
