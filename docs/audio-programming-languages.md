@@ -38,6 +38,66 @@ audio stream
 
 Any source may omit or collapse some layers. Provenance must record which layers are explicit, recovered, derived or unknown.
 
+## Three especially useful pressure tests
+
+The current research gives three systems particularly clear roles in VGM Tooling. They are not proposed dependencies.
+
+### OpenMusic: upper musical structure
+
+OpenMusic belongs primarily in `docs/music-representation-systems.md`, but it completes the comparison here by pressure-testing the layer above raw execution.
+
+It asks whether VGM Tooling can preserve explicit musical objects, relations and transformations such as voice, rhythm, phrase and higher structure while retaining the route back to executable evidence.
+
+```text
+musical object / structure
+        ↓
+transformation / organization
+        ↓
+performance or synthesis control
+```
+
+The lesson is not to copy a visual composition environment. It is to ensure the common graph has somewhere honest to put musical structure that is neither a device register nor a perceptual guess.
+
+### SuperCollider: synthesis and running execution
+
+SuperCollider pressure-tests the middle of the graph:
+
+```text
+instrument definition
+        ↓
+running synth / voice instance
+        ↓
+control state
+        ↓
+unit-generator / synthesis graph
+        ↓
+buses and execution order
+```
+
+This is useful for distinguishing an instrument definition from one instantiated voice, and both from the physical or software slot currently executing them.
+
+### Max/MSP: mutable realtime signal and control topology
+
+Max/MSP pressure-tests realtime graph semantics:
+
+```text
+message / event flow
+≠ control state
+≠ signal-rate flow
+```
+
+It is useful for asking whether the common model can represent explicit topology, stateful processing, feedback, routing and graph mutation without reducing the result to a fixed list of notes or a final PCM bus.
+
+Together, these systems cover three different strata:
+
+```text
+OpenMusic      → musical organization
+SuperCollider → synthesis execution
+Max/MSP       → realtime control / signal topology
+```
+
+They are research observatories over the same larger process, not a three-part VGM Tooling runtime stack.
+
 ## Structured Audio precedent
 
 MPEG-4 Structured Audio is a particularly close historical precedent.
@@ -170,7 +230,7 @@ This distinction is highly useful for game-music execution:
 
 The project should avoid forcing these into one event representation.
 
-### Pure Data / Max-style dataflow
+### Max/MSP / Pure Data
 
 Visual dataflow languages distinguish message/control flow from signal-rate connections and make processing topology explicit.
 
@@ -179,7 +239,8 @@ Useful lesson:
 - graph topology can be a primary representation;
 - control edges and signal edges are semantically different;
 - stateful processing objects and feedback paths need explicit identity;
-- spatial and effect processing can be represented before final summation.
+- routing, spatial and effect processing can be represented before final summation;
+- realtime graph changes may alter execution without changing the identity of the underlying musical source.
 
 The project does not need their visual UI model to benefit from their graph semantics.
 
@@ -340,7 +401,7 @@ Important comparison systems include:
 - Csound / MUSIC-N lineage;
 - Faust;
 - Cmajor;
-- Pure Data / Max-style dataflow;
+- Max/MSP and Pure Data;
 - TidalCycles and related pattern languages;
 - Sonic Pi;
 - Extempore / Impromptu;
@@ -348,6 +409,7 @@ Important comparison systems include:
 - Alda;
 - ABC notation;
 - LilyPond;
+- OpenMusic as the adjacent upper-level musical-object comparison;
 - future language families that expose materially different semantics.
 
-Use primary documentation and implementation sources where possible. Literature and other repositories are conceptual/reference inputs only. VGM Tooling's implementation remains project-owned code.
+Use primary documentation and implementation sources where possible. Literature and other repositories are conceptual/reference inputs only. VGM Tooling's common implementation remains project-owned code.
