@@ -8,6 +8,14 @@ using namespace vgmtooling::model;
 int main() {
     musical_execution_graph graph;
 
+    const auto connect = [&graph](edge_kind kind, node_id from, node_id to) {
+        edge relation;
+        relation.kind = kind;
+        relation.from = from;
+        relation.to = to;
+        return graph.add_edge(relation);
+    };
+
     node captured_vgm;
     captured_vgm.kind = node_kind::source_object;
     captured_vgm.layer = semantic_layer::source_representation;
@@ -87,15 +95,15 @@ int main() {
     midi_projection.provenance.push_back({evidence_status::derived, 1.0, "graph-export", std::nullopt, "lossy inspection view"});
     const auto midi_projection_id = graph.add_node(midi_projection);
 
-    graph.add_edge({0, edge_kind::derived_from, captured_vgm_id, part_id});
-    graph.add_edge({0, edge_kind::realizes, part_id, first_voice_id});
-    graph.add_edge({0, edge_kind::realizes, part_id, second_voice_id});
-    graph.add_edge({0, edge_kind::instantiates, instrument_id, first_voice_id});
-    graph.add_edge({0, edge_kind::instantiates, instrument_id, second_voice_id});
-    graph.add_edge({0, edge_kind::occupies, first_voice_id, slot_two_id});
-    graph.add_edge({0, edge_kind::occupies, second_voice_id, slot_five_id});
-    graph.add_edge({0, edge_kind::derived_from, part_id, harmonic_relation_id});
-    graph.add_edge({0, edge_kind::projects_to, part_id, midi_projection_id});
+    connect(edge_kind::derived_from, captured_vgm_id, part_id);
+    connect(edge_kind::realizes, part_id, first_voice_id);
+    connect(edge_kind::realizes, part_id, second_voice_id);
+    connect(edge_kind::instantiates, instrument_id, first_voice_id);
+    connect(edge_kind::instantiates, instrument_id, second_voice_id);
+    connect(edge_kind::occupies, first_voice_id, slot_two_id);
+    connect(edge_kind::occupies, second_voice_id, slot_five_id);
+    connect(edge_kind::derived_from, part_id, harmonic_relation_id);
+    connect(edge_kind::projects_to, part_id, midi_projection_id);
 
     // A persistent musical identity can survive a physical-channel move.
     const auto realizations = graph.edges_from(part_id, edge_kind::realizes);
@@ -147,7 +155,11 @@ int main() {
 
     bool rejected_unknown_node = false;
     try {
-        graph.add_edge({0, edge_kind::causes, part_id, 999999});
+        edge invalid_relation;
+        invalid_relation.kind = edge_kind::causes;
+        invalid_relation.from = part_id;
+        invalid_relation.to = 999999;
+        graph.add_edge(invalid_relation);
     } catch (const std::invalid_argument&) {
         rejected_unknown_node = true;
     }
