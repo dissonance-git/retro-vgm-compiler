@@ -6,55 +6,175 @@ This repository is the implementation home for the **VGM Tooling** project. `VGM
 
 The long-term objective is stronger than playback:
 
-> **Understand supported digital game music deeply enough to run it as an explicit internal musical machine, inspect every meaningful layer while it runs, and render the same encoded work through both accurate/reference and higher-quality source-native paths.**
+> **Understand supported digital game music deeply enough to run it as an explicit internal musical machine, inspect every meaningful layer while it runs, recover higher structure when the evidence permits, and render the same encoded work through both accurate/reference and higher-quality source-native paths.**
 
-A supported object should not have to collapse immediately into stereo PCM. Where the source permits it, the system should retain the route from musical program to physical synthesis to rendered sound.
+A supported object should not have to collapse immediately into MIDI, stems, or stereo PCM. Where the source permits it, the system should retain the route from authored or executable musical program to scheduling, synthesis, routing, rendered sound, and higher musical interpretation.
 
 ```text
-music container / executable source
+authored source / executable music object
         ↓
-driver / sequence / performance state
+driver / scheduler / sequence execution
         ↓
-instrument / sample / patch state
+musical events and control trajectories
         ↓
-physical device voices and effects
+instrument definitions / synthesis objects
+        ↓
+running voices / physical device state
+        ↓
+routing / effects / signal graph
         ↓
 reference or enhanced synthesis
         ↓
-source-aware mix
+acoustic realization
         ↓
-stereo / stems / structured telemetry
+musical structure / auditory interpretation
         ↓
-consumer
+consumer / research projection
 ```
 
 The foobar2000 components in this repository are important realtime frontends, not the definition of the project.
+
+## Research method: many observatories, one phenomenon
+
+VGM Tooling deliberately studies many mature systems because each exposes a different stratum of the same underlying process.
+
+Examples include:
+
+- VGM/VGZ and register-log tooling;
+- SPC, NSF/NSFe, HES, KSS and PSF-family executable or snapshot formats;
+- native game music drivers such as SMPS, GEMS, N-SPC, MDX and PMD;
+- MML dialects and compilers;
+- MIDI and hardware/module synthesis;
+- trackers and module formats;
+- MAME, Hoot, Game Music Emu, Modizer and other broad execution/player systems;
+- VGMTrans, SPC-to-MIDI and VGM-to-MIDI recovery tools;
+- DAWs and session systems;
+- music21, Partitura, MEI and other symbolic/score representations;
+- OpenMusic and related computer-assisted composition systems;
+- SuperCollider, Csound, ChucK, Faust, Cmajor, Max/MSP/Pure Data and other audio programming environments;
+- automatic transcription, score/audio alignment, source-separation and music-cognition literature.
+
+These are **research observatories**, not an architecture to copy wholesale and not a dependency shopping list.
+
+```text
+one source exposes authored notation
+one exposes driver execution
+one exposes device state
+one exposes synthesis graphs
+one exposes routing and automation
+one exposes musical structure
+one exposes rendered audio
+one exposes perceptual organization
+        ↓
+compare the strata
+        ↓
+identify distinctions that survive across systems
+        ↓
+implement the useful common mechanisms in VGM Tooling
+        ↓
+keep source-specific truth attached underneath
+```
+
+The project should go **below** convenient interfaces when they hide causality and **beyond** them when a broader representation is justified by several source families. It should not reinvent established concepts merely to rename them.
+
+Research implementations remain conceptual/reference inputs unless their licenses and project boundaries explicitly permit reuse. New common-model mechanisms should be project-owned implementations. Imported upstream playback/reference code keeps its original provenance and license.
+
+See:
+
+- `docs/musical-execution-model.md`
+- `docs/music-representation-systems.md`
+- `docs/audio-programming-languages.md`
+- `docs/upstreams.md`
 
 ## Levels of truth
 
 Do not collapse these layers:
 
 ```text
-FORMAT
-VGM, SPC, MIDI, native sequence/container, ROM-derived data
+SOURCE / AUTHORED REPRESENTATION
+MML, score/pattern source, MIDI, native sequence/container, ROM-derived data,
+VGM, SPC and other preserved objects
 
-DRIVER / PERFORMANCE
-SMPS, GEMS, N-SPC and other sequencers, track state, note events,
-program changes, voice allocation, modulation, loops
+DRIVER / SCHEDULER EXECUTION
+SMPS, GEMS, N-SPC and other sequencers, logical tracks, control flow,
+note events, program changes, allocation, modulation, loops
+
+MUSICAL PERFORMANCE
+note-like events, continuous pitch, dynamics, articulation, persistent parts,
+instrument relationships, authored routing/control trajectories
 
 DEVICE / SYNTHESIS
 YM2612, SN76489, S-DSP, QSound, OPL/OPN/OPM, PCM/ADPCM,
-registers, operators, envelopes, sample memory, effect state
+registers, operators, partials, envelopes, sample memory, effect state
 
-RENDER
+MUSICAL STRUCTURE
+meter, beat hierarchy, harmony, motif, phrase, section, form,
+repetition and transformation relations when supported or inferred
+
+ACOUSTIC REALIZATION
 reference hardware behavior or source-native enhanced realization
 
 AUDITORY INTERPRETATION
-what a listener hears as persistent objects, streams, fields, rhythm,
-foreground/background, masking, motion, and environment
+what a listener hears as events, streams, fields, rhythm, foreground/background,
+masking, motion, environment and other perceptual organization
 ```
 
-A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A perceptual stream is not automatically one physical source. Confidence and provenance must survive transitions between layers.
+A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A MIDI export is not the internal truth. A perceptual stream is not automatically one physical source. Confidence, provenance, capture quality and source coordinates must survive transitions between layers.
+
+## Current common model
+
+The repository now contains a small provenance-aware musical execution graph in `model/musical_execution_graph.h` with tests integrated into the native core test path.
+
+The current graph deliberately distinguishes:
+
+```text
+events       key-on, note, trigger, register or scheduler event
+values       patch, routing, configuration and persistent state
+controls     time-varying parameter/control relations
+streams      PCM, oscillator/audio or other continuous output
+graphs       synthesis, routing, effects and causal topology
+objects      source objects, parts, instruments, voices, buffers, buses
+relations    causes, schedules, instantiates, realizes, occupies, routes,
+             transforms, contributes, groups, repeats and projects
+```
+
+It also keeps separate semantic and time domains for source representation, authored program, driver execution, synthesis, musical performance, musical structure, acoustic realization and auditory interpretation.
+
+This graph is **not finished architecture by declaration**. It is a minimal implementation that has survived the current comparison set. New abstractions should be added only when real source adapters or validation cases expose a missing distinction.
+
+## The forward and inverse problem
+
+VGM Tooling is unusual because it must operate in both directions.
+
+Forward execution:
+
+```text
+authored musical program
+        ↓
+scheduler / driver
+        ↓
+instrument and synthesis graph
+        ↓
+device execution
+        ↓
+audio
+```
+
+Inverse recovery:
+
+```text
+VGM / SPC / executable state / ROM / audio
+        ↓
+recover exact execution where possible
+        ↓
+recover synthesis objects and persistent identities
+        ↓
+recover musical events and structure with explicit evidence status
+        ↓
+reason about the music
+```
+
+Where both directions can be constructed independently, they become a powerful validation pair. Authored source can be compiled/executed forward and the resulting trace can be recovered back into the common model without pretending that every source retains the same information.
 
 ## Project relationship
 
@@ -91,6 +211,8 @@ This makes supported game music a programmable auditory-scene laboratory rather 
 Omniphony owns general headphone spatial presentation. It should not absorb YM2612, S-DSP, BRR, SMPS, GEMS, QSound-register, or other source-specific machinery.
 
 The primary contract is excellent PCM. A later compact bridge may expose source-supported evidence such as multiplicity, directness, extent, stable motion, environmental energy, and confidence.
+
+Useful mechanisms discovered in VGM Tooling may inform libaural or Omniphony, and those projects may in turn supply useful perceptual or rendering tests. Cross-project transfer does not change ownership.
 
 ## Realtime playback and executable analysis
 
@@ -216,7 +338,7 @@ The old project already explored:
 
 Useful state/provenance ideas survive. Premature role heuristics and old spatial-rendering architecture are historical evidence, not current truth.
 
-The intended Git history migration is a true unrelated-history merge that preserves the original `vgmspc` commits as ancestors while retaining the current VGM Tooling working tree. See `docs/HISTORY.md`.
+The intended Git history migration is a true unrelated-history merge that preserves the original `vgmspc` commits as ancestors while retaining the current VGM Tooling working tree. See `docs/history.md`.
 
 ## Repository shape
 
@@ -253,6 +375,16 @@ Do not refactor existing imported component trees merely to match this diagram. 
 
 Every audible enhancement must remain reversible and be compared with the accurate/reference render.
 
+Semantic recovery needs its own controls:
+
+```text
+authored source
+→ known compiler / driver / synth
+→ execution trace
+→ recovered common model
+→ compare with source truth
+```
+
 Measurements should catch structural regressions, but listening remains decisive for perceptual quality.
 
 The long-term playback target is:
@@ -260,5 +392,9 @@ The long-term playback target is:
 > **Every supported soundtrack should aim to sound like the highest-quality realization its original musical data can support.**
 
 The broader research target is:
+
+> **VGM Tooling should become a comprehensive, provenance-preserving implementation for understanding emulated game music across authored source, executable state, driver behavior, synthesis, musical structure and acoustic realization, without forcing every system into one lossy representation.**
+
+And for Helix-facing research:
 
 > **Helix should be able to inspect a supported game-music object as an executable musical system rather than seeing only the stereo waveform it eventually produces.**
