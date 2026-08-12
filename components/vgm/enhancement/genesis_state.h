@@ -30,6 +30,7 @@ struct ym2612_state {
     std::uint8_t last_dac_sample = 0x80;
     std::uint64_t direct_dac_write_count = 0;
     std::uint64_t stream_dac_step_count = 0;
+    std::uint64_t resolved_stream_dac_write_count = 0;
 };
 
 struct sn76489_channel_state {
