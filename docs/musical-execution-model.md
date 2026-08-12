@@ -53,6 +53,13 @@ The model is being pressure-tested against many independent systems that expose 
 
 No one reference system owns the architecture. Common abstractions survive only when they solve real problems across several source families without erasing useful native state.
 
+The latest comparison pass added two concrete obligations that were missing from the minimal graph:
+
+1. **static program/control-flow structure must remain distinct from the traversal that happened during one execution**;
+2. **relations between authored, driver, device, sample, acoustic and perceptual clocks must be explicit rather than hidden in implicit conversion code**.
+
+These obligations are now represented directly in `model/musical_execution_graph.h` and covered by `tests/model/musical_execution_graph_test.cpp`.
+
 See `docs/music-representation-systems.md`, `docs/audio-programming-languages.md`, and `docs/upstreams.md`.
 
 ## Source classes
@@ -188,6 +195,7 @@ Examples:
 - sequence position;
 - scheduler events;
 - logical-track state;
+- program points and control-flow transitions;
 - hardware-channel allocation;
 - sample pointers;
 - driver loops and branches;
@@ -272,7 +280,7 @@ Physical source structure is unusually strong ground truth, but it does not dict
 
 ## Typed temporal graph
 
-The implementation in `model/musical_execution_graph.h` is deliberately small but already encodes several distinctions that repeatedly appeared across the research corpus.
+The implementation in `model/musical_execution_graph.h` is deliberately small but already encodes distinctions that repeatedly appeared across the research corpus.
 
 ### Flow kinds
 
@@ -284,7 +292,7 @@ value
 → persistent state: patch, routing, configuration
 
 control
-→ time-varying parameter/control relationship
+→ time-varying parameter/control relationship or executable control state
 
 stream
 → continuous output such as PCM or audio-rate signal
@@ -308,7 +316,11 @@ The current graph can represent objects such as:
 - effects and buses;
 - acoustic contributions;
 - auditory events/streams;
-- projections.
+- projections;
+- logical processes;
+- program points.
+
+`logical_process` and `program_point` exist so a driver's executable structure can be represented without pretending that a program counter, loop address or interpreter state is itself a musical part.
 
 ### Relation kinds
 
@@ -328,9 +340,47 @@ Current relations include concepts such as:
 - derived from;
 - same identity as;
 - repeats;
-- projects to.
+- projects to;
+- control flows to;
+- maps time to.
+
+Edges may carry provenance and attributes. This matters for relations whose semantics live on the connection rather than either endpoint, such as a conditional branch, repeat transfer, allocation decision or a particular alignment method.
 
 These relations are intentionally more informative than a generic edge and allow one exact object to participate in several representations without duplication.
+
+## Program and control-flow law
+
+A static musical program and one realized performance of that program are different objects.
+
+```text
+program / pattern / driver graph
+        ↓ permits
+possible transitions
+        ↓ execution chooses
+realized traversal
+        ↓ schedules / controls
+performance and synthesis state
+```
+
+Examples include:
+
+- notation repeats and endings;
+- MML loops and macros;
+- tracker pattern/order jumps;
+- SMPS/GEMS/N-SPC branches and loops;
+- adaptive or interactive music whose next state depends on runtime input;
+- executable rips in which code produces future musical events dynamically.
+
+Use logical processes and program points for executable structure. Use `control_flows_to` for legal or recovered transfers between program points. Edge attributes may state ordinary source-native conditions or transfer types when known.
+
+Do not infer that every legal control-flow edge was traversed in a particular capture. A realized traversal should be supported by execution evidence, for example an active relation, scheduler event or exact trace provenance.
+
+This distinction lets VGM Tooling answer both:
+
+- **What could this music program do?**
+- **What did it do in this execution?**
+
+without expanding every possible future into one giant event list.
 
 ## Evidence status
 
@@ -359,7 +409,8 @@ Examples:
 - note-like pitch trajectory derived from a chip frequency trajectory;
 - content hash identifying the same BRR sample across different SRCN slots;
 - a hardware voice's amplitude trajectory from exact envelope and gain state;
-- a repeated section relation from validated control flow.
+- a repeated section relation from validated control flow;
+- a score-to-sample time mapping produced by a validated alignment procedure.
 
 ### Hypothesis
 
@@ -435,7 +486,7 @@ Do not infer persistent identity from channel number alone.
 
 All adapters must provide an exact or explicitly qualified time coordinate.
 
-The common model must support multiple time domains, including where applicable:
+The common model supports multiple time domains, including where applicable:
 
 - source time;
 - authored/score time;
@@ -445,7 +496,23 @@ The common model must support multiple time domains, including where applicable:
 - acoustic time;
 - perceptual time.
 
-It must also support:
+A `time_span` lives inside one declared clock domain. It may not silently begin in one clock and end in another.
+
+Relations between clocks are first-class evidence. Use a provenance-bearing `maps_time_to` edge with an explicit `time_mapping` when one interval in one domain is mapped to an interval in another.
+
+```text
+authored beats
+      │
+      ├─ maps_time_to → driver ticks
+      │
+      ├─ maps_time_to → device/sample time
+      │
+      └─ maps_time_to → aligned acoustic time
+```
+
+Mappings are often **piecewise**, not global constants. Tempo changes, swing, expressive timing, scheduler behavior, resampling, latency, seeks, loops and score-performance alignment can all change the relation between clocks. Preserve the evidence and method that established each mapping.
+
+The model must also support:
 
 - discrete events;
 - intervals and durations;
@@ -456,7 +523,28 @@ It must also support:
 - loops without confusing looped playback time with source-address identity;
 - seek/reset/replay provenance.
 
-Do not quantize a high-resolution source merely to fit a MIDI-like event grid.
+Do not quantize a high-resolution source merely to fit a MIDI-like event grid, and do not collapse several clock domains into one synthetic timestamp merely for convenience.
+
+## Availability and coverage law
+
+A common model does not require every source adapter to expose every semantic layer.
+
+Broad players and replay libraries repeatedly show that different engines expose different amounts of internal state. Therefore:
+
+```text
+not exposed
+≠ absent in the music
+
+unknown
+≠ false
+
+not applicable
+≠ unavailable
+```
+
+Adapters should fail or report uncertainty explicitly when a requested layer cannot be supported. Do not fabricate parity between a tracker engine that exposes patterns and instruments, a replay core that exposes only voices and PCM, and a trace format that exposes exact register writes but no original score.
+
+The current graph does not yet define a permanent adapter-capability schema. Add that only when concrete adapters require a shared query contract; until then, document availability at the adapter boundary and keep unsupported claims absent rather than guessed.
 
 ## Source-specific extensions
 
@@ -507,10 +595,13 @@ Expose a hierarchical, queryable representation:
 
 ```text
 song / object
+├ program / control-flow structure
+├ realized execution path
 ├ sections / loops / patterns
 ├ persistent musical-source hypotheses
 ├ instruments / synthesis objects
 ├ event and control timelines
+├ time-domain mappings
 ├ musical-structure relations
 ├ routing / effects
 ├ acoustic renders / measurements
@@ -522,6 +613,9 @@ The reasoning engine should be able to ask questions such as:
 
 - What is sounding at this instant?
 - Which exact source instructions caused it?
+- What future transitions are legal from this program point?
+- Which branch or repeat was actually traversed here?
+- How does this authored position map onto this sample/acoustic position?
 - Is this the same instrument used in another track?
 - Did the musical object move to another hardware channel?
 - Which properties are authored, driver-generated, or device behavior?
@@ -555,6 +649,8 @@ Useful controls include:
 - known driver sequence → device execution;
 - MIDI → known module → internal partials/audio;
 - tracker pattern → engine execution;
+- static control-flow graph → observed runtime traversal;
+- authored/score time → aligned sample time across tempo changes;
 - equivalent synthesis graph → two independent renderers;
 - known structured source → audio → generic transcription, compared with source truth.
 
@@ -613,15 +709,18 @@ A new source adapter is successful when it can answer, as far as the source perm
 
 1. What exact digital state exists?
 2. What authored/program structure survives?
-3. What changes over time and in which time domain?
-4. Which scheduler/driver operations are explicit or recoverable?
-5. Which synthesis objects are active?
-6. Which events can be represented musically without guessing?
-7. Which persistent identities can be proved or strongly supported?
-8. Which higher musical structures are exact, derived, hypothetical or unavailable?
-9. What remains source-specific?
-10. What must remain uncertain?
-11. How does the state produce the reference acoustic output?
+3. What static control-flow structure exists, and what path was actually executed?
+4. What changes over time and in which time domain?
+5. How are relevant time domains related, and which mappings are exact, derived, hypothetical or unavailable?
+6. Which scheduler/driver operations are explicit or recoverable?
+7. Which synthesis objects are active?
+8. Which events can be represented musically without guessing?
+9. Which persistent identities can be proved or strongly supported?
+10. Which higher musical structures are exact, derived, hypothetical or unavailable?
+11. Which requested capabilities are unavailable or not applicable for this source?
+12. What remains source-specific?
+13. What must remain uncertain?
+14. How does the state produce the reference acoustic output?
 
 Once those questions have stable answers, higher reasoning should not care whether the input began as VGM, SPC, MIDI, MML, SMPS, GEMS, MDX, a tracker module, a whole-machine rip or another supported representation.
 
