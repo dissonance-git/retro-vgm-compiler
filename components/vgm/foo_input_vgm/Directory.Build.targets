@@ -11,11 +11,14 @@
     <ClCompile Include="..\enhancement\genesis_state.cpp" />
     <ClCompile Include="..\enhancement\sn76489_enhanced.cpp" />
     <ClCompile Include="..\enhancement\sn76489_advance.cpp" />
+    <ClCompile Include="..\enhancement\ym2612_dac_enhanced.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\enhancement\vgm_command_event.h" />
     <ClInclude Include="..\enhancement\genesis_state.h" />
     <ClInclude Include="..\enhancement\sn76489_enhanced.h" />
     <ClInclude Include="..\enhancement\psg_block_capture.h" />
+    <ClInclude Include="..\enhancement\ym2612_dac_enhanced.h" />
+    <ClInclude Include="..\enhancement\ym2612_dac_block_capture.h" />
   </ItemGroup>
 </Project>
