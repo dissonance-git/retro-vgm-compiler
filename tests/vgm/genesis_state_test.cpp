@@ -11,7 +11,7 @@ using gameaudio::vgm::genesis_state;
 static command_event event(std::uint8_t command, std::initializer_list<std::uint8_t> payload = {}) {
     static std::vector<std::uint8_t> storage;
     storage.assign(payload.begin(), payload.end());
-    return command_event{0, 0, command, storage.empty() ? nullptr : storage.data(), static_cast<std::uint32_t>(storage.size())};
+    return command_event{gameaudio::vgm::command_event_kind::command, 0, 0, command, storage.empty() ? nullptr : storage.data(), static_cast<std::uint32_t>(storage.size())};
 }
 
 int main() {
@@ -70,7 +70,7 @@ int main() {
     assert(state.ym2612_writes() == 9);
     assert(state.psg_writes() == 3);
 
-    state.reset();
+    state.observe(command_event{gameaudio::vgm::command_event_kind::reset});
     assert(state.observed_commands() == 0);
     assert(state.ym2612().channels[0].fnum == 0);
     assert(state.psg().channels[0].attenuation == 0x0F);
