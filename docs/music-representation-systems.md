@@ -41,6 +41,54 @@ No one system is expected to supply the VGM Tooling ontology. The useful questio
 
 A concept earns common-model status only when it solves a real cross-source problem without destroying source-specific evidence.
 
+## Broad multi-engine players and replay libraries
+
+### Modizer
+
+Modizer is a particularly useful integration stress test because one practical player incorporates a very large and heterogeneous set of replay engines, including libvgm, Game Music Emu, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX players, XSF-family players, vgmstream and many others.
+
+Its integration code also exposes a useful negative lesson: the frontend necessarily keeps substantial engine-specific state and options. A common player surface can hide dozens of very different internal contracts without creating a common semantic model.
+
+Useful lesson:
+
+```text
+one player UI
+≠ one execution ontology
+
+broad format support
+≠ equal introspection depth
+```
+
+VGM Tooling should learn from Modizer's breadth and integration boundaries, but it should not become a giant switch statement around opaque replay engines. The common graph exists to make shared meaning explicit while source adapters retain the state that genuinely differs.
+
+### Game Music Emu
+
+Game Music Emu demonstrates a deliberately compact common replay API across several executable/ripped game-music families. It exposes common operations such as track selection, seeking, PCM generation, voice count/names and muting where supported.
+
+Just as importantly, its API documents variation between emulators and uses explicit unknown/unavailable metadata states. This is evidence that a useful common contract does **not** require pretending every backend exposes the same facts.
+
+Useful lesson:
+
+```text
+common operation
++
+source-dependent capability
+```
+
+is stronger than fabricating fields to make all systems look equal.
+
+### OpenMPT / libopenmpt
+
+OpenMPT exposes richer tracker structure than a generic PCM replay interface: patterns, rows, channels, subsongs and interactive/module state can remain inspectable rather than disappearing behind the final render.
+
+Useful lesson:
+
+- some source families naturally expose high-level authored/performance structure;
+- those capabilities should remain available to higher reasoning;
+- an adapter for a poorer source should report that the structure is unavailable rather than synthesize fake parity.
+
+The combined lesson from Modizer, Game Music Emu and OpenMPT is that **adapter capability is evidence**. VGM Tooling will eventually need a clean way for callers to discover what a source can answer, but the permanent capability schema should be added only when concrete adapters force it.
+
 ## DAW and session systems
 
 ### LMMS
@@ -238,6 +286,51 @@ Useful lesson:
 
 This maps to adaptive game-music drivers, MML macros, tracker effects, loops and any executable sequence where the future event list is not fully materialized in the source.
 
+## Literature pressure tests
+
+Repository archaeology is paired with literature because some of the strongest distinctions have already been formalized outside game-audio tooling.
+
+### Static control flow versus realized performance
+
+Work on formal semantics for music-notation control flow treats repeats, endings and other score transitions as a program-like structure and separately defines the mapping from the static score to performance location.
+
+Antescofo's intermediate representation pushes the same idea further for interactive music: its internal representation uses a finite-state-machine-like control structure with variables, delays and concurrency so timing, conformance and control flow can be inspected independently of the source syntax or execution platform.
+
+Useful lesson for VGM Tooling:
+
+```text
+static musical program
+≠ legal next transitions
+≠ one realized traversal
+≠ resulting audio
+```
+
+This directly motivated `logical_process`, `program_point` and `control_flows_to` in the current graph.
+
+### Multilayer music descriptions
+
+Research leading to IEEE 1599/MX explicitly separates several levels of music description, including logical, structural, notational, performance and audio layers, while allowing synchronized relationships among them.
+
+This is independent evidence for VGM Tooling's decision not to choose one universal representation. The important reusable principle is **linked layers with mappings**, not the XML format itself.
+
+### Score/performance/audio alignment
+
+Score-following and score-alignment work distinguishes symbolic score position from performed/acoustic time. Modern tools such as pyAMPACT similarly link symbolic notes and audio-derived performance descriptors through an alignment rather than assuming that their clocks are identical.
+
+Useful lesson:
+
+- a time domain is part of an object's semantics;
+- a cross-domain correspondence is evidence in its own right;
+- tempo changes and expressive timing make many mappings piecewise.
+
+This directly motivated explicit `time_mapping` values and `maps_time_to` relations rather than implicit conversion between clock domains.
+
+### Multiple competing hypotheses
+
+Real-time music-tracking research has used multiple high-level hypotheses to remain robust to jumps, repeats, omissions and restarts. Bayesian score-alignment work likewise treats timing, timbre, onset and source allocation as uncertain latent quantities rather than forcing one early interpretation.
+
+VGM Tooling already has exact/derived/hypothesis evidence states and can retain several candidate objects or relations. The literature does **not** yet justify adding a separate probabilistic subsystem. The immediate obligation is simpler: do not erase alternatives merely because one projection wants a single answer.
+
 ## Musical structure layer
 
 The combined research supports a separate `musical_structure` layer above raw performance events and below or alongside perceptual interpretation.
@@ -347,6 +440,8 @@ source representation
         ↓
 authored program / score / pattern
         ↓
+static program/control-flow structure
+        ↓
 driver and scheduler execution
         ↓
 musical performance events / trajectories
@@ -365,6 +460,9 @@ auditory interpretation
 
 musical-structure relations can connect the relevant layers
 without replacing any of them.
+
+cross-domain time mappings connect clocks explicitly
+instead of flattening them into one timeline.
 ```
 
 The implementation lives in `model/musical_execution_graph.h` and should stay small until real adapters force additional abstractions.
@@ -381,8 +479,11 @@ The present research corpus supports several durable constraints:
 6. **Source quality and evidence status are different axes.** An exact observation can still come from an incomplete capture.
 7. **Forward and inverse models should meet where possible.** Authored/known execution can become an answer key for recovery from traces or audio.
 8. **The common model must stay descendable.** Every higher representation must retain a route back to the source bytes, commands, addresses, states or annotations that support it.
+9. **Static control flow is not realized execution.** A program may permit branches, repeats or adaptive futures that a particular run does not take.
+10. **Cross-domain time must be mapped explicitly.** Authored, driver, device, sample and acoustic clocks can be related without becoming one clock.
+11. **Missing support is not musical absence.** Different engines expose different semantic depths; unavailable, unknown and not-applicable states must not be collapsed into false.
 
-These are stronger than any one repository's data model because they have survived comparison across several independent source families.
+These are stronger than any one repository's data model because they have survived comparison across several independent source families and literature traditions.
 
 ## Sources to continue mining
 
@@ -401,6 +502,7 @@ High-value source classes still include:
 - automatic music transcription;
 - score-informed source separation;
 - computational music cognition;
-- auditory scene analysis.
+- auditory scene analysis;
+- interactive/adaptive music systems and game-specific music-control middleware.
 
 Research should extract obligations and test cases, not accumulate dependencies.
