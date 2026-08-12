@@ -24,9 +24,11 @@ musical structure
 acoustic realization
         ↓
 auditory interpretation
+        ↓
+listener response
 ```
 
-Each layer answers a different question.
+Each layer answers a different question. The arrows show relationships, not a mandatory serial cognitive pipeline and not a ladder of increasing truth.
 
 Separately:
 
@@ -157,22 +159,69 @@ When exact source state is available, audio-derived estimates must not replace i
 
 ### Auditory interpretation
 
+This layer describes perceptual organization of the acoustic realization.
+
 Legitimate hypotheses can include:
 
 - concurrent auditory events;
 - sequential auditory streams;
 - fusion/segregation;
-- salience;
-- masking;
+- perceived source continuity;
+- salience and masking when treated as perceptual organization;
 - perceived beat/meter;
-- listener expectation;
-- surprise;
-- tension;
-- attention-dependent grouping.
+- attention-dependent grouping when the claim concerns which acoustic events are organized together.
 
 These are listener/model claims, not source facts.
 
 A perceptual model should retain its assumed listener population, cultural exposure, model identity, corpus/training context, and input representation when those matter.
+
+### Listener response
+
+`listener_response` is distinct from auditory organization.
+
+It represents how a listener or explicit listener model responds to the perceived music. Candidate claims include:
+
+- expectation and predictive uncertainty;
+- information content / surprise;
+- familiarity and recognition;
+- memory activation;
+- felt or perceived emotional response, with the response construct stated explicitly;
+- pleasure;
+- groove / urge to move;
+- motor entrainment;
+- attention state when the question is what the listener attends to rather than how sound is grouped;
+- aesthetic judgment.
+
+These outputs may depend strongly on:
+
+- short-term musical context;
+- long-term learned statistics;
+- corpus/style exposure;
+- cultural background;
+- familiarity with the piece;
+- episodic associations;
+- preference;
+- training;
+- movement/dance experience;
+- task and current context;
+- the psychological mechanism or prediction model being used.
+
+Therefore:
+
+```text
+musical feature
+!= listener response
+```
+
+and:
+
+```text
+same source + same performance + same acoustic realization
+can legitimately produce different listener-response hypotheses
+under different listener/model contexts.
+```
+
+The detailed pressure pass is recorded in `research/cases/music-affect-memory-entrainment.md`.
 
 ## Perceptual grouping versus musical identity
 
@@ -200,6 +249,8 @@ part
 
 A listener can fuse several sources into one stream or segregate one authored source into several perceptual components.
 
+And even one fixed auditory organization can support different listener responses because familiarity, expectation, preference, memory, culture, or task differs.
+
 ## Music-theory claims need theory provenance
 
 Common labels can conceal different epistemic strength.
@@ -215,21 +266,23 @@ chord spelling / root analysis
         ↓
 harmonic-function interpretation
         ↓
-expectation / tension
+expectation / tension response under a specified listener/model
 ```
 
 The first claim can be source/performance truth. Later claims increasingly depend on analytical or listener models.
 
-### Example: meter
+### Example: meter and groove
 
 ```text
 explicit authored meter          exact authored
 validated driver meter           exact/derived driver
 meter inferred from events       structural hypothesis
-beat/meter heard from audio      perceptual hypothesis
+beat/meter heard from audio      auditory-interpretation hypothesis
+syncopation/complexity analysis  structural/model-dependent analysis
+urge to move / groove            listener-response hypothesis
 ```
 
-One label must not collapse those routes.
+One familiar label must not collapse those routes.
 
 ## Multiple interpretations are a feature, not an error
 
@@ -239,7 +292,8 @@ Music-analysis research provides strong independent support for preserving compe
 - hierarchical analyses can differ among expert/theoretical systems;
 - voice-separation models can propose alternate trajectories;
 - expectation models can differ by corpus, context, or listener assumptions;
-- meter/beat models can disagree while the exact event timing remains fixed.
+- meter/beat models can disagree while the exact event timing remains fixed;
+- emotion/groove responses can differ across listeners over identical musical evidence.
 
 VGM Tooling should therefore prefer:
 
@@ -324,17 +378,27 @@ Future cross-version comparison should distinguish musical structure from contai
 
 ## Feature systems
 
-GitHub/literature comparisons with jSymbolic, music21, Humdrum, hrep, Essentia, madmom, Partitura, OpenMusic, and related systems support several design constraints for analysis features.
+GitHub/literature comparisons with jSymbolic, music21, Humdrum, hrep, Essentia, madmom, Partitura, OpenMusic, MIRtoolbox, pyIDyOM, and related systems support several design constraints for analysis features.
 
-A feature system should distinguish:
+An analysis feature now explicitly distinguishes:
 
 ```text
-feature definition
-feature availability
-feature value
-derivation/support
-analysis configuration
-scope
+feature name
+claim layer
+availability
+value
+evidence status / confidence
+provenance / model context
+supporting graph nodes/edges
+```
+
+Availability is one of:
+
+```text
+present
+unknown
+unavailable
+not_applicable
 ```
 
 A missing feature is not zero.
@@ -344,21 +408,26 @@ A feature that is exact for one source family may be unavailable or hypothetical
 Example:
 
 ```text
-MML authored pitch      explicit
-tracker note pitch      explicit
-YM2612 pitch relation   derived from device state
-SPC pitch-rate relation conditional on sample/tuning continuity
+MML authored pitch      explicit authored
+tracker note pitch      explicit authored
+YM2612 pitch relation   derived synthesis/device state
+SPC pitch-rate relation synthesis truth conditional on runtime observation
+performed SPC pitch     may remain unknown without sample/tuning continuity
 audio pitch estimate    inverse-analysis output
+felt emotion            listener response, unavailable from source alone
 ```
 
 The project should prefer the strongest available source evidence and fall back only when the source stops answering the question.
 
-## Observatories added by the current pass
+## Observatories added by the current passes
 
 The current comparison set now includes, among others:
 
 - music psychology / auditory organization;
 - music cognition and expectation;
+- music emotion mechanisms;
+- groove and sensorimotor entrainment;
+- memory, familiarity, and statistical learning;
 - cross-cultural music cognition;
 - harmonic/tonal cognition;
 - computational voice leading;
@@ -369,36 +438,52 @@ The current comparison set now includes, among others:
 - symbolic feature systems such as jSymbolic;
 - Humdrum symbolic topology;
 - hrep's symbolic/acoustic/sensory harmony representations;
-- Essentia/madmom audio-MIR pipelines.
+- Essentia/madmom audio-MIR pipelines;
+- MIRtoolbox emotion/feature pipelines;
+- pyIDyOM expectation/viewpoint/corpus machinery;
+- OpenMPT tracker semantics.
 
-See `research/cases/music-cognition-theory-musicology.md` for the bounded research record.
+See:
 
-## What the current model already supports
+- `research/cases/music-cognition-theory-musicology.md`
+- `research/cases/music-affect-memory-entrainment.md`
+- `research/cases/tracker-semantic-pressure.md`
 
-No new generic graph primitive is required by this pass.
+## What the current model now supports
 
-Existing vocabulary is sufficient for the first controls:
+One new semantic layer was justified by the deeper psychology pass:
+
+```text
+auditory_interpretation
+!= listener_response
+```
+
+No new node kind or edge kind was required.
+
+Existing vocabulary plus the source-relative `analysis_feature` carrier is sufficient for the current controls:
 
 - `musical_structure` + `musical_relation` for theory-level analyses;
-- `auditory_interpretation` + `auditory_event` / `auditory_stream` for listener-level grouping;
+- `auditory_interpretation` + `auditory_event` / `auditory_stream` for perceptual organization;
+- `listener_response` analysis features for expectation, memory, emotion, groove, pleasure, attention, and related listener/model outputs;
 - `part`, `voice_instance`, and `physical_slot` for identity separation;
 - exact/derived/hypothesis evidence states;
-- provenance-bearing nodes/edges;
-- `external_annotation` for externally supplied evidence;
-- ordinary attributes for theory/model/corpus/cultural scope until a concrete implementation proves a stronger shared abstraction is necessary.
+- provenance-bearing nodes/edges/features;
+- `external_annotation` for externally supplied evidence.
 
-This is desirable. More observatories produced **more precision without another conceptual machine**.
+This keeps the graph small while allowing materially different questions to remain visibly different.
 
-## Immediate executable control
+## Executable controls
 
-The next regression should prove that one lower musical event set can simultaneously support:
+Current model regressions now protect:
 
-- multiple theory-level analyses;
-- multiple perceptual grouping hypotheses;
-- external historical/attribution evidence;
-- unchanged exact/derived execution and performance truth.
+- competing theory-level analyses over unchanged performance evidence;
+- competing auditory-stream interpretations over unchanged acoustic evidence;
+- external historical/attribution annotations without contaminating execution truth;
+- source-relative feature availability across Genesis, SPC, and tracker-shaped evidence;
+- explicit feature claim layers;
+- identical lower musical evidence producing different listener-response hypotheses under different modeled listener/learning contexts.
 
-If the existing graph fails that test, the failure can justify the smallest new abstraction. If it passes, keep the graph small.
+The next analysis algorithm should consume these evidence-bearing features rather than invent a lowest-common-denominator representation.
 
 ## Related documents
 
@@ -407,3 +492,5 @@ If the existing graph fails that test, the failure can justify the smallest new 
 - `docs/persistent-musical-identity.md`
 - `docs/openmusic-libraries.md`
 - `research/cases/music-cognition-theory-musicology.md`
+- `research/cases/music-affect-memory-entrainment.md`
+- `research/cases/tracker-semantic-pressure.md`
