@@ -1,5 +1,44 @@
 # AGENTS.md
 
+## GitHub connector entrance
+
+When entering this repository through GitHub, an LLM connector, or another remote agent surface, do not reconstruct VGM Tooling from code search or one active format alone.
+
+Use this bounded entrance sequence:
+
+```text
+current main HEAD
+→ README.md
+→ AGENTS.md at the same HEAD
+→ recent commits
+→ current source-family / research frontier
+→ smallest task-relevant model / component / test / document
+→ exact target file
+```
+
+1. Resolve `dissonance-git/vgm-tooling` and record the current `main` commit before substantive work.
+2. Read `README.md` for current project orientation and this `AGENTS.md` for source, identity, rendering, evidence, and project-boundary law from the same repository state.
+3. Inspect recent commits before selecting a work area. This repository can advance quickly; recent commits are activity hints, not authority over exact source evidence or governing contracts.
+4. Hydrate only the source family and layer relevant to the task. Do not load every emulator, format, research case, libaural, Omniphony, or Sonic 3 context when one bounded subsystem is enough.
+5. Before any GitHub replacement write, re-fetch current `main` and the exact target file. If `main` changed since preflight, re-read this file and reconstruct the edit from current target content.
+6. Write against the exact current blob SHA. Preserve unrelated concurrent work. Never replace a file from a cached or reconstructed older copy.
+7. After publication, fetch the resulting commit, inspect its changed paths, and confirm the commit remains in current `main` history. Report publication, build/tests, CI, reference parity, and listening validation as separate evidence states.
+
+Fast routes:
+
+- project orientation and current priorities: `README.md`
+- governing project/source law: `AGENTS.md`
+- common semantic layer: `docs/musical-execution-model.md`
+- VGM/VGZ frontier: `docs/vgm-frontier.md`
+- upstream provenance and licenses: `docs/upstreams.md`
+- shared/source models: `model/`
+- source-family implementations: `components/`, `imports/`, and task-specific adapters
+- executable tools and diagnostics: `tools/`
+- exact regressions: `tests/`
+- bounded research inputs and cases: `research/`
+
+For active work, prefer `README.md` → recent commits → the exact source-family code/tests → the smallest relevant research case. Do not begin with a broad historical or cross-project scan unless the question requires it.
+
 ## Instruction chain
 
 This repository is the independent implementation home for `project:vgm-tooling`, tracked by Helix.
