@@ -1,0 +1,148 @@
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+index 404e6b1..0000000 100644
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -46,6 +46,27 @@ struct VGM_PLAY_OPTIONS
+ 	UINT8 hardStopOld;	// enforce silence at end of old VGMs (<1.50), fixes Key Off events being trimmed off
+ };
+ 
++#define LIBVGM_GAMEAUDIO_COMMAND_OBSERVER 1
++
++enum VGM_COMMAND_OBSERVER_EVENT_TYPE
++{
++	VGMCOE_RESET = 0,
++	VGMCOE_COMMAND = 1,
++};
++
++struct VGM_COMMAND_OBSERVER_EVENT
++{
++	UINT8 type;
++	UINT32 tick;
++	UINT32 filePos;
++	UINT8 command;
++	const UINT8* payload;
++	UINT32 payloadLen;
++};
++
++typedef void (*VGM_COMMAND_OBSERVER_CB)(void* userParam,
++		const VGM_COMMAND_OBSERVER_EVENT* event);
++
+ 
+ class VGMPlayer : public PlayerBase
+ {
+@@ -180,5 +201,6 @@ public:
+ 	UINT32 GetModifiedLoopCount(UINT32 defaultLoops) const;	// get loop count, modified according to LoopModified/LoopBase header
+ 	const std::vector<DACSTRM_DEV>& GetStreamDevInfo(void) const;
++	void SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam);
+ 	
+ 	UINT8 Start(void);
+ 	UINT8 Stop(void);
+@@ -226,5 +248,7 @@ protected:
+ 	UINT8 SeekToTick(UINT32 tick);
+ 	UINT8 SeekToFilePos(UINT32 pos);
+ 	void ParseFile(UINT32 ticks);
++	void NotifyCommandObserver(UINT8 command);
++	void NotifyCommandObserverReset(void);
+ 
+ 	void ParseFileForFMClocks();
+@@ -321,6 +346,8 @@ protected:
+ 	
+ 	UINT8 _playState;
+ 	UINT8 _psTrigger;	// used to temporarily trigger special commands
++	VGM_COMMAND_OBSERVER_CB _commandObserver;
++	void* _commandObserverParam;
+ 	//PLAYER_EVENT_CB _eventCbFunc;
+ 	//void* _eventCbParam;
+ 	//PLAYER_FILEREQ_CB _fileReqCbFunc;
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+index b9542ab..0000000 100644
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -151,5 +151,7 @@ VGMPlayer::VGMPlayer() :
+ 	_playSmpl(0),
+ 	_curLoop(0),
+ 	_playState(0x00),
+-	_psTrigger(0x00)
++	_psTrigger(0x00),
++	_commandObserver(NULL),
++	_commandObserverParam(NULL)
+ {
+@@ -205,4 +207,6 @@ VGMPlayer::~VGMPlayer()
+ {
+ 	_eventCbFunc = NULL;	// prevent any callbacks during destruction
++	_commandObserver = NULL;
++	_commandObserverParam = NULL;
+ 	
+ 	if (_playState & PLAYSTATE_PLAY)
+@@ -929,5 +933,50 @@ const std::vector<VGMPlayer::DACSTRM_DEV>& VGMPlayer::GetStreamDevInfo(void) con
+ 	return _dacStreams;
+ }
+ 
++void VGMPlayer::SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam)
++{
++	_commandObserver = cbFunc;
++	_commandObserverParam = cbParam;
++	return;
++}
++
++void VGMPlayer::NotifyCommandObserver(UINT8 command)
++{
++	if (_commandObserver == NULL)
++		return;
++
++	UINT32 cmdLen = _CMD_INFO[command].cmdLen;
++	UINT32 payloadLen = 0;
++	const UINT8* payload = NULL;
++	if (cmdLen > 1 && _filePos < _fileHdr.dataEnd)
++	{
++		UINT32 bytesLeft = _fileHdr.dataEnd - _filePos;
++		if (cmdLen <= bytesLeft)
++		{
++			payload = &_fileData[_filePos + 1];
++			payloadLen = cmdLen - 1;
++		}
++	}
++
++	VGM_COMMAND_OBSERVER_EVENT event;
++	event.type = VGMCOE_COMMAND;
++	event.tick = _fileTick;
++	event.filePos = _filePos;
++	event.command = command;
++	event.payload = payload;
++	event.payloadLen = payloadLen;
++	_commandObserver(_commandObserverParam, &event);
++	return;
++}
++
++void VGMPlayer::NotifyCommandObserverReset(void)
++{
++	if (_commandObserver == NULL)
++		return;
++	VGM_COMMAND_OBSERVER_EVENT event = {VGMCOE_RESET, 0, _filePos, 0, NULL, 0};
++	_commandObserver(_commandObserverParam, &event);
++	return;
++}
++
+ /*static*/ void VGMPlayer::PlayerLogCB(void* userParam, void* source, UINT8 level, const char* message)
+ {
+@@ -1031,5 +1078,6 @@ UINT8 VGMPlayer::Reset(void)
+ 	_psTrigger = 0x00;
+ 	_curLoop = 0;
+ 	_lastLoopTick = 0;
++	NotifyCommandObserverReset();
+ 	
+ 	RefreshTSRates();
+@@ -1967,5 +2015,6 @@ UINT8 VGMPlayer::SeekToFilePos(UINT32 pos)
+ 	while(_filePos < _fileHdr.dataEnd && _filePos <= pos && ! (_playState & PLAYSTATE_END))
+ 	{
+ 		UINT8 curCmd = _fileData[_filePos];
++		NotifyCommandObserver(curCmd);
+ 		COMMAND_FUNC func = _CMD_INFO[curCmd].func;
+ 		(this->*func)();
+@@ -2060,5 +2109,6 @@ void VGMPlayer::ParseFile(UINT32 ticks)
+ 	while(_filePos < _fileHdr.dataEnd && _fileTick <= _playTick && ! (_playState & PLAYSTATE_END))
+ 	{
+ 		UINT8 curCmd = _fileData[_filePos];
++		NotifyCommandObserver(curCmd);
+ 		COMMAND_FUNC func = _CMD_INFO[curCmd].func;
+ 		(this->*func)();
