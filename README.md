@@ -148,13 +148,23 @@ relations    causes, schedules, instantiates, realizes, occupies, routes,
 
 It keeps separate semantic and time domains for source representation, authored program, driver execution, synthesis, musical performance, musical structure, acoustic realization and auditory interpretation.
 
-Three rules are now executable rather than merely documentary:
+The current implementation makes several representation rules executable rather than merely documentary:
 
 1. **static musical program structure is distinct from the path realized by one execution**;
 2. **one realized run may be represented as an execution trace containing distinct trace events, including repeated visits to the same static program point**;
-3. **authored, driver, device, sample and acoustic clocks remain distinct and are connected by explicit provenance-bearing mappings**.
+3. **timestamp and execution order are separate coordinates**: equal-timestamp source operations retain a monotonic trace ordinal when their order can affect later state;
+4. **capture-window boundaries are not musical execution identities**: one execution trace can continue across many bounded realtime capture windows;
+5. **capture completeness is explicit**: overflow marks the trace incomplete and records the number of dropped observations rather than silently overwriting data;
+6. **bounded source payload evidence stays bounded honestly**: the realtime VGM trace retains a fixed two-byte payload prefix, records the full payload size, and marks larger payloads truncated so a partial prefix cannot masquerade as a complete command;
+7. **authored, driver, device, sample and acoustic clocks remain distinct and are connected by explicit provenance-bearing mappings**.
 
 A time span may not silently cross clock domains. Cross-domain correspondence is represented explicitly and can be piecewise when tempo, scheduling, resampling or alignment changes the relationship. Execution traces can be incomplete without turning missing observations into false claims about what did not happen.
+
+For time-varying device state, the current working rule is:
+
+> **Preserve the ordered transition history as durable evidence. Treat a current-state snapshot as a rebuildable view unless the source itself preserves that snapshot as an exact object.**
+
+This avoids duplicating an entire hardware-state snapshot after every register write while still allowing exact state reconstruction at a chosen execution prefix. It also preserves the distinction between a transition observed in the source and the state deterministically derived by replaying those transitions.
 
 This graph is **not finished architecture by declaration**. It is a minimal implementation that has survived the current comparison set. New abstractions should be added only when real source adapters or validation cases expose a missing distinction.
 
@@ -261,7 +271,27 @@ Normal playback remains realtime. Do not require whole-song preprocessing, offli
 
 But the broader project may contain **analysis and driver-understanding tools** that recover structure not present in a plain register log. Those tools are source-knowledge machinery, not a mandatory preprocessing stage for the foobar player.
 
-For realtime playback:
+Realtime observation and semantic analysis are deliberately split:
+
+```text
+realtime command callback
+        ↓
+fixed-capacity, allocation-free capture
+        ↓
+bounded capture window
+        ↓
+non-realtime graph materialization
+        ↓
+source trace
+        ↓
+source-specific semantic lift
+        ↓
+device / musical / structural reasoning
+```
+
+The graph itself owns dynamic strings/vectors and is therefore not an audio-callback data structure. Capture overflow is evidence about observation quality, not permission to block, allocate, or stall playback.
+
+For normal realtime playback:
 
 ```text
 source stream
@@ -323,8 +353,15 @@ Implemented or in active development:
 - direct VGM source-bank PCM streams with high-quality resampling
 - authored left/right routing baseline
 - high-precision source summation
+- allocation-free bounded VGM command-trace capture with exact source tick, file offset, command identity, monotonic trace order and explicit overflow state
+- bounded payload-prefix retention that completely preserves ordinary one- and two-byte Genesis register commands while marking larger payloads partial
+- analysis-side VGM execution-trace materialization that remains at `source_representation`
+- a first source-to-synthesis lift that derives YM2612 and SN76489 device-transition events from complete VGM commands while preserving a causal route back to the exact source trace event
+- a replayed `genesis_state` snapshot that can be rebuilt from ordered transitions rather than being mistaken for the canonical history
 
-The next major synthesis milestone is a mature six-channel YM2612 renderer that preserves exact patch/envelope/algorithm/feedback/LFO behavior before experiments remove selected hardware constraints.
+The first vertical slice deliberately stops at **device transition truth**. A YM2612 key-on register write is not yet a musical note, an SN76489 write is not yet a persistent musical part, and a VGM source trace is not the original game driver's control flow.
+
+The next major synthesis milestone is a mature six-channel YM2612 renderer that preserves exact patch/envelope/algorithm/feedback/LFO behavior before experiments remove selected hardware constraints. The next semantic milestone is to derive persistent voice/performance objects from exact device transitions without losing the lower source/device route.
 
 ### SPC / Super NES
 
@@ -426,7 +463,18 @@ authored source
 → compare with source truth
 ```
 
-The common-model tests also protect representation boundaries such as static control flow versus runtime execution traces, repeated visits to the same program point, and explicit cross-domain time mapping.
+The common-model tests protect representation boundaries including:
+
+- static control flow versus runtime execution traces;
+- repeated visits to the same program point;
+- equal-timestamp event order;
+- one continuous trace across bounded capture windows;
+- explicit capture overflow and partial payload evidence;
+- source events versus derived Genesis device transitions;
+- ordered YM2612 latch/commit behavior and SN76489 latch/data behavior;
+- partial source evidence refusing semantic promotion;
+- rebuildable current state versus durable transition history;
+- explicit cross-domain time mapping.
 
 Measurements should catch structural regressions, but listening remains decisive for perceptual quality.
 
