@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vgm_command_event.h"
+#include "vgm_command_trace_capture.h"
 #include "../../../model/musical_execution_graph.h"
 
 #include <optional>
@@ -58,10 +58,10 @@ inline vgm_execution_trace_handle begin_vgm_execution_trace(
     return {graph.add_node(std::move(trace)), std::move(source), flags};
 }
 
-inline vgmtooling::model::node_id append_vgm_trace_event(
+inline vgmtooling::model::node_id append_vgm_trace_record(
     vgmtooling::model::musical_execution_graph& graph,
     const vgm_execution_trace_handle& trace,
-    const command_event& event) {
+    const command_trace_record& event) {
     using namespace vgmtooling::model;
 
     const node* trace_node = graph.find_node(trace.trace_id);
@@ -126,6 +126,51 @@ inline vgmtooling::model::node_id append_vgm_trace_event(
     graph.add_edge(std::move(membership));
 
     return event_id;
+}
+
+inline vgmtooling::model::node_id append_vgm_trace_event(
+    vgmtooling::model::musical_execution_graph& graph,
+    const vgm_execution_trace_handle& trace,
+    const command_event& event) {
+    return append_vgm_trace_record(graph, trace, make_command_trace_record(event));
+}
+
+// Materialize one bounded realtime capture window on a non-realtime thread.
+// If the fixed-capacity capture overflowed, the execution trace is explicitly
+// marked incomplete and the dropped-event count remains inspectable.
+inline vgm_execution_trace_handle materialize_vgm_command_capture(
+    vgmtooling::model::musical_execution_graph& graph,
+    const command_trace_capture& capture,
+    std::string source,
+    vgmtooling::model::provenance_flags flags) {
+    using namespace vgmtooling::model;
+
+    if (capture.overflowed())
+        flags = flags | provenance_flag::incomplete;
+
+    auto trace = begin_vgm_execution_trace(graph, std::move(source), flags);
+    for (std::size_t i = 0; i < capture.count(); ++i)
+        append_vgm_trace_record(graph, trace, capture.records()[i]);
+
+    if (capture.overflowed()) {
+        node* trace_node = graph.find_node(trace.trace_id);
+        trace_node->attributes.push_back({
+            "capture_overflow",
+            true,
+            evidence_status::exact,
+            1.0,
+            "",
+        });
+        trace_node->attributes.push_back({
+            "dropped_events",
+            capture.dropped(),
+            evidence_status::exact,
+            1.0,
+            "events",
+        });
+    }
+
+    return trace;
 }
 
 } // namespace gameaudio::vgm
