@@ -8,6 +8,7 @@ namespace gameaudio::vgm {
 enum class command_event_kind : std::uint8_t {
     reset = 0,
     command = 1,
+    ym2612_dac = 2,
 };
 
 // Observation-only view of one command as VGMPlayer reaches it during realtime
