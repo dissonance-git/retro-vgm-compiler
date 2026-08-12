@@ -39,6 +39,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         ym2612_dac_block_capture_test
         ym2612_pcm_stream_test
         musical_execution_graph_test
+        transformation_identity_test
         voice_separation_hypothesis_test
         musical_inference_evidence_test
         analysis_feature_test
@@ -72,6 +73,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(ym2612_dac_block_capture_test tests/vgm/ym2612_dac_block_capture_test.cpp)
     add_executable(ym2612_pcm_stream_test tests/vgm/ym2612_pcm_stream_test.cpp)
     add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
+    add_executable(transformation_identity_test tests/model/transformation_identity_test.cpp)
     add_executable(voice_separation_hypothesis_test tests/model/voice_separation_hypothesis_test.cpp)
     add_executable(musical_inference_evidence_test tests/model/musical_inference_evidence_test.cpp)
     add_executable(analysis_feature_test tests/model/analysis_feature_test.cpp)
@@ -94,6 +96,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_runtime_capture_test tests/spc/spc_runtime_capture_test.cpp)
     add_executable(spc_runtime_capture_adapter_test tests/spc/spc_runtime_capture_adapter_test.cpp)
     target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(transformation_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(voice_separation_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_inference_evidence_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(analysis_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -122,6 +125,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME ym2612_dac_block_capture COMMAND ym2612_dac_block_capture_test)
     add_test(NAME ym2612_pcm_stream COMMAND ym2612_pcm_stream_test)
     add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
+    add_test(NAME transformation_identity COMMAND transformation_identity_test)
     add_test(NAME voice_separation_hypothesis COMMAND voice_separation_hypothesis_test)
     add_test(NAME musical_inference_evidence COMMAND musical_inference_evidence_test)
     add_test(NAME analysis_feature COMMAND analysis_feature_test)
