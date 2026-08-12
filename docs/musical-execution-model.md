@@ -65,7 +65,8 @@ Research passes have established several concrete obligations now represented in
 4. **physical execution identity, persistent musical identity, auditory-stream identity and listener response remain distinct**;
 5. **analysis questions retain their semantic claim layer, evidence strength, provenance and availability**;
 6. **unknown, unavailable and not-applicable evidence are not replaced by zero/false placeholders**;
-7. **auditory organization is distinct from expectation, familiarity, emotion, groove and other listener/model responses**.
+7. **auditory organization is distinct from expectation, familiarity, emotion, groove and other listener/model responses**;
+8. **artifact identity, analytical musical similarity, and musicological work/version identity remain separate claims**.
 
 These obligations are represented in `model/musical_execution_graph.h`, `model/analysis_feature.h`, source-specific adapters, and model regressions.
 
@@ -173,7 +174,32 @@ Tracker channel identity is source topology, not automatically one persistent mu
 
 ## Semantic layers
 
-The implemented common graph keeps these layers distinct.
+The implemented common graph keeps these claim types distinct.
+
+```text
+source representation
+        ↓
+authored program
+        ↓
+driver execution
+        ↓
+synthesis
+        ↓
+musical performance
+        ↓
+musical structure
+        ↓
+acoustic realization
+        ↓
+auditory interpretation
+        ↓
+listener response
+
+musicological context
+↕ cross-cuts artifacts, structures, performances, renders, and external evidence
+```
+
+The vertical arrows show common relationships, not a mandatory serial pipeline or ladder of increasing truth. `musicological_context` is intentionally cross-cutting.
 
 ### 1. Source representation
 
@@ -322,6 +348,48 @@ Neither response modifies the source, execution, performance, structure or acous
 
 For initial implementations, listener responses are carried by provenance-bearing `analysis_feature` values with `claim_layer = listener_response`. No dedicated node or edge kind is justified yet.
 
+### 10. Musicological context (cross-cutting)
+
+Historical, documentary, versioning, source-critical and attribution claims connecting artifacts and musical objects across the other layers.
+
+Candidate claims include:
+
+- work identity;
+- version/revision identity;
+- arrangement identity;
+- port/adaptation relation;
+- source-witness relation;
+- derivation/transmission hypothesis;
+- release chronology;
+- documented composer/arranger credit;
+- stylistic attribution hypothesis;
+- archival/catalog identity.
+
+This is not a final stage after listening.
+
+For example:
+
+```text
+artifact A hash != artifact B hash
+        source fact
+
+A and B share 0.91 structural similarity
+        musical-structure analysis
+
+A and B are the same work
+        musicological-context claim
+
+catalog assigns both ARR-0042
+        exact external annotation
+
+composer X wrote both
+        separate attribution claim
+```
+
+Those claims can have different evidence states at the same time.
+
+Similarity alone does not prove work identity, chronology, derivation, arrangement identity or authorship. Initial musicological claims can use `analysis_feature` and provenance-bearing relation nodes; no dedicated work/version node or relation taxonomy is justified yet.
+
 ## Typed temporal graph
 
 The implementation in `model/musical_execution_graph.h` is deliberately small but already encodes distinctions that repeatedly appeared across the research corpus.
@@ -396,6 +464,8 @@ Edges may carry provenance and attributes. This matters for relations whose sema
 
 These relations are intentionally more informative than a generic edge and allow one exact object to participate in several representations without duplication.
 
+A musicological relation should not be encoded as `same_identity_as` merely because that edge exists. If the identity scope or historical claim needs its own semantic layer, use a `musical_relation` node in `musicological_context` or an analysis feature until a concrete repeated use case justifies a more specific shared relation.
+
 ## Program, trace, and control-flow law
 
 A static musical program and one realized performance of that program are different objects.
@@ -434,7 +504,7 @@ without expanding every possible future into one giant event list.
 
 ## Evidence status
 
-Every transition upward must preserve how the claim was obtained.
+Every transition or cross-layer claim must preserve how it was obtained.
 
 ### Exact
 
@@ -448,7 +518,8 @@ Examples:
 - exact BRR bytes at a proven event-time RAM version;
 - known SMPS opcode parsed from a validated driver format;
 - explicit MML tempo or note command;
-- explicit tracker note/effect cell.
+- explicit tracker note/effect cell;
+- an external catalog explicitly stating an arrangement ID, exact relative to that annotation source.
 
 ### Derived
 
@@ -462,7 +533,8 @@ Examples:
 - content/version identity for a BRR object when memory continuity is proven;
 - a hardware voice's amplitude trajectory from exact envelope and gain state;
 - a repeated section relation from validated control flow;
-- a score-to-sample time mapping produced by a validated alignment procedure.
+- a score-to-sample time mapping produced by a validated alignment procedure;
+- a shared arrangement relation derived within the scope of an explicit external catalog identifier.
 
 ### Hypothesis
 
@@ -477,7 +549,9 @@ Examples:
 - harmonic function under a theory model;
 - arranger fingerprint;
 - one physical source corresponding to one human auditory stream;
-- listener expectation/emotion/groove under a specified model/context.
+- listener expectation/emotion/groove under a specified model/context;
+- same-work or historical derivation relation inferred from similarity alone;
+- style-based composer attribution.
 
 Hypotheses carry confidence and competing alternatives. They must never overwrite exact source truth.
 
@@ -498,7 +572,18 @@ The graph therefore preserves capture/provenance flags independently of exact/de
 
 ## Identity law
 
-The same musical object may occupy different physical locations over time or across files.
+The word `identity` must always be scoped.
+
+```text
+artifact identity
+!= source-object identity
+!= instrument/sample identity
+!= persistent musical-part identity
+!= auditory-stream identity
+!= musical-work/version identity
+```
+
+Within one execution:
 
 ```text
 musical event / part
@@ -514,7 +599,9 @@ auditory event / stream
 listener/model response
 ```
 
-Every arrow can be one-to-one, one-to-many, many-to-one or time-varying.
+Across artifacts, `musicological_context` can connect source witnesses and musical structures without replacing their individual source identities.
+
+Every relation can be one-to-one, one-to-many, many-to-one or time-varying.
 
 Examples include:
 
@@ -524,9 +611,10 @@ Examples include:
 - a tracker instrument being triggered on multiple pattern channels;
 - one module note expanding into several synthesis partials;
 - several physical sources perceptually fusing into one stream;
-- two listeners responding differently to one identical auditory organization.
+- two listeners responding differently to one identical auditory organization;
+- two byte-distinct artifacts being documented as the same arrangement while remaining separate source objects.
 
-Stable musical identity should use the strongest available combination of:
+Stable musical-part identity should use the strongest available combination of:
 
 - authored identity;
 - driver-track identity;
@@ -537,7 +625,7 @@ Stable musical identity should use the strongest available combination of:
 - musical relation;
 - provenance.
 
-Do not infer persistent musical identity from channel number alone. Do not infer work/version identity, authorship, or listener response from musical similarity alone.
+Work/version/arrangement identity additionally requires explicit musicological evidence and scope. Do not infer it from channel identity or a scalar similarity score alone.
 
 ## Time law
 
@@ -599,7 +687,7 @@ not applicable
 ≠ unavailable
 ```
 
-The project now has a small source-relative analysis carrier in `model/analysis_feature.h`.
+The project has a small source-relative analysis carrier in `model/analysis_feature.h`.
 
 Each feature explicitly carries:
 
@@ -622,7 +710,7 @@ unavailable
 not_applicable
 ```
 
-This is intentionally smaller than a permanent universal adapter-capability schema. It lets higher analysis ask the same question of Genesis, SPC, tracker-shaped evidence, and later source families without fabricating parity.
+This is intentionally smaller than a permanent universal adapter-capability schema. It lets higher analysis ask the same question of Genesis, SPC, tracker-shaped evidence, listener models, musicological evidence, and later source families without fabricating parity.
 
 Examples:
 
@@ -641,6 +729,14 @@ tracker source cell
   authored note target      present / authored_program
   performed pitch           may remain unknown / musical_performance
   physical voice allocation unavailable from static cell / synthesis
+
+source-only analysis
+  felt emotion              unavailable / listener_response
+
+version comparison
+  exact file hashes         present / source_representation
+  structural similarity     present / musical_structure
+  same-work identity        hypothesis or externally supported / musicological_context
 ```
 
 Do not substitute zero, false, or an empty string for an unanswered question.
@@ -671,7 +767,7 @@ Higher-level reasoning should not need a different ontology for every device, bu
 
 ## Projection law
 
-MIDI, notation, piano roll, register dump, source stems, chord timelines, listener-model outputs and LLM summaries are **projections** of the graph/evidence state.
+MIDI, notation, piano roll, register dump, source stems, chord timelines, listener-model outputs, musicological comparison views and LLM summaries are **projections** of the graph/evidence state.
 
 ```text
 musical execution graph
@@ -682,7 +778,8 @@ musical execution graph
         ├─→ stem / audio projection
         ├─→ musical-analysis projection
         ├─→ perceptual projection
-        └─→ listener-response/model projection
+        ├─→ listener-response/model projection
+        └─→ version/source-comparison projection
 ```
 
 A projection may be useful, standardized or lossless for a declared obligation without becoming the canonical internal model.
@@ -707,8 +804,9 @@ song / object
 ├ acoustic renders / measurements
 ├ auditory interpretations
 ├ listener-response/model outputs
+├ musicological work/version/attribution context
 └ provenance
-   └ exact source bytes / commands / addresses on demand
+   └ exact source bytes / commands / addresses / external evidence on demand
 ```
 
 The reasoning engine should be able to ask questions such as:
@@ -720,9 +818,11 @@ The reasoning engine should be able to ask questions such as:
 - How does this authored position map onto this sample/acoustic position?
 - Is this the same instrument used in another track?
 - Did the musical object move to another hardware channel?
-- Which properties are authored, driver-generated, device behavior, analytical, perceptual, or listener-model outputs?
+- Which properties are authored, driver-generated, device behavior, analytical, perceptual, listener-model, or musicological claims?
 - Which parts of this mix are direct sources versus authored effect energy?
 - What musical relation persists across prototype/final arrangements?
+- Are these two artifacts merely similar, or is there independent evidence that they are the same work/version/arrangement?
+- What evidence supports a claimed derivation direction or attribution?
 - Is a repeated region a true program/section loop or only similar device behavior?
 - What would a listener likely group together, and does libaural agree?
 - How does an expectation/groove/emotion model change when corpus, familiarity or listener assumptions change while the music stays fixed?
@@ -757,7 +857,8 @@ Useful controls include:
 - authored/score time → aligned sample time across tempo changes;
 - equivalent synthesis graph → two independent renderers;
 - known structured source → audio → generic transcription, compared with source truth;
-- identical musical stimulus → multiple listener-model contexts, verifying response changes do not mutate lower evidence.
+- identical musical stimulus → multiple listener-model contexts, verifying response changes do not mutate lower evidence;
+- known related source witnesses → semantic diff → musicological relation, with documentary evidence evaluated separately from similarity.
 
 A finite successful round trip proves only the declared representation/obligation, not universal equivalence.
 
@@ -810,7 +911,7 @@ The same common execution model may drive multiple renderers:
 
 The enhanced renderer may use richer source knowledge, but it must never rewrite the source-performance model merely to justify an audible change.
 
-Likewise, a listener-response preference model must not rewrite source truth merely because one rendering predicts a stronger response.
+Likewise, a listener-response preference model or a musicological same-work claim must not rewrite source truth merely because one rendering is preferred or two artifacts are historically related.
 
 ## Adapter obligation
 
@@ -828,9 +929,10 @@ A new source adapter is successful when it can answer, as far as the source perm
 10. Which higher musical structures are exact, derived, hypothetical or unavailable?
 11. For each higher analysis question, is the needed evidence present, unknown, unavailable or not applicable?
 12. Which perceptual/listener questions require external models rather than source claims?
-13. What remains source-specific?
-14. What must remain uncertain?
-15. How does the state produce the reference acoustic output?
+13. Which work/version/attribution questions require external musicological evidence rather than source similarity alone?
+14. What remains source-specific?
+15. What must remain uncertain?
+16. How does the state produce the reference acoustic output?
 
 Once those questions have stable answers, higher reasoning should not care whether the input began as VGM, SPC, MIDI, MML, SMPS, GEMS, MDX, a tracker module, a whole-machine rip or another supported representation.
 
