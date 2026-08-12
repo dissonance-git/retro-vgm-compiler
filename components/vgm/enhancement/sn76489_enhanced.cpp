@@ -8,7 +8,8 @@ namespace gameaudio::vgm {
 namespace {
 
 constexpr double minimum_rate = 1.0;
-constexpr std::uint16_t maximum_period = 0x03FF;
+constexpr std::uint16_t maximum_written_period = 0x03FF;
+constexpr std::uint16_t non_sega_zero_period = 0x0400;
 
 std::uint8_t clamp_oversample(std::uint8_t value) noexcept {
     if (value == 0)
@@ -16,9 +17,9 @@ std::uint8_t clamp_oversample(std::uint8_t value) noexcept {
     return static_cast<std::uint8_t>(std::min<unsigned>(value, 16));
 }
 
-std::uint16_t noise_initial_state(std::uint8_t width) noexcept {
-    const std::uint8_t clamped = static_cast<std::uint8_t>(std::max<unsigned>(1, std::min<unsigned>(width, 16)));
-    return static_cast<std::uint16_t>(1u << (clamped - 1));
+std::uint32_t noise_initial_state(std::uint8_t width) noexcept {
+    const std::uint8_t clamped = static_cast<std::uint8_t>(std::max<unsigned>(1, std::min<unsigned>(width, 31)));
+    return 1u << (clamped - 1);
 }
 
 } // namespace
@@ -37,13 +38,26 @@ void sn76489_enhanced::configure(const config& cfg) noexcept {
         cfg_.chip_clock_hz = 3579545.0;
     if (!(cfg_.sample_rate_hz > 0.0))
         cfg_.sample_rate_hz = 48000.0;
+    if (cfg_.clock_divider == 0)
+        cfg_.clock_divider = 8;
     cfg_.oversample = clamp_oversample(cfg_.oversample);
-    cfg_.shift_register_width = static_cast<std::uint8_t>(std::max<unsigned>(1, std::min<unsigned>(cfg_.shift_register_width, 16)));
+    cfg_.shift_register_width = static_cast<std::uint8_t>(std::max<unsigned>(1, std::min<unsigned>(cfg_.shift_register_width, 31)));
+
+    // NCR feedback/timing is genuinely different from the TI/Sega behavior.
+    // Keep it on libvgm's reference renderer until separately implemented.
+    supported_ = !cfg_.ncr_style_psg;
     reset();
 }
 
+std::uint16_t sn76489_enhanced::normalized_period(std::uint16_t period) const noexcept {
+    if (period != 0)
+        return period;
+    return cfg_.sega_style_psg ? 1 : non_sega_zero_period;
+}
+
 void sn76489_enhanced::reset() noexcept {
-    tone_periods_ = {{1, 1, 1}};
+    const std::uint16_t initial_period = normalized_period(0);
+    tone_periods_ = {{initial_period, initial_period, initial_period}};
     attenuation_ = {{15, 15, 15, 15}};
     tone_phase_ = {{0.0, 0.0, 0.0}};
     latched_channel_ = 0;
@@ -63,9 +77,8 @@ void sn76489_enhanced::write(std::uint8_t data) noexcept {
             attenuation_[latched_channel_] = static_cast<std::uint8_t>(data & 0x0Fu);
         } else if (latched_channel_ < 3) {
             auto& period = tone_periods_[latched_channel_];
-            period = static_cast<std::uint16_t>((period & 0x03F0u) | (data & 0x0Fu));
-            if (period == 0)
-                period = 1;
+            const std::uint16_t raw = static_cast<std::uint16_t>((period & 0x03F0u) | (data & 0x0Fu));
+            period = normalized_period(static_cast<std::uint16_t>(raw & maximum_written_period));
         } else {
             noise_control_ = static_cast<std::uint8_t>(data & 0x07u);
             noise_lfsr_ = noise_initial_state(cfg_.shift_register_width);
@@ -77,10 +90,9 @@ void sn76489_enhanced::write(std::uint8_t data) noexcept {
         attenuation_[latched_channel_] = static_cast<std::uint8_t>(data & 0x0Fu);
     } else if (latched_channel_ < 3) {
         auto& period = tone_periods_[latched_channel_];
-        period = static_cast<std::uint16_t>((period & 0x000Fu) | ((data & 0x3Fu) << 4));
-        period &= maximum_period;
-        if (period == 0)
-            period = 1;
+        const std::uint16_t low = static_cast<std::uint16_t>(period & 0x000Fu);
+        const std::uint16_t raw = static_cast<std::uint16_t>(low | ((data & 0x3Fu) << 4));
+        period = normalized_period(static_cast<std::uint16_t>(raw & maximum_written_period));
     } else {
         noise_control_ = static_cast<std::uint8_t>(data & 0x07u);
         noise_lfsr_ = noise_initial_state(cfg_.shift_register_width);
@@ -103,29 +115,22 @@ double sn76489_enhanced::poly_blep(double phase, double phase_step) noexcept {
 }
 
 double sn76489_enhanced::attenuation_gain(std::uint8_t attenuation) noexcept {
-    // The SN76489 ladder is nominally 2 dB per step. Keep the encoded mix
-    // relationship while avoiding the integer quantization of the old output
-    // table. 15 is hardware silence rather than another 2 dB step.
     if (attenuation >= 15)
         return 0.0;
     return std::pow(10.0, -0.1 * static_cast<double>(attenuation));
 }
 
 double sn76489_enhanced::render_tone(std::size_t channel, double internal_rate) noexcept {
-    const std::uint16_t period = std::max<std::uint16_t>(1, tone_periods_[channel]);
-    const double frequency = cfg_.chip_clock_hz / (32.0 * static_cast<double>(period));
+    const std::uint16_t period = normalized_period(tone_periods_[channel]);
+    const double divider = 4.0 * static_cast<double>(cfg_.clock_divider);
+    const double frequency = cfg_.chip_clock_hz / (divider * static_cast<double>(period));
     const double step = frequency / internal_rate;
 
-    // There is no useful audible source above the renderer's internal Nyquist
-    // limit. Muting it avoids converting an ultrasonic hardware setting into a
-    // false lower alias product.
     if (!(step > 0.0) || step >= 0.5)
         return 0.0;
 
     double phase = tone_phase_[channel];
     double sample = phase < 0.5 ? 1.0 : -1.0;
-
-    // Band-limit both discontinuities of the 50% duty square wave.
     sample += poly_blep(phase, step);
     double half_phase = phase + 0.5;
     if (half_phase >= 1.0)
@@ -136,24 +141,28 @@ double sn76489_enhanced::render_tone(std::size_t channel, double internal_rate) 
     phase -= std::floor(phase);
     tone_phase_[channel] = phase;
 
+    if (cfg_.negate_output)
+        sample = -sample;
     return sample * attenuation_gain(attenuation_[channel]);
 }
 
 double sn76489_enhanced::noise_shift_rate_hz() const noexcept {
     const std::uint8_t mode = static_cast<std::uint8_t>(noise_control_ & 0x03u);
+    const double divider = 4.0 * static_cast<double>(cfg_.clock_divider);
     if (mode == 3) {
-        const std::uint16_t period = std::max<std::uint16_t>(1, tone_periods_[2]);
-        return cfg_.chip_clock_hz / (32.0 * static_cast<double>(period));
+        const std::uint16_t period = normalized_period(tone_periods_[2]);
+        return cfg_.chip_clock_hz / (divider * static_cast<double>(period));
     }
 
     const std::uint32_t noise_period = 16u << mode;
-    return cfg_.chip_clock_hz / (32.0 * static_cast<double>(noise_period));
+    return cfg_.chip_clock_hz / (divider * static_cast<double>(noise_period));
 }
 
 void sn76489_enhanced::clock_noise_lfsr() noexcept {
     std::uint32_t feedback = 0;
     if ((noise_control_ & 0x04u) != 0) {
-        feedback = static_cast<std::uint32_t>(noise_lfsr_) & cfg_.white_noise_feedback;
+        feedback = noise_lfsr_ & cfg_.white_noise_feedback;
+        feedback ^= feedback >> 16;
         feedback ^= feedback >> 8;
         feedback ^= feedback >> 4;
         feedback ^= feedback >> 2;
@@ -163,19 +172,20 @@ void sn76489_enhanced::clock_noise_lfsr() noexcept {
         feedback = noise_lfsr_ & 1u;
     }
 
-    noise_lfsr_ = static_cast<std::uint16_t>(
-        (noise_lfsr_ >> 1) |
-        (feedback << (cfg_.shift_register_width - 1)));
+    noise_lfsr_ = (noise_lfsr_ >> 1) |
+        (feedback << (cfg_.shift_register_width - 1));
 }
 
 double sn76489_enhanced::render_noise(double internal_rate) noexcept {
     const bool white_noise = (noise_control_ & 0x04u) != 0;
     double sample = (noise_lfsr_ & 1u) != 0 ? 1.0 : -1.0;
 
-    // The Maxim reference core compensates white-noise energy by 1/2. Preserve
-    // that authored balance while retaining a floating-point source stem.
+    // Match the source-relative noise energy used by the established Maxim
+    // renderer while keeping the stem itself floating point and unquantized.
     if (white_noise)
         sample *= 0.5;
+    if (cfg_.negate_output)
+        sample = -sample;
     sample *= attenuation_gain(attenuation_[3]);
 
     const double shift_rate = noise_shift_rate_hz();
@@ -192,6 +202,14 @@ double sn76489_enhanced::render_noise(double internal_rate) noexcept {
 }
 
 void sn76489_enhanced::render(float* const outputs[stem_count], std::size_t frames) noexcept {
+    if (!supported_) {
+        for (std::size_t channel = 0; channel < stem_count; ++channel) {
+            if (outputs[channel] != nullptr)
+                std::fill(outputs[channel], outputs[channel] + frames, 0.0f);
+        }
+        return;
+    }
+
     const std::uint8_t oversample = cfg_.oversample;
     const double internal_rate = std::max(minimum_rate, cfg_.sample_rate_hz * static_cast<double>(oversample));
     const double inv_oversample = 1.0 / static_cast<double>(oversample);
@@ -222,9 +240,6 @@ void sn76489_enhanced::render_timed(
     for (std::size_t index = 0; index < write_count; ++index) {
         const sn76489_timed_write& event = writes[index];
         const std::size_t event_offset = std::min(event.sample_offset, frames);
-
-        // Ignore out-of-order events rather than rewinding oscillator state.
-        // The block collector is responsible for preserving observer order.
         if (event_offset < cursor)
             continue;
 
