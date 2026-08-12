@@ -57,6 +57,8 @@ enum class node_kind : std::uint8_t {
     auditory_event,
     auditory_stream,
     projection,
+    logical_process,
+    program_point,
 };
 
 enum class edge_kind : std::uint8_t {
@@ -75,6 +77,8 @@ enum class edge_kind : std::uint8_t {
     same_identity_as,
     repeats,
     projects_to,
+    control_flows_to,
+    maps_time_to,
 };
 
 enum class time_domain : std::uint8_t {
@@ -140,6 +144,15 @@ struct time_span {
     std::optional<time_coordinate> end{};
 };
 
+// Explicit relation between two clock domains. Mappings are normally
+// piecewise: tempo changes, scheduler jitter, resampling and score-performance
+// alignment should create additional mappings rather than flattening time into
+// one global rate.
+struct time_mapping {
+    time_span from{};
+    time_span to{};
+};
+
 // Evidence status and observation quality are deliberately orthogonal.
 //
 // A register write can be exact with respect to a VGM file while the VGM is
@@ -181,11 +194,14 @@ struct edge {
     node_id to = 0;
     std::optional<time_span> active{};
     std::vector<provenance_ref> provenance;
+    std::vector<attribute> attributes;
+    std::optional<time_mapping> time_map{};
 };
 
 class musical_execution_graph {
 public:
     node_id add_node(node value) {
+        validate_span(value.active);
         value.id = next_node_id_++;
         nodes_.push_back(std::move(value));
         return nodes_.back().id;
@@ -194,6 +210,16 @@ public:
     edge_id add_edge(edge value) {
         if (find_node(value.from) == nullptr || find_node(value.to) == nullptr) {
             throw std::invalid_argument("musical execution edge references an unknown node");
+        }
+
+        validate_span(value.active);
+        if (value.kind == edge_kind::maps_time_to) {
+            if (!value.time_map.has_value()) {
+                throw std::invalid_argument("time-mapping edge requires an explicit time mapping");
+            }
+            validate_time_mapping(*value.time_map);
+        } else if (value.time_map.has_value()) {
+            throw std::invalid_argument("explicit time mapping requires a maps_time_to edge");
         }
 
         value.id = next_edge_id_++;
@@ -262,6 +288,24 @@ public:
     const std::vector<edge>& edges() const noexcept { return edges_; }
 
 private:
+    static void validate_span(const std::optional<time_span>& span) {
+        if (!span.has_value()) {
+            return;
+        }
+        validate_span(*span);
+    }
+
+    static void validate_span(const time_span& span) {
+        if (span.end.has_value() && span.end->domain != span.start.domain) {
+            throw std::invalid_argument("time span cannot cross clock domains");
+        }
+    }
+
+    static void validate_time_mapping(const time_mapping& mapping) {
+        validate_span(mapping.from);
+        validate_span(mapping.to);
+    }
+
     node_id next_node_id_ = 1;
     edge_id next_edge_id_ = 1;
     std::vector<node> nodes_;
