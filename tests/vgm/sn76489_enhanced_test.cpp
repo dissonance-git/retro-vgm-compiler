@@ -5,6 +5,8 @@
 #include <cstddef>
 
 using gameaudio::vgm::sn76489_enhanced;
+using gameaudio::vgm::sn76489_timed_write;
+using gameaudio::vgm::sn76489_write_kind;
 
 #define CHECK(expression) do { if (!(expression)) return __LINE__; } while (false)
 
@@ -26,11 +28,15 @@ void set_volume(sn76489_enhanced& psg, std::size_t channel, std::uint8_t attenua
         0x90u | ((channel & 0x03u) << 5) | (attenuation & 0x0Fu)));
 }
 
-double rms(const buffer& data) {
+double rms(const float* data, std::size_t count) {
     double sum = 0.0;
-    for (float sample : data)
-        sum += static_cast<double>(sample) * static_cast<double>(sample);
-    return std::sqrt(sum / static_cast<double>(data.size()));
+    for (std::size_t i = 0; i < count; ++i)
+        sum += static_cast<double>(data[i]) * static_cast<double>(data[i]);
+    return std::sqrt(sum / static_cast<double>(count));
+}
+
+double rms(const buffer& data) {
+    return rms(data.data(), data.size());
 }
 
 std::size_t negative_crossings(const buffer& data) {
@@ -123,6 +129,32 @@ int main() {
     set_tone_period(noise_psg, 2, 0x180);
     noise_psg.write(0xE7); // white noise, tone-3-derived clock
     CHECK((noise_psg.noise_control() & 0x03u) == 3);
+
+    // Timed writes must land inside the block, not at the 10 ms foobar block
+    // boundary. Silence channel 0 exactly halfway through the rendered block.
+    sn76489_enhanced timed(cfg);
+    set_tone_period(timed, 0, 0x100);
+    set_volume(timed, 0, 0);
+    const sn76489_timed_write timed_writes[] = {
+        {frames / 2, sn76489_write_kind::register_write, 0x9F}
+    };
+    buffer timed_buffer{};
+    float* timed_outputs[sn76489_enhanced::stem_count] = {timed_buffer.data(), nullptr, nullptr, nullptr};
+    timed.render_timed(timed_writes, 1, timed_outputs, frames);
+    CHECK(rms(timed_buffer.data(), frames / 2) > 0.5);
+    CHECK(rms(timed_buffer.data() + frames / 2, frames / 2) == 0.0);
+
+    // A write at exactly the end of the block changes only following state.
+    const sn76489_timed_write end_write[] = {
+        {frames, sn76489_write_kind::register_write, 0x90}
+    };
+    timed.reset();
+    set_tone_period(timed, 0, 0x100);
+    set_volume(timed, 0, 15);
+    timed_buffer.fill(0.0f);
+    timed.render_timed(end_write, 1, timed_outputs, frames);
+    CHECK(rms(timed_buffer) == 0.0);
+    CHECK(timed.attenuation(0) == 0);
 
     return 0;
 }
