@@ -194,6 +194,69 @@ int main() {
     assert(graph.find_node(loop_entry_id)->kind == node_kind::program_point);
     assert(graph.find_node(part_id)->kind == node_kind::part);
 
+    // One runtime execution is a trace of the static program, not a duplicate program graph.
+    node runtime_trace;
+    runtime_trace.kind = node_kind::execution_trace;
+    runtime_trace.layer = semantic_layer::driver_execution;
+    runtime_trace.flow = flow_kind::stream;
+    runtime_trace.label = "realized driver execution";
+    runtime_trace.provenance.push_back({
+        evidence_status::exact,
+        1.0,
+        "fixture-runtime",
+        std::nullopt,
+        "instrumented execution",
+        to_flags(provenance_flag::runtime_capture),
+    });
+    const auto runtime_trace_id = graph.add_node(runtime_trace);
+
+    node first_loop_visit;
+    first_loop_visit.kind = node_kind::trace_event;
+    first_loop_visit.layer = semantic_layer::driver_execution;
+    first_loop_visit.flow = flow_kind::event;
+    first_loop_visit.label = "loop entry visit 1";
+    first_loop_visit.active = time_span{{time_domain::driver, 120, 60, 0}, std::nullopt};
+    first_loop_visit.provenance.push_back({
+        evidence_status::exact,
+        1.0,
+        "fixture-runtime",
+        std::nullopt,
+        "observed program point",
+        to_flags(provenance_flag::runtime_capture),
+    });
+    const auto first_loop_visit_id = graph.add_node(first_loop_visit);
+
+    node loop_exit_visit = first_loop_visit;
+    loop_exit_visit.label = "loop exit visit";
+    loop_exit_visit.active = time_span{{time_domain::driver, 180, 60, 0}, std::nullopt};
+    const auto loop_exit_visit_id = graph.add_node(loop_exit_visit);
+
+    node second_loop_visit = first_loop_visit;
+    second_loop_visit.label = "loop entry visit 2";
+    second_loop_visit.active = time_span{{time_domain::driver, 240, 60, 1}, std::nullopt};
+    const auto second_loop_visit_id = graph.add_node(second_loop_visit);
+
+    connect(edge_kind::contains, runtime_trace_id, first_loop_visit_id);
+    connect(edge_kind::contains, runtime_trace_id, loop_exit_visit_id);
+    connect(edge_kind::contains, runtime_trace_id, second_loop_visit_id);
+    connect(edge_kind::realizes, loop_entry_id, first_loop_visit_id);
+    connect(edge_kind::realizes, loop_exit_id, loop_exit_visit_id);
+    connect(edge_kind::realizes, loop_entry_id, second_loop_visit_id);
+
+    const auto trace_contents = graph.edges_from(runtime_trace_id, edge_kind::contains);
+    assert(trace_contents.size() == 3);
+    assert(graph.find_node(runtime_trace_id)->kind == node_kind::execution_trace);
+    assert(has_flag(graph.find_node(runtime_trace_id)->provenance[0].flags, provenance_flag::runtime_capture));
+
+    const auto loop_entry_visits = graph.edges_from(loop_entry_id, edge_kind::realizes);
+    assert(loop_entry_visits.size() == 2);
+    assert(loop_entry_visits[0]->to != loop_entry_visits[1]->to);
+    assert(graph.find_node(loop_entry_visits[0]->to)->kind == node_kind::trace_event);
+    assert(graph.find_node(loop_entry_visits[1]->to)->kind == node_kind::trace_event);
+    assert(graph.find_node(first_loop_visit_id)->active->start.tick == 120);
+    assert(graph.find_node(second_loop_visit_id)->active->start.tick == 240);
+    assert(graph.find_node(second_loop_visit_id)->active->start.loop_iteration == 1);
+
     // Cross-domain timing is an explicit, provenance-bearing relation rather than an implicit cast.
     node authored_note;
     authored_note.kind = node_kind::musical_event;
