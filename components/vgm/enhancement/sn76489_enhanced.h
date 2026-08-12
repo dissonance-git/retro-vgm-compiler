@@ -53,6 +53,11 @@ public:
     void write(std::uint8_t data) noexcept;
     void write_stereo_mask(std::uint8_t mask) noexcept { stereo_mask_ = mask; }
 
+    // Advance oscillator and LFSR state without producing samples. This is the
+    // seek/shadow-render fast path: musical time moves exactly as if the block
+    // had been rendered, but no discarded audio is synthesized.
+    void advance(std::size_t frames) noexcept;
+
     // Render four mono floating-point stems. Any output pointer may be null.
     // No allocation or locking occurs in this function.
     void render(float* const outputs[stem_count], std::size_t frames) noexcept;
