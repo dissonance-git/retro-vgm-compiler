@@ -26,6 +26,7 @@ int main() {
 
     auto genesis_channel = present_feature(
         "physical_channel",
+        semantic_layer::synthesis,
         attribute_value{std::uint64_t{2}},
         evidence_status::derived,
         1.0,
@@ -41,6 +42,7 @@ int main() {
 
     auto genesis_pitch = present_feature(
         "device_native_pitch_code",
+        semantic_layer::synthesis,
         attribute_value{std::uint64_t{0x2A4}},
         evidence_status::derived,
         1.0,
@@ -56,16 +58,19 @@ int main() {
 
     genesis.add(unresolved_feature(
         "normalized_absolute_pitch",
+        semantic_layer::musical_performance,
         feature_availability::unknown,
         "meaningful musical quantity, but this device-native fixture has not established an authored/normalized pitch",
         "genesis-pitch-fixture"));
     genesis.add(unresolved_feature(
         "original_driver_track",
+        semantic_layer::driver_execution,
         feature_availability::unavailable,
         "the VGM-style execution observation does not expose the original logical driver track",
         "genesis-trace-fixture"));
     genesis.add(unresolved_feature(
         "sample_identity",
+        semantic_layer::synthesis,
         feature_availability::not_applicable,
         "ordinary PSG tone generation does not reference a stored sample object",
         "genesis-psg-fixture"));
@@ -79,6 +84,9 @@ int main() {
     assert(genesis_unknown->availability == feature_availability::unknown);
     assert(genesis_unavailable->availability == feature_availability::unavailable);
     assert(genesis_not_applicable->availability == feature_availability::not_applicable);
+    assert(genesis_unknown->claim_layer == semantic_layer::musical_performance);
+    assert(genesis_unavailable->claim_layer == semantic_layer::driver_execution);
+    assert(genesis_not_applicable->claim_layer == semantic_layer::synthesis);
     assert(genesis_unknown->availability != genesis_unavailable->availability);
     assert(genesis_unavailable->availability != genesis_not_applicable->availability);
     assert(!genesis_unknown->value.has_value());
@@ -89,6 +97,7 @@ int main() {
 
     auto spc_voice = present_feature(
         "physical_voice",
+        semantic_layer::synthesis,
         attribute_value{std::uint64_t{5}},
         evidence_status::exact,
         1.0,
@@ -105,6 +114,7 @@ int main() {
 
     auto spc_pitch_rate = present_feature(
         "device_native_pitch_rate",
+        semantic_layer::synthesis,
         attribute_value{std::uint64_t{0x1000}},
         evidence_status::exact,
         1.0,
@@ -121,6 +131,7 @@ int main() {
 
     auto spc_source_index = present_feature(
         "source_index",
+        semantic_layer::synthesis,
         attribute_value{std::uint64_t{7}},
         evidence_status::exact,
         1.0,
@@ -137,37 +148,46 @@ int main() {
 
     spc.add(unresolved_feature(
         "sample_root_tuning",
+        semantic_layer::synthesis,
         feature_availability::unknown,
         "the sample is known but its authored root tuning is not established",
         "spc-runtime-fixture"));
     spc.add(unresolved_feature(
         "normalized_absolute_pitch",
+        semantic_layer::musical_performance,
         feature_availability::unknown,
         "pitch rate alone cannot establish absolute musical pitch without source/tuning continuity",
         "spc-runtime-fixture"));
     spc.add(unresolved_feature(
         "original_driver_track",
+        semantic_layer::driver_execution,
         feature_availability::unavailable,
         "the current S-DSP runtime boundary does not expose validated driver-track identity",
         "spc-runtime-fixture"));
 
     assert(spc.find("device_native_pitch_rate")->availability == feature_availability::present);
+    assert(spc.find("device_native_pitch_rate")->claim_layer == semantic_layer::synthesis);
     assert(spc.find("sample_root_tuning")->availability == feature_availability::unknown);
+    assert(spc.find("sample_root_tuning")->claim_layer == semantic_layer::synthesis);
     assert(spc.find("original_driver_track")->availability == feature_availability::unavailable);
+    assert(spc.find("original_driver_track")->claim_layer == semantic_layer::driver_execution);
 
-    // Presentness and evidential strength are independent axes.
+    // Presentness, semantic layer, and evidential strength are independent axes.
     assert(genesis.find("device_native_pitch_code")->status == evidence_status::derived);
+    assert(genesis.find("device_native_pitch_code")->claim_layer == semantic_layer::synthesis);
     assert(spc.find("device_native_pitch_rate")->status == evidence_status::exact);
 
     // Missing support must not be silently encoded as a value.
     analysis_feature invalid_unknown;
     invalid_unknown.name = "bad_unknown";
+    invalid_unknown.claim_layer = semantic_layer::musical_performance;
     invalid_unknown.availability = feature_availability::unknown;
     invalid_unknown.value = attribute_value{std::uint64_t{0}};
     assert(throws_invalid_argument([&] { validate_analysis_feature(invalid_unknown); }));
 
     analysis_feature missing_value;
     missing_value.name = "missing_value";
+    missing_value.claim_layer = semantic_layer::synthesis;
     missing_value.availability = feature_availability::present;
     missing_value.status = evidence_status::derived;
     missing_value.confidence = 1.0;
@@ -175,6 +195,7 @@ int main() {
 
     analysis_feature missing_status;
     missing_status.name = "missing_status";
+    missing_status.claim_layer = semantic_layer::synthesis;
     missing_status.availability = feature_availability::present;
     missing_status.value = attribute_value{std::uint64_t{1}};
     missing_status.confidence = 1.0;
@@ -182,6 +203,7 @@ int main() {
 
     analysis_feature missing_confidence;
     missing_confidence.name = "missing_confidence";
+    missing_confidence.claim_layer = semantic_layer::synthesis;
     missing_confidence.availability = feature_availability::present;
     missing_confidence.value = attribute_value{std::uint64_t{1}};
     missing_confidence.status = evidence_status::derived;
@@ -190,6 +212,7 @@ int main() {
     assert(throws_invalid_argument([] {
         (void)present_feature(
             "bad_confidence",
+            semantic_layer::musical_structure,
             attribute_value{std::uint64_t{1}},
             evidence_status::hypothesis,
             1.1);
@@ -198,6 +221,7 @@ int main() {
     assert(throws_invalid_argument([&] {
         genesis.add(present_feature(
             "physical_channel",
+            semantic_layer::synthesis,
             attribute_value{std::uint64_t{3}},
             evidence_status::derived,
             1.0,
@@ -205,7 +229,10 @@ int main() {
     }));
 
     assert(throws_invalid_argument([] {
-        (void)unresolved_feature("invalid", feature_availability::present);
+        (void)unresolved_feature(
+            "invalid",
+            semantic_layer::musical_performance,
+            feature_availability::present);
     }));
 
     return 0;
