@@ -17,11 +17,13 @@ program / control-flow structure
         ↓
 execution trace / realized driver path
         ↓
+device transitions / synthesis state
+        ↓
+physical voice episodes
+        ↓
 musical events and control trajectories
         ↓
-instrument definitions / synthesis objects
-        ↓
-running voices / physical device state
+persistent parts / higher musical identity when supported
         ↓
 routing / effects / signal graph
         ↓
@@ -105,13 +107,15 @@ DRIVER / SCHEDULER EXECUTION
 execution traces, trace events, realized control flow, logical tracks,
 note events, program changes, allocation, modulation, loops
 
-MUSICAL PERFORMANCE
-note-like events, continuous pitch, dynamics, articulation, persistent parts,
-instrument relationships, authored routing/control trajectories
-
 DEVICE / SYNTHESIS
 YM2612, SN76489, S-DSP, QSound, OPL/OPN/OPM, PCM/ADPCM,
-registers, operators, partials, envelopes, sample memory, effect state
+registers, operators, partials, envelopes, sample memory, effect state,
+physical voice episodes and other bounded running synthesis identities
+
+MUSICAL PERFORMANCE
+note-like events, device-native and normalized pitch controls, dynamics,
+articulation, persistent parts when supported, instrument relationships,
+authored routing/control trajectories
 
 MUSICAL STRUCTURE
 meter, beat hierarchy, harmony, motif, phrase, section, form,
@@ -125,7 +129,7 @@ what a listener hears as events, streams, fields, rhythm, foreground/background,
 masking, motion, environment and other perceptual organization
 ```
 
-A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A legal branch is not proof that a particular run took that branch. A trace event is not automatically a musical event. A MIDI export is not the internal truth. A perceptual stream is not automatically one physical source. Confidence, provenance, capture quality and source coordinates must survive transitions between layers.
+A physical chip channel is not automatically a persistent musical voice. A bounded physical voice episode is not automatically a musical part. A register log is not automatically the original score. A legal branch is not proof that a particular run took that branch. A trace event is not automatically a musical event. A device pitch change is not automatically MIDI pitch bend or a new note. A MIDI export is not the internal truth. A perceptual stream is not automatically one physical source. Confidence, provenance, capture quality and source coordinates must survive transitions between layers.
 
 ## Current common model
 
@@ -134,15 +138,16 @@ The repository now contains a small provenance-aware musical execution graph in 
 The current graph deliberately distinguishes:
 
 ```text
-events       key-on, note, trigger, register, scheduler or trace event
+events       key-on, note-like observation, trigger, register, scheduler or trace event
 values       patch, routing, configuration and persistent state
 controls     time-varying parameters and executable control state
-streams      PCM, oscillator/audio or execution-trace streams
+streams      PCM, oscillator/audio, execution traces and physical voice episodes
 graphs       synthesis, routing, effects, causal and program topology
 objects      source objects, parts, instruments, voices, buffers, buses,
-             logical processes, program points, execution traces and trace events
-relations    causes, schedules, instantiates, realizes, occupies, routes,
-             transforms, contributes, groups, repeats, projects,
+             parameters, logical processes, program points, execution traces
+             and trace events
+relations    causes, schedules, instantiates, realizes, occupies, controls,
+             routes, transforms, contributes, groups, repeats, projects,
              control-flow transitions and cross-domain time mappings
 ```
 
@@ -156,7 +161,11 @@ The current implementation makes several representation rules executable rather 
 4. **capture-window boundaries are not musical execution identities**: one execution trace can continue across many bounded realtime capture windows;
 5. **capture completeness is explicit**: overflow marks the trace incomplete and records the number of dropped observations rather than silently overwriting data;
 6. **bounded source payload evidence stays bounded honestly**: the realtime VGM trace retains a fixed two-byte payload prefix, records the full payload size, and marks larger payloads truncated so a partial prefix cannot masquerade as a complete command;
-7. **authored, driver, device, sample and acoustic clocks remain distinct and are connected by explicit provenance-bearing mappings**.
+7. **observation gaps invalidate stateful semantic continuation**: latch- and history-dependent device state is no longer treated as known after a relevant gap until an exact resynchronization boundary is observed;
+8. **device transitions and musical-performance observations remain different objects**: a register key gate can remain synthesis truth without automatically becoming note truth;
+9. **physical voice episodes are bounded synthesis identities, not persistent musical parts**: an episode can start and end on one hardware voice while higher musical-source identity remains unresolved;
+10. **pitch control is represented before MIDI interpretation**: device-native pitch state changes can be grouped into a performance-layer `parameter` whose support remains the ordered device-transition history, without deciding pitch bend versus note retrigger or fabricating interpolation;
+11. **authored, driver, device, sample and acoustic clocks remain distinct and are connected by explicit provenance-bearing mappings**.
 
 A time span may not silently cross clock domains. Cross-domain correspondence is represented explicitly and can be piecewise when tempo, scheduling, resampling or alignment changes the relationship. Execution traces can be incomplete without turning missing observations into false claims about what did not happen.
 
@@ -165,6 +174,12 @@ For time-varying device state, the current working rule is:
 > **Preserve the ordered transition history as durable evidence. Treat a current-state snapshot as a rebuildable view unless the source itself preserves that snapshot as an exact object.**
 
 This avoids duplicating an entire hardware-state snapshot after every register write while still allowing exact state reconstruction at a chosen execution prefix. It also preserves the distinction between a transition observed in the source and the state deterministically derived by replaying those transitions.
+
+For higher musical identity, the current working rule is equally strict:
+
+> **A physical synthesis episode is evidence that something sounded through one bounded device resource. Persistent voice or part identity requires additional evidence.**
+
+GEMS is a strong control for this boundary: logical channels can be polyphonic while notes are dynamically allocated, rotated and priority-stolen across a much smaller set of Genesis hardware voices. Voice-separation research reaches the same distinction from the opposite direction by treating assignment of note events to persistent voices as a separate inference problem. Hardware channel number therefore cannot be promoted into persistent musical identity merely because it is easy to inspect.
 
 This graph is **not finished architecture by declaration**. It is a minimal implementation that has survived the current comparison set. New abstractions should be added only when real source adapters or validation cases expose a missing distinction.
 
@@ -197,9 +212,11 @@ recover exact execution where possible
         ↓
 recover the execution trace and program/control-flow structure where evidence permits
         ↓
-recover synthesis objects and persistent identities
+recover synthesis objects and bounded physical voice episodes
         ↓
-recover musical events and structure with explicit evidence status
+recover conservative performance events and device-native controls
+        ↓
+recover persistent musical identities and structure only when evidence supports them
         ↓
 reason about the music
 ```
@@ -356,12 +373,27 @@ Implemented or in active development:
 - allocation-free bounded VGM command-trace capture with exact source tick, file offset, command identity, monotonic trace order and explicit overflow state
 - bounded payload-prefix retention that completely preserves ordinary one- and two-byte Genesis register commands while marking larger payloads partial
 - analysis-side VGM execution-trace materialization that remains at `source_representation`
-- a first source-to-synthesis lift that derives YM2612 and SN76489 device-transition events from complete VGM commands while preserving a causal route back to the exact source trace event
+- a source-to-synthesis lift that derives YM2612 and SN76489 device-transition events from complete VGM commands while preserving a causal route back to the exact source trace event
 - a replayed `genesis_state` snapshot that can be rebuilt from ordered transitions rather than being mistaken for the canonical history
+- fail-closed semantic continuation: a relevant truncated command or capture gap prevents later latch-dependent Genesis reconstruction until an exact reset/resynchronization boundary
+- conservative `pitched_activity_onset` / `pitched_activity_release` observations for ordinary full-mask YM2612 activity and routed SN76489 tone activity, while partial operator keying, pitch changes, channel-3 special mode, DAC-mode channel 6 and PSG noise remain below that musical boundary
+- bounded synthesis-layer `voice_instance` episodes that preserve one physical sounding interval without being promoted to persistent musical parts
+- performance-layer device-native pitch `parameter` objects whose state history is supported by the exact decoded pitch transitions that established and changed it, without forcing MIDI bend/retrigger semantics or an interpolated curve
 
-The first vertical slice deliberately stops at **device transition truth**. A YM2612 key-on register write is not yet a musical note, an SN76489 write is not yet a persistent musical part, and a VGM source trace is not the original game driver's control flow.
+The current vertical slice now reaches **conservative performance truth**, but deliberately stops before persistent musical identity:
 
-The next major synthesis milestone is a mature six-channel YM2612 renderer that preserves exact patch/envelope/algorithm/feedback/LFO behavior before experiments remove selected hardware constraints. The next semantic milestone is to derive persistent voice/performance objects from exact device transitions without losing the lower source/device route.
+```text
+exact VGM command
+→ decoded device transition
+→ bounded physical voice episode
+→ conservative pitched-activity observation
+→ device-native pitch control
+→ persistent part / note identity still unresolved
+```
+
+That stopping point is intentional. `vgm2midi`-style conversion is useful as a projection baseline, but rules such as “any nonzero YM2612 operator key mask means MIDI Note On” erase real device distinctions. Nuked OPN2 exposes operator-level key behavior, while GEMS demonstrates that logical musical channels can dynamically allocate onto changing physical voices. Those controls make it unsafe to identify either a key-mask edge or a hardware channel with a persistent musical source by default.
+
+The next major synthesis milestone is a mature six-channel YM2612 renderer that preserves exact patch/envelope/algorithm/feedback/LFO behavior before experiments remove selected hardware constraints. The next semantic milestone is to recover persistent voice/part identity using stronger source or driver evidence, with GEMS-style dynamic allocation as a required negative control. Additional dynamics, articulation and modulation controls should reuse the same transition-backed parameter pattern where it survives source-specific pressure tests.
 
 ### SPC / Super NES
 
@@ -472,7 +504,11 @@ The common-model tests protect representation boundaries including:
 - explicit capture overflow and partial payload evidence;
 - source events versus derived Genesis device transitions;
 - ordered YM2612 latch/commit behavior and SN76489 latch/data behavior;
-- partial source evidence refusing semantic promotion;
+- trace gaps invalidating stateful semantic continuation until exact resynchronization;
+- device key/attenuation activity versus conservative musical-performance events;
+- partial YM operator re-keying, channel-3 special mode, DAC mode and PSG noise remaining below the simple pitched-event boundary;
+- bounded physical voice episodes versus unresolved persistent musical parts;
+- device-native pitch controls preserving transition support without forcing MIDI or interpolation semantics;
 - rebuildable current state versus durable transition history;
 - explicit cross-domain time mapping.
 
