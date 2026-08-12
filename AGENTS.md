@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## Helix relationship
+
+This repository is the independent implementation home for `project:vgm-tooling`, which is tracked by Helix for project continuity, research, evidence, relationships, and re-entry.
+
+Before substantive work, read the current Helix operating law at `dissonance-git/Helix/AGENTS.md` and apply the parts relevant to evidence, provenance, correction, validation, re-entry, and concurrent repository safety. This file owns VGM Tooling's project-specific implementation laws and may specialize repository workflow where the project genuinely differs. Direct user instruction or correction outranks both.
+
+Do not copy VGM Tooling's implementation into Helix merely to make the connection visible, and do not copy Helix machinery into this repository merely to inherit its design. Helix preserves the exact route to this project; this repository remains canonical for its code, tests, builds, local implementation history, and releases.
+
 ## Scope
 
 This repository is the implementation home for **VGM Tooling**: executable understanding, analysis, and source-native rendering of digital game music.
