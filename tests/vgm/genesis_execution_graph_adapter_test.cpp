@@ -37,6 +37,7 @@ int main() {
     CHECK(high.device_transition_id.has_value());
     CHECK(low.device_transition_id.has_value());
     CHECK(handle.source_trace.next_trace_index == 2);
+    CHECK(handle.shadow_continuation_valid);
     CHECK(handle.ym2612_nodes[0].has_value());
     CHECK(!handle.ym2612_nodes[1].has_value());
 
@@ -92,8 +93,9 @@ int main() {
     CHECK(handle.psg_nodes[0].has_value());
     CHECK(handle.shadow.psg().channels[0].tone_period == 0x125);
 
-    // Partial payload evidence stays at the source layer. It does not mutate the
-    // shadow state or create a guessed device transition.
+    // Partial payload evidence stays at the source layer. Because the omitted
+    // byte belongs to a supported Genesis command, the exact current shadow can
+    // no longer be continued after this observation gap.
     const auto before_fnum = handle.shadow.ym2612().channels[0].fnum;
     const std::uint8_t oversized[] = {0xA0, 0x77, 0x99};
     const auto partial = append_genesis_trace_event(
@@ -102,20 +104,49 @@ int main() {
         command_event{command_event_kind::command, 130, 0x20D, 0x52, oversized, 3});
     CHECK(!partial.device_transition_id.has_value());
     CHECK(handle.shadow.ym2612().channels[0].fnum == before_fnum);
+    CHECK(!handle.shadow_continuation_valid);
     const node* partial_source = graph.find_node(partial.source_event_id);
     CHECK(partial_source != nullptr);
     CHECK(std::get<bool>(partial_source->attributes[5].value));
 
-    // Reset is an execution-boundary observation. It resets the rebuildable
-    // shadow without inventing a hardware register transition that was not in
-    // the source command stream.
+    // Later complete writes remain exact source observations but cannot be
+    // interpreted against a guessed pre-gap latch/register state.
+    const auto blocked_high = append_genesis_trace_event(
+        graph,
+        handle,
+        command_event{command_event_kind::command, 135, 0x210, 0x52, fnum_high, 2});
+    const auto blocked_low = append_genesis_trace_event(
+        graph,
+        handle,
+        command_event{command_event_kind::command, 135, 0x213, 0x52, fnum_low, 2});
+    CHECK(!blocked_high.device_transition_id.has_value());
+    CHECK(!blocked_low.device_transition_id.has_value());
+    CHECK(handle.shadow.ym2612().channels[0].fnum == before_fnum);
+    CHECK(!handle.shadow_continuation_valid);
+
+    // Reset is an exact resynchronization boundary. It restores a known shadow
+    // without claiming that the missing interval was recovered.
     const auto reset = append_genesis_trace_event(
         graph,
         handle,
         command_event{command_event_kind::reset, 140, 0, 0, nullptr, 0});
     CHECK(!reset.device_transition_id.has_value());
     CHECK(handle.shadow.ym2612().channels[0].fnum == 0);
-    CHECK(handle.source_trace.next_trace_index == 7);
+    CHECK(handle.shadow_continuation_valid);
+
+    const auto resynced_high = append_genesis_trace_event(
+        graph,
+        handle,
+        command_event{command_event_kind::command, 145, 0x216, 0x52, fnum_high, 2});
+    const auto resynced_low = append_genesis_trace_event(
+        graph,
+        handle,
+        command_event{command_event_kind::command, 145, 0x219, 0x52, fnum_low, 2});
+    CHECK(resynced_high.device_transition_id.has_value());
+    CHECK(resynced_low.device_transition_id.has_value());
+    CHECK(handle.shadow.ym2612().channels[0].fnum == 0x434);
+    CHECK(handle.shadow.ym2612().channels[0].block == 5);
+    CHECK(handle.source_trace.next_trace_index == 11);
 
     // The same semantic lift consumes the allocation-free realtime capture
     // directly, closing the callback -> capture -> graph path.
@@ -136,6 +167,7 @@ int main() {
         "captured.vgm",
         to_flags(provenance_flag::runtime_capture));
     CHECK(captured.source_trace.next_trace_index == 4);
+    CHECK(captured.shadow_continuation_valid);
     CHECK(capture_graph.edges_from(captured.source_trace.trace_id, edge_kind::contains).size() == 4);
     CHECK(captured.ym2612_nodes[0].has_value());
     CHECK(captured.psg_nodes[0].has_value());
