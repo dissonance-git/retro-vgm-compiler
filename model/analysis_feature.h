@@ -10,7 +10,8 @@
 
 namespace vgmtooling::model {
 
-// Availability is separate from evidential strength.
+// Availability is separate from evidential strength and from the semantic
+// layer of the question being asked.
 //
 // present:
 //   the feature has a value for this subject and that value carries its own
@@ -37,6 +38,13 @@ enum class feature_availability : std::uint8_t {
 
 struct analysis_feature {
     std::string name;
+
+    // The layer whose fact/question this feature describes. This remains
+    // explicit even when the current source cannot answer the question.
+    // Example: an original driver-track identity is a driver_execution question
+    // even when a VGM-only adapter marks it unavailable.
+    semantic_layer claim_layer = semantic_layer::source_representation;
+
     feature_availability availability = feature_availability::unknown;
     std::optional<attribute_value> value{};
     std::string unit;
@@ -96,12 +104,14 @@ private:
 
 inline analysis_feature present_feature(
     std::string name,
+    semantic_layer claim_layer,
     attribute_value value,
     evidence_status status,
     double confidence,
     std::string unit = {}) {
     analysis_feature feature;
     feature.name = std::move(name);
+    feature.claim_layer = claim_layer;
     feature.availability = feature_availability::present;
     feature.value = std::move(value);
     feature.unit = std::move(unit);
@@ -113,6 +123,7 @@ inline analysis_feature present_feature(
 
 inline analysis_feature unresolved_feature(
     std::string name,
+    semantic_layer claim_layer,
     feature_availability availability,
     std::string detail = {},
     std::string source = {}) {
@@ -121,6 +132,7 @@ inline analysis_feature unresolved_feature(
 
     analysis_feature feature;
     feature.name = std::move(name);
+    feature.claim_layer = claim_layer;
     feature.availability = availability;
     if (!detail.empty() || !source.empty()) {
         feature.provenance.push_back({
