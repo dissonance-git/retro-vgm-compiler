@@ -25,26 +25,30 @@ endif()
 if(GAMEAUDIO_BUILD_CORE_TESTS)
     enable_testing()
 
-    add_executable(genesis_state_test
-        tests/vgm/genesis_state_test.cpp
+    set(GAMEAUDIO_TEST_TARGETS
+        genesis_state_test
+        sn76489_enhanced_test
+        sn76489_variants_test
+        psg_block_capture_test
     )
-    target_link_libraries(genesis_state_test PRIVATE gameaudio_vgm_core)
-    target_compile_features(genesis_state_test PRIVATE cxx_std_17)
 
-    add_executable(sn76489_enhanced_test
-        tests/vgm/sn76489_enhanced_test.cpp
-    )
-    target_link_libraries(sn76489_enhanced_test PRIVATE gameaudio_vgm_core)
-    target_compile_features(sn76489_enhanced_test PRIVATE cxx_std_17)
+    add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
+    add_executable(sn76489_enhanced_test tests/vgm/sn76489_enhanced_test.cpp)
+    add_executable(sn76489_variants_test tests/vgm/sn76489_variants_test.cpp)
+    add_executable(psg_block_capture_test tests/vgm/psg_block_capture_test.cpp)
 
-    if(MSVC)
-        target_compile_options(genesis_state_test PRIVATE /W4 /permissive-)
-        target_compile_options(sn76489_enhanced_test PRIVATE /W4 /permissive-)
-    else()
-        target_compile_options(genesis_state_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
-        target_compile_options(sn76489_enhanced_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
-    endif()
+    foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
+        target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
+        target_compile_features(${test_target} PRIVATE cxx_std_17)
+        if(MSVC)
+            target_compile_options(${test_target} PRIVATE /W4 /permissive-)
+        else()
+            target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        endif()
+    endforeach()
 
     add_test(NAME genesis_state COMMAND genesis_state_test)
     add_test(NAME sn76489_enhanced COMMAND sn76489_enhanced_test)
+    add_test(NAME sn76489_variants COMMAND sn76489_variants_test)
+    add_test(NAME psg_block_capture COMMAND psg_block_capture_test)
 endif()
