@@ -1,9 +1,10 @@
 name: core-tests
 
+# GitHub-hosted runners are currently blocked by the account billing/spending
+# limit before jobs start. Keep the workflow available for manual validation
+# without painting every development commit red until runner access is restored.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
