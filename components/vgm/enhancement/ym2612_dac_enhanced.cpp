@@ -26,9 +26,6 @@ void ym2612_dac_enhanced::render_timed(
     std::size_t event_count,
     float* output,
     std::size_t frames) noexcept {
-    if (output == nullptr)
-        return;
-
     std::size_t cursor = 0;
 
     for (std::size_t index = 0; index < event_count; ++index) {
@@ -38,7 +35,7 @@ void ym2612_dac_enhanced::render_timed(
             continue;
 
         const std::size_t segment = offset - cursor;
-        if (segment != 0) {
+        if (segment != 0 && output != nullptr) {
             if (!enabled_) {
                 std::fill(output + cursor, output + offset, 0.0f);
             } else if (event.kind == ym2612_dac_event_kind::data) {
@@ -55,8 +52,8 @@ void ym2612_dac_enhanced::render_timed(
             } else {
                 std::fill(output + cursor, output + offset, last_level_);
             }
-            cursor = offset;
         }
+        cursor = offset;
 
         if (event.kind == ym2612_dac_event_kind::enable)
             enabled_ = (event.value & 0x80u) != 0;
@@ -64,9 +61,8 @@ void ym2612_dac_enhanced::render_timed(
             write(event.value);
     }
 
-    if (cursor < frames) {
+    if (output != nullptr && cursor < frames)
         std::fill(output + cursor, output + frames, enabled_ ? last_level_ : 0.0f);
-    }
 }
 
 } // namespace gameaudio::vgm
