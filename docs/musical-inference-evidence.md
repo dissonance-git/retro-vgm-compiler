@@ -26,6 +26,10 @@ acoustic realization
 auditory interpretation
         ↓
 listener response
+
+musicological context
+↕ links artifacts, structures, performances, documents, and external evidence
+  across the pipeline rather than sitting after it
 ```
 
 Each layer answers a different question. The arrows show relationships, not a mandatory serial cognitive pipeline and not a ladder of increasing truth.
@@ -223,6 +227,45 @@ under different listener/model contexts.
 
 The detailed pressure pass is recorded in `research/cases/music-affect-memory-entrainment.md`.
 
+### Musicological context
+
+`musicological_context` is cross-cutting rather than a downstream listener layer.
+
+It represents contextual, historical, documentary, source-critical, versioning, and attribution claims that relate artifacts and musical objects across the other layers.
+
+Candidate claims include:
+
+- work identity;
+- version/revision identity;
+- arrangement identity;
+- port/adaptation relations;
+- source-witness relations;
+- derivation/transmission hypotheses;
+- release chronology;
+- documented composer/arranger credits;
+- stylistic attribution hypotheses;
+- archival/catalog identifiers;
+- external historical context.
+
+A central distinction is:
+
+```text
+artifact identity
+!= musical similarity
+!= musicological work/version identity
+```
+
+Two files can be exact different artifacts while strongly structurally similar. Strong similarity can support a same-work hypothesis without proving historical identity. External documentation can provide a stronger independent evidence route.
+
+Likewise:
+
+```text
+stylistic similarity
+!= composer identity
+```
+
+Musicological claims must preserve their documentary, analytical, or external provenance. See `research/cases/musicological-version-identity.md`.
+
 ## Perceptual grouping versus musical identity
 
 Music psychology repeatedly supports cues such as:
@@ -293,7 +336,8 @@ Music-analysis research provides strong independent support for preserving compe
 - voice-separation models can propose alternate trajectories;
 - expectation models can differ by corpus, context, or listener assumptions;
 - meter/beat models can disagree while the exact event timing remains fixed;
-- emotion/groove responses can differ across listeners over identical musical evidence.
+- emotion/groove responses can differ across listeners over identical musical evidence;
+- source/version genealogies can differ while the observed artifact differences stay fixed.
 
 VGM Tooling should therefore prefer:
 
@@ -342,16 +386,16 @@ Musicology can introduce evidence about:
 - cultural/historical context;
 - style and attribution.
 
-These claims can use the common graph when a bounded case needs them, but external historical evidence must remain visibly external.
+These claims belong to `musicological_context` when represented as analytical/contextual claims, while the external documents/artifacts supporting them remain source objects/annotations.
 
 For example:
 
 ```text
 file hash                  exact source identity
-musical diff               derived relation
-same work/arrangement      musicological claim
+musical diff               derived structural relation
+same work/arrangement      musicological-context claim
 stylistic similarity       analytical result
-composer attribution       external-evidence claim
+composer attribution       musicological-context claim with external/model evidence
 ```
 
 Do not upgrade stylistic resemblance into authorship.
@@ -374,13 +418,25 @@ score reconstruction
 
 Conversely, similar bytes or musical fragments do not automatically prove one causal lineage.
 
-Future cross-version comparison should distinguish musical structure from container/serialization accidents.
+Cross-version comparison should distinguish musical structure from container/serialization accidents, and similarity from historical identity.
+
+Useful comparison dimensions can include:
+
+- source/artifact identity;
+- program/control-flow similarity;
+- performance-event similarity;
+- instrument/sample/synthesis similarity;
+- form/structural similarity;
+- acoustic similarity;
+- documented work/version/arrangement relations.
+
+A single scalar similarity should not erase which dimensions were compared or which invariances were allowed.
 
 ## Feature systems
 
-GitHub/literature comparisons with jSymbolic, music21, Humdrum, hrep, Essentia, madmom, Partitura, OpenMusic, MIRtoolbox, pyIDyOM, and related systems support several design constraints for analysis features.
+GitHub/literature comparisons with jSymbolic, music21, Humdrum, hrep, Essentia, madmom, Partitura, OpenMusic, MIRtoolbox, pyIDyOM, MusicDiff-related tooling, OpenMPT, and related systems support several design constraints for analysis features.
 
-An analysis feature now explicitly distinguishes:
+An analysis feature explicitly distinguishes:
 
 ```text
 feature name
@@ -415,6 +471,7 @@ SPC pitch-rate relation synthesis truth conditional on runtime observation
 performed SPC pitch     may remain unknown without sample/tuning continuity
 audio pitch estimate    inverse-analysis output
 felt emotion            listener response, unavailable from source alone
+shared work identity    musicological context, may be hypothesis or documented externally
 ```
 
 The project should prefer the strongest available source evidence and fall back only when the source stops answering the question.
@@ -435,6 +492,8 @@ The current comparison set now includes, among others:
 - hierarchical music analysis;
 - computational music-analysis epistemology;
 - digital musicology / source comparison / versions;
+- MusicDiff/source-witness comparison and multi-source visualization;
+- cover/version identification and transformation-invariant similarity;
 - symbolic feature systems such as jSymbolic;
 - Humdrum symbolic topology;
 - hrep's symbolic/acoustic/sensory harmony representations;
@@ -448,23 +507,30 @@ See:
 - `research/cases/music-cognition-theory-musicology.md`
 - `research/cases/music-affect-memory-entrainment.md`
 - `research/cases/tracker-semantic-pressure.md`
+- `research/cases/musicological-version-identity.md`
 
 ## What the current model now supports
 
-One new semantic layer was justified by the deeper psychology pass:
+Two deeper research passes justified semantic distinctions not captured cleanly by the earlier eight-layer graph:
 
 ```text
 auditory_interpretation
 != listener_response
+
+source identity / structural similarity
+!= musicological_context
 ```
 
-No new node kind or edge kind was required.
+`musicological_context` is cross-cutting rather than another stage after listening.
+
+No new node kind or edge kind was required for either distinction.
 
 Existing vocabulary plus the source-relative `analysis_feature` carrier is sufficient for the current controls:
 
-- `musical_structure` + `musical_relation` for theory-level analyses;
+- `musical_structure` + `musical_relation` for theory-level analyses and measured structural relations;
 - `auditory_interpretation` + `auditory_event` / `auditory_stream` for perceptual organization;
 - `listener_response` analysis features for expectation, memory, emotion, groove, pleasure, attention, and related listener/model outputs;
+- `musicological_context` relation nodes/features for work, version, arrangement, chronology and attribution claims;
 - `part`, `voice_instance`, and `physical_slot` for identity separation;
 - exact/derived/hypothesis evidence states;
 - provenance-bearing nodes/edges/features;
@@ -474,14 +540,15 @@ This keeps the graph small while allowing materially different questions to rema
 
 ## Executable controls
 
-Current model regressions now protect:
+Current model regressions protect:
 
 - competing theory-level analyses over unchanged performance evidence;
 - competing auditory-stream interpretations over unchanged acoustic evidence;
 - external historical/attribution annotations without contaminating execution truth;
 - source-relative feature availability across Genesis, SPC, and tracker-shaped evidence;
 - explicit feature claim layers;
-- identical lower musical evidence producing different listener-response hypotheses under different modeled listener/learning contexts.
+- identical lower musical evidence producing different listener-response hypotheses under different modeled listener/learning contexts;
+- two exact different artifacts carrying separate structural-similarity, same-work, documented-arrangement, chronology and attribution claims without collapsing them into one identity flag.
 
 The next analysis algorithm should consume these evidence-bearing features rather than invent a lowest-common-denominator representation.
 
@@ -494,3 +561,4 @@ The next analysis algorithm should consume these evidence-bearing features rathe
 - `research/cases/music-cognition-theory-musicology.md`
 - `research/cases/music-affect-memory-entrainment.md`
 - `research/cases/tracker-semantic-pressure.md`
+- `research/cases/musicological-version-identity.md`
