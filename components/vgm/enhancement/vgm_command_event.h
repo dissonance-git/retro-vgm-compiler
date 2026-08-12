@@ -5,10 +5,16 @@
 
 namespace gameaudio::vgm {
 
+enum class command_event_kind : std::uint8_t {
+    reset = 0,
+    command = 1,
+};
+
 // Observation-only view of one command as VGMPlayer reaches it during realtime
 // parsing. `payload` points into the loaded VGM image and is valid only for the
 // duration of the observer callback. The observer must not mutate it or block.
 struct command_event {
+    command_event_kind kind = command_event_kind::command;
     std::uint64_t tick = 0;
     std::uint32_t file_offset = 0;
     std::uint8_t command = 0;
