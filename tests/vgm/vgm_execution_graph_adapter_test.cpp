@@ -67,6 +67,9 @@ int main() {
     CHECK(std::get<std::uint64_t>(psg_event->attributes[1].value) == 0x50);
     CHECK(std::get<std::uint64_t>(psg_event->attributes[2].value) == 1);
     CHECK(std::get<std::uint64_t>(psg_event->attributes[3].value) == 0);
+    CHECK(std::get<std::uint64_t>(psg_event->attributes[4].value) == 1);
+    CHECK(!std::get<bool>(psg_event->attributes[5].value));
+    CHECK(std::get<std::uint64_t>(psg_event->attributes[6].value) == 0x90);
 
     const node* ym_event = graph.find_node(ym_event_id);
     CHECK(ym_event != nullptr);
@@ -74,6 +77,10 @@ int main() {
     CHECK(std::get<std::uint64_t>(ym_event->attributes[1].value) == 0x52);
     CHECK(std::get<std::uint64_t>(ym_event->attributes[2].value) == 2);
     CHECK(std::get<std::uint64_t>(ym_event->attributes[3].value) == 1);
+    CHECK(std::get<std::uint64_t>(ym_event->attributes[4].value) == 2);
+    CHECK(!std::get<bool>(ym_event->attributes[5].value));
+    CHECK(std::get<std::uint64_t>(ym_event->attributes[6].value) == 0x2B);
+    CHECK(std::get<std::uint64_t>(ym_event->attributes[7].value) == 0x80);
 
     const node* dac_event = graph.find_node(dac_event_id);
     CHECK(dac_event != nullptr);
@@ -84,6 +91,8 @@ int main() {
     CHECK(reset_event != nullptr);
     CHECK(std::get<std::string>(reset_event->attributes[0].value) == "reset");
     CHECK(std::get<std::uint64_t>(reset_event->attributes[3].value) == 3);
+    CHECK(std::get<std::uint64_t>(reset_event->attributes[4].value) == 0);
+    CHECK(!std::get<bool>(reset_event->attributes[5].value));
     CHECK(!reset_event->provenance[0].byte_offset.has_value());
 
     bool rejected_invalid_trace = false;
