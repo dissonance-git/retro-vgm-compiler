@@ -43,6 +43,7 @@ int main() {
     CHECK(capture.count() == 0);
     CHECK(capture.next_trace_index() == 0);
     CHECK(!capture.overflowed());
+    CHECK(capture.first_dropped_record() == nullptr);
 
     // Equal device timestamps remain strictly ordered by observation ordinal.
     capture.observe(make_record(
@@ -84,6 +85,7 @@ int main() {
     capture.begin_window();
     CHECK(capture.count() == 0);
     CHECK(capture.next_trace_index() == 2);
+    CHECK(capture.first_dropped_record() == nullptr);
     capture.observe(make_record(
         spc_voice_runtime_event_kind::sample_phase_started,
         120,
@@ -109,6 +111,7 @@ int main() {
     }
     CHECK(capture.count() == spc_runtime_capture::capacity);
     CHECK(!capture.overflowed());
+    CHECK(capture.first_dropped_record() == nullptr);
     CHECK(capture.records()[0].trace_index == 0);
     CHECK(capture.records()[spc_runtime_capture::capacity - 1].trace_index ==
         spc_runtime_capture::capacity - 1);
@@ -129,10 +132,19 @@ int main() {
     CHECK(capture.dropped() == 2);
     CHECK(capture.next_trace_index() == spc_runtime_capture::capacity + 2);
 
+    const auto* first_dropped = capture.first_dropped_record();
+    CHECK(first_dropped != nullptr);
+    CHECK(first_dropped->trace_index == spc_runtime_capture::capacity);
+    CHECK(first_dropped->tick == 20000);
+    CHECK(first_dropped->tick_rate == 1024000);
+    CHECK(first_dropped->ram_write_serial == 20000);
+    CHECK(first_dropped->kind == spc_voice_runtime_event_kind::source_latched);
+
     const std::uint64_t next_after_gap = capture.next_trace_index();
     capture.begin_window();
     CHECK(!capture.overflowed());
     CHECK(capture.dropped() == 0);
+    CHECK(capture.first_dropped_record() == nullptr);
     capture.observe(make_record(
         spc_voice_runtime_event_kind::source_latched,
         21000,
@@ -146,6 +158,7 @@ int main() {
     capture.reset_trace();
     CHECK(capture.count() == 0);
     CHECK(capture.next_trace_index() == 0);
+    CHECK(capture.first_dropped_record() == nullptr);
     capture.observe(make_record(
         spc_voice_runtime_event_kind::key_on_accepted,
         0,
