@@ -72,10 +72,17 @@ void write_ym_operator(ym2612_state& state, std::uint8_t port, std::uint8_t reg,
 } // namespace
 
 void genesis_state::reset() noexcept {
+    const event_tap tap = event_tap_;
+    void* const user = event_tap_user_;
     *this = genesis_state{};
+    event_tap_ = tap;
+    event_tap_user_ = user;
 }
 
 void genesis_state::observe(const command_event& event) noexcept {
+    if (event_tap_ != nullptr)
+        event_tap_(event_tap_user_, event);
+
     if (event.kind == command_event_kind::reset) {
         reset();
         return;
