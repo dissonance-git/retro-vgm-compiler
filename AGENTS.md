@@ -1,12 +1,18 @@
 # AGENTS.md
 
-## Helix relationship
+## Project instruction chain
 
-This repository is the independent implementation home for `project:vgm-tooling`, which is tracked by Helix for project continuity, research, evidence, relationships, and re-entry.
+This repository is the independent implementation home for `project:vgm-tooling`, which is tracked by Helix and is a child project of libaural. Sonic 3 Music Attribution is a bounded child project/case of VGM Tooling.
 
-Before substantive work, read the current Helix operating law at `dissonance-git/Helix/AGENTS.md` and apply the parts relevant to evidence, provenance, correction, validation, re-entry, and concurrent repository safety. This file owns VGM Tooling's project-specific implementation laws and may specialize repository workflow where the project genuinely differs. Direct user instruction or correction outranks both.
+Before substantive work, read the current instruction chain in order:
 
-Do not copy VGM Tooling's implementation into Helix merely to make the connection visible, and do not copy Helix machinery into this repository merely to inherit its design. Helix preserves the exact route to this project; this repository remains canonical for its code, tests, builds, local implementation history, and releases.
+1. `dissonance-git/Helix/AGENTS.md` for the common operating law;
+2. `dissonance-git/libaural/AGENTS.md` for applicable parent-project research law;
+3. this file for VGM Tooling-specific implementation law.
+
+A child inherits only the parent laws that apply to its work. This file may specialize them where game-music source truth, realtime playback, provenance, licensing, or implementation constraints genuinely differ. Direct user instruction or correction outranks the entire chain.
+
+Do not copy VGM Tooling's implementation into Helix or libaural merely to make the connection visible, and do not copy parent machinery into this repository merely to inherit its design. Helix preserves project continuity and cross-project routes; libaural owns general artificial-hearing research; this repository remains canonical for VGM Tooling code, tests, builds, local implementation history, and releases.
 
 ## Scope
 
@@ -42,11 +48,13 @@ Do not solve boundaries by copying every related project into this repository.
 ```text
 Helix
   ↓ research / evidence / project state
+libaural
+  ↓ general artificial-hearing research context
 VGM Tooling
   ↓ source truth / executable synthesis
 ├─ foobar2000 frontends
 ├─ libaural experiments
-├─ attribution/forensic subprojects
+├─ Sonic 3 Music Attribution
 └─ Omniphony input
 ```
 
