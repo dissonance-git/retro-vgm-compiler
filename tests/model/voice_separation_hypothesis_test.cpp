@@ -143,6 +143,33 @@ void group_candidate(
     graph.add_edge(std::move(grouping));
 }
 
+void group_from_driver_identity(
+    musical_execution_graph& graph,
+    node_id event_id,
+    node_id part_id,
+    const char* source,
+    std::uint64_t offset) {
+    edge grouping;
+    grouping.kind = edge_kind::groups_into;
+    grouping.from = event_id;
+    grouping.to = part_id;
+    grouping.attributes.push_back({
+        "support_kind",
+        std::string{"validated_driver_track_identity"},
+        evidence_status::derived,
+        1.0,
+        "",
+    });
+    grouping.provenance.push_back({
+        evidence_status::derived,
+        1.0,
+        source,
+        offset,
+        "validated driver grammar ties this event to a persistent logical track; source evidence outranks proximity-only grouping",
+    });
+    graph.add_edge(std::move(grouping));
+}
+
 } // namespace
 
 int main() {
@@ -227,6 +254,83 @@ int main() {
         assert(grouping->attributes[2].status == evidence_status::derived);
         assert(grouping->attributes[3].status == evidence_status::derived);
     }
+
+    // VGM Tooling can often know more than a score-only voice-separation system.
+    // Here a validated driver track proves that event A and event B belong to the
+    // same persistent logical source even though the proximity-only candidate
+    // prefers event C. Stronger source evidence is represented as stronger
+    // evidence, not by deleting the weaker hypothesis.
+    node driver_track;
+    driver_track.kind = node_kind::logical_process;
+    driver_track.layer = semantic_layer::driver_execution;
+    driver_track.flow = flow_kind::control;
+    driver_track.label = "validated logical driver track";
+    driver_track.provenance.push_back({
+        evidence_status::exact,
+        1.0,
+        "fixture-driver",
+        0x200u,
+        "validated track grammar and execution identity",
+    });
+    const node_id driver_track_id = graph.add_node(std::move(driver_track));
+
+    node supported_part;
+    supported_part.kind = node_kind::part;
+    supported_part.layer = semantic_layer::musical_performance;
+    supported_part.flow = flow_kind::stream;
+    supported_part.label = "driver-supported persistent musical part";
+    supported_part.attributes.push_back({
+        "identity_scope",
+        std::string{"persistent_musical_part"},
+        evidence_status::derived,
+        1.0,
+        "",
+    });
+    supported_part.provenance.push_back({
+        evidence_status::derived,
+        1.0,
+        "fixture-driver",
+        0x200u,
+        "persistent part derived from validated logical driver-track identity",
+    });
+    const node_id supported_part_id = graph.add_node(std::move(supported_part));
+
+    edge part_derivation;
+    part_derivation.kind = edge_kind::derived_from;
+    part_derivation.from = driver_track_id;
+    part_derivation.to = supported_part_id;
+    part_derivation.provenance.push_back({
+        evidence_status::derived,
+        1.0,
+        "fixture-driver",
+        0x200u,
+        "driver identity supports the persistent musical part",
+    });
+    graph.add_edge(std::move(part_derivation));
+
+    group_from_driver_identity(graph, first, supported_part_id, "fixture-driver", 0x210u);
+    group_from_driver_identity(graph, upper_after_crossing, supported_part_id, "fixture-driver", 0x240u);
+
+    const auto first_groupings_with_source = graph.edges_from(first, edge_kind::groups_into);
+    assert(first_groupings_with_source.size() == 3);
+
+    const node* source_supported = graph.find_node(supported_part_id);
+    assert(source_supported != nullptr);
+    assert(source_supported->provenance[0].status == evidence_status::derived);
+    assert(source_supported->provenance[0].confidence == 1.0);
+
+    const auto supported_first = graph.edges_to(supported_part_id, edge_kind::groups_into);
+    assert(supported_first.size() == 2);
+    for (const edge* grouping : supported_first) {
+        assert(grouping->provenance[0].status == evidence_status::derived);
+        assert(grouping->provenance[0].confidence == 1.0);
+    }
+
+    // The lower-confidence alternatives remain inspectable. Evidence hierarchy
+    // resolves what should be trusted without erasing why another analysis found
+    // a different candidate trajectory.
+    assert(graph.find_node(crossing_part)->provenance[0].status == evidence_status::hypothesis);
+    assert(graph.find_node(proximity_part)->provenance[0].status == evidence_status::hypothesis);
 
     return 0;
 }
