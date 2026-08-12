@@ -59,6 +59,8 @@ enum class node_kind : std::uint8_t {
     projection,
     logical_process,
     program_point,
+    execution_trace,
+    trace_event,
 };
 
 enum class edge_kind : std::uint8_t {
