@@ -5,37 +5,44 @@
 class input_base : public input_stubs
 {
 protected:
+	//Main player
 	PlayerA							m_main_player;
 	DATA_LOADER*					m_data_loader;
 	
-	service_ptr_t<file>				m_file;
+	service_ptr_t<file>				m_file;			//handle of input file
 	pfc::array_t<uint8_t>			m_file_buf;
-	pfc::array_t<uint8_t>			m_decode_buf;
-	pfc::string8					m_file_path;
-	t_filesize						m_file_len;
+	pfc::array_t<uint8_t>			m_decode_buf;	//decode buffer
+	//t_size						m_decode_buf_len;
+	pfc::string8					m_file_path;		//input file path
+	//pfc::string8					m_file_ext;		//input file extension
+	t_filesize						m_file_len;		//input file size
 	constexpr static t_filesize		m_file_len_max = 524288000;
 
-	double							m_song_len;
-	uint_fast32_t					m_fade_len;
+	//Song time
+	double							m_song_len;	//song length [s]
+	uint_fast32_t					m_fade_len;	//configure fade length [ms]
 	uint_fast16_t					m_loop_count;
-	uint_fast16_t					m_loop_count_for_ifnl;
+	uint_fast16_t					m_loop_count_for_ifnl;	//for input_flag_no_looping
 	bool							m_loop_flag;
 	uint_fast64_t					m_song_sample;
 	uint_fast64_t					m_fade_sample;
+	//uint_fast64_t					m_pause_sample;
 	bool							m_play_infinitely;
 	volatile bool					m_calculated_song_len;
 
+	//Playback
 	uint_fast32_t					m_sample_rate;
 	uint_fast32_t					m_bps;
 	constexpr static uint_fast32_t	m_channels = 2;
-	constexpr static uint_fast32_t	m_render_ms = 10;
-	uint_fast32_t					m_render_sample;
+	constexpr static uint_fast32_t	m_render_ms = 10;	//buffer duration [ms]
+	uint_fast32_t					m_render_sample;	// buffer duration [sample]
 	uint_fast32_t					m_render_byte;
 	uint_fast32_t					m_render_done;
-	uint_fast64_t					m_played_sample;
-	bool							m_dynamic_info;
+	uint_fast64_t					m_played_sample;		//played time [sample]
+	bool							m_dynamic_info;			//reporting configuration dynamically
 	volatile bool					m_play_end;
 
+	//etc.
 	t_input_open_reason				m_open_reason;
 	unsigned int					m_decode_flags;
 	static const GUID				m_decoder_priority_table_guid;
@@ -48,6 +55,7 @@ public:
 	virtual ~input_base();
 
 	static bool g_is_our_content_type(const char *p_content_type) { return false; }
+//	static bool g_is_our_path(const char* p_path, const char* p_extension);
 	void open(service_ptr_t<file> p_filehint, const char * p_path, t_input_open_reason p_reason, abort_callback &p_abort);
 	t_filestats get_file_stats(abort_callback & p_abort) { return m_file->get_stats(p_abort); }
 #if FOOBAR2000_SDK_VERSION >= 20220810
@@ -71,9 +79,20 @@ public:
 
 	void retag(const file_info &p_info, abort_callback &p_abort);
 	void remove_tags(abort_callback& p_abort);
-	static GUID g_get_guid() { return m_decoder_priority_table_guid; }
-	static const char * g_get_name() { return g_my_component_name; }
-	static GUID g_get_preferences_guid() { return g_guid_my_preferences_page; }
+	static GUID g_get_guid()
+	{
+		return m_decoder_priority_table_guid;
+	}
+
+	static const char * g_get_name()
+	{
+		return g_my_component_name;
+	}
+
+	static GUID g_get_preferences_guid()
+	{
+		return g_guid_my_preferences_page;
+	}
 	static UINT8 event_callback(PlayerBase* player, void* user_param, UINT8 evt_type, void* evt_param);
 	static DATA_LOADER* file_req_callback(void* user_param, PlayerBase* player, const char* file_name);
 	static void update_muting(const PLR_DEV_OPTS_EX & p_opts);
@@ -89,12 +108,6 @@ protected:
 	void meta_add_for_multi_value_field(file_info& p_info, const char* name, const char* value);
 	void meta_add_for_multi_line_field(file_info& p_info, const char* name, const char* value);
 
-	// Format-specific realtime render hooks. They are deliberately no-op in the
-	// shared input base so reference rendering behavior is unchanged unless a
-	// concrete decoder explicitly opts into a shadow/enhanced path.
-	virtual void before_render_block(uint_fast64_t start_sample) { (void)start_sample; }
-	virtual void after_render_block(uint_fast32_t rendered_samples) { (void)rendered_samples; }
-
 private:
 	static critical_section g_lock;
 	static pfc::list_t<input_base*> g_my_instance_list;
@@ -107,4 +120,5 @@ protected:
 	virtual void set_additional_info(file_info& p_info, abort_callback& p_abort) = 0;
 	virtual void retag_internal(const file_info& p_info, abort_callback& p_abort) = 0;
 	virtual void remove_tags_internal(abort_callback& p_abort) = 0;
+
 };
