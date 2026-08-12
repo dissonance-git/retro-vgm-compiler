@@ -17,7 +17,7 @@ struct sn76489_timed_write {
     std::uint8_t data = 0;
 };
 
-// High-quality realtime SN76489 source renderer.
+// High-quality realtime SN76489-family source renderer.
 //
 // This is intentionally a stem renderer, not a stereo mixer. Each PSG source
 // remains isolated so later source-aware mixing/spatialization can make its own
@@ -31,7 +31,11 @@ public:
         double sample_rate_hz = 48000.0;
         std::uint32_t white_noise_feedback = 0x0009;
         std::uint8_t shift_register_width = 16;
+        std::uint8_t clock_divider = 8;
         std::uint8_t oversample = 4;
+        bool sega_style_psg = true;
+        bool ncr_style_psg = false;
+        bool negate_output = false;
     };
 
     sn76489_enhanced() noexcept;
@@ -39,6 +43,11 @@ public:
 
     void configure(const config& cfg) noexcept;
     void reset() noexcept;
+
+    // NCR-style feedback/timing and T6W28 split-chip operation are deliberately
+    // left on the libvgm reference path until they have their own validated
+    // enhanced renderer. Never silently approximate an unsupported variant.
+    bool supported() const noexcept { return supported_; }
 
     // Accepts the same latch/data byte stream as the hardware PSG.
     void write(std::uint8_t data) noexcept;
@@ -60,19 +69,21 @@ public:
     std::uint16_t tone_period(std::size_t channel) const noexcept;
     std::uint8_t attenuation(std::size_t channel) const noexcept;
     std::uint8_t noise_control() const noexcept { return noise_control_; }
-    std::uint16_t noise_lfsr() const noexcept { return noise_lfsr_; }
+    std::uint32_t noise_lfsr() const noexcept { return noise_lfsr_; }
     std::uint8_t stereo_mask() const noexcept { return stereo_mask_; }
 
 private:
     static double poly_blep(double phase, double phase_step) noexcept;
     static double attenuation_gain(std::uint8_t attenuation) noexcept;
 
+    std::uint16_t normalized_period(std::uint16_t period) const noexcept;
     double render_tone(std::size_t channel, double internal_rate) noexcept;
     double render_noise(double internal_rate) noexcept;
     void clock_noise_lfsr() noexcept;
     double noise_shift_rate_hz() const noexcept;
 
     config cfg_{};
+    bool supported_ = true;
     std::array<std::uint16_t, 3> tone_periods_{{1, 1, 1}};
     std::array<std::uint8_t, 4> attenuation_{{15, 15, 15, 15}};
     std::array<double, 3> tone_phase_{};
@@ -82,7 +93,7 @@ private:
     std::uint8_t noise_control_ = 0;
     std::uint8_t stereo_mask_ = 0xFF;
 
-    std::uint16_t noise_lfsr_ = 0x8000;
+    std::uint32_t noise_lfsr_ = 0x8000;
     double noise_phase_ = 0.0;
 };
 
