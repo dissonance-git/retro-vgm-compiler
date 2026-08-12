@@ -239,12 +239,12 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
             : "runtime BRR/source identity does not by itself establish authored sample root tuning",
         source_name));
     features.add(unresolved_feature(
-        "normalized_absolute_pitch",
+        "performed_pitch_frequency_hz",
         semantic_layer::musical_performance,
         global_event ? feature_availability::not_applicable : feature_availability::unknown,
         global_event
             ? "global S-DSP execution event has no pitched-source semantics"
-            : "S-DSP pitch rate does not establish absolute musical pitch without tuning/source continuity",
+            : "S-DSP pitch rate does not establish performed acoustic frequency without sample root tuning and source continuity",
         source_name));
     features.add(unresolved_feature(
         "persistent_part_identity",
