@@ -15,8 +15,11 @@ private:
 	gameaudio::vgm::psg_block_capture m_psg_capture;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<bool, 2> m_psg_present{{false, false}};
+	std::array<bool, 2> m_psg_config_supported{{false, false}};
 	std::array<bool, 2> m_psg_shadow_valid{{false, false}};
 	bool m_psg_capture_active = false;
+	bool m_psg_configured = false;
+	uint_fast64_t m_psg_replay_sample = 0;
 
 protected:
 	virtual void register_player();
@@ -31,14 +34,17 @@ public:
 	input_vgm();
 	virtual ~input_vgm();
 	static bool g_is_our_path(const char *p_path, const char *p_extension);
-	bool decode_run(audio_chunk &p_chunk, abort_callback &p_abort);
-	void decode_seek(double p_seconds, abort_callback &p_abort);
+	bool decode_run(audio_chunk &p_chunk, abort_callback &p_abort) override;
+	void decode_seek(double p_seconds, abort_callback &p_abort) override;
 
 private:
 #ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
 	static void command_observer_callback(void* user_param, const VGM_COMMAND_OBSERVER_EVENT* event);
 #endif
+	static void source_event_tap(void* user_param, const gameaudio::vgm::command_event& event) noexcept;
 	void configure_enhanced_psg();
 	void apply_psg_event_outside_render(const gameaudio::vgm::command_event& event);
+	void advance_psg_to(uint_fast64_t absolute_sample) noexcept;
+	void replay_captured_psg(uint_fast32_t rendered_samples) noexcept;
 	void guess_track_number_tag_from_file_name(file_info& p_info);
 };
