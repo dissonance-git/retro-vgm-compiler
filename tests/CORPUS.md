@@ -4,7 +4,7 @@ This document governs user-supplied real-music fixtures used to pressure-test VG
 
 ## Purpose
 
-The corpus exists to test the full path from preserved game-music objects into execution, synthesis, musical analysis, rendering, and human-facing discussion.
+The corpus exists to test the full path from preserved game-music objects into execution, synthesis, musical analysis, rendering, attribution safeguards, and human-facing discussion.
 
 It complements synthetic regressions under `tests/vgm/`, `tests/spc/`, and `tests/model/`.
 
@@ -18,6 +18,7 @@ can parts / gestures / sections / repetition be analyzed?
 can the reference and enhanced renderers be compared?
 can VGM Tooling describe what a listener hears naturally?
 can every material description descend into evidence?
+can metadata remain separate from attribution evidence?
 ```
 
 ## Preservation rule
@@ -57,7 +58,21 @@ For these user-supplied test sets, **embedded artist metadata is not authoritati
 
 In particular, do not use VGM GD3 artist fields, SPC internal artist fields, or analogous native embedded tags as the expected artist identity for attribution, catalog, or user-facing artist-name tests.
 
-The user maintains authoritative artist naming through external foobar tags, which suppress the outdated embedded artist value without rewriting the original game-music file.
+The user's curated artist naming lives in foobar2000 external tags. Helix has already ingested that state and explicitly records `external-tags.db` as canonical for the user's local foobar metadata.
+
+Helix's current normalized route is:
+
+```text
+foobar2000 external-tags.db
+        ↓
+Helix canonical music source records
+        ↓
+Library/Sources/Music/FoobarLibraryMetadata.jsonl
+        ↓
+optional compact query/index projections
+```
+
+The historical capitalization above is retained because it is the source path recorded by the Helix ingestion report. VGM Tooling does not own or duplicate that database.
 
 Therefore:
 
@@ -65,15 +80,43 @@ Therefore:
 embedded artist tag
 = exact artifact metadata only
 
-external curated artist tag
+Helix-ingested foobar external artist tag
 = preferred user-facing artist identity for this corpus
 ```
 
-If an external tag is unavailable to a standalone test runner, artist identity should remain `unknown` unless a separate curated corpus manifest or independently verified documentary source supplies it.
+If the Helix/foobar external tag is unavailable to a standalone test runner, artist identity should remain `unknown` unless an independently verified documentary source supplies it.
 
 Do **not** fall back silently to the embedded artist field.
 
 This rule is intentionally narrow. Other embedded fields may be inspected according to their own provenance and reliability; the user correction specifically applies to artist names.
+
+## Cross-project ownership
+
+VGM Tooling owns:
+
+- the immutable VGM/VGZ/SPC fixture bytes;
+- hashes and source-family inventory;
+- execution/synthesis/performance analysis of those fixtures;
+- corpus-specific regression expectations that belong to game-music machinery.
+
+Helix owns:
+
+- the user's canonical ingested foobar metadata;
+- provenance back to `external-tags.db`;
+- broader music-library identity and cross-project evidence;
+- Sonic 3 project state and historical attribution evidence.
+
+Do not copy the full Helix music database into this repository merely to make tests self-contained.
+
+Prefer a small join record when needed:
+
+```text
+fixture SHA-256 / normalized local path
+        ↕
+Helix source-record ID / canonical tag route
+```
+
+That join is provenance, not a second metadata source of truth.
 
 ## Foobar behavior
 
@@ -109,12 +152,67 @@ Each committed corpus set should have a manifest recording at least:
 - game/work identifier when known;
 - track/cue identifier when known;
 - chip/device family when determinable from the source;
-- whether an external artist tag exists;
-- authoritative artist value only when supplied by the external tag set or independently verified;
+- optional normalized local/source path used to join Helix metadata;
+- optional Helix source-record ID when resolved;
+- whether a foobar external artist tag exists;
+- authoritative artist value only when supplied through the Helix/foobar route or independently verified;
 - known provenance/capture limitations;
 - any reason a fixture is particularly useful for a regression.
 
 Do not store a guessed artist merely to make the inventory look complete.
+
+## Sonic 3 attribution control
+
+The Sonic 3 corpus is especially useful because it should **not** have one trivially trusted artist answer.
+
+Helix's active `project:sonic-3-music-attribution` distinguishes:
+
+```text
+track / exact version
+→ composer
+→ arranger / implementation author
+→ source company or team
+→ evidence
+→ confidence / unresolved conflict
+```
+
+The project has explicit prototype/final/replacement distinctions and unresolved composer/arranger conflicts. It also contains technical fingerprint hypotheses involving voice-bank use, MOD settings, FM/PSG initialization, patch reuse, SFX-heavy construction, and version divergence.
+
+This gives VGM Tooling a strong negative control:
+
+```text
+external artist tag
+!= composer proof
+
+sound-team tag
+!= track-level composer proof
+
+arrangement / implementation fingerprint
+!= composition fingerprint
+
+shared patch / voice / MOD behavior
+!= authorship proof
+
+prototype work identity
+!= final-version realization identity
+```
+
+A Sonic 3 fixture may legitimately have several simultaneous metadata/evidence statements, for example:
+
+```text
+external foobar artist display        curated library metadata
+embedded GD3 artist                   stale artifact metadata
+known exact version                   artifact/work evidence
+arranger candidate                    technical/historical hypothesis
+composer candidate                    separate attribution hypothesis
+sound team                            contextual metadata
+```
+
+These must remain separate.
+
+The strongest current project rule is:
+
+> Start from the exact track/version object and the authorial layer in dispute. Technical resemblance may strengthen an arrangement/implementation hypothesis without silently becoming composer attribution.
 
 ## Analysis rules
 
@@ -138,7 +236,8 @@ For both:
 
 - musical structure remains derived/hypothesis as appropriate;
 - listener/critic/producer/engineer descriptions are discourse projections over support bundles;
-- source bytes remain available beneath every higher claim.
+- source bytes remain available beneath every higher claim;
+- library metadata, musicological attribution, and technical realization evidence remain independently scoped.
 
 ## Validation style
 
@@ -162,6 +261,10 @@ source-relative feature correctly reports present / unknown / unavailable
 natural section description changes when the underlying support bundle changes
 
 external artist metadata overrides embedded artist metadata in the foobar-facing path
+
+technical arrangement fingerprint does not promote composer attribution
+
+prototype and final versions remain distinct work/realization objects
 ```
 
 The corpus is an empirical pressure surface, not a shortcut around provenance.
