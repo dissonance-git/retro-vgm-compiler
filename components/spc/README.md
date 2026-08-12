@@ -72,6 +72,92 @@ SPC
 
 The common model must support both without forcing one source geometry into the other.
 
+## BRR sample identity
+
+`spc_brr_sample.h` lifts reusable BRR storage out of the saved voice-register slots without turning `SRCN` into an instrument.
+
+The exact source path is:
+
+```text
+saved voice slot
+→ SRCN
+→ current DIR entry
+→ BRR start address
+→ 9-byte BRR block stream
+```
+
+A snapshot-local BRR object is currently identified conservatively by its exact RAM start address. Multiple saved slots or directory entries that resolve to the same start address therefore reference one `sample_buffer` rather than creating duplicate sample objects.
+
+The directory loop target is **not** part of that stored-sample identity. Two directory entries may reference the same BRR start while providing different loop targets, so the graph keeps the loop address on the `references` edge:
+
+```text
+physical slot ──references──> BRR sample object
+       │
+       └── SRCN / directory entry / loop target
+```
+
+The BRR object itself preserves facts intrinsic to the stored stream, including its start address, bounded extent, END/LOOP header state, RAM wrapping and whether an END block was found. Identical bytes at different RAM addresses remain distinct exact snapshot objects until stronger identity evidence exists.
+
+This prevents three common collapses:
+
+```text
+sample slot != sample object
+sample object != instrument
+loop reference != sample identity
+```
+
+## Runtime physical voice lifecycle
+
+`spc_runtime_voice_adapter.h` begins the controlled-execution layer. It is deliberately based on instrumented DSP runtime state rather than trying to infer live voices from saved `KON`, `ENVX` or `OUTX` bytes.
+
+This matches the editable SNESAPU implementation directly. Its internal `mix[8]` voice state already separates:
+
+- active versus `MFLG_OFF` inactive state;
+- `MFLG_KOFF` release state;
+- current BRR block and decoded sample state;
+- envelope mode/value;
+- latched/current source `mSrc`;
+- KON delay `mKOn`;
+- original and modulated pitch state;
+- noise and other per-voice mixing flags.
+
+The runtime lifecycle is therefore represented as:
+
+```text
+accepted KON
+→ physical voice episode begins
+
+KON delay expires
+→ same episode enters sample-producing phase
+
+KOFF / release
+→ same episode continues in release
+
+DSP reports inactive
+→ physical voice episode ends
+```
+
+A retriggered accepted KON closes the prior bounded physical episode on that hardware slot and opens another. A capture or semantic gap closes continuity with an explicitly incomplete boundary rather than manufacturing a release or inactivity event.
+
+Critically:
+
+```text
+saved KON bit
+!= observed accepted KON
+
+KOFF
+!= end of physical voice episode
+
+physical voice episode
+!= musical note
+!= instrument
+!= persistent part
+```
+
+The runtime adapter reuses the common graph's existing `execution_trace`, `trace_event`, `voice_instance`, `physical_slot`, `occupies`, `causes` and `contributes_to` vocabulary. No SPC-specific ontology was added.
+
+The next pressure point is runtime source/sample continuity. SNESAPU maintains `mSrc` separately from the exposed `SRCN` register and can update source state around key-on and loop restart behavior. The model must determine when a physical episode references one stored BRR object, when that reference changes, and what evidence would be strong enough to say two physical episodes belong to one persistent musical identity.
+
 ## First engineering sequence
 
 1. Preserve and validate the exact SPC snapshot representation before assuming emulator-internal state is source truth.
