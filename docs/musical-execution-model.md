@@ -4,37 +4,76 @@
 
 VGM Tooling supports radically different digital music representations without forcing their source semantics into one file format.
 
-The stable abstraction begins **after source-specific execution**.
+The stable common abstraction begins **after source-specific parsing or execution**, while retaining routes back to the exact source representation.
 
 ```text
-VGM register log ───────┐
-SPC machine snapshot ───┤
-MIDI event stream ──────┤
-SMPS / GEMS / MDX ──────┤
-tracker/module data ─────┤
-ROM-derived driver data ─┘
-            │
-            ▼
-source-specific parser / executor
-            │
-            ▼
-source and synthesis state
-            │
-            ▼
-common musical execution model
-            │
-      ┌─────┼──────────┐
-      ▼     ▼          ▼
- reasoning  libaural   rendering
+MML / authored source ─────┐
+VGM register log ──────────┤
+SPC machine snapshot ──────┤
+MIDI event stream ─────────┤
+SMPS / GEMS / MDX ─────────┤
+tracker/module data ────────┤
+ROM-derived driver data ────┘
+              │
+              ▼
+source-specific parser / compiler / executor
+              │
+              ▼
+exact source / execution / synthesis state
+              │
+              ▼
+provenance-aware musical execution graph
+              │
+       ┌──────┼───────────┐
+       ▼      ▼           ▼
+ reasoning  rendering   libaural / forensics
 ```
 
 Do not normalize the source representation prematurely. Normalize **meaning after execution**.
 
-The objective is for higher-level reasoning to ask the same musical questions regardless of whether the evidence arrived as YM2612 registers, an SPC700 RAM snapshot, MIDI messages, a tracker pattern, or a known driver sequence.
+The objective is for higher-level reasoning to ask the same musical questions regardless of whether the evidence arrived as an authored MML command, YM2612 registers, an SPC700 RAM snapshot, MIDI messages, a tracker pattern, or a known driver sequence.
+
+The common model must remain descendable to exact source evidence whenever a distinction matters.
+
+## Research basis
+
+The model is being pressure-tested against many independent systems that expose different strata of the same musical phenomenon:
+
+- authored music languages and notation;
+- game drivers and sequencers;
+- logged device execution;
+- executable machine-state formats;
+- trackers and MIDI/module synthesis;
+- whole-machine emulators and broad multi-engine players;
+- audio programming and DSP languages;
+- DAWs and routing/session graphs;
+- symbolic-music and score systems;
+- transcription and inverse-recovery systems;
+- music cognition and auditory-scene research.
+
+No one reference system owns the architecture. Common abstractions survive only when they solve real problems across several source families without erasing useful native state.
+
+See `docs/music-representation-systems.md`, `docs/audio-programming-languages.md`, and `docs/upstreams.md`.
 
 ## Source classes
 
 Use established preservation terminology where practical.
+
+### Authored symbolic / programming representations
+
+Examples: MML dialects, score/program source, tracker source material and other composer-facing symbolic systems.
+
+Potential evidence:
+
+- explicit notes/rests/ties;
+- duration, tempo and meter;
+- parts/tracks/voices;
+- loops, macros, branches and other program structure;
+- instrument/program selection;
+- articulation, modulation and automation;
+- chip- or device-specific synthesis instructions.
+
+Authored truth does not automatically prove the exact later acoustic realization. Compiler, driver and target device remain part of the route.
 
 ### Logged execution traces
 
@@ -72,7 +111,7 @@ The exact information available differs by format and system. Do not assume ever
 
 ### Driver / sequence formats
 
-Examples: SMPS, MDX and other known music-engine data formats.
+Examples: SMPS, GEMS, N-SPC, MDX, PMD and other known music-engine data formats.
 
 Potential evidence:
 
@@ -114,50 +153,66 @@ Potential evidence:
 
 Again, tracker channel identity is a source representation, not automatically one perceptual auditory stream.
 
-## Layers
+## Semantic layers
 
-The common model keeps these layers distinct.
+The implemented common graph keeps these layers distinct.
 
 ### 1. Source representation
 
-Exact bytes, commands, memory locations, files, addresses, driver objects, and source timing.
+Exact bytes, commands, memory locations, files, addresses, driver objects, annotations and native source timing.
 
 This layer is never replaced by an inferred musical description.
 
-### 2. Execution state
+### 2. Authored program
 
-What the digital machine is doing while the source runs.
+Composer-/programmer-facing musical structure when it survives or is directly available.
+
+Examples:
+
+- MML commands;
+- score/pattern objects;
+- explicit parts and loops;
+- authored tempo or meter;
+- program/instrument selection;
+- authored control flow or transformations.
+
+This layer may be unavailable for trace-only sources.
+
+### 3. Driver execution
+
+What the sequencer, driver or executable music program is doing while the source runs.
 
 Examples:
 
 - CPU/driver track state;
 - sequence position;
+- scheduler events;
+- logical-track state;
 - hardware-channel allocation;
-- register writes;
 - sample pointers;
-- operator state;
-- effect routing;
+- driver loops and branches;
 - clock/timing state.
 
-### 3. Synthesis objects
+### 4. Synthesis
 
-Objects that generate or transform sound.
+Objects and state that generate or transform sound.
 
 Examples:
 
-- FM patch/operator set;
+- FM patch/operator graph;
 - BRR/PCM/ADPCM sample object;
 - PSG oscillator/noise source;
 - wavetable;
 - MIDI-module partial/patch where known;
 - echo/reverb/effect object;
-- QSound source and spatial-processing state.
+- QSound source and spatial-processing state;
+- routing buses and signal-processing topology.
 
 A hardware slot is not an object identity. Use stable content/state identity where possible.
 
-### 4. Musical performance
+### 5. Musical performance
 
-Format-independent musical concepts supported by the source execution.
+Source-independent musical operations supported by source execution.
 
 Candidate objects include:
 
@@ -168,19 +223,37 @@ Candidate objects include:
 - persistent musical voice/part;
 - instrument identity or instrument hypothesis;
 - rhythmic event;
-- phrase/loop/section boundary;
 - authored spatial/routing trajectory;
 - effect-send trajectory.
 
-This is **not MIDI conversion**. Continuous controls, non-note sounds, FM/noise behavior, sample triggering, and effects remain first-class.
+This is **not MIDI conversion**. Continuous controls, non-note sounds, FM/noise behavior, sample triggering, effects and executable patterns remain first-class.
 
-### 5. Acoustic realization
+### 6. Musical structure
+
+Relations above individual performance events when the evidence supports them.
+
+Candidate objects include:
+
+- meter and beat hierarchy;
+- tempo maps;
+- chord/harmony relations;
+- key/scale context;
+- melodic contour;
+- rhythmic pattern;
+- phrase/section/form;
+- motif and transformation relations;
+- voice-leading relations;
+- repeated or equivalent structures.
+
+Some may be authored, some deterministically derived, and some analytical hypotheses. Musical structure never overwrites the lower performance or source layers.
+
+### 7. Acoustic realization
 
 The sound produced by a reference or enhanced renderer.
 
-Keep source stems available before final summation where practical.
+Keep source contributions available before final summation where practical. A rendered waveform is a projection of the larger execution graph, not the canonical identity of that graph.
 
-### 6. Auditory interpretation
+### 8. Auditory interpretation
 
 What a listener may hear as events and streams.
 
@@ -197,11 +270,71 @@ Owned primarily by libaural research:
 
 Physical source structure is unusually strong ground truth, but it does not dictate perception one-to-one.
 
+## Typed temporal graph
+
+The implementation in `model/musical_execution_graph.h` is deliberately small but already encodes several distinctions that repeatedly appeared across the research corpus.
+
+### Flow kinds
+
+```text
+event
+→ discrete occurrence: key-on, note, trigger, scheduler event, register write
+
+value
+→ persistent state: patch, routing, configuration
+
+control
+→ time-varying parameter/control relationship
+
+stream
+→ continuous output such as PCM or audio-rate signal
+```
+
+Do not force all four into one chronological event representation.
+
+### Object kinds
+
+The current graph can represent objects such as:
+
+- source objects;
+- sections and patterns;
+- parts;
+- musical events and relations;
+- instrument definitions;
+- synthesis objects;
+- running voice instances;
+- physical execution slots;
+- parameters and sample buffers;
+- effects and buses;
+- acoustic contributions;
+- auditory events/streams;
+- projections.
+
+### Relation kinds
+
+Current relations include concepts such as:
+
+- contains;
+- causes;
+- schedules;
+- instantiates;
+- realizes;
+- occupies;
+- controls;
+- routes to;
+- transforms;
+- contributes to;
+- groups into;
+- derived from;
+- same identity as;
+- repeats;
+- projects to.
+
+These relations are intentionally more informative than a generic edge and allow one exact object to participate in several representations without duplication.
+
 ## Evidence status
 
 Every transition upward must preserve how the claim was obtained.
-
-Use ordinary evidence states rather than pretending all common fields are equally certain.
 
 ### Exact
 
@@ -213,7 +346,8 @@ Examples:
 - SPC DSP SRCN value;
 - MIDI note-on message;
 - exact BRR bytes at an address;
-- known SMPS opcode parsed from a validated driver format.
+- known SMPS opcode parsed from a validated driver format;
+- explicit MML tempo or note command.
 
 ### Derived
 
@@ -224,7 +358,8 @@ Examples:
 - frequency in hertz from YM2612 F-number/block;
 - note-like pitch trajectory derived from a chip frequency trajectory;
 - content hash identifying the same BRR sample across different SRCN slots;
-- a hardware voice's amplitude trajectory from exact envelope and gain state.
+- a hardware voice's amplitude trajectory from exact envelope and gain state;
+- a repeated section relation from validated control flow.
 
 ### Hypothesis
 
@@ -241,26 +376,53 @@ Examples:
 
 Hypotheses carry confidence and competing alternatives. They must never overwrite exact source truth.
 
+## Capture quality is a separate axis
+
+Evidence status and capture fidelity are orthogonal.
+
+A register write can be exact with respect to a VGM file while the file itself may be:
+
+- a runtime capture;
+- transformed;
+- incomplete;
+- missing initialization or pre-roll;
+- affected by a suspected logging artifact;
+- supplemented by an external annotation.
+
+The graph therefore preserves capture/provenance flags independently of exact/derived/hypothesis status.
+
 ## Identity law
 
 The same musical object may occupy different physical locations over time or across files.
 
 ```text
-physical slot identity
-≠ persistent musical identity
+musical event / part
+        ↓ realizes through
+synthesis object / voice
+        ↓ occupies
+physical execution slot
+        ↓ produces
+acoustic contribution
+        ↓ may become
+auditory event / stream
 ```
+
+Every arrow can be one-to-one, one-to-many, many-to-one or time-varying.
 
 Examples include:
 
 - GEMS allocating notes to whatever FM channel is currently free;
 - the same BRR sample appearing at different SPC SRCN numbers across songs;
 - a MIDI instrument being moved to another MIDI channel;
-- a tracker instrument being triggered on multiple pattern channels.
+- a tracker instrument being triggered on multiple pattern channels;
+- one module note expanding into several synthesis partials;
+- several physical sources perceptually fusing into one stream.
 
 Stable identity should use the strongest available combination of:
 
+- authored identity;
+- driver-track identity;
 - exact source object/content identity;
-- driver track identity;
 - instrument/patch identity;
 - temporal continuity;
 - control continuity;
@@ -273,11 +435,23 @@ Do not infer persistent identity from channel number alone.
 
 All adapters must provide an exact or explicitly qualified time coordinate.
 
-The common model must support:
+The common model must support multiple time domains, including where applicable:
+
+- source time;
+- authored/score time;
+- driver/scheduler time;
+- device time;
+- sample time;
+- acoustic time;
+- perceptual time.
+
+It must also support:
 
 - discrete events;
+- intervals and durations;
 - continuous control trajectories;
 - simultaneous events;
+- causal ordering;
 - sub-frame/sample-accurate timing where the source supports it;
 - loops without confusing looped playback time with source-address identity;
 - seek/reset/replay provenance.
@@ -293,8 +467,8 @@ Each adapter may attach source-specific state that higher layers can inspect on 
 Examples:
 
 ```text
-YM2612 event
-├ common: pitch trajectory, onset, dynamics, routing
+YM2612 object
+├ common: pitch/control trajectory, onset, dynamics, routing
 └ source: operator registers, algorithm, feedback, LFO, DAC state
 
 S-DSP voice
@@ -308,6 +482,23 @@ MIDI note
 
 Higher-level reasoning should not need a different ontology for every device, but it must be able to descend into device-specific evidence whenever the distinction matters.
 
+## Projection law
+
+MIDI, notation, piano roll, register dump, source stems, chord timelines and LLM summaries are **projections** of the graph.
+
+```text
+musical execution graph
+        │
+        ├─→ MIDI projection
+        ├─→ notation / score projection
+        ├─→ chip-state projection
+        ├─→ stem / audio projection
+        ├─→ musical-analysis projection
+        └─→ perceptual projection
+```
+
+A projection may be useful, standardized or lossless for a declared obligation without becoming the canonical internal model.
+
 ## LLM / reasoning interface
 
 Do not stream every chip cycle or audio sample directly into an LLM context.
@@ -316,11 +507,12 @@ Expose a hierarchical, queryable representation:
 
 ```text
 song / object
-├ sections / loops
+├ sections / loops / patterns
 ├ persistent musical-source hypotheses
 ├ instruments / synthesis objects
 ├ event and control timelines
-├ routing/effects
+├ musical-structure relations
+├ routing / effects
 ├ acoustic renders / measurements
 └ provenance
    └ exact source bytes / commands / addresses on demand
@@ -332,12 +524,41 @@ The reasoning engine should be able to ask questions such as:
 - Which exact source instructions caused it?
 - Is this the same instrument used in another track?
 - Did the musical object move to another hardware channel?
-- Which properties are driver-authored versus device behavior?
+- Which properties are authored, driver-generated, or device behavior?
 - Which parts of this mix are direct sources versus authored effect energy?
 - What musical relation persists across prototype/final arrangements?
+- Is a repeated region a true program/section loop or only similar device behavior?
 - What would a listener likely group together, and does libaural agree?
 
 This allows compact reasoning without discarding exact low-level truth.
+
+## Forward / inverse validation
+
+The strongest validation cases connect both directions.
+
+```text
+authored symbolic source
+→ known compiler / driver / scheduler
+→ known device or synth
+→ execution trace
+→ VGM Tooling recovery
+→ common model
+```
+
+The recovered model can then be compared with the authored source at the layers both sides actually support.
+
+This is stronger than comparing one converter with another because the forward path supplies an independent answer key.
+
+Useful controls include:
+
+- MML → compiler/driver → device trace;
+- known driver sequence → device execution;
+- MIDI → known module → internal partials/audio;
+- tracker pattern → engine execution;
+- equivalent synthesis graph → two independent renderers;
+- known structured source → audio → generic transcription, compared with source truth.
+
+A finite successful round trip proves only the declared representation/obligation, not universal equivalence.
 
 ## libaural bridge
 
@@ -391,12 +612,17 @@ The enhanced renderer may use richer source knowledge, but it must never rewrite
 A new source adapter is successful when it can answer, as far as the source permits:
 
 1. What exact digital state exists?
-2. What changes over time?
-3. Which synthesis objects are active?
-4. Which events can be represented musically without guessing?
-5. Which persistent identities can be proved or strongly supported?
-6. What remains source-specific?
-7. What must remain uncertain?
-8. How does the state produce the reference acoustic output?
+2. What authored/program structure survives?
+3. What changes over time and in which time domain?
+4. Which scheduler/driver operations are explicit or recoverable?
+5. Which synthesis objects are active?
+6. Which events can be represented musically without guessing?
+7. Which persistent identities can be proved or strongly supported?
+8. Which higher musical structures are exact, derived, hypothetical or unavailable?
+9. What remains source-specific?
+10. What must remain uncertain?
+11. How does the state produce the reference acoustic output?
 
-Once those questions have stable answers, the higher reasoning layer should not care whether the input began as VGM, SPC, MIDI, SMPS, MDX, a tracker module, or another supported representation.
+Once those questions have stable answers, higher reasoning should not care whether the input began as VGM, SPC, MIDI, MML, SMPS, GEMS, MDX, a tracker module, a whole-machine rip or another supported representation.
+
+It should still be able to descend back into the native evidence whenever it needs to know why.
