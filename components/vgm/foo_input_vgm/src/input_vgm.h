@@ -3,6 +3,8 @@
 #include "../../enhancement/genesis_state.h"
 #include "../../enhancement/psg_block_capture.h"
 #include "../../enhancement/sn76489_enhanced.h"
+#include "../../enhancement/ym2612_dac_block_capture.h"
+#include "../../enhancement/ym2612_dac_enhanced.h"
 
 class input_vgm : public input_base
 {
@@ -11,15 +13,22 @@ private:
 	bool	m_prefer_jpn_tag;
 	constexpr static uint_fast32_t m_gd3_len_max = 1024*1024*100;
 	bool	m_vgz;
+
 	gameaudio::vgm::genesis_state m_genesis_state;
 	gameaudio::vgm::psg_block_capture m_psg_capture;
+	gameaudio::vgm::ym2612_dac_block_capture m_dac_capture;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
+	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
+
 	std::array<bool, 2> m_psg_present{{false, false}};
 	std::array<bool, 2> m_psg_config_supported{{false, false}};
 	std::array<bool, 2> m_psg_shadow_valid{{false, false}};
-	bool m_psg_capture_active = false;
-	bool m_psg_configured = false;
-	uint_fast64_t m_psg_replay_sample = 0;
+	std::array<bool, 2> m_dac_present{{false, false}};
+	std::array<bool, 2> m_dac_shadow_valid{{false, false}};
+
+	bool m_source_capture_active = false;
+	bool m_shadow_configured = false;
+	uint_fast64_t m_shadow_replay_sample = 0;
 
 protected:
 	virtual void register_player();
@@ -42,9 +51,10 @@ private:
 	static void command_observer_callback(void* user_param, const VGM_COMMAND_OBSERVER_EVENT* event);
 #endif
 	static void source_event_tap(void* user_param, const gameaudio::vgm::command_event& event) noexcept;
-	void configure_enhanced_psg();
-	void apply_psg_event_outside_render(const gameaudio::vgm::command_event& event);
-	void advance_psg_to(uint_fast64_t absolute_sample) noexcept;
-	void replay_captured_psg(uint_fast32_t rendered_samples) noexcept;
+	void configure_enhancement_shadow();
+	void apply_source_event_outside_render(const gameaudio::vgm::command_event& event) noexcept;
+	void advance_shadow_to(uint_fast64_t absolute_sample) noexcept;
+	void replay_captured_sources(uint_fast32_t rendered_samples) noexcept;
+	void invalidate_unobserved_dac_stream(const gameaudio::vgm::command_event& event) noexcept;
 	void guess_track_number_tag_from_file_name(file_info& p_info);
 };
