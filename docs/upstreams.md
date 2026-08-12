@@ -94,12 +94,24 @@ These converters are not the target architecture. MIDI is too small to preserve 
 
 ### Broad game-music execution and integration
 
-- `libgme/game-music-emu`: common playback interface across multiple executable/ripped game-music formats
+- `libgme/game-music-emu`: common playback interface across multiple executable/ripped game-music formats; useful both for its shared operations and for the places where capability varies by emulator
+- `OpenMPT/openmpt` / libopenmpt: tracker/module playback with richer access to patterns, rows, channels, subsongs and module state than a generic PCM replay boundary
 - `tildearrow/furnace`: multi-system tracker/emulation architecture with extensive chip/channel state and multiple emulator cores
 - Hoot: broad PC-88/PC-98/X68000/FM Towns/MSX/arcade/home-system driver execution, including external MIDI-module routes
-- Modizer and its integrated audio-library set: useful integration archaeology for how many independent replay/emulation engines, formats and system-specific assumptions can coexist behind one practical player
+- `yoyofr/modizer`: practical integration of a very large set of replay engines, including libvgm, Game Music Emu, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX, XSF-family players, vgmstream and others
 
-Broad players are valuable because they reveal the **integration boundary**: where supposedly similar engines genuinely share a contract and where source-specific behavior resists normalization. VGM Tooling should learn from those boundaries without reproducing a giant switchboard of opaque third-party engines as its own conceptual model.
+Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for VGM Tooling:
+
+```text
+shared frontend
+≠ shared semantic depth
+```
+
+Game Music Emu shows the complementary pattern: a compact common playback API can remain useful while explicitly allowing some features or metadata to be unsupported or unknown for particular emulator types.
+
+OpenMPT shows that richer source families should not be forced down to that least-common-denominator boundary when pattern/structure state is actually available.
+
+Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent VGM Tooling capability schema is deferred until concrete adapters require one.
 
 ## Music representation and production research
 
@@ -166,10 +178,41 @@ See `docs/audio-programming-languages.md`.
 
 ## Representation research and literature
 
-The architecture in `docs/musical-execution-model.md` should continue to be compared with established research on:
+The architecture in `docs/musical-execution-model.md` is also pressure-tested against academic work. Literature is used in the same way as repositories: extract established distinctions, formal results and test cases, not a new dependency stack.
 
-- symbolic-music versus audio representations;
-- score/audio alignment and performance realization;
+### General and multilayer music representation
+
+- Roger B. Dannenberg, **Music Representation Issues, Techniques, and Systems**, *Computer Music Journal* 17(3), 1993. DOI `10.2307/3680940`. Useful for the longstanding distinction among notation, performance/control information and sound, and for the warning that no single representation is the one true form of music.
+- Adriano Baratè, Goffredo Haus and Luca A. Ludovico, **Music Representation of Score, Sound, MIDI, Structure and Metadata All Integrated in a Single Multilayer Environment Based on XML**, 2008. DOI `10.4018/978-1-59904-663-1.CH014`. Useful for the IEEE 1599/MX multilayer model linking logical, structural, notational, performance and audio descriptions.
+- Diogo Cocharro, Gilberto Bernardes, Gonçalo Bernardo and Cláudio Lemos Fonteles, **A Review of Musical Rhythm Representation and (Dis)similarity in Symbolic and Audio Domains**, 2021. DOI `10.1007/978-3-030-78451-5_10`. Useful for cross-modal and hierarchical representation questions.
+
+### Score, performance and time alignment
+
+- Roger B. Dannenberg and Christopher Raphael, **Music Score Alignment and Computer Accompaniment**, 2018 repository version DOI `10.1184/r1/6607616`. Useful for symbolic-to-audio event correspondence and the separation of score position from performed time.
+- Carlos E. Cancino-Chacón, Maarten Grachten, Werner Goebl and Gerhard Widmer, **Computational Models of Expressive Music Performance: A Comprehensive and Critical Review**, 2018. DOI `10.3389/FDIGH.2018.00025`. Useful for distinguishing notated score from performed timing, dynamics, intonation and articulation.
+- Johanna Devaney, Daniel McKemie and Amy L. Morgan, **pyAMPACT: A Score-Audio Alignment Toolkit for Performance Data Estimation and Multi-modal Processing**, 2024. arXiv `2412.05436`. Useful for explicit linking of symbolic notes, aligned audio regions and note-level performance descriptors.
+- Akira Maezawa and Hiroshi G. Okuno, **Bayesian Audio-to-Score Alignment Based on Joint Inference of Timbre, Volume, Tempo, and Note Onset Timings**, *Computer Music Journal* 39(1), 2015. DOI `10.1162/COMJ_A_00286`. Useful for treating several score/audio correspondences as uncertain variables rather than assuming a fixed clock mapping.
+
+### Control flow and interactive execution
+
+- Zeyu Jin and Roger B. Dannenberg, **Formal Semantics for Music Notation Control Flow**, ICMC 2013. Useful for treating repeats/endings as static control-flow semantics distinct from the realized performance traversal and for mapping performance location back to static score position.
+- Florent Jacquemard and Clément Poncelet Sanchez, **Antescofo Intermediate Representation**, 2014. arXiv `1404.7335`. Useful for a medium-level music-program IR based on finite-state control, variables, delays and concurrency, independent of source syntax and execution platform.
+- James McDermott and Una-May O'Reilly, **An Executable Graph Representation for Evolutionary Generative Music**, GECCO 2011. DOI `10.1145/2001576.2001632`. Useful as precedent for executable graph representations and separation of large-scale control from realized outputs.
+- Andreas Arzt and Gerhard Widmer, **Towards Effective 'Any-Time' Music Tracking**, 2010. DOI `10.3233/978-1-60750-676-8-24`. Useful for retaining and updating multiple high-level hypotheses in the presence of jumps, repeats, omissions and restarts.
+
+### Current architectural consequences
+
+This literature does not become a new ontology by citation. The current durable consequences are narrower:
+
+1. static program/control flow and realized execution are separate;
+2. mappings between score/authored, driver, device, sample and acoustic time are explicit evidence and may be piecewise;
+3. competing high-level interpretations should remain alternatives until evidence separates them;
+4. multiple linked representation layers are preferable to flattening the entire musical object into MIDI, notation or PCM.
+
+These obligations are reflected in the current musical execution graph and its tests.
+
+The project should continue comparing against research on:
+
 - note/performance ontologies;
 - music information retrieval;
 - auditory scene analysis;
@@ -177,7 +220,8 @@ The architecture in `docs/musical-execution-model.md` should continue to be comp
 - differentiable/controllable synthesis and resynthesis;
 - score-informed source separation;
 - music cognition and computational musicology;
-- provenance-aware digital music preservation.
+- provenance-aware digital music preservation;
+- interactive and adaptive game-music systems.
 
 The project should borrow established terminology and experimentally useful distinctions rather than invent new names for ordinary concepts.
 
