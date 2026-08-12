@@ -38,6 +38,9 @@ music cognition / perception
 
 historical source / practitioner evidence
 → how composition and technical realization were actually divided or entangled
+
+human musical discourse
+→ how listeners, critics, creators, producers and engineers naturally verbalize what they hear, intend, evaluate or would change
 ```
 
 No single system supplies the VGM Tooling ontology. A concept earns common-model status only when it solves a real cross-source problem without destroying source-specific evidence.
@@ -271,6 +274,90 @@ Important queries include:
 
 No new `song` ontology is justified yet. The existing graph and analysis-feature system should first support this as a bounded synchronized projection.
 
+## Human discourse is another projection, not another truth layer
+
+Whole-song understanding is incomplete if the system can only emit technical feature language.
+
+Listeners, critics, composers, producers, mixing/mastering engineers and technical analysts routinely describe the same musical evidence differently. Human musical discourse is strongly metaphorical, relational and purpose-dependent. Words such as `open`, `heavy`, `bright`, `dark`, `punchy`, `floating`, `driving`, `breathing`, `lift`, `glue`, `bite`, `sneaks in`, `drops out` and `comes home` are normal musical language, including among experts.
+
+This does **not** justify a new semantic layer in the graph.
+
+```text
+evidence field
+        ↓
+song-level comparison / interpretation
+        ↓
+discourse projection
+        ├─ ordinary listener
+        ├─ reviewer / critic
+        ├─ composer / musician
+        ├─ producer
+        ├─ mixing / mastering engineer
+        └─ forensic / technical
+```
+
+The discourse renderer should also know what communicative act is being performed:
+
+```text
+describe • compare • interpret • evaluate
+diagnose • direct • explain • report documented intent
+```
+
+These acts have different evidence obligations. Evaluation is not source truth. Creator intent requires documentary evidence. A diagnosis must remain linked to the observations that support it.
+
+### Many-to-many language law
+
+Natural descriptors must not become hard-coded aliases for individual features.
+
+```text
+one technical change
+→ several possible human descriptions
+
+one human description
+← several possible technical causes
+```
+
+For example, `it opens up here` might be supported by more parts, higher-register activity, reduced masking, greater spatial spread, more ambience, lower density, longer sustain, a timbral change, or several of these together.
+
+Therefore do not implement:
+
+```text
+feature threshold → stock adjective
+```
+
+Prefer:
+
+```text
+claim / comparison
++ support bundle
++ confidence
++ discourse mode
++ discourse act
++ requested detail
+→ natural description
+```
+
+The wording is a projection. The support bundle carries the evidence.
+
+### Progressive disclosure
+
+The default user-facing register should resemble a knowledgeable listening companion rather than a telemetry report.
+
+```text
+What happens here?
+→ It opens up and starts pushing harder.
+
+What changed?
+→ A higher part comes in, the bass gets more pointed, and the sound spreads out.
+
+What exactly makes the bass more pointed?
+→ descend into driver / envelope / articulation evidence with provenance
+```
+
+Natural language must never strengthen the evidence status underneath it. The system should be able to sound human and still descend to exact source truth.
+
+See `docs/human-musical-discourse.md` and `research/cases/human-musical-discourse.md`.
+
 ## Role-relative attribution
 
 A single composer-style vector is unsafe. The current analytical coordinates are:
@@ -299,7 +386,7 @@ A strong match in one coordinate must not silently promote another.
 
 ## Projection law
 
-MIDI, piano roll, notation, MEI, register dump, stems, chord timelines, perceptual outputs, listener-response views, version/source comparisons and LLM/song summaries are projections of the evidence state.
+MIDI, piano roll, notation, MEI, register dump, stems, chord timelines, perceptual outputs, listener-response views, version/source comparisons, human discourse and LLM/song summaries are projections of the evidence state.
 
 ```text
 common execution / evidence graph
@@ -311,7 +398,8 @@ common execution / evidence graph
         ├─→ perceptual projection
         ├─→ listener-response projection
         ├─→ musicological comparison projection
-        └─→ synchronized whole-song reasoning projection
+        ├─→ synchronized whole-song reasoning projection
+        └─→ human discourse projection
 ```
 
 No projection becomes canonical merely because it is convenient.
@@ -333,5 +421,8 @@ No projection becomes canonical merely because it is convenient.
 13. Musical similarity is not work/version identity.
 14. Technical realization similarity is not composer proof.
 15. Whole-song understanding requires synchronized access to several layers rather than another lowest-common-denominator format.
+16. Natural musical language is a discourse projection over evidence, not a new truth layer.
+17. Human descriptors are many-to-many and must not be reduced to universal feature-to-adjective mappings.
+18. The system should normally speak musically first and descend into exact technical mechanism on demand.
 
 Research should continue extracting obligations and tests, not accumulating dependencies.
