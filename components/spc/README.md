@@ -1,32 +1,28 @@
 # SPC component
 
-This directory is the development home for the foobar2000 SPC input component and its editable SNESAPU rendering foundation.
+This directory is the development home for the foobar2000 SPC path, its editable SNESAPU rendering foundation, and the project-owned SPC snapshot/runtime analysis layer.
 
-## Two different upstream states
+Two upstream states remain intentionally distinct:
 
-Do not collapse these into one thing:
+1. **editable SNESAPU source** is the implementation base;
+2. the supplied **SPCPlay / improved SNESAPU v2.21.3 reference build** represents newer behavior to compare against.
 
-1. **Editable SNESAPU source** is the implementation base.
-2. **SPCPlay / improved SNESAPU v2.21.3 reference build** supplied as `spcplay-2.21.3.9130.zip` represents newer behavior that the editable source has not yet fully incorporated.
+The binary reference is not a substitute for editable source and must not become the runtime architecture.
 
-The supplied reference package is not the foobar component source and must not become a binary dependency architecture.
+For the common semantic model, see `../../docs/musical-execution-model.md`.
 
-## Snapshot-first model
+## Snapshot truth
 
-The first project-owned SPC model now begins below playback, at the exact `.spc` machine snapshot.
-
-`spc_snapshot.h` preserves the conventional SNES-SPC700 file image as separate source facts:
+`spc_snapshot.h` preserves the conventional SPC file image as separate source facts:
 
 ```text
-0x00000..0x000FF  header / CPU register image / raw ID666 area
-0x00100..0x100FF  64 KiB SPC700 RAM
-0x10100..0x1017F  128-byte S-DSP register image
-0x10180..0x101FF  optional trailing state when present
+header / CPU register image / ID666 area
+64 KiB SPC700 RAM
+128-byte S-DSP register image
+optional trailing state when present
 ```
 
-`spc_snapshot_graph_adapter.h` then exposes the saved S-DSP register image and its eight physical voice-register slots without pretending that the file contains every hidden live DSP state needed by an emulator.
-
-This distinction is important. Mature emulators restore the saved CPU/RAM/register image and then initialize additional runtime DSP state such as decoded BRR buffers, interpolation position, envelope phase, key delay, echo history and other internal pipeline state. Ares likewise maintains substantially richer live per-voice and echo state than the 128 saved DSP registers alone contain.
+`spc_snapshot_graph_adapter.h` exposes the saved S-DSP register image and eight physical voice-register slots without pretending the file contains every hidden live DSP state used by an emulator.
 
 Therefore:
 
@@ -35,116 +31,61 @@ saved S-DSP register slot
 != live voice episode
 != persistent musical part
 
-saved ENVX / OUTX byte
+saved ENVX / OUTX
 != complete envelope / acoustic history
 
 SRCN
-= exact saved sample-directory index
+= exact sample-directory index at the relevant observation
 != semantic instrument identity
 ```
 
-The current snapshot graph can recover exact or deterministic facts such as:
-
-- SPC700 PC/A/X/Y/PSW/SP register image;
-- exact 64 KiB sound RAM;
-- exact 128-byte S-DSP register image;
-- eight saved physical voice-register slots;
-- per-slot L/R volume, pitch code, SRCN, ADSR/GAIN and saved ENVX/OUTX;
-- saved global KON/KOFF, PMON, NON and EON masks;
-- sample-directory page and each slot's current directory entry;
-- sample start and loop addresses derived from exact RAM;
-- echo volume/feedback/start/delay and eight FIR coefficients;
-- optional trailing bytes when the full-size SPC image preserves them.
-
-It deliberately creates **no** `voice_instance`, musical event, persistent part, or MIDI/notation projection from a static snapshot alone.
-
-This makes SPC a useful second-source pressure test against the VGM path:
-
-```text
-VGM
-→ chronological command trace
-→ replayed device state
-
-SPC
-→ machine-state snapshot
-→ executable continuation
-```
-
-The common model must support both without forcing one source geometry into the other.
+The static snapshot layer deliberately does not fabricate live voice episodes, notes, persistent parts or MIDI/notation truth.
 
 ## BRR sample identity
 
-`spc_brr_sample.h` lifts reusable BRR storage out of the saved voice-register slots without turning `SRCN` into an instrument.
-
-The exact source path is:
+`spc_brr_sample.h` lifts reusable BRR storage from exact RAM while keeping sample storage, directory references and instrument identity separate.
 
 ```text
-saved voice slot
+voice/source observation
 → SRCN
-→ current DIR entry
+→ directory entry
 → BRR start address
-→ 9-byte BRR block stream
+→ BRR block stream
 ```
 
-A snapshot-local BRR object is currently identified conservatively by its exact RAM start address. Multiple saved slots or directory entries that resolve to the same start address therefore reference one `sample_buffer` rather than creating duplicate sample objects.
-
-The directory loop target is **not** part of that stored-sample identity. Two directory entries may reference the same BRR start while providing different loop targets, so the graph keeps the loop address on the `references` edge:
+The same BRR bytes/storage can participate in different references or musical uses without becoming several unrelated sample objects, while identical-looking storage at different proven source locations is not collapsed without stronger identity evidence.
 
 ```text
-physical slot ──references──> BRR sample object
-       │
-       └── SRCN / directory entry / loop target
+sample slot/reference
+!= stored sample object
+!= instrument identity
 ```
 
-The BRR object itself preserves facts intrinsic to the stored stream, including its start address, bounded extent, END/LOOP header state, RAM wrapping and whether an END block was found. Identical bytes at different RAM addresses remain distinct exact snapshot objects until stronger identity evidence exists.
+## Runtime voice lifecycle
 
-This prevents three common collapses:
+`spc_runtime_voice_adapter.h` represents controlled live S-DSP voice episodes from instrumented runtime state rather than inferring lifecycle from a static saved register image.
 
-```text
-sample slot != sample object
-sample object != instrument
-loop reference != sample identity
-```
-
-## Runtime physical voice lifecycle
-
-`spc_runtime_voice_adapter.h` begins the controlled-execution layer. It is deliberately based on instrumented DSP runtime state rather than trying to infer live voices from saved `KON`, `ENVX` or `OUTX` bytes.
-
-This matches the editable SNESAPU implementation directly. Its internal `mix[8]` voice state already separates:
-
-- active versus `MFLG_OFF` inactive state;
-- `MFLG_KOFF` release state;
-- current BRR block and decoded sample state;
-- envelope mode/value;
-- latched/current source `mSrc`;
-- KON delay `mKOn`;
-- original and modulated pitch state;
-- noise and other per-voice mixing flags.
-
-The runtime lifecycle is therefore represented as:
+The bounded physical lifecycle is approximately:
 
 ```text
 accepted KON
 → physical voice episode begins
 
-KON delay expires
-→ same episode enters sample-producing phase
+key-on delay / sample-producing state
+→ same episode continues
 
 KOFF / release
 → same episode continues in release
 
-DSP reports inactive
+runtime inactive
 → physical voice episode ends
 ```
 
-A retriggered accepted KON closes the prior bounded physical episode on that hardware slot and opens another. A capture or semantic gap closes continuity with an explicitly incomplete boundary rather than manufacturing a release or inactivity event.
+A retriggered accepted KON closes the previous bounded episode and begins another on that physical slot. A capture/semantic gap terminates continuity with an explicitly incomplete boundary rather than inventing a clean musical release.
 
 Critically:
 
 ```text
-saved KON bit
-!= observed accepted KON
-
 KOFF
 != end of physical voice episode
 
@@ -154,36 +95,70 @@ physical voice episode
 != persistent part
 ```
 
-The runtime adapter reuses the common graph's existing `execution_trace`, `trace_event`, `voice_instance`, `physical_slot`, `occupies`, `causes` and `contributes_to` vocabulary. No SPC-specific ontology was added.
+## Runtime sample/source continuity
 
-The next pressure point is runtime source/sample continuity. SNESAPU maintains `mSrc` separately from the exposed `SRCN` register and can update source state around key-on and loop restart behavior. The model must determine when a physical episode references one stored BRR object, when that reference changes, and what evidence would be strong enough to say two physical episodes belong to one persistent musical identity.
+The earlier documentation treated runtime sample continuity as the next pressure point. That frontier has now moved.
 
-## First engineering sequence
+The repository includes runtime sample/source tracking and RAM-generation/shadow machinery so event-time BRR identity can remain tied to the correct RAM version rather than assuming one static snapshot forever.
 
-1. Preserve and validate the exact SPC snapshot representation before assuming emulator-internal state is source truth.
-2. Import/preserve the existing `foo_snesapu` wrapper source and its license/provenance.
-3. Import the editable SNESAPU source with dgrfactory/Alpha-II provenance intact.
-4. Establish a build of the editable source before enhancement.
-5. Diff/reconcile behavior and implementation against the supplied v2.21.3 reference and current dgrfactory material.
-6. Verify parity for the relevant playback paths.
-7. Add controlled execution from an exact snapshot and observe which live S-DSP/driver distinctions become recoverable beyond the saved register image.
-8. Expose the eight SNES DSP voices, source/sample identity, pitch, envelope/key state, authored L/R volume, echo routing, FIR/feedback state, noise/pitch-modulation state, and other useful realtime information at a stable boundary.
-9. Only then begin source-native enhancement.
+Current source-side work can preserve or reason about:
+
+- runtime physical voice episodes;
+- current source/sample observations;
+- BRR storage and event-time RAM generation where continuity is known;
+- device-native pitch rate;
+- envelope/key/release/inactive state;
+- source transitions and continuity loss;
+- exact snapshot/runtime evidence needed by higher analysis.
+
+These facts still do not automatically prove authored note names, absolute sample tuning, original driver tracks, persistent musical parts or auditory-stream identity.
+
+## Current semantic frontier
+
+SPC is now a second major source-family pressure test for the shared musical model rather than merely a future telemetry target.
+
+The path is:
+
+```text
+exact SPC snapshot
+        ↓
+controlled executable continuation
+        ↓
+runtime S-DSP events / sample state
+        ↓
+bounded physical voice episodes
+        ↓
+source-relative performance evidence
+        ↓
+persistent musical identity / structure only when justified
+        ↓
+synchronized whole-song reasoning
+```
+
+Persistent-part analysis must use the strongest available combination of source/sample continuity, timing, control behavior, driver evidence when recovered, and other musical constraints. A hardware voice number is not enough.
+
+## Engineering foundation
+
+The editable SNESAPU source remains the implementation foundation. The supplied v2.21.3 package remains a behavior/version reference that must be reconciled in source form before audible enhancement claims rely on it.
+
+Reference parity, runtime analysis, enhancement-core tests and retained listening improvements are separate validation states.
 
 ## Enhancement frontier
 
-The target is not stricter SNES authenticity. Accuracy remains available as the scientific/reference render.
+Accuracy remains the scientific/reference render, not the quality ceiling.
 
-Enhanced playback may pursue:
+Enhanced SPC playback may eventually pursue:
 
-- higher-quality BRR/sample realization
-- high-rate / high-precision interpolation
-- reusable-source reconstruction without replacing instrument identity
-- transient and low-frequency body recovery
-- per-voice masking reduction
-- modern high-precision summation
-- dry/echo separation
-- a higher-quality realization of authored echo/environment intent
-- source-aware stereo construction for later Omniphony processing
+- higher-quality BRR/sample realization;
+- higher-rate/high-precision interpolation;
+- source-conditioned reconstruction without replacing instrument identity;
+- transient and low-frequency body recovery;
+- per-voice masking reduction;
+- modern high-precision summation;
+- dry/echo separation;
+- higher-quality realization of authored echo/environment intent;
+- source-aware stereo construction before downstream Omniphony processing.
 
-The result must remain realtime and traceable to information encoded in the SPC/DSP state.
+Any reconstructed information that was never present in the source must remain conditional, reversible and distinguishable from historical truth.
+
+Normal playback remains realtime. Whole-song analysis may operate separately over captured/source evidence and must not become a prerequisite for hearing an SPC.
