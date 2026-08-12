@@ -6,6 +6,17 @@
 
 namespace gameaudio::vgm {
 
+enum class sn76489_write_kind : std::uint8_t {
+    register_write = 0,
+    stereo_mask = 1,
+};
+
+struct sn76489_timed_write {
+    std::size_t sample_offset = 0;
+    sn76489_write_kind kind = sn76489_write_kind::register_write;
+    std::uint8_t data = 0;
+};
+
 // High-quality realtime SN76489 source renderer.
 //
 // This is intentionally a stem renderer, not a stereo mixer. Each PSG source
@@ -36,6 +47,15 @@ public:
     // Render four mono floating-point stems. Any output pointer may be null.
     // No allocation or locking occurs in this function.
     void render(float* const outputs[stem_count], std::size_t frames) noexcept;
+
+    // Render one block while applying already-sorted register writes at exact
+    // output-sample offsets. Writes at offset == frames update state for the
+    // following block without affecting the current block.
+    void render_timed(
+        const sn76489_timed_write* writes,
+        std::size_t write_count,
+        float* const outputs[stem_count],
+        std::size_t frames) noexcept;
 
     std::uint16_t tone_period(std::size_t channel) const noexcept;
     std::uint8_t attenuation(std::size_t channel) const noexcept;
