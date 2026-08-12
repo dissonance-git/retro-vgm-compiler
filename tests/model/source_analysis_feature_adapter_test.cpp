@@ -88,8 +88,10 @@ int main() {
           *ym_on.physical_voice_episode_id);
     CHECK(require_feature(ym_features, "persistent_part_identity")->availability ==
           feature_availability::unknown);
-    CHECK(require_feature(ym_features, "normalized_absolute_pitch")->availability ==
+    CHECK(require_feature(ym_features, "performed_pitch_frequency_hz")->availability ==
           feature_availability::unknown);
+    CHECK(require_feature(ym_features, "performed_pitch_frequency_hz")->claim_layer ==
+          semantic_layer::musical_performance);
     CHECK(require_feature(ym_features, "original_driver_track")->availability ==
           feature_availability::unavailable);
     CHECK(require_feature(ym_features, "sample_identity")->availability ==
@@ -128,7 +130,7 @@ int main() {
 
     // SPC path: begin from a real executable snapshot graph and controlled
     // S-DSP runtime observation. The extractor preserves exact device facts but
-    // refuses to promote pitch rate/source index into authored note or part truth.
+    // refuses to promote pitch rate/source index into performed frequency or part truth.
     const auto spc_bytes = make_spc_fixture();
     const auto snapshot = parse_spc_snapshot(spc_bytes);
 
@@ -176,8 +178,10 @@ int main() {
           feature_availability::unknown);
     CHECK(require_feature(spc_features, "sample_root_tuning")->availability ==
           feature_availability::unknown);
-    CHECK(require_feature(spc_features, "normalized_absolute_pitch")->availability ==
+    CHECK(require_feature(spc_features, "performed_pitch_frequency_hz")->availability ==
           feature_availability::unknown);
+    CHECK(require_feature(spc_features, "performed_pitch_frequency_hz")->claim_layer ==
+          semantic_layer::musical_performance);
     CHECK(require_feature(spc_features, "persistent_part_identity")->availability ==
           feature_availability::unknown);
     CHECK(require_feature(spc_features, "original_driver_track")->availability ==
@@ -198,6 +202,8 @@ int main() {
     CHECK(require_feature(gap_features, "device_native_pitch_rate")->availability ==
           feature_availability::not_applicable);
     CHECK(require_feature(gap_features, "physical_voice_episode_id")->availability ==
+          feature_availability::not_applicable);
+    CHECK(require_feature(gap_features, "performed_pitch_frequency_hz")->availability ==
           feature_availability::not_applicable);
     CHECK(require_feature(gap_features, "persistent_part_identity")->availability ==
           feature_availability::not_applicable);
