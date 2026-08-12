@@ -29,6 +29,11 @@ void genesis_state::reset() noexcept {
 }
 
 void genesis_state::observe(const command_event& event) noexcept {
+    if (event.kind == command_event_kind::reset) {
+        reset();
+        return;
+    }
+
     ++observed_commands_;
 
     switch (event.command) {
