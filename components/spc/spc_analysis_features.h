@@ -24,7 +24,8 @@ inline vgmtooling::model::analysis_feature spc_feature_from_attribute(
     const vgmtooling::model::node& event,
     vgmtooling::model::node_id event_id,
     const char* attribute_key,
-    const char* feature_name) {
+    const char* feature_name,
+    vgmtooling::model::semantic_layer claim_layer) {
     using namespace vgmtooling::model;
 
     const attribute* item = find_spc_analysis_attribute(event, attribute_key);
@@ -33,6 +34,7 @@ inline vgmtooling::model::analysis_feature spc_feature_from_attribute(
 
     analysis_feature feature = present_feature(
         feature_name,
+        claim_layer,
         item->value,
         item->status,
         item->confidence,
@@ -54,7 +56,8 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
         throw std::invalid_argument("SPC analysis features require an S-DSP runtime trace event");
 
     analysis_feature_set features;
-    features.add(spc_feature_from_attribute(*event, event_id, "event_kind", "event_kind"));
+    features.add(spc_feature_from_attribute(
+        *event, event_id, "event_kind", "event_kind", semantic_layer::synthesis));
 
     const attribute* kind_attribute = find_spc_analysis_attribute(*event, "event_kind");
     const auto* event_kind = kind_attribute == nullptr
@@ -73,12 +76,14 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     const auto add_optional_attribute = [&](
         const char* attribute_key,
         const char* feature_name,
+        semantic_layer claim_layer,
         const char* fallback_detail,
         feature_availability voice_missing = feature_availability::unknown) {
         const attribute* item = find_spc_analysis_attribute(*event, attribute_key);
         if (item != nullptr) {
             analysis_feature feature = present_feature(
                 feature_name,
+                claim_layer,
                 item->value,
                 item->status,
                 item->confidence,
@@ -91,6 +96,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
 
         features.add(unresolved_feature(
             feature_name,
+            claim_layer,
             global_event ? feature_availability::not_applicable : voice_missing,
             global_event
                 ? "global S-DSP execution event has no per-voice value for this feature"
@@ -101,30 +107,37 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     add_optional_attribute(
         "physical_voice",
         "physical_voice",
+        semantic_layer::synthesis,
         "this voice-local runtime observation does not carry a physical voice value");
     add_optional_attribute(
         "source_index",
         "source_index",
+        semantic_layer::synthesis,
         "source identity is meaningful for the voice but was not observed on this runtime event");
     add_optional_attribute(
         "brr_address",
         "brr_address",
+        semantic_layer::synthesis,
         "BRR address is meaningful for the voice but was not observed on this runtime event");
     add_optional_attribute(
         "pitch_rate",
         "device_native_pitch_rate",
+        semantic_layer::synthesis,
         "device-native pitch rate was not observed on this runtime event");
     add_optional_attribute(
         "envelope_value",
         "device_native_envelope_value",
+        semantic_layer::synthesis,
         "envelope value was not observed on this runtime event");
     add_optional_attribute(
         "key_on_delay",
         "device_native_key_on_delay",
+        semantic_layer::synthesis,
         "KON delay is meaningful only when observed at the relevant runtime phase");
     add_optional_attribute(
         "noise_enabled",
         "noise_enabled",
+        semantic_layer::synthesis,
         "noise state was not observed on this runtime event");
 
     std::optional<edge_id> episode_edge_id{};
@@ -154,6 +167,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     if (episode_id.has_value()) {
         analysis_feature episode = present_feature(
             "physical_voice_episode_id",
+            semantic_layer::synthesis,
             attribute_value{static_cast<std::uint64_t>(*episode_id)},
             evidence_status::derived,
             1.0,
@@ -169,6 +183,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     } else {
         features.add(unresolved_feature(
             "physical_voice_episode_id",
+            semantic_layer::synthesis,
             global_event ? feature_availability::not_applicable : feature_availability::unknown,
             global_event
                 ? "global S-DSP execution event has no one physical voice episode"
@@ -191,6 +206,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     if (sample_id.has_value()) {
         analysis_feature sample = present_feature(
             "runtime_sample_version_id",
+            semantic_layer::synthesis,
             attribute_value{static_cast<std::uint64_t>(*sample_id)},
             evidence_status::derived,
             1.0,
@@ -206,6 +222,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
     } else {
         features.add(unresolved_feature(
             "runtime_sample_version_id",
+            semantic_layer::synthesis,
             global_event ? feature_availability::not_applicable : feature_availability::unknown,
             global_event
                 ? "global S-DSP execution event has no sample reference"
@@ -215,6 +232,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
 
     features.add(unresolved_feature(
         "sample_root_tuning",
+        semantic_layer::synthesis,
         global_event ? feature_availability::not_applicable : feature_availability::unknown,
         global_event
             ? "global S-DSP execution event has no sample tuning semantics"
@@ -222,6 +240,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
         source_name));
     features.add(unresolved_feature(
         "normalized_absolute_pitch",
+        semantic_layer::musical_performance,
         global_event ? feature_availability::not_applicable : feature_availability::unknown,
         global_event
             ? "global S-DSP execution event has no pitched-source semantics"
@@ -229,6 +248,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
         source_name));
     features.add(unresolved_feature(
         "persistent_part_identity",
+        semantic_layer::musical_performance,
         global_event ? feature_availability::not_applicable : feature_availability::unknown,
         global_event
             ? "global S-DSP execution event is not a musical part observation"
@@ -236,6 +256,7 @@ inline vgmtooling::model::analysis_feature_set extract_spc_runtime_analysis_feat
         source_name));
     features.add(unresolved_feature(
         "original_driver_track",
+        semantic_layer::driver_execution,
         feature_availability::unavailable,
         "the current instrumented S-DSP runtime boundary does not expose validated driver-track identity",
         source_name));
