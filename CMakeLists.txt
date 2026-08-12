@@ -8,6 +8,7 @@ add_library(gameaudio_vgm_core STATIC
     components/vgm/enhancement/genesis_state.cpp
     components/vgm/enhancement/sn76489_enhanced.cpp
     components/vgm/enhancement/sn76489_advance.cpp
+    components/vgm/enhancement/ym2612_dac_enhanced.cpp
 )
 
 target_include_directories(gameaudio_vgm_core
@@ -33,6 +34,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         sn76489_variants_test
         sn76489_advance_test
         psg_block_capture_test
+        ym2612_dac_enhanced_test
+        ym2612_dac_block_capture_test
     )
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
@@ -41,6 +44,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(sn76489_variants_test tests/vgm/sn76489_variants_test.cpp)
     add_executable(sn76489_advance_test tests/vgm/sn76489_advance_test.cpp)
     add_executable(psg_block_capture_test tests/vgm/psg_block_capture_test.cpp)
+    add_executable(ym2612_dac_enhanced_test tests/vgm/ym2612_dac_enhanced_test.cpp)
+    add_executable(ym2612_dac_block_capture_test tests/vgm/ym2612_dac_block_capture_test.cpp)
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -58,4 +63,6 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME sn76489_variants COMMAND sn76489_variants_test)
     add_test(NAME sn76489_advance COMMAND sn76489_advance_test)
     add_test(NAME psg_block_capture COMMAND psg_block_capture_test)
+    add_test(NAME ym2612_dac_enhanced COMMAND ym2612_dac_enhanced_test)
+    add_test(NAME ym2612_dac_block_capture COMMAND ym2612_dac_block_capture_test)
 endif()
