@@ -2,17 +2,80 @@
 
 ## Scope
 
-This repository develops realtime foobar2000 playback components for game-music source formats, beginning with SPC and VGM/VGZ.
+This repository is the implementation home for **VGM Tooling**: executable understanding, analysis, and source-native rendering of digital game music.
 
-The two input components remain separate build products. Shared code is earned by repeated mechanisms, not forced by architecture diagrams.
+`VGM` in the project name is historical shorthand for video game music tooling. The project is not limited to the `.vgm` format and is not defined by foobar2000.
 
-## Non-negotiable playback law
+The repository may own:
 
-This is a **realtime player**, not an offline compiler, stem extractor, reverse-compiler, or pre-rendering pipeline.
+- format/container parsers
+- driver/sequence models
+- device/chip models
+- reference and enhanced synthesis
+- source/performance/device state
+- provenance-aware analysis
+- deterministic fixtures
+- consumer bridges and frontends
 
-Do not require whole-song analysis before playback. Do not export intermediate stems as part of normal operation. Do not convert VGM/SPC into an internal score and then play the score later. Use the live source/register/DSP state directly as playback proceeds.
+The current foobar2000 SPC and VGM/VGZ components remain important realtime applications, not the project ontology.
 
-Small causal state, streaming analysis, and bounded lookahead are permitted when they are justified by audible benefit and realtime constraints.
+## Project boundary
+
+This repository owns executable game-music machinery and local implementation history.
+
+Helix owns broader project orientation, research control, exact evidence, cross-project relations, negative results, and re-entry state.
+
+libaural owns general artificial hearing.
+
+Omniphony owns general headphone spatial rendering.
+
+Do not solve boundaries by copying every related project into this repository.
+
+```text
+Helix
+  ↓ research / evidence / project state
+VGM Tooling
+  ↓ source truth / executable synthesis
+├─ foobar2000 frontends
+├─ libaural experiments
+├─ attribution/forensic subprojects
+└─ Omniphony input
+```
+
+## Levels of truth
+
+Keep these distinct:
+
+```text
+format/container
+≠ driver/performance state
+≠ physical device/channel state
+≠ rendered audio
+≠ perceptual interpretation
+≠ downstream application
+```
+
+Examples:
+
+- YM2612 channel 2 is a physical synthesis lane, not automatically one persistent musical object.
+- A GEMS logical note may move between hardware channels while remaining one musical source.
+- A VGM register log may prove device state without proving the original driver track or score.
+- A perceptual stream may fuse several physical sources or split one physical source into several useful components.
+- An arranger fingerprint is evidence, not authorship confirmation.
+
+Every higher-level inference needs provenance and confidence appropriate to the layer that supports it.
+
+## Realtime playback law
+
+Normal playback frontends are realtime players, not offline compilers.
+
+Do not require whole-song analysis before playback. Do not require stem export or preparation of an offline master. Do not reverse-compile a VGM into a score as a mandatory playback stage.
+
+Use live source/register/DSP/driver state as playback proceeds.
+
+Small causal state, streaming analysis, and bounded lookahead are permitted where justified.
+
+The broader VGM Tooling project may still contain offline or forensic analysis utilities when the research question requires them. Those are analysis tools, not hidden prerequisites for realtime playback.
 
 ## Accuracy and enhancement
 
@@ -50,22 +113,41 @@ Enhance where justified:
 
 Do not use “sounds more modern” as sufficient evidence.
 
+## Driver knowledge matters
+
+Prefer the highest trustworthy source layer available.
+
+A register log is valuable, but driver semantics can provide stronger musical identity:
+
+```text
+sequence event
+→ persistent driver track
+→ instrument/sample/patch
+→ hardware allocation
+→ register/device state
+→ acoustic render
+```
+
+SMPS, GEMS, N-SPC and other known drivers may therefore have dedicated adapters/models.
+
+Do not invent driver-level truth when the source only proves register-level state.
+
 ## Baseline before enhancement
 
-Do not begin audible enhancement work until the relevant source path has a reproducible baseline.
+Do not begin audible enhancement work until the relevant source path has a reproducible reference baseline.
 
 For SPC:
 
 1. Preserve/import the editable SNESAPU source.
 2. Treat the supplied `spcplay-2.21.3.9130` files as the newest behavioral/version reference.
-3. Port the editable source forward until its intended behavior matches that reference as closely as can be verified.
+3. Port the editable source forward until intended behavior matches that reference as closely as can be verified.
 4. Only then begin enhancement work.
 
 For VGM:
 
 1. Preserve/import the supplied `foo_input_vgm` source and its MPL-2.0 license.
 2. Establish a clean baseline build against the intended libvgm revision.
-3. Update dependencies deliberately and verify reference playback before enhancement work.
+3. Update dependencies deliberately and verify reference playback before audible replacement.
 
 ## Source-domain first
 
@@ -75,18 +157,19 @@ Examples:
 
 - improve a PCM voice before the device mixer rather than EQing the whole mix
 - reconstruct a DAC transient at its trigger rather than running a generic transient shaper over stereo
-- render an FM patch from its live operator/register state rather than applying a generic exciter afterward
-- treat authored echo/effect energy separately when the source exposes the distinction
+- render an FM patch from live operator/register state rather than applying a generic exciter afterward
+- preserve dry/effect distinctions when the source exposes them
+- preserve persistent driver identity when hardware-channel allocation changes
 
 Generic bus EQ/compression/widening is a fallback, not the design center.
 
-## VGM priorities
+## VGM/VGZ priorities
 
-VGM/VGZ is the active design center.
+VGM/VGZ is the current realtime format design center.
 
-GYM, DRO, and S98 are legacy compatibility formats. Keep them working when practical, but do not spend research effort on bespoke enhancement for them unless explicitly requested.
+GYM, DRO, and S98 are legacy compatibility formats. Keep them working when practical, but do not spend research effort on bespoke enhancement unless explicitly requested.
 
-Enhancement should dispatch primarily by active device/source family:
+Enhancement should dispatch by active device/source family:
 
 - FM
 - PSG / wavetable
@@ -99,7 +182,7 @@ Do not create one universal “VGM enhancer” that ignores chip structure.
 
 Native QSound playback must preserve authored QSound behavior.
 
-Separately, QSound may serve as a reference for generalized source-domain stereo rendering. Generalize mechanisms, not branding or coloration.
+Separately, QSound may serve as a controlled reference for generalized source-domain stereo rendering and for libaural auditory-scene experiments.
 
 Potentially reusable ideas include:
 
@@ -113,6 +196,22 @@ Potentially reusable ideas include:
 - spatial processing before final summation
 
 Do not run unrelated sources through a literal QSound emulator merely to make them wider.
+
+## Sonic 3 subproject boundary
+
+Sonic 3 Music Attribution is a Helix subproject/case under VGM Tooling.
+
+VGM Tooling may provide:
+
+- SMPS track/command understanding
+- stable logical-track identity
+- YM2612 patch/operator state
+- PSG behavior
+- DAC sample identity and timing
+- prototype/final technical comparison
+- technical realization fingerprints
+
+It must not silently upgrade technical similarity into composer/arranger confirmation. The Sonic 3 evidence hierarchy remains independent and stricter than implementation resemblance.
 
 ## Omniphony boundary
 
@@ -139,27 +238,35 @@ Do not send arbitrary chip channel numbers as spatial coordinates. Source state 
 
 ## libaural boundary
 
-libaural may use chip/source state as research ground truth.
+libaural may use driver/device/source state as ground truth for artificial-hearing research.
 
-Large learned models, source-separation systems, or expensive research pipelines do not belong in normal realtime playback unless they have been reduced to a small validated mechanism.
+The ideal experiment structure is:
+
+```text
+known executable source state
+→ controlled reference render
+→ libaural observes only audio
+→ compare inferred auditory organization with the answer key
+```
+
+Large learned models, source-separation systems, or expensive research pipelines do not belong in normal realtime playback unless reduced to a small validated mechanism.
 
 ## Shared-core rule
 
-Do not prematurely move code into `core/` or a shared library.
+Do not prematurely force source families into one abstraction.
 
 A mechanism becomes shared only when at least two source families genuinely need the same abstraction and sharing does not erase useful source-specific information.
 
-Good candidates may eventually include:
+Good candidates may include:
 
-- realtime state smoothing
+- exact event timing
+- persistent source IDs
+- provenance/confidence structures
 - high-quality resampling
 - source-aware headroom/mixing primitives
-- masking metrics
-- bounded transient/body controls
-- generalized spatial extent primitives
 - diagnostics and A/B capture
 
-BRR reconstruction is SNES-specific. FM operator rendering is FM-specific. QSound register handling is QSound-specific.
+BRR reconstruction is SNES-specific. FM operator rendering is FM-specific. QSound register handling is QSound-specific. GEMS allocation behavior is driver-specific.
 
 ## Testing
 
@@ -170,12 +277,15 @@ Prefer deterministic fixtures and measurable invariants where possible:
 - exact timing preserved
 - loop points preserved
 - note/event sequence unchanged
-- channel activity preserved
+- source identity survives legal hardware reallocation
+- channel/device activity preserved
 - no accidental clipping
 - no unstable gain pumping
 - no new discontinuities at loops
 - no stereo collapse
 - no transient smearing from source-aware spatial processing
+
+For analysis/semantic layers, include negative controls and confidence boundaries. A parser that cannot prove a higher layer must say so rather than inventing it.
 
 Listening tests remain decisive for perceptual quality, but measurements should catch regressions before listening.
 
@@ -183,11 +293,13 @@ Keep known winning listening baselines and make rollback easy.
 
 ## Research discipline
 
-Before a substantive new audible mechanism, inspect relevant literature and mature open-source implementations.
+Before a substantive new mechanism, inspect relevant literature and mature open-source implementations.
 
-Record what is being borrowed conceptually, what is being implemented, and what is merely a hypothesis.
+Important recurring sources include chip/device emulators, driver disassemblies, VGMRips documentation/forum archaeology, HCS64, VGMTrans, sequence/conversion tooling, patents where relevant, and auditory-science/MIR literature.
 
-Use established terminology where possible. Do not create product-y names for ordinary DSP concepts.
+Record what is borrowed conceptually, what is implemented, what is only a hypothesis, and what licensing prevents direct reuse.
+
+Use established terminology where possible. Do not create product-y names for ordinary DSP or reverse-engineering concepts.
 
 ## Provenance and licensing
 
@@ -199,12 +311,22 @@ Keep upstream source provenance documented in `docs/UPSTREAMS.md`.
 
 Where licensing prevents direct reuse, treat the implementation as a research/reference source and implement independently only when legally appropriate.
 
+## Historical lineage
+
+The earlier private `dissonance-git/vgmspc` repository is project ancestry.
+
+Preserve its Git history rather than copying only its final working tree. Current architecture may reject old role heuristics or spatial experiments while retaining the commits as historical evidence.
+
+See `docs/HISTORY.md`.
+
 ## Repository workflow
 
 Work on `main` unless explicitly instructed otherwise.
 
-Keep commits small enough that an audible or architectural change can be reverted independently.
+Keep commits small enough that an audible, semantic, or architectural change can be reverted independently.
 
 Do not rewrite working upstream code merely to make the tree aesthetically uniform.
 
-First make it build. Then establish behavioral parity. Then expose source state. Then enhance.
+For playback paths: establish reference behavior, expose source truth, then enhance.
+
+For semantic/driver paths: establish exact source evidence, preserve uncertainty, then infer only what the evidence supports.
