@@ -153,6 +153,86 @@ int main() {
     assert(span.start.loop_iteration == 0);
     assert(span.end.has_value());
 
+    // Program structure and the realized musical part are separate objects.
+    node process;
+    process.kind = node_kind::logical_process;
+    process.layer = semantic_layer::driver_execution;
+    process.flow = flow_kind::control;
+    process.label = "driver track interpreter";
+    const auto process_id = graph.add_node(process);
+
+    node loop_entry;
+    loop_entry.kind = node_kind::program_point;
+    loop_entry.layer = semantic_layer::driver_execution;
+    loop_entry.flow = flow_kind::control;
+    loop_entry.label = "loop entry";
+    loop_entry.provenance.push_back({evidence_status::exact, 1.0, "fixture-driver", 0x200u, "validated driver address"});
+    const auto loop_entry_id = graph.add_node(loop_entry);
+
+    node loop_exit = loop_entry;
+    loop_exit.label = "loop exit";
+    loop_exit.provenance[0].byte_offset = 0x240u;
+    const auto loop_exit_id = graph.add_node(loop_exit);
+
+    connect(edge_kind::contains, process_id, loop_entry_id);
+    connect(edge_kind::contains, process_id, loop_exit_id);
+
+    edge repeat_flow;
+    repeat_flow.kind = edge_kind::control_flows_to;
+    repeat_flow.from = loop_exit_id;
+    repeat_flow.to = loop_entry_id;
+    repeat_flow.attributes.push_back({"transfer", std::string{"repeat"}, evidence_status::exact, 1.0, ""});
+    repeat_flow.attributes.push_back({"condition", std::string{"loop_counter > 0"}, evidence_status::exact, 1.0, ""});
+    repeat_flow.provenance.push_back({evidence_status::exact, 1.0, "fixture-driver", 0x23eu, "loop branch opcode"});
+    const auto repeat_flow_id = graph.add_edge(repeat_flow);
+
+    const auto control_flow = graph.edges_from(loop_exit_id, edge_kind::control_flows_to);
+    assert(control_flow.size() == 1);
+    assert(control_flow[0]->id == repeat_flow_id);
+    assert(control_flow[0]->attributes.size() == 2);
+    assert(graph.find_node(process_id)->kind == node_kind::logical_process);
+    assert(graph.find_node(loop_entry_id)->kind == node_kind::program_point);
+    assert(graph.find_node(part_id)->kind == node_kind::part);
+
+    // Cross-domain timing is an explicit, provenance-bearing relation rather than an implicit cast.
+    node authored_note;
+    authored_note.kind = node_kind::musical_event;
+    authored_note.layer = semantic_layer::authored_program;
+    authored_note.flow = flow_kind::event;
+    authored_note.label = "authored note";
+    authored_note.active = time_span{
+        {time_domain::authored, 480, 0, 0},
+        time_coordinate{time_domain::authored, 960, 0, 0},
+    };
+    const auto authored_note_id = graph.add_node(authored_note);
+
+    node acoustic_note;
+    acoustic_note.kind = node_kind::acoustic_contribution;
+    acoustic_note.layer = semantic_layer::acoustic_realization;
+    acoustic_note.flow = flow_kind::stream;
+    acoustic_note.label = "rendered note contribution";
+    acoustic_note.active = time_span{
+        {time_domain::sample, 44100, 44100, 0},
+        time_coordinate{time_domain::sample, 66150, 44100, 0},
+    };
+    const auto acoustic_note_id = graph.add_node(acoustic_note);
+
+    edge alignment;
+    alignment.kind = edge_kind::maps_time_to;
+    alignment.from = authored_note_id;
+    alignment.to = acoustic_note_id;
+    alignment.time_map = time_mapping{*authored_note.active, *acoustic_note.active};
+    alignment.attributes.push_back({"mapping", std::string{"authored-to-sample"}, evidence_status::derived, 1.0, ""});
+    alignment.provenance.push_back({evidence_status::derived, 1.0, "fixture-alignment", std::nullopt, "validated piecewise time mapping"});
+    const auto alignment_id = graph.add_edge(alignment);
+
+    const auto time_maps = graph.edges_from(authored_note_id, edge_kind::maps_time_to);
+    assert(time_maps.size() == 1);
+    assert(time_maps[0]->id == alignment_id);
+    assert(time_maps[0]->time_map.has_value());
+    assert(time_maps[0]->time_map->from.start.domain == time_domain::authored);
+    assert(time_maps[0]->time_map->to.start.domain == time_domain::sample);
+
     bool rejected_unknown_node = false;
     try {
         edge invalid_relation;
@@ -164,6 +244,31 @@ int main() {
         rejected_unknown_node = true;
     }
     assert(rejected_unknown_node);
+
+    bool rejected_missing_time_mapping = false;
+    try {
+        edge invalid_mapping;
+        invalid_mapping.kind = edge_kind::maps_time_to;
+        invalid_mapping.from = authored_note_id;
+        invalid_mapping.to = acoustic_note_id;
+        graph.add_edge(invalid_mapping);
+    } catch (const std::invalid_argument&) {
+        rejected_missing_time_mapping = true;
+    }
+    assert(rejected_missing_time_mapping);
+
+    bool rejected_cross_domain_span = false;
+    try {
+        node invalid_span;
+        invalid_span.active = time_span{
+            {time_domain::driver, 0, 60, 0},
+            time_coordinate{time_domain::sample, 1024, 44100, 0},
+        };
+        graph.add_node(invalid_span);
+    } catch (const std::invalid_argument&) {
+        rejected_cross_domain_span = true;
+    }
+    assert(rejected_cross_domain_span);
 
     return 0;
 }
