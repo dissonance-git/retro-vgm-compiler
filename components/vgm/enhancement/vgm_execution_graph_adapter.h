@@ -21,6 +21,8 @@ struct vgm_execution_trace_handle {
     std::string source;
     vgmtooling::model::provenance_flags provenance_flags =
         vgmtooling::model::to_flags(vgmtooling::model::provenance_flag::none);
+    std::uint64_t next_trace_index = 0;
+    std::uint64_t dropped_events = 0;
 };
 
 inline const char* command_event_kind_name(command_event_kind kind) noexcept {
@@ -55,12 +57,32 @@ inline vgm_execution_trace_handle begin_vgm_execution_trace(
         flags,
     });
 
-    return {graph.add_node(std::move(trace)), std::move(source), flags};
+    return {graph.add_node(std::move(trace)), std::move(source), flags, 0, 0};
+}
+
+inline void upsert_trace_attribute(
+    vgmtooling::model::node& trace_node,
+    const std::string& key,
+    vgmtooling::model::attribute_value value,
+    const std::string& unit = "") {
+    using namespace vgmtooling::model;
+
+    for (auto& existing : trace_node.attributes) {
+        if (existing.key == key) {
+            existing.value = std::move(value);
+            existing.status = evidence_status::exact;
+            existing.confidence = 1.0;
+            existing.unit = unit;
+            return;
+        }
+    }
+
+    trace_node.attributes.push_back({key, std::move(value), evidence_status::exact, 1.0, unit});
 }
 
 inline vgmtooling::model::node_id append_vgm_trace_record(
     vgmtooling::model::musical_execution_graph& graph,
-    const vgm_execution_trace_handle& trace,
+    vgm_execution_trace_handle& trace,
     const command_trace_record& event) {
     using namespace vgmtooling::model;
 
@@ -68,6 +90,8 @@ inline vgmtooling::model::node_id append_vgm_trace_record(
     if (trace_node == nullptr || trace_node->kind != node_kind::execution_trace) {
         throw std::invalid_argument("VGM trace handle does not reference an execution trace");
     }
+
+    const std::uint64_t trace_index = trace.next_trace_index;
 
     node observed;
     observed.kind = node_kind::trace_event;
@@ -95,6 +119,13 @@ inline vgmtooling::model::node_id append_vgm_trace_record(
         evidence_status::exact,
         1.0,
         "bytes",
+    });
+    observed.attributes.push_back({
+        "trace_index",
+        trace_index,
+        evidence_status::exact,
+        1.0,
+        "ordinal",
     });
 
     std::optional<std::uint64_t> byte_offset{};
@@ -125,51 +156,54 @@ inline vgmtooling::model::node_id append_vgm_trace_record(
     });
     graph.add_edge(std::move(membership));
 
+    ++trace.next_trace_index;
     return event_id;
 }
 
 inline vgmtooling::model::node_id append_vgm_trace_event(
     vgmtooling::model::musical_execution_graph& graph,
-    const vgm_execution_trace_handle& trace,
+    vgm_execution_trace_handle& trace,
     const command_event& event) {
     return append_vgm_trace_record(graph, trace, make_command_trace_record(event));
 }
 
-// Materialize one bounded realtime capture window on a non-realtime thread.
-// If the fixed-capacity capture overflowed, the execution trace is explicitly
-// marked incomplete and the dropped-event count remains inspectable.
+// Append one bounded realtime capture window to an existing execution trace on
+// a non-realtime thread. A trace may span many windows without inventing a new
+// performance identity at every audio block boundary.
+inline void append_vgm_command_capture(
+    vgmtooling::model::musical_execution_graph& graph,
+    vgm_execution_trace_handle& trace,
+    const command_trace_capture& capture) {
+    using namespace vgmtooling::model;
+
+    node* trace_node = graph.find_node(trace.trace_id);
+    if (trace_node == nullptr || trace_node->kind != node_kind::execution_trace) {
+        throw std::invalid_argument("VGM trace handle does not reference an execution trace");
+    }
+
+    if (capture.overflowed()) {
+        trace.provenance_flags = trace.provenance_flags | provenance_flag::incomplete;
+        trace.dropped_events += capture.dropped();
+        for (auto& provenance : trace_node->provenance)
+            provenance.flags = provenance.flags | provenance_flag::incomplete;
+        upsert_trace_attribute(*trace_node, "capture_overflow", true);
+        upsert_trace_attribute(*trace_node, "dropped_events", trace.dropped_events, "events");
+    }
+
+    for (std::size_t i = 0; i < capture.count(); ++i)
+        append_vgm_trace_record(graph, trace, capture.records()[i]);
+}
+
+// Materialize one bounded realtime capture window as the beginning of a trace.
+// Additional windows should be appended with append_vgm_command_capture so one
+// continuous execution retains one trace identity.
 inline vgm_execution_trace_handle materialize_vgm_command_capture(
     vgmtooling::model::musical_execution_graph& graph,
     const command_trace_capture& capture,
     std::string source,
     vgmtooling::model::provenance_flags flags) {
-    using namespace vgmtooling::model;
-
-    if (capture.overflowed())
-        flags = flags | provenance_flag::incomplete;
-
     auto trace = begin_vgm_execution_trace(graph, std::move(source), flags);
-    for (std::size_t i = 0; i < capture.count(); ++i)
-        append_vgm_trace_record(graph, trace, capture.records()[i]);
-
-    if (capture.overflowed()) {
-        node* trace_node = graph.find_node(trace.trace_id);
-        trace_node->attributes.push_back({
-            "capture_overflow",
-            true,
-            evidence_status::exact,
-            1.0,
-            "",
-        });
-        trace_node->attributes.push_back({
-            "dropped_events",
-            capture.dropped(),
-            evidence_status::exact,
-            1.0,
-            "events",
-        });
-    }
-
+    append_vgm_command_capture(graph, trace, capture);
     return trace;
 }
 
