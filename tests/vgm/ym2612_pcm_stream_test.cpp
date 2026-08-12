@@ -103,9 +103,8 @@ int main() {
     stream.apply(event(dac_stream_source_event_kind::start, data.data(), data.size(), 1000, 1, 0, 0x02, 0, 4));
     CHECK(stream.command_count() == 4);
 
-    // A start offset of -1 means "keep current source position" rather than
-    // indexing off the end of the bank.
-    const double before = stream.position();
+    // A start offset of -1 keeps the previously configured source start address
+    // and restarts from that address instead of indexing off the end of the bank.
     stream.advance(1);
     dac_stream_source_event ignored_start = event(
         dac_stream_source_event_kind::start, data.data(), data.size(), 1000,
@@ -114,7 +113,6 @@ int main() {
     CHECK(stream.valid());
     CHECK(stream.command_count() == 4);
     CHECK(stream.position() == 0.0);
-    CHECK(before == 0.0);
 
     return 0;
 }
