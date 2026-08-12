@@ -13,7 +13,9 @@ A supported object should not have to collapse immediately into MIDI, stems, or 
 ```text
 authored source / executable music object
         ↓
-driver / scheduler / sequence execution
+program / control-flow structure
+        ↓
+driver / scheduler / realized execution
         ↓
 musical events and control trajectories
         ↓
@@ -95,8 +97,12 @@ SOURCE / AUTHORED REPRESENTATION
 MML, score/pattern source, MIDI, native sequence/container, ROM-derived data,
 VGM, SPC and other preserved objects
 
+PROGRAM / CONTROL FLOW
+patterns, loops, branches, macros, scheduler structure, driver program points,
+legal transitions and adaptive/generative future behavior
+
 DRIVER / SCHEDULER EXECUTION
-SMPS, GEMS, N-SPC and other sequencers, logical tracks, control flow,
+SMPS, GEMS, N-SPC and other sequencers, logical tracks, realized control flow,
 note events, program changes, allocation, modulation, loops
 
 MUSICAL PERFORMANCE
@@ -119,7 +125,7 @@ what a listener hears as events, streams, fields, rhythm, foreground/background,
 masking, motion, environment and other perceptual organization
 ```
 
-A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A MIDI export is not the internal truth. A perceptual stream is not automatically one physical source. Confidence, provenance, capture quality and source coordinates must survive transitions between layers.
+A physical chip channel is not automatically a persistent musical voice. A register log is not automatically the original score. A legal branch is not proof that a particular run took that branch. A MIDI export is not the internal truth. A perceptual stream is not automatically one physical source. Confidence, provenance, capture quality and source coordinates must survive transitions between layers.
 
 ## Current common model
 
@@ -130,15 +136,24 @@ The current graph deliberately distinguishes:
 ```text
 events       key-on, note, trigger, register or scheduler event
 values       patch, routing, configuration and persistent state
-controls     time-varying parameter/control relations
+controls     time-varying parameters and executable control state
 streams      PCM, oscillator/audio or other continuous output
-graphs       synthesis, routing, effects and causal topology
-objects      source objects, parts, instruments, voices, buffers, buses
+graphs       synthesis, routing, effects, causal and program topology
+objects      source objects, parts, instruments, voices, buffers, buses,
+             logical processes and program points
 relations    causes, schedules, instantiates, realizes, occupies, routes,
-             transforms, contributes, groups, repeats and projects
+             transforms, contributes, groups, repeats, projects,
+             control-flow transitions and cross-domain time mappings
 ```
 
-It also keeps separate semantic and time domains for source representation, authored program, driver execution, synthesis, musical performance, musical structure, acoustic realization and auditory interpretation.
+It keeps separate semantic and time domains for source representation, authored program, driver execution, synthesis, musical performance, musical structure, acoustic realization and auditory interpretation.
+
+Two additional rules are now executable rather than merely documentary:
+
+1. **static musical program structure is distinct from the path realized by one execution**;
+2. **authored, driver, device, sample and acoustic clocks remain distinct and are connected by explicit provenance-bearing mappings**.
+
+A time span may not silently cross clock domains. Cross-domain correspondence is represented explicitly and can be piecewise when tempo, scheduling, resampling or alignment changes the relationship.
 
 This graph is **not finished architecture by declaration**. It is a minimal implementation that has survived the current comparison set. New abstractions should be added only when real source adapters or validation cases expose a missing distinction.
 
@@ -151,7 +166,9 @@ Forward execution:
 ```text
 authored musical program
         ↓
-scheduler / driver
+control-flow / scheduler / driver
+        ↓
+realized performance path
         ↓
 instrument and synthesis graph
         ↓
@@ -167,6 +184,8 @@ VGM / SPC / executable state / ROM / audio
         ↓
 recover exact execution where possible
         ↓
+recover program/control-flow structure where evidence permits
+        ↓
 recover synthesis objects and persistent identities
         ↓
 recover musical events and structure with explicit evidence status
@@ -175,6 +194,27 @@ reason about the music
 ```
 
 Where both directions can be constructed independently, they become a powerful validation pair. Authored source can be compiled/executed forward and the resulting trace can be recovered back into the common model without pretending that every source retains the same information.
+
+## Capability is source-relative
+
+Different source families expose different depths of truth.
+
+A tracker engine may expose patterns and instruments. A register log may expose exact hardware writes but no original score. A broad replay library may expose voices for one emulator and only mixed PCM for another.
+
+Therefore:
+
+```text
+not exposed
+≠ absent
+
+unknown
+≠ false
+
+not applicable
+≠ unavailable
+```
+
+VGM Tooling should not fabricate semantic parity merely because callers prefer a uniform shape. A permanent shared adapter-capability schema will be added only when concrete adapters require it.
 
 ## Project relationship
 
@@ -384,6 +424,8 @@ authored source
 → recovered common model
 → compare with source truth
 ```
+
+The common-model tests also protect representation boundaries such as static control flow versus realized execution and explicit cross-domain time mapping.
 
 Measurements should catch structural regressions, but listening remains decisive for perceptual quality.
 
