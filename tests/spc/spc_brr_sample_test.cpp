@@ -20,6 +20,16 @@ static const attribute* find_attribute(const node* value, const char* key) {
     return nullptr;
 }
 
+static const attribute* find_attribute(const edge* value, const char* key) {
+    if (value == nullptr)
+        return nullptr;
+    for (const auto& item : value->attributes) {
+        if (item.key == key)
+            return &item;
+    }
+    return nullptr;
+}
+
 static std::array<std::uint8_t, spc_full_file_size> make_fixture() {
     std::array<std::uint8_t, spc_full_file_size> bytes{};
     static constexpr char signature[] = "SNES-SPC700 Sound File Data v0.30\x1A\x1A";
@@ -36,14 +46,20 @@ static std::array<std::uint8_t, spc_full_file_size> make_fixture() {
 
     const std::size_t dir3 = spc_ram_offset + 0x200C;
     const std::size_t dir4 = spc_ram_offset + 0x2010;
-    for (const std::size_t entry : {dir3, dir4}) {
-        bytes[entry + 0] = 0x56;
-        bytes[entry + 1] = 0x34; // sample start $3456
-        bytes[entry + 2] = 0x5F;
-        bytes[entry + 3] = 0x34; // loop start $345F, second block
-    }
 
-    // Two 9-byte BRR blocks. The second block has END + LOOP.
+    bytes[dir3 + 0] = 0x56;
+    bytes[dir3 + 1] = 0x34; // sample start $3456
+    bytes[dir3 + 2] = 0x5F;
+    bytes[dir3 + 3] = 0x34; // reference-specific loop target $345F
+
+    bytes[dir4 + 0] = 0x56;
+    bytes[dir4 + 1] = 0x34; // same stored sample start $3456
+    bytes[dir4 + 2] = 0x56;
+    bytes[dir4 + 3] = 0x34; // different reference-specific loop target $3456
+
+    // Two 9-byte BRR blocks. The second block has END + LOOP. The LOOP bit is
+    // intrinsic to the stored BRR stream, but the address to jump to comes from
+    // whichever directory entry referenced the sample.
     const std::size_t sample = spc_ram_offset + 0x3456;
     bytes[sample + 0] = 0x00;
     for (std::size_t i = 1; i < 9; ++i)
@@ -59,9 +75,8 @@ int main() {
     const auto bytes = make_fixture();
     const auto snapshot = parse_spc_snapshot(bytes);
 
-    const auto scan = scan_brr_sample(snapshot, 0x3456, 0x345F);
+    const auto scan = scan_brr_sample(snapshot, 0x3456);
     CHECK(scan.start_address == 0x3456);
-    CHECK(scan.loop_address == 0x345F);
     CHECK(scan.end_block_address == 0x345F);
     CHECK(scan.block_count == 2);
     CHECK(scan.byte_count == 18);
@@ -100,7 +115,7 @@ int main() {
     CHECK(std::get<std::string>(find_attribute(sample_node, "encoding")->value) == "BRR");
     CHECK(std::get<std::string>(find_attribute(sample_node, "identity_scope")->value) == "snapshot_ram_object");
     CHECK(std::get<std::uint64_t>(find_attribute(sample_node, "start_address")->value) == 0x3456);
-    CHECK(std::get<std::uint64_t>(find_attribute(sample_node, "directory_loop_address")->value) == 0x345F);
+    CHECK(find_attribute(sample_node, "directory_loop_address") == nullptr);
     CHECK(std::get<std::uint64_t>(find_attribute(sample_node, "block_count")->value) == 2);
     CHECK(std::get<std::uint64_t>(find_attribute(sample_node, "compressed_byte_count")->value) == 18);
     CHECK(std::get<bool>(find_attribute(sample_node, "terminated")->value));
@@ -111,12 +126,17 @@ int main() {
 
     // `references` is deliberately non-owning and non-identifying. Every saved
     // slot points at the shared stored sample while remaining a separate slot.
+    // SRCN 3 and SRCN 4 deliberately disagree about the loop target, proving
+    // that loop semantics belong to the reference rather than sample identity.
     for (std::size_t voice = 0; voice < 8; ++voice) {
         const auto refs = graph.edges_from(snapshot_graph.voice_slot_ids[voice], edge_kind::references);
         CHECK(refs.size() == 1);
         CHECK(refs[0]->to == sample_id);
-        CHECK(std::get<std::string>(refs[0]->attributes[0].value) == "sample_source");
-        CHECK(std::get<std::uint64_t>(refs[0]->attributes[1].value) == ((voice & 1u) == 0 ? 3u : 4u));
+        CHECK(std::get<std::string>(find_attribute(refs[0], "reference_kind")->value) == "sample_source");
+        const std::uint64_t expected_srcn = (voice & 1u) == 0 ? 3u : 4u;
+        const std::uint64_t expected_loop = (voice & 1u) == 0 ? 0x345Fu : 0x3456u;
+        CHECK(std::get<std::uint64_t>(find_attribute(refs[0], "source_index")->value) == expected_srcn);
+        CHECK(std::get<std::uint64_t>(find_attribute(refs[0], "directory_loop_address")->value) == expected_loop);
     }
     CHECK(graph.edges_to(sample_id, edge_kind::references).size() == 8);
 
@@ -143,7 +163,7 @@ int main() {
     wrapped_snapshot.ram[0x0005] = 0x01;
     for (std::size_t i = 1; i < 9; ++i)
         wrapped_snapshot.ram[0x0005 + i] = static_cast<std::uint8_t>(0x30 + i);
-    const auto wrapped = scan_brr_sample(wrapped_snapshot, 0xFFFC, 0x0005);
+    const auto wrapped = scan_brr_sample(wrapped_snapshot, 0xFFFC);
     CHECK(wrapped.terminated);
     CHECK(wrapped.block_count == 2);
     CHECK(wrapped.byte_count == 18);
@@ -155,7 +175,7 @@ int main() {
     // accepted as a complete sample.
     spc_snapshot unterminated{};
     unterminated.source_size = spc_min_file_size;
-    const auto bounded = scan_brr_sample(unterminated, 0x0000, 0x0000);
+    const auto bounded = scan_brr_sample(unterminated, 0x0000);
     CHECK(!bounded.terminated);
     CHECK(!bounded.end_block_loops);
     CHECK(bounded.block_count == brr_max_scan_blocks);
