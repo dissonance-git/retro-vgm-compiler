@@ -20,7 +20,6 @@ constexpr std::size_t brr_max_scan_blocks = brr_max_scan_bytes / brr_block_size;
 
 struct brr_sample_scan {
     std::uint16_t start_address = 0;
-    std::uint16_t loop_address = 0;
     std::uint16_t end_block_address = 0;
     std::size_t block_count = 0;
     std::size_t byte_count = 0;
@@ -36,11 +35,9 @@ inline std::uint8_t spc_ram_byte(const spc_snapshot& snapshot, std::uint32_t add
 
 inline brr_sample_scan scan_brr_sample(
     const spc_snapshot& snapshot,
-    std::uint16_t start_address,
-    std::uint16_t loop_address) {
+    std::uint16_t start_address) {
     brr_sample_scan result;
     result.start_address = start_address;
-    result.loop_address = loop_address;
     result.end_block_address = start_address;
     result.compressed_bytes.reserve(brr_max_scan_bytes);
 
@@ -111,7 +108,7 @@ inline spc_brr_sample_graph_handle materialize_spc_brr_samples(
         if (existing != samples_by_start.end()) {
             sample_id = existing->second;
         } else {
-            const brr_sample_scan scan = scan_brr_sample(snapshot, sample_start, loop_start);
+            const brr_sample_scan scan = scan_brr_sample(snapshot, sample_start);
 
             node sample;
             sample.kind = node_kind::sample_buffer;
@@ -121,7 +118,6 @@ inline spc_brr_sample_graph_handle materialize_spc_brr_samples(
             sample.attributes.push_back({"encoding", std::string{"BRR"}, evidence_status::exact, 1.0, ""});
             sample.attributes.push_back({"identity_scope", std::string{"snapshot_ram_object"}, evidence_status::derived, 1.0, ""});
             sample.attributes.push_back({"start_address", static_cast<std::uint64_t>(scan.start_address), evidence_status::derived, 1.0, "address"});
-            sample.attributes.push_back({"directory_loop_address", static_cast<std::uint64_t>(scan.loop_address), evidence_status::derived, 1.0, "address"});
             sample.attributes.push_back({"end_block_address", static_cast<std::uint64_t>(scan.end_block_address), evidence_status::derived, 1.0, "address"});
             sample.attributes.push_back({"block_count", static_cast<std::uint64_t>(scan.block_count), evidence_status::derived, 1.0, "blocks"});
             sample.attributes.push_back({"compressed_byte_count", static_cast<std::uint64_t>(scan.byte_count), evidence_status::derived, 1.0, "bytes"});
@@ -160,12 +156,13 @@ inline spc_brr_sample_graph_handle materialize_spc_brr_samples(
         reference.attributes.push_back({"reference_kind", std::string{"sample_source"}, evidence_status::derived, 1.0, ""});
         reference.attributes.push_back({"source_index", static_cast<std::uint64_t>(srcn), evidence_status::exact, 1.0, "slot"});
         reference.attributes.push_back({"directory_entry", static_cast<std::uint64_t>(directory_entry), evidence_status::derived, 1.0, "address"});
+        reference.attributes.push_back({"directory_loop_address", static_cast<std::uint64_t>(loop_start), evidence_status::derived, 1.0, "address"});
         reference.provenance.push_back({
             evidence_status::derived,
             1.0,
             source,
             static_cast<std::uint64_t>(spc_dsp_offset + voice_base + 0x04),
-            "saved SRCN references a directory entry whose exact SPC RAM start address identifies this snapshot-local BRR sample object",
+            "saved SRCN resolves through exact SPC RAM to this snapshot-local BRR object; the directory loop target remains reference-specific",
             flags,
         });
         graph.add_edge(std::move(reference));
