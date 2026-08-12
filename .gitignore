@@ -1,0 +1,60 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+ipch/
+*.VC.db
+*.VC.VC.opendb
+
+# Build output
+[Bb]uild/
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+Win32/
+ARM64/
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+
+# foobar2000 component packages
+*.fb2k-component
+
+# CMake / generated build systems
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+out/
+
+# Local SDK/dependency roots
+sdk/
+foobar2000-SDK/
+WTL/
+libvgm-build/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Test/render captures are opt-in only
+tests/output/
+captures/
+
+# Keep intentionally versioned reference/import artifacts
+!imports/*.7z
+!references/**/*.zip
+!references/**/*.dll
+!references/**/*.exe
