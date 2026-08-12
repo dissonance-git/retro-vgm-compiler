@@ -38,6 +38,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         ym2612_dac_enhanced_test
         ym2612_dac_block_capture_test
         ym2612_pcm_stream_test
+        musical_execution_graph_test
     )
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
@@ -49,6 +50,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(ym2612_dac_enhanced_test tests/vgm/ym2612_dac_enhanced_test.cpp)
     add_executable(ym2612_dac_block_capture_test tests/vgm/ym2612_dac_block_capture_test.cpp)
     add_executable(ym2612_pcm_stream_test tests/vgm/ym2612_pcm_stream_test.cpp)
+    add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
+    target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -69,4 +72,5 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME ym2612_dac_enhanced COMMAND ym2612_dac_enhanced_test)
     add_test(NAME ym2612_dac_block_capture COMMAND ym2612_dac_block_capture_test)
     add_test(NAME ym2612_pcm_stream COMMAND ym2612_pcm_stream_test)
+    add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
 endif()
