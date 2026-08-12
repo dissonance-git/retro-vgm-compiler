@@ -102,6 +102,7 @@ public:
         count_ = 0;
         overflow_ = false;
         dropped_ = 0;
+        first_dropped_valid_ = false;
     }
 
     void reset_trace() noexcept {
@@ -113,6 +114,10 @@ public:
         record.trace_index = next_trace_index_++;
 
         if (count_ >= capacity) {
+            if (!first_dropped_valid_) {
+                first_dropped_ = record;
+                first_dropped_valid_ = true;
+            }
             overflow_ = true;
             ++dropped_;
             return;
@@ -125,6 +130,10 @@ public:
         return records_.data();
     }
 
+    const spc_runtime_capture_record* first_dropped_record() const noexcept {
+        return first_dropped_valid_ ? &first_dropped_ : nullptr;
+    }
+
     std::size_t count() const noexcept { return count_; }
     bool overflowed() const noexcept { return overflow_; }
     std::uint64_t dropped() const noexcept { return dropped_; }
@@ -132,8 +141,10 @@ public:
 
 private:
     std::array<spc_runtime_capture_record, capacity> records_{};
+    spc_runtime_capture_record first_dropped_{};
     std::size_t count_ = 0;
     bool overflow_ = false;
+    bool first_dropped_valid_ = false;
     std::uint64_t dropped_ = 0;
     std::uint64_t next_trace_index_ = 0;
 };
