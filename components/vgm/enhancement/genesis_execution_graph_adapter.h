@@ -235,9 +235,7 @@ inline genesis_trace_append_result append_genesis_trace_record(
         evidence_status::derived,
         1.0,
         handle.source_trace.source,
-        record.kind == command_event_kind::reset
-            ? std::optional<std::uint64_t>{}
-            : std::optional<std::uint64_t>{record.file_offset},
+        std::optional<std::uint64_t>{record.file_offset},
         "device transition decoded from complete VGM command payload",
         handle.source_trace.provenance_flags,
     });
@@ -279,6 +277,25 @@ inline genesis_trace_append_result append_genesis_trace_event(
     genesis_execution_graph_handle& handle,
     const command_event& event) {
     return append_genesis_trace_record(graph, handle, make_command_trace_record(event));
+}
+
+inline void append_genesis_command_capture(
+    vgmtooling::model::musical_execution_graph& graph,
+    genesis_execution_graph_handle& handle,
+    const command_trace_capture& capture) {
+    apply_vgm_capture_quality(graph, handle.source_trace, capture);
+    for (std::size_t i = 0; i < capture.count(); ++i)
+        append_genesis_trace_record(graph, handle, capture.records()[i]);
+}
+
+inline genesis_execution_graph_handle materialize_genesis_command_capture(
+    vgmtooling::model::musical_execution_graph& graph,
+    const command_trace_capture& capture,
+    std::string source,
+    vgmtooling::model::provenance_flags flags) {
+    auto handle = begin_genesis_execution_trace(graph, std::move(source), flags);
+    append_genesis_command_capture(graph, handle, capture);
+    return handle;
 }
 
 } // namespace gameaudio::vgm
