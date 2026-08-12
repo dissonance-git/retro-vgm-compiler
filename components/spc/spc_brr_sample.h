@@ -29,29 +29,36 @@ struct brr_sample_scan {
     std::vector<std::uint8_t> compressed_bytes;
 };
 
+inline std::uint8_t spc_ram_byte(const std::uint8_t* ram, std::uint32_t address) noexcept {
+    return ram[static_cast<std::uint16_t>(address)];
+}
+
 inline std::uint8_t spc_ram_byte(const spc_snapshot& snapshot, std::uint32_t address) noexcept {
-    return snapshot.ram[static_cast<std::uint16_t>(address)];
+    return spc_ram_byte(snapshot.ram.data(), address);
 }
 
 inline brr_sample_scan scan_brr_sample(
-    const spc_snapshot& snapshot,
+    const std::uint8_t* ram,
     std::uint16_t start_address) {
     brr_sample_scan result;
     result.start_address = start_address;
     result.end_block_address = start_address;
     result.compressed_bytes.reserve(brr_max_scan_bytes);
 
+    if (ram == nullptr)
+        return result;
+
     std::uint16_t block_address = start_address;
     for (std::size_t block = 0; block < brr_max_scan_blocks; ++block) {
         result.end_block_address = block_address;
-        const std::uint8_t header = spc_ram_byte(snapshot, block_address);
+        const std::uint8_t header = spc_ram_byte(ram, block_address);
 
         for (std::size_t byte = 0; byte < brr_block_size; ++byte) {
             const std::uint32_t absolute = static_cast<std::uint32_t>(block_address) +
                 static_cast<std::uint32_t>(byte);
             if (absolute > 0xFFFFu)
                 result.address_wrapped = true;
-            result.compressed_bytes.push_back(spc_ram_byte(snapshot, absolute));
+            result.compressed_bytes.push_back(spc_ram_byte(ram, absolute));
         }
 
         ++result.block_count;
@@ -70,6 +77,12 @@ inline brr_sample_scan scan_brr_sample(
     }
 
     return result;
+}
+
+inline brr_sample_scan scan_brr_sample(
+    const spc_snapshot& snapshot,
+    std::uint16_t start_address) {
+    return scan_brr_sample(snapshot.ram.data(), start_address);
 }
 
 struct spc_brr_sample_graph_handle {
