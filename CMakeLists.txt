@@ -49,6 +49,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         musicological_identity_test
         cross_cultural_pitch_rhythm_test
         timbre_instrument_identity_test
+        creative_role_attribution_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
         genesis_execution_graph_adapter_test
@@ -85,6 +86,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(musicological_identity_test tests/model/musicological_identity_test.cpp)
     add_executable(cross_cultural_pitch_rhythm_test tests/model/cross_cultural_pitch_rhythm_test.cpp)
     add_executable(timbre_instrument_identity_test tests/model/timbre_instrument_identity_test.cpp)
+    add_executable(creative_role_attribution_test tests/model/creative_role_attribution_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
@@ -110,6 +112,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(musicological_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(cross_cultural_pitch_rhythm_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(timbre_instrument_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(creative_role_attribution_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -141,6 +144,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME musicological_identity COMMAND musicological_identity_test)
     add_test(NAME cross_cultural_pitch_rhythm COMMAND cross_cultural_pitch_rhythm_test)
     add_test(NAME timbre_instrument_identity COMMAND timbre_instrument_identity_test)
+    add_test(NAME creative_role_attribution COMMAND creative_role_attribution_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
