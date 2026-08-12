@@ -46,10 +46,13 @@ int main() {
     state.observe(event(0x52, {0x2B, 0x80}));
     state.observe(event(0x52, {0x2A, 0x6C}));
     state.observe(event(0x8F));
+    const std::uint8_t resolved_dac = 0x93;
+    state.observe(command_event{gameaudio::vgm::command_event_kind::ym2612_dac, 0, 0, 0x8F, &resolved_dac, 1});
     assert(state.ym2612().dac_enabled);
-    assert(state.ym2612().last_dac_sample == 0x6C);
+    assert(state.ym2612().last_dac_sample == 0x93);
     assert(state.ym2612().direct_dac_write_count == 1);
     assert(state.ym2612().stream_dac_step_count == 1);
+    assert(state.ym2612().resolved_stream_dac_write_count == 1);
 
     // PSG tone channel 0: 10-bit period 0x15A.
     state.observe(event(0x50, {0x8A}));
