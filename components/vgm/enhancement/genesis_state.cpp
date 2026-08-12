@@ -34,6 +34,14 @@ void genesis_state::observe(const command_event& event) noexcept {
         return;
     }
 
+    if (event.kind == command_event_kind::ym2612_dac) {
+        if (payload_has(event, 1)) {
+            ym2612_[0].last_dac_sample = event.payload[0];
+            ++ym2612_[0].resolved_stream_dac_write_count;
+        }
+        return;
+    }
+
     ++observed_commands_;
 
     switch (event.command) {
@@ -83,7 +91,7 @@ void genesis_state::observe(const command_event& event) noexcept {
     // 0x80..0x8F write the next YM2612 PCM byte from the active VGM data bank
     // and then delay by N samples. The raw command alone does not expose that
     // byte, so observation records the exact stream activity without inventing
-    // sample values. A richer libvgm observer can add resolved DAC data later.
+    // sample values. The paired resolved event carries the actual DAC byte.
     if ((event.command & 0xF0) == 0x80) {
         ++ym2612_[0].stream_dac_step_count;
     }
