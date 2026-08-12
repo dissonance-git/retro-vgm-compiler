@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+using gameaudio::vgm::append_vgm_command_capture;
 using gameaudio::vgm::command_event;
 using gameaudio::vgm::command_event_kind;
 using gameaudio::vgm::command_trace_capture;
@@ -39,7 +40,7 @@ int main() {
     CHECK(capture.records()[3].tick == 40);
 
     musical_execution_graph graph;
-    const auto trace = materialize_vgm_command_capture(
+    auto trace = materialize_vgm_command_capture(
         graph,
         capture,
         "fixture.vgm",
@@ -50,11 +51,32 @@ int main() {
     CHECK(trace_node->kind == node_kind::execution_trace);
     CHECK(!has_flag(trace_node->provenance[0].flags, provenance_flag::incomplete));
     CHECK(graph.edges_from(trace.trace_id, edge_kind::contains).size() == 4);
+    CHECK(trace.next_trace_index == 4);
+
+    // Capture windows are implementation boundaries, not execution identities.
+    // Append a second window to the same trace and preserve one global ordinal.
+    capture.begin_window();
+    state.observe(command_event{command_event_kind::command, 50, 0x130, 0x50, &psg, 1});
+    state.observe(command_event{command_event_kind::command, 50, 0x131, 0x50, &psg, 1});
+    CHECK(capture.count() == 2);
+    append_vgm_command_capture(graph, trace, capture);
+
+    const auto continued_contents = graph.edges_from(trace.trace_id, edge_kind::contains);
+    CHECK(continued_contents.size() == 6);
+    CHECK(trace.next_trace_index == 6);
+    const node* fifth_event = graph.find_node(continued_contents[4]->to);
+    const node* sixth_event = graph.find_node(continued_contents[5]->to);
+    CHECK(fifth_event != nullptr);
+    CHECK(sixth_event != nullptr);
+    CHECK(fifth_event->active->start.tick == 50);
+    CHECK(sixth_event->active->start.tick == 50);
+    CHECK(std::get<std::uint64_t>(fifth_event->attributes[3].value) == 4);
+    CHECK(std::get<std::uint64_t>(sixth_event->attributes[3].value) == 5);
 
     // A bounded capture never silently overwrites or reallocates. Excess events
     // are counted and become incomplete provenance when materialized.
     capture.begin_window();
-    const command_event repeated{command_event_kind::command, 50, 0x130, 0x50, &psg, 1};
+    const command_event repeated{command_event_kind::command, 60, 0x140, 0x50, &psg, 1};
     for (std::size_t i = 0; i < command_trace_capture::capacity + 2; ++i)
         capture.observe(repeated);
 
@@ -71,6 +93,8 @@ int main() {
     const node* overflow_node = overflow_graph.find_node(overflow_trace.trace_id);
     CHECK(overflow_node != nullptr);
     CHECK(has_flag(overflow_node->provenance[0].flags, provenance_flag::incomplete));
+    CHECK(overflow_trace.dropped_events == 2);
+    CHECK(overflow_trace.next_trace_index == command_trace_capture::capacity);
     CHECK(overflow_node->attributes.size() == 2);
     CHECK(std::get<bool>(overflow_node->attributes[0].value));
     CHECK(std::get<std::uint64_t>(overflow_node->attributes[1].value) == 2);
