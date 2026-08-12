@@ -2,11 +2,11 @@
 
 ## Purpose
 
-OpenMusic was already part of the VGM Tooling research stack before the library-catalog pass. This document records the durable consequences of mining its wider library ecosystem so that future work can resume from repository state rather than reconstructing the result from conversation history.
+OpenMusic and its library ecosystem are research observatories for VGM Tooling. They are not a proposed runtime dependency stack and they do not define the project ontology.
 
 Detailed repository archaeology and literature notes are preserved in `research/cases/openmusic-libraries.md`.
 
-The OpenMusic libraries are research observatories, not a proposed runtime dependency stack. VGM Tooling keeps exact source, driver, device, sample, and execution evidence canonical and uses higher-level analysis only where the lower source stops answering the musical question.
+The durable transfer is narrower:
 
 ```text
 exact source / driver / device evidence
@@ -20,90 +20,81 @@ optional reconstruction / rendering experiments
 
 ## Durable findings
 
-### Persistent musical identity is an inference layer
+### Persistent musical identity is an inference problem
 
-`Streamsep` separates polyphonic note events into candidate monophonic streams using temporal and perceptual-pitch proximity, while allowing register crossings and preserving the input events. This independently reinforces the current VGM Tooling identity law:
+`Streamsep` and the broader voice-separation literature reinforce:
 
 ```text
 physical execution slot
 != physical voice episode
 != persistent musical voice / part
+!= auditory stream
 ```
 
-A future part/voice grouping stage may use exact or derived onset, duration, pitch, timbre/sample evidence, driver identity, overlap, continuity, allocation changes, and provenance confidence. The result remains a hypothesis unless authored or driver-level evidence proves it.
+The important transfer is the distinction between event evidence and grouping interpretation. Persistent-part hypotheses may use source-supported onset, duration, pitch, timbre/sample evidence, driver identity, continuity, allocation changes and provenance, but a grouping remains a hypothesis unless stronger source evidence proves it.
 
-The important transfer is the separation between **event evidence** and **grouping interpretation**, not the OpenMusic implementation itself.
+This frontier has already moved from research-only wording into the executable model regressions. It is no longer the project's next conceptual milestone.
 
-### Pattern and motif analysis should be feature-projected
+### Pattern and motif analysis should use explicit projections
 
-`LZ`, `Patterns`, `Profile`, and `Morphologie` show several compatible ways to reason above literal event equality:
+`LZ`, `Patterns`, `Profile` and `Morphologie` show useful ways to reason above literal event equality:
 
-- variable-length repetition and context models;
-- patterns as processes rather than pre-expanded event lists;
-- melodic contour/profile independent of absolute pitch;
-- morphological comparison and transformation of symbolic or numeric sequences.
+- variable-length repetition;
+- patterns as processes;
+- contour independent of absolute pitch;
+- transformation and morphological comparison.
 
-For VGM Tooling, analysis should therefore be allowed to project the same exact performance graph into different feature spaces without promoting any one projection into canonical truth.
+VGM Tooling should allow several analysis-specific feature projections over the same exact performance evidence without promoting any one projection into canonical truth.
 
 ```text
 exact execution / performance graph
         ↓
-analysis-specific feature projection
+analysis-specific projection
         ↓
 repetition / contour / motif / phrase hypothesis
 ```
 
-This is particularly relevant when a musical line survives transposition, ornamentation, instrument changes, or hardware reallocation.
-
 ### Rhythm quantization must not rewrite exact timing
 
-`RQ` ranks candidate rhythmic transcriptions using both fit to observed timing and structural/readability complexity. This reinforces the existing separation between source/performance time and authored/notated time.
+`RQ` reinforces the distinction between source/performance time and authored/notated time. A rhythm reconstruction may propose one or more authored-time hypotheses plus mappings back to exact execution time, but it must never overwrite source ticks, driver clocks or sample coordinates.
 
-A rhythm reconstruction should therefore create one or more authored-time hypotheses plus explicit mappings back to exact execution time. Quantization must never overwrite source ticks, driver clocks, or sample coordinates.
+### Constraint programming is a reconstruction formalism, not an ontology
 
-### Constraint programming is a reconstruction formalism, not a new ontology
-
-`Situation`, `Clouds`, `Cluster Engine`, `OMGecode`, and related work demonstrate a useful decomposition:
+`Situation`, `Clouds`, `Cluster Engine`, `OMGecode` and related work support this decomposition:
 
 ```text
-known variables / exact evidence
+known evidence
 +
 unknown variables
 +
 constraints
 +
-preference or objective
+objective / preference
 +
 search
 =
 candidate realization
 ```
 
-This is a promising formulation for later source-conditioned reconstruction. For example, a higher-quality realization may be allowed to relax historical storage or bandwidth limitations while preserving proved notes, timing, control flow, modulation, instrument/sample relationships, deliberate effects, and provenance boundaries.
+That is useful for source-conditioned reconstruction, but the solver and its candidate are not canonical state. A higher-quality realization may relax historical storage/bandwidth limits while preserving proved notes, timing, control flow, modulation, instrument/sample relationships, deliberate effects and provenance boundaries.
 
-The solver is not canonical state. Candidate solutions remain projections or hypotheses supported by the common graph.
+### Spectral analysis/resynthesis is an intermediate representation
 
-### Spectral analysis and resynthesis belong below musical identity but above raw PCM
-
-`OM-pm2` exposes partial tracking and additive resynthesis; `OM-SuperVP` exposes spectral analysis, processing, synthesis, and parameterized time-frequency transformations; `OM-Pursuit` and related dictionary/decomposition work provide another route for structured sound models.
-
-The literature around sinusoidal/partial tracking, spectral envelopes, additive-plus-residual models, and source-filter sound models supports a reusable intermediate idea:
+`OM-pm2`, `OM-SuperVP`, `OM-Pursuit` and related literature support partial, transient, residual and spectral-envelope descriptions between source synthesis and final PCM.
 
 ```text
 exact source waveform / synthesis render
         ↓
-partial + transient + residual / spectral-envelope model
+partial + transient + residual / spectral representation
         ↓
-source-conditioned high-quality realization
+source-conditioned realization candidate
 ```
 
-These models are candidate analysis/resynthesis representations, not evidence that missing pre-compression source audio can be recovered exactly. Any reconstructed information that was never present in the source must remain conditional and reversible.
+Such a representation may be useful for enhancement without implying exact recovery of information that never survived the source.
 
 ### Symbolic structure can control synthesis without becoming synthesis state
 
-`OMChroma`, `OM2Csound`, and OpenMusic's synthesis-control ecosystem reinforce the separation between musical structure, control parameters, synthesis definitions, and rendered audio.
-
-This matches VGM Tooling's existing graph direction:
+`OMChroma`, `OM2Csound` and related systems reinforce:
 
 ```text
 musical object / structure
@@ -115,70 +106,55 @@ synthesis object / running voice
 acoustic realization
 ```
 
-### Spatial scenes are structured musical projections
+The levels remain related but distinct.
 
-`OM-Spat` represents sound sources and their spatial trajectories as scene data and can render those scenes through a separate spatialization kernel. The useful lesson for VGM Tooling is that spatial attributes and trajectories can be explicit side information without becoming chip-channel identity or authored 3D truth.
+### Spatial scenes and orchestration remain projections/hypotheses
 
-This is primarily downstream research for libaural and Omniphony. VGM Tooling should expose only source-supported musical/source identities and confidence, not invent spatial coordinates from implementation channels.
+`OM-Spat` shows that source identities and trajectories can be represented separately from a spatial renderer. `OM-Orchidee` shows that a target plus an allowed realization vocabulary can generate candidate orchestrations.
 
-### Computer-assisted orchestration is a hypothesis generator
+For VGM Tooling:
 
-`OM-Orchidee` separates a target sound, an available orchestra/database, extracted features, and candidate orchestration solutions. The transferable idea is useful for future reconstruction experiments:
+- source-supported spatial/routing evidence may be exposed;
+- hardware-channel identity does not reveal authored 3D truth;
+- a candidate orchestration or modernization is not evidence of historical composer intent.
 
-```text
-source-conditioned target features
-+
-allowed realization vocabulary
-→ candidate realization
-```
+## Current project consequence
 
-A candidate orchestration or modernized synthesis realization is not evidence of composer intent. It is an experimentally testable alternative realization constrained by the surviving work.
+The earlier OpenMusic pass ended with persistent musical identity as the immediate research frontier. That statement is now historical.
 
-## What this pass does not change
+Since then VGM Tooling has added or pressure-tested:
 
-The pass does **not** justify:
+- competing persistent-part hypotheses;
+- source-relative analysis-feature availability;
+- theory-level and perceptual alternatives over unchanged lower evidence;
+- listener-response context;
+- musicological work/version/attribution claims;
+- timbre versus instrument identity;
+- role-relative attribution;
+- exact programmed expression versus higher musical interpretation;
+- a synchronized song-level reasoning target.
 
-- embedding OpenMusic in normal playback;
-- making MIDI, notation, or chord sequences canonical;
-- creating an OpenMusic-specific graph layer;
-- promoting hardware channels into persistent musical voices;
-- treating spectral resynthesis as exact restoration of information that never survived;
-- making one constraint solver or MIR algorithm the project architecture;
-- moving chip-specific implementation into libaural or Omniphony.
+Therefore the current OpenMusic contribution is **supporting machinery for the upper musical-analysis and reconstruction layers**, not the next project roadmap item.
 
-The common model remains project-owned and small. New generic primitives are added only when multiple real source families force the same distinction.
+The next high-value experiment is the end-to-end real-song control described in `research/cases/retro-composition-programming-listening.md`: traverse from unusually well-documented authored/programmed source to a coherent whole-song account while preserving evidence routes all the way down.
 
-## Immediate research frontier
+## What this research does not justify
 
-The highest-value next experiment is persistent musical identity because both current source families already provide unusually strong lower-layer answer keys.
+Do not:
 
-```text
-Genesis / GEMS
-logical track may migrate across physical YM/PSG resources
+- embed OpenMusic in normal playback;
+- make MIDI, notation or chord sequences canonical;
+- create an OpenMusic-specific graph layer;
+- promote hardware channels into persistent musical parts;
+- treat spectral resynthesis as exact restoration;
+- make one solver/MIR algorithm the architecture;
+- move chip-specific implementation into libaural or Omniphony.
 
-SPC / S-DSP
-one physical voice episode may change runtime sample source
-
-OpenMusic Streamsep + voice-separation literature
-persistent voice assignment is a separate grouping problem
-```
-
-The next implementation should therefore test a **candidate part/voice grouping analysis** above existing physical episodes and conservative performance events. It should:
-
-1. consume existing graph evidence rather than MIDI;
-2. retain every source event and physical episode unchanged;
-3. produce hypotheses, not identities by fiat;
-4. allow several competing groupings;
-5. use exact driver identity as a stronger constraint whenever available;
-6. survive register crossing and hardware reallocation controls;
-7. expose why two events were grouped through provenance-bearing features or relations;
-8. remain offline/analysis-side until a bounded realtime use is proven.
-
-Only after this survives Genesis, SPC, tracker/driver controls, and the literature should `part` promotion become a common-model operation.
+The common model remains project-owned and small. New shared primitives are added only when real source families force the same distinction.
 
 ## Sources
 
-Primary OpenMusic/library repositories inspected in this pass include:
+Primary library repositories inspected include:
 
 - `openmusic-project/Streamsep`
 - `openmusic-project/LZ`
@@ -197,6 +173,6 @@ Primary OpenMusic/library repositories inspected in this pass include:
 - `openmusic-project/OM-Orchidee`
 - `openmusic-project/Repmus`
 
-Literature inspected alongside these repositories includes work on musical stream/voice separation, rhythm transcription and k-best quantization, musical constraint programming, computer-assisted orchestration, partial tracking, spectral envelopes, additive-plus-residual analysis/synthesis, and source-filter representations of musical timbre.
+Literature inspected alongside them includes musical stream/voice separation, rhythm transcription, musical constraint programming, computer-assisted orchestration, partial tracking, spectral envelopes, additive-plus-residual analysis/synthesis and source-filter representations.
 
-See `research/cases/openmusic-libraries.md` for the detailed evidence trail and `docs/music-representation-systems.md` for the broader representation model.
+See `research/cases/openmusic-libraries.md` for the evidence trail and `docs/music-representation-systems.md` for the broader representation model.
