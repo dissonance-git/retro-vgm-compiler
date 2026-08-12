@@ -25,6 +25,7 @@ enum class semantic_layer : std::uint8_t {
     driver_execution,
     synthesis,
     musical_performance,
+    musical_structure,
     acoustic_realization,
     auditory_interpretation,
 };
@@ -43,6 +44,7 @@ enum class node_kind : std::uint8_t {
     pattern,
     part,
     musical_event,
+    musical_relation,
     instrument_definition,
     synthesis_object,
     voice_instance,
@@ -54,6 +56,7 @@ enum class node_kind : std::uint8_t {
     acoustic_contribution,
     auditory_event,
     auditory_stream,
+    projection,
 };
 
 enum class edge_kind : std::uint8_t {
@@ -71,6 +74,7 @@ enum class edge_kind : std::uint8_t {
     derived_from,
     same_identity_as,
     repeats,
+    projects_to,
 };
 
 enum class time_domain : std::uint8_t {
@@ -82,6 +86,33 @@ enum class time_domain : std::uint8_t {
     acoustic,
     perceptual,
 };
+
+enum class provenance_flag : std::uint32_t {
+    none = 0,
+    runtime_capture = 1u << 0u,
+    transformed = 1u << 1u,
+    incomplete = 1u << 2u,
+    suspected_artifact = 1u << 3u,
+    external_annotation = 1u << 4u,
+};
+
+using provenance_flags = std::uint32_t;
+
+constexpr provenance_flags to_flags(provenance_flag flag) noexcept {
+    return static_cast<provenance_flags>(flag);
+}
+
+constexpr provenance_flags operator|(provenance_flag lhs, provenance_flag rhs) noexcept {
+    return to_flags(lhs) | to_flags(rhs);
+}
+
+constexpr provenance_flags operator|(provenance_flags lhs, provenance_flag rhs) noexcept {
+    return lhs | to_flags(rhs);
+}
+
+constexpr bool has_flag(provenance_flags flags, provenance_flag flag) noexcept {
+    return (flags & to_flags(flag)) != 0;
+}
 
 // Exact integer time coordinate in a declared clock domain.
 //
@@ -109,12 +140,17 @@ struct time_span {
     std::optional<time_coordinate> end{};
 };
 
+// Evidence status and observation quality are deliberately orthogonal.
+//
+// A register write can be exact with respect to a VGM file while the VGM is
+// still a runtime capture that begins late or contains a transformed trace.
 struct provenance_ref {
     evidence_status status = evidence_status::exact;
     double confidence = 1.0;
     std::string source;
     std::optional<std::uint64_t> byte_offset{};
     std::string detail;
+    provenance_flags flags = to_flags(provenance_flag::none);
 };
 
 using attribute_value = std::variant<bool, std::int64_t, std::uint64_t, double, std::string>;
