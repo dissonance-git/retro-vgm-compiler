@@ -13,6 +13,7 @@ namespace gameaudio::vgm {
 struct genesis_execution_graph_handle {
     vgm_execution_trace_handle source_trace;
     genesis_state shadow;
+    bool shadow_continuation_valid = true;
     std::array<std::optional<vgmtooling::model::node_id>, 2> ym2612_nodes{};
     std::array<std::optional<vgmtooling::model::node_id>, 2> psg_nodes{};
 };
@@ -29,6 +30,26 @@ inline genesis_execution_graph_handle begin_genesis_execution_trace(
     genesis_execution_graph_handle handle;
     handle.source_trace = begin_vgm_execution_trace(graph, std::move(source), flags);
     return handle;
+}
+
+inline bool genesis_record_may_affect_shadow(const command_trace_record& record) noexcept {
+    if (record.kind == command_event_kind::reset || record.kind == command_event_kind::ym2612_dac)
+        return true;
+    if (record.kind != command_event_kind::command)
+        return false;
+
+    switch (record.command) {
+    case 0x30:
+    case 0x4F:
+    case 0x50:
+    case 0x52:
+    case 0x53:
+    case 0xA2:
+    case 0xA3:
+        return true;
+    default:
+        return false;
+    }
 }
 
 inline vgmtooling::model::node_id ensure_genesis_device_node(
@@ -96,16 +117,30 @@ inline genesis_trace_append_result append_genesis_trace_record(
         record.payload_prefix_size,
     };
 
+    // Reset is an exact resynchronization boundary for the project-owned shadow.
+    // It can restore semantic reconstruction after a trace gap or an unreplayable
+    // command without pretending the missing interval was observed.
     if (record.kind == command_event_kind::reset) {
         handle.shadow.observe(replay_event);
+        handle.shadow_continuation_valid = true;
         return result;
     }
 
-    // Device semantics are only recovered when the bounded record contains the
-    // complete command payload. Partial source evidence remains in the source
-    // trace and is not promoted into a guessed device transition.
-    if (!has_complete_payload(record))
+    // Once an observation gap has made the shadow state ambiguous, later writes
+    // remain exact source observations but cannot be decoded against a guessed
+    // prior latch/register state. Preserve them in the source trace and wait for
+    // an explicit resynchronization boundary.
+    if (!handle.shadow_continuation_valid)
         return result;
+
+    // Device semantics are only recovered when the bounded record contains the
+    // complete command payload. If an omitted payload could affect the Genesis
+    // shadow, continuation becomes unknown from this point forward.
+    if (!has_complete_payload(record)) {
+        if (genesis_record_may_affect_shadow(record))
+            handle.shadow_continuation_valid = false;
+        return result;
+    }
 
     const char* family = nullptr;
     const char* transition_kind = nullptr;
@@ -286,6 +321,13 @@ inline void append_genesis_command_capture(
     apply_vgm_capture_quality(graph, handle.source_trace, capture);
     for (std::size_t i = 0; i < capture.count(); ++i)
         append_genesis_trace_record(graph, handle, capture.records()[i]);
+
+    // The fixed-capacity capture preserves an exact prefix. If it overflowed,
+    // the gap begins after that prefix, so the reconstructed state is valid only
+    // through the final retained event and may not be continued into the next
+    // window without an exact resynchronization.
+    if (capture.overflowed())
+        handle.shadow_continuation_valid = false;
 }
 
 inline genesis_execution_graph_handle materialize_genesis_command_capture(
