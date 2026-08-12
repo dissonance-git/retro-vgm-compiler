@@ -8,6 +8,7 @@ using gameaudio::vgm::command_event;
 using gameaudio::vgm::command_event_kind;
 using gameaudio::vgm::command_trace_capture;
 using gameaudio::vgm::genesis_state;
+using gameaudio::vgm::has_complete_payload;
 using gameaudio::vgm::materialize_vgm_command_capture;
 using namespace vgmtooling::model;
 
@@ -34,9 +35,17 @@ int main() {
     CHECK(capture.dropped() == 0);
     CHECK(capture.records()[0].tick == 10);
     CHECK(capture.records()[0].file_offset == 0x100);
+    CHECK(capture.records()[0].payload_prefix_size == 1);
+    CHECK(capture.records()[0].payload_prefix[0] == 0x90);
+    CHECK(has_complete_payload(capture.records()[0]));
     CHECK(capture.records()[1].command == 0x52);
     CHECK(capture.records()[1].payload_size == 2);
+    CHECK(capture.records()[1].payload_prefix_size == 2);
+    CHECK(capture.records()[1].payload_prefix[0] == 0x2B);
+    CHECK(capture.records()[1].payload_prefix[1] == 0x80);
+    CHECK(has_complete_payload(capture.records()[1]));
     CHECK(capture.records()[2].kind == command_event_kind::reset);
+    CHECK(has_complete_payload(capture.records()[2]));
     CHECK(capture.records()[3].tick == 40);
 
     musical_execution_graph graph;
@@ -58,20 +67,36 @@ int main() {
     capture.begin_window();
     state.observe(command_event{command_event_kind::command, 50, 0x130, 0x50, &psg, 1});
     state.observe(command_event{command_event_kind::command, 50, 0x131, 0x50, &psg, 1});
-    CHECK(capture.count() == 2);
+    const std::uint8_t long_payload[] = {0x11, 0x22, 0x33};
+    state.observe(command_event{command_event_kind::command, 50, 0x132, 0x01, long_payload, 3});
+    CHECK(capture.count() == 3);
+    CHECK(capture.records()[2].payload_size == 3);
+    CHECK(capture.records()[2].payload_prefix_size == 2);
+    CHECK(capture.records()[2].payload_prefix[0] == 0x11);
+    CHECK(capture.records()[2].payload_prefix[1] == 0x22);
+    CHECK(capture.records()[2].payload_truncated);
+    CHECK(!has_complete_payload(capture.records()[2]));
     append_vgm_command_capture(graph, trace, capture);
 
     const auto continued_contents = graph.edges_from(trace.trace_id, edge_kind::contains);
-    CHECK(continued_contents.size() == 6);
-    CHECK(trace.next_trace_index == 6);
+    CHECK(continued_contents.size() == 7);
+    CHECK(trace.next_trace_index == 7);
     const node* fifth_event = graph.find_node(continued_contents[4]->to);
     const node* sixth_event = graph.find_node(continued_contents[5]->to);
+    const node* seventh_event = graph.find_node(continued_contents[6]->to);
     CHECK(fifth_event != nullptr);
     CHECK(sixth_event != nullptr);
+    CHECK(seventh_event != nullptr);
     CHECK(fifth_event->active->start.tick == 50);
     CHECK(sixth_event->active->start.tick == 50);
+    CHECK(seventh_event->active->start.tick == 50);
     CHECK(std::get<std::uint64_t>(fifth_event->attributes[3].value) == 4);
     CHECK(std::get<std::uint64_t>(sixth_event->attributes[3].value) == 5);
+    CHECK(std::get<std::uint64_t>(seventh_event->attributes[3].value) == 6);
+    CHECK(std::get<std::uint64_t>(seventh_event->attributes[4].value) == 2);
+    CHECK(std::get<bool>(seventh_event->attributes[5].value));
+    CHECK(std::get<std::uint64_t>(seventh_event->attributes[6].value) == 0x11);
+    CHECK(std::get<std::uint64_t>(seventh_event->attributes[7].value) == 0x22);
 
     // A bounded capture never silently overwrites or reallocates. Excess events
     // are counted and become incomplete provenance when materialized.
