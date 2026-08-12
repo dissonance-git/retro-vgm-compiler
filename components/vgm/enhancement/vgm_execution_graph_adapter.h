@@ -80,6 +80,28 @@ inline void upsert_trace_attribute(
     trace_node.attributes.push_back({key, std::move(value), evidence_status::exact, 1.0, unit});
 }
 
+inline void apply_vgm_capture_quality(
+    vgmtooling::model::musical_execution_graph& graph,
+    vgm_execution_trace_handle& trace,
+    const command_trace_capture& capture) {
+    using namespace vgmtooling::model;
+
+    node* trace_node = graph.find_node(trace.trace_id);
+    if (trace_node == nullptr || trace_node->kind != node_kind::execution_trace) {
+        throw std::invalid_argument("VGM trace handle does not reference an execution trace");
+    }
+
+    if (!capture.overflowed())
+        return;
+
+    trace.provenance_flags = trace.provenance_flags | provenance_flag::incomplete;
+    trace.dropped_events += capture.dropped();
+    for (auto& provenance : trace_node->provenance)
+        provenance.flags = provenance.flags | provenance_flag::incomplete;
+    upsert_trace_attribute(*trace_node, "capture_overflow", true);
+    upsert_trace_attribute(*trace_node, "dropped_events", trace.dropped_events, "events");
+}
+
 inline vgmtooling::model::node_id append_vgm_trace_record(
     vgmtooling::model::musical_execution_graph& graph,
     vgm_execution_trace_handle& trace,
@@ -197,22 +219,7 @@ inline void append_vgm_command_capture(
     vgmtooling::model::musical_execution_graph& graph,
     vgm_execution_trace_handle& trace,
     const command_trace_capture& capture) {
-    using namespace vgmtooling::model;
-
-    node* trace_node = graph.find_node(trace.trace_id);
-    if (trace_node == nullptr || trace_node->kind != node_kind::execution_trace) {
-        throw std::invalid_argument("VGM trace handle does not reference an execution trace");
-    }
-
-    if (capture.overflowed()) {
-        trace.provenance_flags = trace.provenance_flags | provenance_flag::incomplete;
-        trace.dropped_events += capture.dropped();
-        for (auto& provenance : trace_node->provenance)
-            provenance.flags = provenance.flags | provenance_flag::incomplete;
-        upsert_trace_attribute(*trace_node, "capture_overflow", true);
-        upsert_trace_attribute(*trace_node, "dropped_events", trace.dropped_events, "events");
-    }
-
+    apply_vgm_capture_quality(graph, trace, capture);
     for (std::size_t i = 0; i < capture.count(); ++i)
         append_vgm_trace_record(graph, trace, capture.records()[i]);
 }
