@@ -5,6 +5,7 @@
 #include <cstdint>
 
 using gameaudio::vgm::ym2612_fm_backend;
+using gameaudio::vgm::ym2612_fm_backend_config;
 using gameaudio::vgm::ym2612_fm_timeline;
 using gameaudio::vgm::ym2612_timed_write;
 
@@ -14,6 +15,12 @@ namespace {
 
 class fake_backend final : public ym2612_fm_backend {
 public:
+    bool configure(const ym2612_fm_backend_config& config) noexcept override {
+        configured = config.valid();
+        last_config = config;
+        return configured;
+    }
+
     void reset() noexcept override {
         rendered_frames = 0;
         write_count = 0;
@@ -38,6 +45,8 @@ public:
         rendered_frames += frames;
     }
 
+    bool configured = false;
+    ym2612_fm_backend_config last_config{};
     std::size_t rendered_frames = 0;
     std::size_t write_count = 0;
     std::uint8_t last_port = 0;
@@ -50,6 +59,21 @@ public:
 
 int main() {
     fake_backend backend;
+
+    // Clock ownership is explicit at the backend boundary. The timeline stays
+    // in consumer/output frames while a mature OPN2 implementation may run at
+    // a different native synthesis rate internally.
+    const ym2612_fm_backend_config invalid_config{};
+    CHECK(!invalid_config.valid());
+    CHECK(!backend.configure(invalid_config));
+
+    const ym2612_fm_backend_config config{7670454, 48000};
+    CHECK(config.valid());
+    CHECK(backend.configure(config));
+    CHECK(backend.configured);
+    CHECK(backend.last_config.chip_clock_hz == 7670454);
+    CHECK(backend.last_config.output_sample_rate_hz == 48000);
+
     ym2612_fm_timeline timeline(backend);
 
     constexpr std::size_t frames = 16;
