@@ -14,7 +14,7 @@ That is deliberate. Accuracy is the control; enhanced rendering must earn the ri
 
 ## Enhancement target
 
-The product target is not generic modernization and not conversion to MIDI, SoundFont, VST instruments, or another arrangement.
+The target is not generic modernization and not conversion to MIDI, SoundFont, VST instruments, or another arrangement.
 
 It is a **counterfactual source-native realization**:
 
@@ -33,6 +33,45 @@ Historical constraints are not assumed to be unwanted. Some were burdens or stor
 
 Every relaxed limitation therefore needs an evidence basis and a reversible A/B.
 
+## VGM format boundary
+
+Cross-chip work now begins with a format layer whose job is deliberately smaller than device emulation.
+
+The VGMRips VGM specification defines what the file-format bytes mean. Chip manuals, driver source, emulator implementations, die analysis and hardware measurements define what the addressed device does with those writes.
+
+The current format layer protects:
+
+- VGM version constants and version gates;
+- pre-1.51 versus 1.51+ clock-word flag semantics;
+- dual-chip declarations;
+- selected bit-31 chip variants;
+- the VGM 1.00/1.01 overloaded Yamaha clock field;
+- VGM 1.70 distinct second-instance clocks;
+- Yamaha register-write transport `0x51-0x5F` and `0xA1-0xAF`;
+- `0xA0` remaining AY8910;
+- generic DAC Stream Control `0x90-0x95`;
+- structural VGM/VGZ timing and loop validation.
+
+Relevant code:
+
+- `vgm_format_version.h`
+- `vgm_chip_clock.h`
+- `vgm_yamaha_register_write.h`
+- `vgm_dac_stream_command.h`
+- `tools/vgm_corpus_audit.py`
+
+The boundary is:
+
+```text
+VGM bytes
+→ exact format semantics
+→ chip-specific state
+→ performance state
+→ musical interpretation
+```
+
+Do not make libvgm, one emulator, or one chip adapter the sole authority for what the file bytes mean when the format specification already answers that question.
+
 ## Live source observation
 
 The repo carries a libvgm patch series that exposes realtime playback state without reverse-compiling a VGM into a score:
@@ -48,7 +87,7 @@ The repo carries a libvgm patch series that exposes realtime playback state with
 5. `0005-fix-dac-stream-millisecond-length.patch`
    - convert millisecond stream lengths using `frequency * ms / 1000`
 
-The wrapper maps those events onto the same output-sample timeline used by libvgm playback.
+The resolved observer remains useful, but the raw `0x90-0x95` decoder now provides an independent spec-level oracle beneath it.
 
 ## Genesis source truth
 
@@ -56,21 +95,100 @@ The wrapper maps those events onto the same output-sample timeline used by libvg
 
 YM2612 state includes:
 
-- six channels
-- exact register cache
-- key/operator mask
-- F-number/block with real Yamaha high-byte latch semantics
-- algorithm/feedback
-- authored L/R routing
-- AMS/FMS
-- LFO
-- channel-3 special mode/CSM frequencies
-- all four operator parameter sets: DT/MUL/TL/KS/AR/AM/DR/SR/SL/RR/SSG-EG
-- DAC enable and resolved DAC source activity
+- six channels;
+- exact register cache;
+- key/operator mask;
+- F-number/block with Yamaha high-byte latch semantics;
+- algorithm/feedback;
+- authored L/R routing;
+- AMS/FMS;
+- LFO;
+- channel-3 special mode/CSM frequencies;
+- all four operator parameter sets: DT/MUL/TL/KS/AR/AM/DR/SR/SL/RR/SSG-EG;
+- DAC enable and resolved DAC source activity.
 
 PSG state includes tone periods, attenuation, noise state/control and stereo mask.
 
-No instrument-name, importance, width, height or other semantic inference is stored as source truth.
+No instrument name, musical role, importance, width, height or other semantic inference is stored as source truth.
+
+## Yamaha cross-chip state frontier
+
+The YM2612 vertical slice is now being pressure-tested against related Yamaha families rather than being promoted directly into a universal model.
+
+### OPN
+
+Current bounded family coverage distinguishes:
+
+- YM2203;
+- YM2608;
+- YM2610;
+- YM2610B;
+- YM2612;
+- YM3438.
+
+Shared OPN register helpers now cover key/channel mapping, operator ordering, frequency latch/commit semantics, channel-3 special frequency registers and algorithm/feedback packing.
+
+`genesis_state.cpp` consumes those helpers. The old Genesis regressions remain the acceptance test for the refactor.
+
+### OPM
+
+YM2151/OPM preserves its own 8-channel register map and key-code + key-fraction pitch representation.
+
+OPM and OPN independently earned only a very small four-operator shared surface:
+
+```text
+algorithm bits 0..2
+feedback  bits 3..5
+register slot order 1,3,2,4
+```
+
+That surface is intentionally narrower than “Yamaha FM.”
+
+### OPL
+
+YM3526, Y8950, YM3812 and YMF262 are explicitly separate from the OPN/OPM packing.
+
+OPL uses a one-bit connection selector plus feedback in bits 1..3. YMF262 also supports 18 channels, four output buses and six dynamic four-operator channel pairs.
+
+The regression deliberately proves that the same register byte can have different algorithm/connection semantics under OPL and OPN/OPM.
+
+### OPLL
+
+YM2413/OPLL adds preset/user-instrument provenance:
+
+```text
+instrument 0 → user patch registers
+instrument >0 → preset instrument data
+```
+
+The command stream can prove patch selection without necessarily containing the full preset definition. Patch identity therefore needs both selection evidence and the relevant chip/variant instrument-data context.
+
+## Nominal pitch convergence
+
+Pitch normalization is being earned above the device encodings rather than imposed below them.
+
+Current source coordinates include:
+
+```text
+YM2612 / OPN: block + 11-bit FNUM
+YM2151 / OPM: key code + key fraction
+OPL:          block + 10-bit FNUM
+OPLL:         block + 9-bit FNUM
+SN76489:      tone period
+SMPS:         compiled/transposed chromatic coordinate where source evidence exists
+```
+
+A new OPL/OPLL regression demonstrates that YM3812, YMF262 and YM2413 can encode the same approximately `439.990595 Hz` nominal channel basis through different native pitch codes and clock divisors.
+
+That common coordinate is **not** automatically:
+
+- a note spelling;
+- a MIDI note;
+- a performed acoustic fundamental;
+- a heard pitch;
+- a chord tone.
+
+Those remain higher inference layers.
 
 ## Enhanced source engines implemented
 
@@ -78,14 +196,14 @@ No instrument-name, importance, width, height or other semantic inference is sto
 
 `sn76489_enhanced`
 
-- four isolated mono stems: three tone + noise
-- floating-point 2 dB attenuation ladder
-- oversampled PolyBLEP square reconstruction
-- source-faithful noise LFSR
-- sample-accurate timed writes inside a foobar block
-- fast no-output state advance for seeks/shadow playback
-- real device clock divider, feedback taps, LFSR width, Sega zero-period behavior and output polarity
-- explicit fallback for unvalidated NCR/T6W28 variants
+- four isolated mono stems: three tone + noise;
+- floating-point 2 dB attenuation ladder;
+- oversampled PolyBLEP square reconstruction;
+- source-faithful noise LFSR;
+- sample-accurate timed writes inside a foobar block;
+- fast no-output state advance for seeks/shadow playback;
+- real device clock divider, feedback taps, LFSR width, Sega zero-period behavior and output polarity;
+- explicit fallback for unvalidated NCR/T6W28 variants.
 
 An objective regression test compares off-harmonic alias energy against a naive high-pitch square wave.
 
@@ -93,99 +211,121 @@ An objective regression test compares off-harmonic alias energy against a naive 
 
 `ym2612_dac_enhanced`
 
-- isolated floating-point PCM stem
-- exact direct `$2A/$2B` state
-- exact resolved legacy VGM DAC bytes
-- `0x80` is the source zero point
-- interpolation only between PCM points that actually exist
-- hard authored DAC enable/disable boundaries
-- null-output shadow advancement
+- isolated floating-point PCM stem;
+- exact direct `$2A/$2B` state;
+- exact resolved legacy VGM DAC bytes;
+- `0x80` as the source zero point;
+- interpolation only between PCM points that actually exist;
+- hard authored DAC enable/disable boundaries;
+- null-output shadow advancement.
 
-### Modern VGM source-bank PCM to YM2612 DAC
+### Modern VGM source-bank streams
+
+The VGM stream transport is now treated as chip-neutral at the format layer.
+
+The existing YM2612 sink remains:
 
 `ym2612_pcm_stream`
 
-- consumes the original libvgm PCM bank directly
-- source write frequency is authoritative
-- step/base interleaving preserved
-- start/length semantics preserved
-- reverse and loop preserved
-- windowed-sinc/Lanczos reconstruction over the original source bytes
-- no need to infer sample timing from final stereo or post-DAC output
+- consumes the original libvgm PCM bank directly;
+- source write frequency is authoritative;
+- step/base interleaving preserved;
+- start/length semantics preserved;
+- reverse and loop preserved;
+- windowed-sinc/Lanczos reconstruction over the original source bytes.
+
+The important architectural change is that future PCM/ADPCM-capable chip adapters should reuse the VGM stream transport semantics rather than each inventing a private `0x90-0x95` parser.
 
 All 256 VGM stream IDs remain logically separate in the wrapper shadow state.
 
 ## YM2612 FM frontier
 
-The complete YM2612 register timeline can now be captured allocation-free with exact block sample offsets.
+The FM boundary now preserves **absolute VGM source ticks**, not output-frame offsets.
 
-`ym2612_fm_backend` defines the synthesis boundary:
+`ym2612_block_capture` stores exact ordered register writes in the VGM source clock. `ym2612_fm_clock` provides an overflow-safe rational mapping from VGM ticks to the first native FM sample at or after that tick.
 
-- exact register writes in
-- exact source chip clock declared explicitly
-- consumer/output sample rate declared explicitly
-- six isolated FM channel stems out
-- reset + null-output state advancement required
-
-A mature FM engine may synthesize at a different native rate. Native-rate clocking and rate conversion therefore belong inside the backend. `ym2612_fm_timeline` remains backend-agnostic and schedules captured writes at exact consumer/output-sample boundaries rather than becoming a hidden resampler.
-
-This keeps the clock domains honest:
+`ym2612_fm_backend` receives the whole ordered timed-write block and owns:
 
 ```text
-VGM / source timing
-        ↓ explicit mapping
-consumer output frames
-        ↓ backend contract
-native OPN2 synthesis clock/rate
+absolute VGM source ticks
         ↓
-six isolated output-rate stems
+native YM2612 FM clock / synthesis
+        ↓
+high-quality rate conversion
+        ↓
+six phase-coherent output-rate FM stems
 ```
 
-The intended first FM backend is a mature Yamaha synthesis engine with channel output exposed **before final stereo summation**. `ymfm` remains the leading architecture under investigation because it separates engine/channel/operator logic cleanly and its internal FM engine can be evaluated channel-by-channel. Nuked-OPN2 remains an important independent high-accuracy reference. Do not replace either role with a simplistic four-sine approximation merely to make sound sooner.
+The caller must not quantize writes to consumer/output frames first.
+
+The backend contract also exposes fixed algorithmic output latency so the FM path can later be aligned with PSG/DAC before source mixing. Null-output advancement must traverse the same timing/state path.
+
+The intended first FM backend remains a mature Yamaha synthesis engine with channel output exposed **before final stereo summation**. `ymfm` remains the leading architecture under investigation because one coherent FM engine can be clocked once while channel outputs are observed independently. Nuked-OPN2 remains an important independent accuracy reference.
+
+Do not instantiate six unrelated YM2612 emulators merely to obtain six stems. Shared LFO/global state and phase must remain coherent.
 
 The first FM milestone remains:
 
 > same patch + same automation + mature synthesis semantics + six isolated source stems
 
-After reference parity is established, the next question is not “remove YM2612 character.” It is:
+After reference parity is established, the next question is:
 
 > **Which hardware ceilings can be relaxed while the patch still sounds unmistakably like the same programmed FM instrument?**
 
-Candidate experiments, one at a time:
+Candidate experiments remain one-at-a-time and reversible:
 
 - higher internal numerical precision;
 - improved reconstruction/output bandwidth;
 - reduced avoidable aliasing/imaging where it is not identity-bearing;
 - higher-quality PCM/DAC realization;
 - higher-precision summation and headroom;
-- removal of output-stage defects only when they are not used as part of the patch identity.
+- removal of output-stage defects only when they are not part of patch identity.
 
-The intended perceptual result is the best plausible descendant of the same FM instrument, not a substitute DX-style preset and not a different orchestration.
+SMPS/GEMS/source-side controls should verify that enhanced rendering preserves authored driver/patch behavior rather than merely matching a register trace superficially.
 
-SMPS/GEMS/source-side controls should be used where possible to verify that the enhanced renderer preserves authored driver/patch behavior rather than merely matching a VGM register trace superficially.
+## Real-corpus structural control
+
+`tools/vgm_corpus_audit.py` now provides a spec-driven admission test for VGM/VGZ files before chip-specific analysis.
+
+The immutable Sonic 3 & Knuckles corpus currently gives this result:
+
+```text
+58 / 58 structurally valid
+58 / 58 computed total wait samples == header Total # samples
+57 looped files
+57 / 57 loop offsets on command boundaries
+57 / 57 computed loop samples == header Loop # samples
+57 × VGM 1.50
+ 1 × VGM 1.10
+```
+
+The only non-looped file is `30 - Staff Roll (S&K).vgz`.
+
+All 58 declare SN76489 at `3,579,545 Hz` and YM2612 at `7,670,453 Hz`.
+
+This is now the known-good control for admitting additional VGMRips families. External OPN/OPNA/OPM/OPL/OPLL packs are research candidates but are not yet permanent byte-verified fixtures.
+
+See `../research/cases/vgm-cross-chip-controls.md`.
 
 ## Mixing boundary
 
 `source_stem_mixer` performs only explicit linear source routing with double-precision accumulation.
 
-It does **not**:
-
-- compress
-- limit
-- normalize
-- widen
-- infer source roles
-- invent spatial positions
+It does **not** compress, limit, normalize, widen, infer source roles, or invent spatial positions.
 
 `ym2612_authored_route()` preserves the chip's original L/R enable decisions for the first enhanced listening baseline.
 
-A later QSound-informed spatial layer may expand source extent before final summation, but synthesis quality and spatial reinterpretation should not be changed in the same first listening experiment.
+A later source-domain spatial layer may expand source extent before final summation, but synthesis quality and spatial reinterpretation should not be changed in the same first listening experiment.
 
-## Historical intent and constraint evidence
+## Primary documentation and historical evidence
 
-Do not infer that a limitation was unwanted merely because modern hardware can remove it.
+Mature emulator/reverse-engineering sources remain critical, but they are no longer the only low-level observatory.
 
-Useful evidence includes:
+Official Sega/Yamaha documentation hosted by preservation sites such as Sega Retro is useful as a primary-source referee for documented chip/register/bus/clock behavior, programmer expectations and hardware-revision distinctions. The underlying manual or schematic is the primary source; a wiki summary remains secondary unless corroborated.
+
+This is separate from historical intent evidence, which answers a different question: whether a technical limitation was unwanted, accepted, or deliberately used artistically.
+
+Useful intent evidence includes:
 
 - creator statements about workflow burden or compromised sound quality;
 - songs/notes/sections explicitly cut for memory;
@@ -194,50 +334,45 @@ Useful evidence includes:
 - source-code/driver evidence showing the transformation into the shipped asset;
 - creator statements that a specific artifact was deliberately valued.
 
-Strong historical examples now tracked in research include:
-
-- Yuzo Koshiro shortening material rather than reduce sampling quality;
-- Masahiko Ishida using later CD recording capacity to move closer to his original compositional intention without rewriting the music;
-- David Wise treating some SNES waveform truncation artifacts as useful timbral material;
-- Harumi/Yasuaki Fujita describing cartridge sound-quality limits as real production trouble;
-- Koji Kondo and other practitioners describing low-level sound-programming workflow as substantial production work rather than an artistic end in itself.
-
 See `../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
 
-## Validation without Codex or foobar SDK
+## Future VGM-set assistance
+
+The structural validator also exposes a future preservation-tooling direction: state-aware assistance with loop validation and set preparation.
+
+This is **not implemented as automatic loop discovery**.
+
+The important design law is that a loop should eventually be judged by executable state as well as by sound. A waveform can appear to repeat while hidden chip/stream/modulation state diverges, and exact state recurrence can be stronger evidence than waveform similarity alone.
+
+The current audit validates declared timing and loops only. It does not propose or rewrite them.
+
+## Validation
 
 `tools/run_core_tests.py`
 
-- discovers every `tests/vgm/*_test.cpp`
-- compiles against the complete dependency-free enhancement core
-- C++17
-- optimization enabled
-- warnings as errors
-- runs every produced executable
+- discovers every `tests/vgm/*_test.cpp`;
+- compiles against the complete dependency-free enhancement core;
+- uses C++17, optimization and warnings-as-errors;
+- runs every produced executable.
 
-The CMake core target now includes `ym2612_fm_timeline.cpp` and `source_stem_mixer.cpp`, and the CMake test registry includes the VGM regression files that the standalone runner already discovered. The two build surfaces should therefore describe the same dependency-free VGM core rather than silently testing different subsets.
+The CMake test surface now also includes the cross-chip VGM format, OPN, OPM, OPL, OPLL and nominal-pitch regressions.
 
-`tools/check_libvgm_patches.py <libvgm-checkout>`
+GitHub-hosted Actions remain unavailable when the account runner is rejected before execution by the platform billing/spending-limit state. Absence of CI is not a pass or a failure.
 
-- requires pinned libvgm commit `61fc6725644886abc3168e240e4e51588d74bdf7`
-- creates a detached worktree
-- checks and applies the full patch series in order
+## Next sequence
 
-GitHub-hosted Actions are currently manual-only because the account runner is rejected before execution by the platform billing/spending-limit state. Do not interpret the resulting absence of CI as a code failure or a code pass.
+Do not enable every enhancement or chip family at once.
 
-## Next audible sequence
+1. keep the VGM format decoder/spec tests as the common transport floor;
+2. admit a small orthogonal real corpus for YM2203, YM2608, YM2151, YM2413, YM3812 and YMF262;
+3. pressure-test the new family-specific state and pitch helpers against those bytes;
+4. continue the YM2612 six-stem mature FM backend and clock/resampling work;
+5. build stable time-bearing pitch/part trajectories above device-specific state;
+6. only then let harmony/key/progression/cadence/form consume those trajectories;
+7. use Sonic 3 as an eventual adversarial integration case once those upper layers are earned;
+8. establish reference render parity before relaxing any hardware ceiling;
+9. retain only enhancements that preserve musical and instrument identity.
 
-Do not enable every enhancement at once.
+The target is not one giant Yamaha emulator and not a cleaner VGM player.
 
-1. finish/validate live YM2612 FM timeline capture in the wrapper
-2. feed exact YM2612 chip clock + output rate into the FM backend contract
-3. add a mature six-stem FM backend
-4. establish strict reference parity with the programmed patch/control behavior
-5. build source-family substitution behind a reversible experimental mode
-6. first A/B: improved source realization while preserving authored stereo routing
-7. relax one candidate hardware ceiling at a time and retain only changes that preserve patch identity
-8. establish fixed headroom after source mixing, without limiter/compressor/AGC
-9. then add source-domain spatial expansion informed by QSound and test again
-10. Omniphony receives the resulting modern source-aware stereo master and remains responsible for the full headphone sphere
-
-The product target is not a cleaner emulator. It is the highest-quality plausible realtime realization of the musical information and instrument identity still encoded in the source.
+It is **many exact machines feeding one increasingly well-earned understanding of the music**.
