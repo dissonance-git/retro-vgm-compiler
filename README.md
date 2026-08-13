@@ -68,6 +68,8 @@ and then, if asked:
 VGM Tooling deliberately studies mature systems that expose different strata of digital music:
 
 - VGM/VGZ and register-log tooling;
+- the VGM specification as a format-level authority;
+- official chip, console, and development documentation where preserved;
 - SPC, NSF/NSFe, HES, KSS and PSF-family executable/snapshot formats;
 - native drivers such as SMPS, GEMS, N-SPC, MDX and PMD;
 - MML dialects and compilers;
@@ -108,6 +110,8 @@ implement only the useful common mechanisms
 keep source-specific truth attached underneath
 ```
 
+A source also has an evidence role. The VGM specification is stronger than an emulator for deciding what a VGM command byte means. A chip manual can be stronger than a wiki summary for documented register behavior. A mature emulator or die-analysis implementation can reveal behavior the original manual omitted. A surviving driver can reveal how a game actually used the hardware. These sources should cross-check one another rather than being flattened into one anonymous authority.
+
 See:
 
 - `docs/musical-execution-model.md`
@@ -120,6 +124,7 @@ See:
 - `docs/source-native-enhanced-rendering.md`
 - `docs/vgm-frontier.md`
 - `docs/upstreams.md`
+- `research/cases/vgm-cross-chip-controls.md`
 - `research/cases/harmonic-formal-analysis.md`
 - `research/cases/musicological-authorship-attribution.md`
 - `research/cases/sonic-smps-pitch-recovery.md`
@@ -203,7 +208,9 @@ Current executable representation rules include:
 14. timbre similarity, instrument identity and organological identity remain separate claims;
 15. technical realization fingerprints do not silently become composer attribution;
 16. higher inferred analysis retains its dependency route rather than erasing uncertainty underneath it;
-17. human-facing wording does not alter the evidence status of the claims it summarizes.
+17. human-facing wording does not alter the evidence status of the claims it summarizes;
+18. file-format semantics and chip/device semantics remain separate evidence layers when a format specification exists;
+19. a cross-chip abstraction is earned by agreement across independent device families and may be rejected by a negative control.
 
 The graph is not finished architecture by declaration. New abstractions must be earned by real source adapters, cross-representation controls, or validation failures.
 
@@ -672,6 +679,44 @@ Source/audio time, auditory-state update time, musical-analysis time, and LLM re
 
 ## Current engineering centers
 
+### Cross-chip VGM / Yamaha families
+
+The current VGM work is no longer allowed to equate “VGM semantics” with “YM2612 semantics.”
+
+The format layer now decodes versioned clocks, dual/variant flags, the Yamaha register-write transport, generic DAC Stream Control, and structural timing/loop information before handing writes to family-specific state models.
+
+The first Yamaha comparison already produced both positive and negative results:
+
+```text
+OPN
+YM2203 • YM2608 • YM2610/B • YM2612/3438
+shared OPN register geometry where proven
+
+OPM
+YM2151/2164
+separate key-code/key-fraction pitch model
+
+OPL
+YM3526 • Y8950 • YM3812 • YMF262
+separate two-op / dynamic-four-op connection model
+
+OPLL
+YM2413 family
+preset/user instrument provenance + narrower FNUM model
+```
+
+OPN and OPM independently earned only a narrow shared four-operator invariant: algorithm/feedback packing and the physical `1,3,2,4` operator-register order. OPL explicitly falsifies that packing as universal Yamaha behavior, so the common helper remains narrow.
+
+Pitch is converging one layer higher. A regression shows YM3812, YMF262, and YM2413 reaching the same approximately `439.990595 Hz` nominal channel basis through different FNUM widths and native clock divisors. The shared coordinate is earned after device semantics, not imposed by first converting everything to MIDI notes.
+
+`tools/vgm_corpus_audit.py` is now the format-level real-corpus admission test. On the immutable Sonic set it validates all 58 files, all declared total-sample counts, and all 57 declared loops including command-boundary and loop-duration consistency.
+
+Additional VGMRips families should be admitted as a small orthogonal control matrix rather than as a giant undifferentiated archive. See `research/cases/vgm-cross-chip-controls.md`.
+
+Official Sega/Yamaha development and hardware manuals preserved through archives such as Sega Retro are useful primary-source referees when reverse-engineered implementations disagree or when documented versus undocumented behavior matters.
+
+This work also makes future state-aware assistance with VGM loop validation and preservation-set preparation plausible. The current tooling validates existing loops; it does not yet discover or rewrite them.
+
 ### Mega Drive / Genesis
 
 The current VGM vertical slice reaches conservative performance truth from exact command capture:
@@ -709,7 +754,7 @@ A corpus audit currently shows that isolated FM key-ons are genuinely ambiguous 
 
 The next musical-analysis milestone is stable time-bearing pitch/part evidence suitable for harmonic segmentation. The next audible FM milestone remains a mature coherent six-channel YM2612 renderer with isolated channel output, exact patch/control semantics, and high-quality clock-correct rate conversion before selected hardware constraints are experimentally relaxed.
 
-See `docs/vgm-frontier.md` and `research/cases/sonic-smps-pitch-recovery.md` for the engineering/research frontier rather than inferring audible status from model commits.
+See `docs/vgm-frontier.md`, `research/cases/vgm-cross-chip-controls.md`, and `research/cases/sonic-smps-pitch-recovery.md` for the engineering/research frontier rather than inferring audible status from model commits.
 
 ### SPC / Super NES
 
@@ -785,6 +830,19 @@ authored source
 → compare with source truth
 ```
 
+Cross-chip validation adds another pressure test:
+
+```text
+family A exact machine semantics
++ family B exact machine semantics
+        ↓
+shared abstraction candidate
+        ↓
+family C negative/positive control
+        ↓
+retain, narrow, or reject the abstraction
+```
+
 Musical analysis should additionally test whether uncertainty contracts only when new evidence actually earns it:
 
 ```text
@@ -813,7 +871,7 @@ Can each material claim descend into the strongest available musical, acoustic, 
 
 A result fails if it is technically correct but linguistically alien, natural-sounding but unsupported, or musicologically confident only because a lower ambiguity was silently discarded.
 
-Current model regressions protect boundaries around program versus trace, capture completeness, device versus musical events, physical voice episodes versus persistent parts, device-native pitch controls, nominal/programmed pitch semantics, time mappings, source-relative analysis availability, analysis dependency routes, competing theoretical/perceptual interpretations, listener-response context, work/version identity, timbre/instrument identity, and role-relative attribution.
+Current model regressions protect boundaries around program versus trace, capture completeness, device versus musical events, physical voice episodes versus persistent parts, device-native pitch controls, nominal/programmed pitch semantics, time mappings, source-relative analysis availability, analysis dependency routes, competing theoretical/perceptual interpretations, listener-response context, work/version identity, timbre/instrument identity, role-relative attribution, VGM format/version semantics, Yamaha family boundaries, and cross-family nominal pitch normalization.
 
 Human discourse currently remains a reasoning/projection rule rather than a new graph primitive.
 
