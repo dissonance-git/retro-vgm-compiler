@@ -1,42 +1,25 @@
 #include "genesis_state.h"
+#include "yamaha_opn_register.h"
 
 namespace gameaudio::vgm {
 
 namespace {
 
+constexpr auto ym2612_opn_traits = traits_for(opn_chip_variant::ym2612);
+
 constexpr bool payload_has(const command_event& event, std::uint32_t count) noexcept {
     return event.payload != nullptr && event.payload_size >= count;
 }
 
-constexpr int ym_channel_from_key_code(std::uint8_t code) noexcept {
-    code &= 0x07;
-    if (code == 0x03 || code == 0x07)
-        return -1;
-    return static_cast<int>(code & 0x03) + ((code & 0x04) ? 3 : 0);
-}
-
-constexpr int ym_channel_from_port_register(std::uint8_t port, std::uint8_t reg) noexcept {
-    const std::uint8_t local = reg & 0x03;
-    if (local >= 3 || port >= 2)
-        return -1;
-    return static_cast<int>(port) * 3 + local;
-}
-
-constexpr int ym_operator_from_register(std::uint8_t reg) noexcept {
-    // Yamaha's register order is OP1, OP3, OP2, OP4 at +0,+4,+8,+C.
-    constexpr int register_slot_to_operator[4] = {0, 2, 1, 3};
-    return register_slot_to_operator[(reg >> 2) & 0x03];
-}
-
 void write_ym_operator(ym2612_state& state, std::uint8_t port, std::uint8_t reg, std::uint8_t data) noexcept {
-    if (reg < 0x30 || reg > 0x9F)
+    if (!opn_operator_register(reg))
         return;
-    const int channel = ym_channel_from_port_register(port, reg);
-    if (channel < 0)
+    const auto channel = opn_channel_from_port_register(ym2612_opn_traits, port, reg);
+    if (!channel.has_value())
         return;
 
-    const int op_index = ym_operator_from_register(reg);
-    auto& op = state.channels[static_cast<std::size_t>(channel)].operators[static_cast<std::size_t>(op_index)];
+    const std::uint8_t op_index = opn_operator_from_register(reg);
+    auto& op = state.channels[static_cast<std::size_t>(*channel)].operators[static_cast<std::size_t>(op_index)];
 
     switch (reg & 0xF0) {
     case 0x30:
@@ -162,10 +145,10 @@ void genesis_state::write_ym2612(ym2612_state& state, std::uint8_t port, std::ui
             state.dac_enabled = (data & 0x80) != 0;
             return;
         case 0x28: {
-            const int channel = ym_channel_from_key_code(data);
-            if (channel >= 0) {
-                auto& ch = state.channels[static_cast<std::size_t>(channel)];
-                ch.operator_key_mask = static_cast<std::uint8_t>((data >> 4) & 0x0F);
+            const auto channel = opn_key_register_channel(ym2612_opn_traits, data);
+            if (channel.has_value()) {
+                auto& ch = state.channels[static_cast<std::size_t>(*channel)];
+                ch.operator_key_mask = opn_key_operator_mask(data);
                 ch.key_on = ch.operator_key_mask != 0;
             }
             return;
@@ -177,47 +160,49 @@ void genesis_state::write_ym2612(ym2612_state& state, std::uint8_t port, std::ui
 
     // A4..A6 latch the high F-number/block byte. The value is committed only
     // when the matching A0..A2 low-byte write arrives.
-    if (reg >= 0xA4 && reg <= 0xA6) {
+    if (opn_frequency_high_register(reg)) {
         state.fnum_high_latch = data;
         return;
     }
-    if (reg >= 0xA0 && reg <= 0xA2) {
-        const int channel = ym_channel_from_port_register(port, reg);
-        if (channel >= 0) {
-            auto& ch = state.channels[static_cast<std::size_t>(channel)];
-            ch.fnum = static_cast<std::uint16_t>(data | ((state.fnum_high_latch & 0x07u) << 8));
-            ch.block = static_cast<std::uint8_t>((state.fnum_high_latch >> 3) & 0x07u);
+    if (opn_frequency_low_register(reg)) {
+        const auto channel = opn_channel_from_port_register(ym2612_opn_traits, port, reg);
+        if (channel.has_value()) {
+            auto& ch = state.channels[static_cast<std::size_t>(*channel)];
+            const auto pitch = decode_opn_block_fnum(state.fnum_high_latch, data);
+            ch.fnum = pitch.fnum;
+            ch.block = pitch.block;
         }
         return;
     }
 
     // Channel 3 special-mode operator frequencies use the same latch/commit
     // pattern through AC..AE and A8..AA on port 0.
-    if (port == 0 && reg >= 0xAC && reg <= 0xAE) {
+    if (port == 0 && opn_ch3_frequency_high_register(reg)) {
         state.ch3_fnum_high_latch = data;
         return;
     }
-    if (port == 0 && reg >= 0xA8 && reg <= 0xAA) {
+    if (port == 0 && opn_ch3_frequency_low_register(reg)) {
         const std::size_t index = static_cast<std::size_t>(reg - 0xA8);
-        state.ch3_fnum[index] = static_cast<std::uint16_t>(data | ((state.ch3_fnum_high_latch & 0x07u) << 8));
-        state.ch3_block[index] = static_cast<std::uint8_t>((state.ch3_fnum_high_latch >> 3) & 0x07u);
+        const auto pitch = decode_opn_block_fnum(state.ch3_fnum_high_latch, data);
+        state.ch3_fnum[index] = pitch.fnum;
+        state.ch3_block[index] = pitch.block;
         return;
     }
 
-    if (reg >= 0xB0 && reg <= 0xB2) {
-        const int channel = ym_channel_from_port_register(port, reg);
-        if (channel >= 0) {
-            auto& ch = state.channels[static_cast<std::size_t>(channel)];
-            ch.algorithm = static_cast<std::uint8_t>(data & 0x07u);
-            ch.feedback = static_cast<std::uint8_t>((data >> 3) & 0x07u);
+    if (opn_algorithm_feedback_register(reg)) {
+        const auto channel = opn_channel_from_port_register(ym2612_opn_traits, port, reg);
+        if (channel.has_value()) {
+            auto& ch = state.channels[static_cast<std::size_t>(*channel)];
+            ch.algorithm = opn_algorithm(data);
+            ch.feedback = opn_feedback(data);
         }
         return;
     }
 
     if (reg >= 0xB4 && reg <= 0xB6) {
-        const int channel = ym_channel_from_port_register(port, static_cast<std::uint8_t>(reg - 4));
-        if (channel >= 0) {
-            auto& ch = state.channels[static_cast<std::size_t>(channel)];
+        const auto channel = opn_channel_from_port_register(ym2612_opn_traits, port, reg);
+        if (channel.has_value()) {
+            auto& ch = state.channels[static_cast<std::size_t>(*channel)];
             ch.pan_left = (data & 0x80u) != 0;
             ch.pan_right = (data & 0x40u) != 0;
             ch.ams = static_cast<std::uint8_t>((data >> 4) & 0x03u);
