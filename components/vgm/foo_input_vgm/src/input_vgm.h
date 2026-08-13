@@ -4,6 +4,7 @@
 #include "../../enhancement/genesis_state.h"
 #include "../../enhancement/psg_block_capture.h"
 #include "../../enhancement/sn76489_enhanced.h"
+#include "../../enhancement/ym2612_block_capture.h"
 #include "../../enhancement/ym2612_dac_block_capture.h"
 #include "../../enhancement/ym2612_dac_enhanced.h"
 #include "../../enhancement/ym2612_pcm_stream.h"
@@ -18,6 +19,7 @@ private:
 
 	gameaudio::vgm::genesis_state m_genesis_state;
 	gameaudio::vgm::psg_block_capture m_psg_capture;
+	gameaudio::vgm::ym2612_block_capture m_fm_capture;
 	gameaudio::vgm::ym2612_dac_block_capture m_dac_capture;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
