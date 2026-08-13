@@ -52,6 +52,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         creative_role_attribution_test
         attribution_discovery_control_test
         genesis_driver_source_boundary_test
+        authored_source_projection_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
         genesis_execution_graph_adapter_test
@@ -91,6 +92,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(creative_role_attribution_test tests/model/creative_role_attribution_test.cpp)
     add_executable(attribution_discovery_control_test tests/model/attribution_discovery_control_test.cpp)
     add_executable(genesis_driver_source_boundary_test tests/model/genesis_driver_source_boundary_test.cpp)
+    add_executable(authored_source_projection_test tests/model/authored_source_projection_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
@@ -119,6 +121,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(creative_role_attribution_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(attribution_discovery_control_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(genesis_driver_source_boundary_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(authored_source_projection_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -153,6 +156,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME creative_role_attribution COMMAND creative_role_attribution_test)
     add_test(NAME attribution_discovery_control COMMAND attribution_discovery_control_test)
     add_test(NAME genesis_driver_source_boundary COMMAND genesis_driver_source_boundary_test)
+    add_test(NAME authored_source_projection COMMAND authored_source_projection_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
