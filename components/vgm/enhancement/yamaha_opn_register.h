@@ -1,5 +1,6 @@
 #pragma once
 
+#include "yamaha_four_op_fm.h"
 #include "yamaha_opn_family.h"
 
 #include <cstdint>
@@ -46,10 +47,8 @@ constexpr std::optional<std::uint8_t> opn_channel_from_port_register(
 }
 
 // Yamaha's register slot order is OP1, OP3, OP2, OP4 at +0,+4,+8,+C.
-// Return the logical operator index used by the common musical/synthesis view.
 constexpr std::uint8_t opn_operator_from_register(const std::uint8_t reg) noexcept {
-    constexpr std::uint8_t register_slot_to_operator[4] = {0, 2, 1, 3};
-    return register_slot_to_operator[(reg >> 2) & 0x03u];
+    return yamaha_four_op_logical_operator(static_cast<std::uint8_t>((reg >> 2) & 0x03u));
 }
 
 constexpr bool opn_operator_register(const std::uint8_t reg) noexcept {
@@ -93,11 +92,11 @@ constexpr bool opn_algorithm_feedback_register(const std::uint8_t reg) noexcept 
 }
 
 constexpr std::uint8_t opn_algorithm(const std::uint8_t data) noexcept {
-    return static_cast<std::uint8_t>(data & 0x07u);
+    return decode_yamaha_algorithm_feedback(data).algorithm;
 }
 
 constexpr std::uint8_t opn_feedback(const std::uint8_t data) noexcept {
-    return static_cast<std::uint8_t>((data >> 3) & 0x07u);
+    return decode_yamaha_algorithm_feedback(data).feedback;
 }
 
 } // namespace gameaudio::vgm
