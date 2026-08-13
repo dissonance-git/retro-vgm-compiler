@@ -10,6 +10,7 @@ Two upstream states remain intentionally distinct:
 The binary reference is not a substitute for editable source and must not become the runtime architecture.
 
 For the common semantic model, see `../../docs/musical-execution-model.md`.
+For the durable enhancement target, see `../../docs/source-native-enhanced-rendering.md`.
 
 ## Snapshot truth
 
@@ -147,18 +148,96 @@ Reference parity, runtime analysis, enhancement-core tests and retained listenin
 
 Accuracy remains the scientific/reference render, not the quality ceiling.
 
-Enhanced SPC playback may eventually pursue:
+The target is **not** `SPC -> MIDI -> SoundFont` and not a generic VST replacement.
+
+SoundFont/DLS/VST ecosystems are useful research observatories for sample-based synthesis, multisampling, envelopes, modulation, interpolation, routing and rendering quality. They are not the planned playback backend.
+
+The intended SPC enhancement route is:
+
+```text
+exact BRR/sample identity
++ exact pitch / envelope / loop / articulation history
++ exact routing / echo behavior
+        ↓
+upstream sample provenance when available
+        ↓
+identify historical edits / filtering / truncation / looping / BRR encoding
+        ↓
+preserve intentional transformations
++ relax unwanted degradation
+        ↓
+higher-quality realization of the same SNES instrument design
+```
+
+Enhanced SPC playback may pursue, one variable at a time:
 
 - higher-quality BRR/sample realization;
+- source-provenance-assisted reconstruction when an upstream sample is known;
 - higher-rate/high-precision interpolation;
-- source-conditioned reconstruction without replacing instrument identity;
 - transient and low-frequency body recovery;
-- per-voice masking reduction;
-- modern high-precision summation;
+- higher-precision per-voice synthesis and summation;
 - dry/echo separation;
 - higher-quality realization of authored echo/environment intent;
 - source-aware stereo construction before downstream Omniphony processing.
 
+### Upstream samples are evidence, not automatic replacements
+
+If an original pre-BRR sample or original synth preset can be identified, compare the whole transformation chain:
+
+```text
+upstream source sample
+        ↓ edit / filter / truncate / retune / loop
+prepared game sample
+        ↓ BRR encode
+shipped sample
+        ↓ programmed envelope / pitch / echo / mix
+shipped instrument realization
+```
+
+Then ask which transformations were only storage/quality loss and which became part of the instrument.
+
+Do not merely swap in the pristine source sample. A composer may have deliberately selected or modified material for how the degraded SNES result behaved.
+
+### Historical-intent evidence
+
+Creator testimony shows both sides of this boundary.
+
+Some practitioners described:
+
+- manual sound-data programming as a production burden;
+- severe sample-memory pressure as a quality problem;
+- notes/sections being removed or shortened to fit;
+- later higher-capacity recordings as opportunities to move closer to their original intentions.
+
+Other practitioners deliberately exploited:
+
+- waveform truncation artifacts;
+- tiny sample loops;
+- fake/repeated echoes;
+- constrained timbres that only existed because of the platform.
+
+Therefore no platform-wide rule such as `uncompressed = intended` is valid.
+
+See `../../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
+
+### Memory accounting
+
+The SNES S-SMP/S-DSP audio subsystem has 64 KiB of local RAM. That space may be occupied by driver/code/data, sequence state, BRR samples, directory structures, echo buffer/state, and other audio-engine data.
+
+Graphics do not literally consume this local audio RAM. Cartridge ROM is a separate whole-game storage constraint that may also limit how much audio data can be stored or swapped.
+
+Use game-specific resource evidence where available rather than one generic soundtrack-memory number.
+
+## Validation rule
+
 Any reconstructed information that was never present in the source must remain conditional, reversible and distinguishable from historical truth.
+
+Each proposed relaxation should identify:
+
+1. the exact historical ceiling being changed;
+2. the evidence that the ceiling was unwanted or safely relaxable;
+3. the musical/instrument identities that must remain locked;
+4. at least one reference where the original artifact should intentionally survive;
+5. the measurable and listening result of the A/B.
 
 Normal playback remains realtime. Whole-song analysis may operate separately over captured/source evidence and must not become a prerequisite for hearing an SPC.
