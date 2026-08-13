@@ -101,6 +101,7 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 	if (self->m_source_capture_active)
 	{
 		self->m_psg_capture.observe(event, absolute_sample);
+		self->m_fm_capture.observe(event, absolute_sample);
 		self->m_dac_capture.observe(event, absolute_sample);
 		return;
 	}
@@ -246,6 +247,11 @@ void input_vgm::replay_captured_sources(uint_fast32_t rendered_samples) noexcept
 			}
 		}
 
+		// Full YM2612 FM writes are captured in m_fm_capture for the same block.
+		// They remain non-audible until a mature six-stem backend is attached;
+		// keeping the capture live now lets that backend consume the exact same
+		// realtime timeline without introducing a second observation path later.
+
 		if (m_dac_present[instance] && m_dac_shadow_valid[instance])
 		{
 			if (m_dac_capture.overflowed(instance))
@@ -268,6 +274,7 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 		: m_played_sample;
 	advance_shadow_to(block_start);
 	m_psg_capture.begin_block(block_start);
+	m_fm_capture.begin_block(block_start);
 	m_dac_capture.begin_block(block_start);
 	m_source_capture_active = true;
 
