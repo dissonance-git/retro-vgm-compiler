@@ -6,14 +6,14 @@ Corpus policy: `tests/CORPUS.md`
 
 ## Inputs
 
-Two soundtrack collections supplied directly for analysis:
+Two soundtrack collections supplied directly for analysis and now committed as immutable runnable corpus files:
 
-- `Sonic 3 & Knuckles.zip`
-- `Front Mission ~ Gun Hazard.zip`
+- `tests/corpus/sonic-3-knuckles/`: 58 `.vgz` objects;
+- `tests/corpus/front-mission-gun-hazard/`: 61 `.spc` snapshots.
 
-The preliminary pass analyzed the collections outside the repository and did not commit the source archives. The user has since authorized these two collections to become VGM Tooling test sets. They should be imported as immutable corpus objects when the original supplied bytes are available to the repository-writing environment.
+The committed runnable files are the canonical repository evidence objects for these sets. The ZIP delivery containers are not duplicated in the repository. Per-file SHA-256 inventories, whole-set digests, and exact Git tree identities are recorded under `tests/corpus/manifest.json` and the adjacent `.sha256` files.
 
-Do not rewrite their embedded metadata during import.
+Do not rewrite their embedded metadata.
 
 ## Metadata policy
 
@@ -47,9 +47,9 @@ This is especially important for Sonic 3, where soundtrack-level/team metadata, 
 
 ## Sonic 3 & Knuckles: VGM execution trace
 
-The supplied collection contains 58 `.vgz` objects.
+The committed collection contains 58 `.vgz` objects.
 
-Header-level facts from the preliminary pass:
+Header-level facts verified across the committed set:
 
 - all 58 identify SN76489 clock `3,579,545 Hz`;
 - all 58 identify YM2612 clock `7,670,453 Hz`;
@@ -162,15 +162,17 @@ VGM Tooling should supply technical evidence to those tests without deciding the
 
 ## Front Mission: Gun Hazard: SPC machine snapshots
 
-The supplied collection contains 61 SPC snapshots.
+The committed collection contains 61 SPC snapshots.
 
-All 61 files in the preliminary pass:
+Verified file-level facts:
 
-- have the normal `SNES-SPC700 Sound File Data v0.30` signature;
-- are 66,144 bytes;
-- preserve the 64 KiB SPC700 RAM snapshot;
-- preserve the S-DSP register image;
-- have S-DSP `DIR = $20`, placing the sample directory at RAM `$2000` in every snapshot.
+- all 61 have the normal `SNES-SPC700 Sound File Data v0.30` signature;
+- 60 are 66,144 bytes;
+- `2.28 - Battle.spc` is 66,092 bytes;
+- all retain the SPC700 RAM snapshot and S-DSP register image required for the source-state analysis below;
+- the preliminary structural pass found S-DSP `DIR = $20`, placing the sample directory at RAM `$2000` in every snapshot.
+
+The size difference in `Battle.spc` is a container-size fact, not evidence that it is a different source family. Do not normalize it to make the files artificially uniform.
 
 ### Stable RAM
 
@@ -424,8 +426,22 @@ known source/performance state
 
 The mismatch is research data rather than an error to hide.
 
-## Current import boundary
+## Published corpus state
 
-The user has authorized both supplied collections to become repository test sets. The original archive bytes are not currently present in the GitHub repository, so no claim is made here that the corpus files themselves have been published yet.
+Both real-music sets are now committed directly under `tests/corpus/` and sealed by `tests/corpus/manifest.json` plus per-file SHA-256 inventories.
 
-When the supplied archives are available to the repository-writing environment, import them under the corpus policy, hash them, preserve them unchanged, and build the first real-file regressions from the paired controls above.
+The publication was verified against the original supplied member bytes by reconstructing each Git directory tree locally. The resulting byte-and-path identities match the repository exactly:
+
+```text
+Sonic 3 & Knuckles
+58 VGZ
+Git tree 4944744ac234bbd12ac290de5cca7d9033e8a87b
+set SHA-256 cc6d558de8417e0f21adfe7b431aacfa2bc06385b1c95d288693ea0fdfae71b4
+
+Front Mission: Gun Hazard
+61 SPC
+Git tree e1ac2819549b18664222cd94bd57afb814c11025
+set SHA-256 232985eab0e091473f150cee3587fedd9cdcdfe34b54715ce5d1ada477b0382c
+```
+
+The archive containers are intentionally not duplicated in the repository. For these sets, the directly committed runnable files are the canonical evidence objects.

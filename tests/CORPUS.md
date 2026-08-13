@@ -25,19 +25,23 @@ can metadata remain separate from attribution evidence?
 
 User-supplied corpus files are immutable evidence objects.
 
-Do not rewrite, retag, normalize, recompress, or otherwise mutate the source file merely to make metadata cleaner.
+Do not rewrite, retag, normalize, recompress, or otherwise mutate a canonical corpus object merely to make metadata cleaner.
 
-When corpus archives are supplied, preserve the exact archive plus hashes before extracting runnable fixtures. Record any extraction/transformation separately.
+The canonical supplied object depends on the delivery form:
 
 ```text
-supplied bytes
-        ↓ preserve exactly
-immutable corpus/import object
+direct runnable files
+        ↓ preserve each byte-for-byte
+canonical VGM / VGZ / SPC fixtures
+
+archive supplied as a canonical object
+        ↓ preserve archive byte-for-byte when retained
+archive evidence object
         ↓ extract without rewriting media
 runnable VGM / VGZ / SPC fixtures
-        ↓
-analysis / execution / rendering tests
 ```
+
+A ZIP is not required merely to duplicate files that were supplied and committed directly. When direct runnable files are the canonical corpus objects, preserve those files and their hashes. When an archive itself is intended to be retained as evidence, preserve its exact bytes and hash as a separate object. Record any extraction or transformation explicitly.
 
 ## Metadata is not one evidence class
 
@@ -144,10 +148,11 @@ Tests of metadata precedence should validate the visible/effective result withou
 
 Each committed corpus set should have a manifest recording at least:
 
-- original supplied filename/archive name;
-- SHA-256 of the preserved supplied object;
-- extracted fixture path;
-- SHA-256 of each runnable file;
+- stable corpus ID and canonical repository path;
+- delivery form (`direct-files`, archive import, or another explicitly recorded route);
+- original supplied filename or archive name when applicable;
+- SHA-256 of every canonical runnable file;
+- deterministic whole-set digest and/or Git tree identity when available;
 - source family (`VGM/VGZ` or `SPC` initially);
 - game/work identifier when known;
 - track/cue identifier when known;
@@ -158,6 +163,8 @@ Each committed corpus set should have a manifest recording at least:
 - authoritative artist value only when supplied through the Helix/foobar route or independently verified;
 - known provenance/capture limitations;
 - any reason a fixture is particularly useful for a regression.
+
+When the canonical object is a retained archive, record the archive hash too. Do not invent an archive requirement for a corpus whose canonical objects are the directly supplied runnable files.
 
 Do not store a guessed artist merely to make the inventory look complete.
 
