@@ -1,4 +1,4 @@
-#include "components/vgm/enhancement/yamaha_opn_family.h"
+#include "yamaha_opn_family.h"
 
 #include <cassert>
 
