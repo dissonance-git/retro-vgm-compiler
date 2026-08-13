@@ -1,6 +1,6 @@
 # VGM component
 
-This directory is the development home for the VGM/VGZ foobar2000 path and the current Genesis-focused source-state/enhancement core.
+This directory is the development home for the VGM/VGZ foobar2000 path and the current cross-chip source-state/enhancement core.
 
 The imported upstream wrapper remains the reference playback foundation. Project-owned analysis and enhanced-rendering work must stay traceable to exact VGM command/device state and must not silently replace reference behavior.
 
@@ -8,22 +8,24 @@ For full engineering status, see `../../docs/vgm-frontier.md`. For the common se
 
 ## Current execution path
 
-The current project-owned vertical slice is:
+The project-owned path is becoming:
 
 ```text
 VGM command stream
         ↓
+format/version semantics
+        ↓
 allocation-free ordered command capture
         ↓
-decoded Genesis device transitions
+chip-family-specific device transitions
         ↓
-rebuildable YM2612 / SN76489 state
+rebuildable device state
         ↓
 bounded physical voice episodes
         ↓
-conservative pitched-activity observations
+conservative pitch/control observations
         ↓
-device-native pitch/control history
+common musical coordinates only where independently earned
         ↓
 higher musical identity / structure only when stronger evidence supports it
 ```
@@ -31,6 +33,46 @@ higher musical identity / structure only when stronger evidence supports it
 The source trace remains canonical evidence. Replayed device state is a rebuildable view, not a replacement for ordered transition history.
 
 Capture gaps, truncated payloads and stateful-command ambiguity fail closed rather than fabricating later semantic continuity.
+
+The VGM specification is the authority for what the format bytes mean. Chip manuals, drivers and mature emulator implementations answer what the addressed hardware does with them.
+
+## Cross-chip VGM floor
+
+The current format-level core includes:
+
+- version-aware VGM clock semantics;
+- dual-chip and selected variant flags;
+- VGM 1.70 distinct second-instance clocks;
+- Yamaha register-write transport for `0x51-0x5F` and `0xA1-0xAF`;
+- explicit exclusion of `0xA0`, which remains AY8910;
+- generic DAC Stream Control decoding for `0x90-0x95`;
+- spec-driven corpus timing and loop validation in `tools/vgm_corpus_audit.py`.
+
+These are transport/format facts, not a universal chip state model.
+
+## Yamaha family boundaries now represented
+
+The first cross-chip comparison deliberately keeps several branches independent.
+
+```text
+OPN
+YM2203 • YM2608 • YM2610/B • YM2612/3438
+
+OPM
+YM2151/2164
+
+OPL
+YM3526 • Y8950 • YM3812 • YMF262
+
+OPLL
+YM2413-class preset/user-instrument devices
+```
+
+OPN shares key/register/FNUM mechanics internally. OPM uses key code + key fraction. OPL uses a different connection/feedback packing and two-operator baseline, with OPL3 able to pair selected channels dynamically into four-operator voices. OPLL adds preset/user-patch provenance.
+
+A small four-operator invariant was earned across OPN and OPM, then explicitly stopped there because OPL falsifies it as universal Yamaha behavior.
+
+The pitch layer follows the same rule: family-specific coordinates may derive the same nominal frequency without being collapsed into one native pitch encoding or a MIDI note.
 
 ## Genesis state currently represented
 
@@ -55,9 +97,11 @@ Project-owned source-domain work currently includes:
 
 - `sn76489_enhanced` for isolated high-quality PSG tone/noise stems;
 - `ym2612_dac_enhanced` for classic YM2612 DAC playback;
-- `ym2612_pcm_stream` for modern source-bank PCM streams with source-rate reconstruction;
+- `ym2612_pcm_stream` for the current YM2612 sink of VGM source-bank streams;
 - exact YM2612 register timeline capture and an isolated six-channel FM backend contract;
 - explicit authored stereo routing and high-precision source summation primitives.
+
+The VGM `0x90-0x95` stream transport itself is now decoded generically so future chip-specific PCM/ADPCM sinks do not each invent private format semantics.
 
 These cores are not evidence that foobar playback has already switched to an audible enhanced renderer. Reference playback, source-state infrastructure, testable enhancement cores and retained listening wins are separate evidence states.
 
@@ -66,12 +110,17 @@ These cores are not evidence that foobar playback has already switched to an aud
 The next major audible Genesis milestone remains a mature six-channel YM2612 renderer with:
 
 - exact patch/operator semantics;
-- exact register/control timing;
+- writes preserved in absolute VGM source ticks;
+- native FM clock scheduling inside the backend;
 - isolated channel output before final stereo summation;
+- high-quality phase-coherent output-rate conversion;
+- explicit algorithmic latency;
 - reference-comparable behavior;
 - reversible substitution behind an experimental path.
 
-Do not use a simplistic approximation merely to make sound sooner.
+The caller must not quantize VGM write ticks to output frames before the backend sees them.
+
+Do not use a simplistic approximation merely to make sound sooner, and do not instantiate six unrelated FM emulators just to obtain six stems. Global/LFO/phase state belongs to one coherent engine.
 
 Only after a mature source-faithful FM path is validated should selected hardware limitations be relaxed experimentally.
 
@@ -90,11 +139,27 @@ higher-fidelity FM realization
 
 Candidate ceilings include numerical precision, reconstruction bandwidth, avoidable aliasing/imaging, DAC realization and final summation precision. Each must be tested separately.
 
-A YM2612-specific artifact that materially defines the patch remains part of the instrument until evidence and listening show a safe higher-quality equivalent.
+A chip-specific artifact that materially defines the patch remains part of the instrument until evidence and listening show a safe higher-quality equivalent.
+
+## Real-corpus control
+
+The immutable Sonic 3 & Knuckles corpus remains the first byte-verified VGM control.
+
+The generic VGM corpus audit currently validates:
+
+```text
+58 / 58 structural parses
+58 / 58 total-sample declarations
+57 / 57 declared loop boundaries and loop durations
+```
+
+Additional YM2203/YM2608/YM2151/YM2413/YM3812/YMF262 sets should be admitted through the same structural path before they are allowed to pressure-test chip-specific state or higher musical inference.
+
+More files are useful only when they add independent information.
 
 ## Historical constraint evidence
 
-The project now distinguishes:
+The project distinguishes:
 
 ```text
 unwanted production burden
@@ -113,18 +178,20 @@ See `../../research/cases/historical-constraint-friction-counterfactual-renderin
 
 ## Musical-analysis relationship
 
-The VGM path now contributes more than chip telemetry. It can provide exact lower evidence for higher questions about programmed expression, persistent musical identity, texture, parts and whole-song structure.
+The VGM path now contributes more than chip telemetry. It can provide exact lower evidence for higher questions about programmed expression, persistent musical identity, texture, parts, harmony and whole-song structure.
 
 But a register trace usually cannot prove the original driver track or composer-facing score. Higher claims remain source-relative and provenance-bearing.
 
-The intended song-level analysis is therefore:
+The intended analysis path is therefore:
 
 ```text
 exact VGM execution
         ↓
-conservative source/performance evidence
+family-specific device truth
         ↓
-persistent-part / structure hypotheses
+conservative common performance coordinates
+        ↓
+persistent-part / harmonic / structural hypotheses
         ↓
 synchronized listening-level account
 ```
@@ -134,6 +201,14 @@ not:
 ```text
 VGM -> MIDI -> canonical song model
 ```
+
+## Future preservation tooling
+
+The spec-driven structural audit makes future state-aware assistance with loop validation and VGM set preparation plausible.
+
+The current implementation validates declared loops; it does not discover or rewrite them.
+
+A mature loop analysis should eventually compare executable state, not just waveform similarity, so hidden chip/stream/modulation state cannot silently diverge across a musically convincing repeat.
 
 ## Realtime law
 
