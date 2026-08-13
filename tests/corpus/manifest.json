@@ -506,6 +506,52 @@
       "set_sha256": "2e40b993591b0149fa6c8948886224c2e6d715ecb70ae5a806b323751d3bd457"
     },
     {
+      "corpus_id": "ponpoko-namco-wsg",
+      "path": "tests/corpus/ponpoko-namco-wsg",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Ponpoko",
+      "device_families": [
+        "C352"
+      ],
+      "source_hardware_families": [
+        "Namco WSG (3-voice Pac-Man hardware)"
+      ],
+      "source_url": "https://vgmrips.net/forum/download/file.php?id=1650",
+      "source_page": "https://vgmrips.net/forum/viewtopic.php?t=3611",
+      "source_archive_sha256": "fd4ff72a2ce35ad6e3e5d2bd22deb4dfb1d10ee48080eaeab05072e570e42ef5",
+      "source_archive_retained": false,
+      "representation_provenance": {
+        "source_claim": "Pack author extracted the WSG music with a reverse-engineered driver, checked it frame-for-frame against MAME register dumps, and converted it to C352.",
+        "preserved_vgm_device": "C352",
+        "reason": "Standard VGM has no native Namco WSG support.",
+        "equivalence_limit": "This is not a native WSG command timeline; no WSG-to-C352 event or synthesis equivalence is claimed."
+      },
+      "observed_device_clocks_hz": {
+        "C352": 24576000
+      },
+      "observed_vgm_versions": {
+        "0x171": 12
+      },
+      "observed_command_bytes": [
+        "61",
+        "66",
+        "67",
+        "E1"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 12,
+        "total_samples_match_count": 12,
+        "declared_loop_count": 0,
+        "valid_loop_boundary_count": 0,
+        "loop_samples_match_count": 0
+      },
+      "fixture_count": 12,
+      "sha256_inventory": "tests/corpus/ponpoko-namco-wsg.sha256",
+      "git_tree_sha1": "835517f1ab6ca24e051159965c2f8ba5a70ac2ff",
+      "set_sha256": "66ec0b9e9e150782232ca5c3bacd85a155816c5b0e746363cb812a0062daca22"
+    },
+    {
       "corpus_id": "raimais-ym2610b",
       "path": "tests/corpus/raimais-ym2610b",
       "delivery": "direct-files",

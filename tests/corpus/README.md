@@ -58,6 +58,7 @@ An archive is a delivery container, not a mandatory duplicate of a direct-file c
 | `magical-drop-okim6295` | Magical Drop | VGZ | MSM6295 | 3 |
 | `motocross-maniacs-game-boy` | Motocross Maniacs | VGZ | GameBoy DMG | 5 |
 | `outrun-segapcm` | OutRun | VGZ | YM2151, SegaPCM | 4 |
+| `ponpoko-namco-wsg` | Ponpoko | VGZ | C352 (converted from 3-voice Namco WSG) | 12 |
 | `raimais-ym2610b` | Raimais | VGZ | YM2610B | 7 |
 | `sonic-3-knuckles` | Sonic 3 & Knuckles | VGZ | YM2612, SN76489 | 58 |
 | `star-parodier-huc6280` | Star Parodier | VGZ | HuC6280 | 3 |
@@ -71,8 +72,8 @@ An archive is a delivery container, not a mandatory duplicate of a direct-file c
 | `truxton-ym3812` | Truxton | VGZ | YM3812 | 7 |
 | `wanderers-from-super-scheme-ym2608` | Wanderers from Super Scheme | VGZ | YM2608 | 4 |
 
-Total: 23 sets and 215 immutable real-music fixtures. The 2026-08-13
-heterogeneous expansion added 21 sets and 96 fixtures. `manifest.json` records
+Total: 24 sets and 227 immutable real-music fixtures. The 2026-08-13
+heterogeneous expansion added 22 sets and 108 fixtures. `manifest.json` records
 the exact header clocks, VGM versions, command bytes, loop checks, whole-set
 SHA-256 values, and Git tree identities for the new VGM/VGZ controls.
 
@@ -90,8 +91,21 @@ validated the selected bytes. Preferred-title substitutions were required:
   Bucket Relay Champ provides the single-device YMF262 control.
 - No local NSF/NSFe object was found. With explicit user authorization, the
   Star Soldier NSF was downloaded from Zophar's Domain and its exact NSF bytes
-  were retained; the source ZIP was hashed but not committed. No early Namco
-  WSG set was found, so that requested generation remains absent.
+  were retained; the source ZIP was hashed but not committed.
+
+## Namco WSG representation boundary
+
+`ponpoko-namco-wsg` preserves a compact 12-cue VGM pack whose music was written
+for the three-voice Namco WSG on Pac-Man hardware. Standard VGM has no native
+Namco WSG command support. The pack author reports extracting the music with a
+reverse-engineered driver, checking it frame-for-frame against MAME register
+dumps, and converting it to C352 for VGM playback.
+
+The actual retained headers and commands therefore declare and drive C352, not
+WSG. This is a source-hardware/converted-representation control, kept separate
+from `super-world-court-c140` and the native C352 control
+`super-world-stadium-95-c352`. It is not evidence of a native WSG command
+timeline and does not establish WSG-to-C352 event or synthesis equivalence.
 
 ## Same-work NES cross-representation control
 
