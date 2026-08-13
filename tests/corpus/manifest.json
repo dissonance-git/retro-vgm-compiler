@@ -1,4 +1,34 @@
 {
-  "version": 1,
-  "sets": []
+  "version": 2,
+  "set_sha256_rule": "sha256(path + NUL + file_sha256 + NUL + decimal_size + LF, for files sorted case-insensitively by full path)",
+  "sets": [
+    {
+      "corpus_id": "front-mission-gun-hazard",
+      "path": "tests/corpus/front-mission-gun-hazard",
+      "delivery": "direct-files",
+      "source_family": "SPC",
+      "work": "Front Mission: Gun Hazard",
+      "device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 61,
+      "sha256_inventory": "tests/corpus/front-mission-gun-hazard.sha256",
+      "git_tree_sha1": "e1ac2819549b18664222cd94bd57afb814c11025",
+      "set_sha256": "232985eab0e091473f150cee3587fedd9cdcdfe34b54715ce5d1ada477b0382c",
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "size_distribution_bytes": {"66144": 60, "66092": 1}
+    },
+    {
+      "corpus_id": "sonic-3-knuckles",
+      "path": "tests/corpus/sonic-3-knuckles",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Sonic 3 & Knuckles",
+      "device_families": ["YM2612", "SN76489"],
+      "fixture_count": 58,
+      "sha256_inventory": "tests/corpus/sonic-3-knuckles.sha256",
+      "git_tree_sha1": "4944744ac234bbd12ac290de5cca7d9033e8a87b",
+      "set_sha256": "cc6d558de8417e0f21adfe7b431aacfa2bc06385b1c95d288693ea0fdfae71b4",
+      "observed_device_clocks_hz": {"SN76489": 3579545, "YM2612": 7670453},
+      "observed_vgm_versions": {"0x150": 57, "0x110": 1}
+    }
+  ]
 }
