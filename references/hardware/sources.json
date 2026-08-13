@@ -15,10 +15,10 @@
       "external_locator": null,
       "checksum": {
         "algorithm": "sha256",
-        "value": null,
-        "status": "not_recorded"
+        "value": "0fa014833756ca0ed85447f94d0ec9844c819ca41d699d69f1c1922b758d9f71",
+        "status": "verified"
       },
-      "notes": "User-supplied preserved scan. The opening section contains the preliminary YM2612 application manual. Exact public document URL and file checksum are not yet pinned; retain the artifact filename and page references until they are."
+      "notes": "User-supplied preserved scan. The opening section contains the preliminary YM2612 application manual. The exact scan bytes are pinned by SHA-256; a public document URL may be added later without changing claim identity."
     },
     {
       "id": "genesis-sound-software-manual-1992-02-21",
@@ -33,10 +33,10 @@
       "external_locator": null,
       "checksum": {
         "algorithm": "sha256",
-        "value": null,
-        "status": "not_recorded"
+        "value": "7a99b1bca39306323580581f56517bbcb7a17499e4bef41890f483489de0a75f",
+        "status": "verified"
       },
-      "notes": "Preserved Sega development manual covering Z80 mapping/control, FM access, PSG control, and D/A control. Exact public document URL and file checksum are not yet pinned."
+      "notes": "Preserved Sega development manual covering Z80 mapping/control, FM access, PSG control, and D/A control. The exact scan bytes are pinned by SHA-256."
     },
     {
       "id": "ym3438-application-manual-jp",
@@ -51,10 +51,10 @@
       "external_locator": null,
       "checksum": {
         "algorithm": "sha256",
-        "value": null,
-        "status": "not_recorded"
+        "value": "8976f56791cfa3a3c3bd93b793313dbaa2769370373bb5643796b62ae175eb4a",
+        "status": "verified"
       },
-      "notes": "Primary OPN2C/YM3438 scan. Exact public document URL and file checksum are not yet pinned."
+      "notes": "Primary OPN2C/YM3438 scan. The exact scan bytes are pinned by SHA-256."
     },
     {
       "id": "sn76489-application-manual",
@@ -69,10 +69,10 @@
       "external_locator": null,
       "checksum": {
         "algorithm": "sha256",
-        "value": null,
-        "status": "not_recorded"
+        "value": "4e0e11a4b9843c9cb9a2e6de7a2c4e696eba96ba1b425e3f1d402c25ec7ea801",
+        "status": "verified"
       },
-      "notes": "Texas Instruments primary device documentation for tone/noise generation, attenuation, register/data format, and timing. Exact public document URL and file checksum are not yet pinned."
+      "notes": "Texas Instruments primary device documentation for tone/noise generation, attenuation, register/data format, and timing. The exact scan bytes are pinned by SHA-256."
     },
     {
       "id": "ym2151-application-manual-en",
@@ -87,10 +87,10 @@
       "external_locator": null,
       "checksum": {
         "algorithm": "sha256",
-        "value": null,
-        "status": "not_recorded"
+        "value": "ec3d9b0f1934873b49e1f3820b7cde9aa1bfff6d917fb2a8a09be609fcee8640",
+        "status": "verified"
       },
-      "notes": "Primary English YM2151 manual covering OPM pitch, operator, envelope, LFO, timer, noise, accumulator, and interface semantics. Exact public document URL and file checksum are not yet pinned."
+      "notes": "Primary English YM2151 manual covering OPM pitch, operator, envelope, LFO, timer, noise, accumulator, and interface semantics. The exact scan bytes are pinned by SHA-256."
     }
   ]
 }
