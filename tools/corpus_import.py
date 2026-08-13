@@ -12,7 +12,7 @@ import sys
 import zipfile
 from pathlib import Path, PurePosixPath
 
-ALLOWED_SUFFIXES = {".vgm", ".vgz", ".spc"}
+ALLOWED_SUFFIXES = {".vgm", ".vgz", ".spc", ".nsf", ".nsfe"}
 MANIFEST_VERSION = 2
 
 

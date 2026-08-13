@@ -3,18 +3,565 @@
   "set_sha256_rule": "sha256(path + NUL + file_sha256 + NUL + decimal_size + LF, for files sorted case-insensitively by full path)",
   "sets": [
     {
+      "corpus_id": "antarctic-adventure-ay8910",
+      "path": "tests/corpus/antarctic-adventure-ay8910",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Antarctic Adventure",
+      "device_families": [
+        "AY8910"
+      ],
+      "observed_device_clocks_hz": {
+        "AY8910": 1789773
+      },
+      "observed_vgm_versions": {
+        "0x151": 1
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7E",
+        "7F",
+        "A0"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 1,
+        "total_samples_match_count": 1,
+        "declared_loop_count": 1,
+        "valid_loop_boundary_count": 1,
+        "loop_samples_match_count": 1
+      },
+      "fixture_count": 1,
+      "sha256_inventory": "tests/corpus/antarctic-adventure-ay8910.sha256",
+      "git_tree_sha1": "4358a50266310a5fbcd0727f0fcd2b1dd5e12cf1",
+      "set_sha256": "279bbf06a2a089305b2d074542fe1fc53fdacfba97d20486e144cf1ea4c1bab9"
+    },
+    {
+      "corpus_id": "bucket-relay-champ-ymf262",
+      "path": "tests/corpus/bucket-relay-champ-ymf262",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Bucket Relay Champ",
+      "device_families": [
+        "YMF262"
+      ],
+      "observed_device_clocks_hz": {
+        "YMF262": 14318180
+      },
+      "observed_vgm_versions": {
+        "0x151": 5
+      },
+      "observed_command_bytes": [
+        "5E",
+        "5F",
+        "61",
+        "62",
+        "63",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 5,
+        "total_samples_match_count": 5,
+        "declared_loop_count": 5,
+        "valid_loop_boundary_count": 5,
+        "loop_samples_match_count": 5
+      },
+      "fixture_count": 5,
+      "sha256_inventory": "tests/corpus/bucket-relay-champ-ymf262.sha256",
+      "git_tree_sha1": "3b28472207da1997a78b26fb88315c38bcd70f69",
+      "set_sha256": "928098a441b78cdca9029c48918c4272f8b12a206901d1aa38c59c842fc78ae4"
+    },
+    {
+      "corpus_id": "cameltry-ym2610",
+      "path": "tests/corpus/cameltry-ym2610",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Cameltry",
+      "device_families": [
+        "YM2610"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2610": 8000000
+      },
+      "observed_vgm_versions": {
+        "0x151": 5
+      },
+      "observed_command_bytes": [
+        "58",
+        "59",
+        "61",
+        "62",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 5,
+        "total_samples_match_count": 5,
+        "declared_loop_count": 5,
+        "valid_loop_boundary_count": 5,
+        "loop_samples_match_count": 5
+      },
+      "fixture_count": 5,
+      "sha256_inventory": "tests/corpus/cameltry-ym2610.sha256",
+      "git_tree_sha1": "6f017c67cd4db743fa56c4fb2981ff4c860ae519",
+      "set_sha256": "86a15ade7618f3cde9ed45d3f3f637e548ae45bfa039623f7a183a55e2db2633"
+    },
+    {
+      "corpus_id": "dark-wizard-rf5c164",
+      "path": "tests/corpus/dark-wizard-rf5c164",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Dark Wizard",
+      "device_families": [
+        "RF5C164"
+      ],
+      "observed_device_clocks_hz": {
+        "RF5C164": 12500000
+      },
+      "observed_vgm_versions": {
+        "0x160": 16
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "66",
+        "67",
+        "68",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7D",
+        "7E",
+        "7F",
+        "B1"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 16,
+        "total_samples_match_count": 16,
+        "declared_loop_count": 15,
+        "valid_loop_boundary_count": 15,
+        "loop_samples_match_count": 15
+      },
+      "fixture_count": 16,
+      "sha256_inventory": "tests/corpus/dark-wizard-rf5c164.sha256",
+      "git_tree_sha1": "96bc61ab6fe127e0d798b4b890a16e2992a4fba5",
+      "set_sha256": "ceaff59a4e23bbeb388b5f7a721a6216d17e58b0287e01ce7366fc91a1a46c29"
+    },
+    {
+      "corpus_id": "disc-station-ym2413",
+      "path": "tests/corpus/disc-station-ym2413",
+      "delivery": "direct-files",
+      "source_family": "VGM",
+      "work": "Disc Station",
+      "device_families": [
+        "YM2413"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2413": 3579545
+      },
+      "observed_vgm_versions": {
+        "0x150": 2
+      },
+      "observed_command_bytes": [
+        "51",
+        "61",
+        "62",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 2,
+        "total_samples_match_count": 2,
+        "declared_loop_count": 2,
+        "valid_loop_boundary_count": 2,
+        "loop_samples_match_count": 2
+      },
+      "fixture_count": 2,
+      "sha256_inventory": "tests/corpus/disc-station-ym2413.sha256",
+      "git_tree_sha1": "52a03ed046cde30f19a7f3a4b97c15afed0305be",
+      "set_sha256": "4af4a6f00b95516382592e974a00705d28ab0b1015a5ed46769716193c1efd47"
+    },
+    {
       "corpus_id": "front-mission-gun-hazard",
       "path": "tests/corpus/front-mission-gun-hazard",
       "delivery": "direct-files",
       "source_family": "SPC",
       "work": "Front Mission: Gun Hazard",
-      "device_families": ["SPC700", "S-DSP"],
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
       "fixture_count": 61,
       "sha256_inventory": "tests/corpus/front-mission-gun-hazard.sha256",
       "git_tree_sha1": "e1ac2819549b18664222cd94bd57afb814c11025",
       "set_sha256": "232985eab0e091473f150cee3587fedd9cdcdfe34b54715ce5d1ada477b0382c",
       "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
-      "size_distribution_bytes": {"66144": 60, "66092": 1}
+      "size_distribution_bytes": {
+        "66144": 60,
+        "66092": 1
+      }
+    },
+    {
+      "corpus_id": "fuusen-pentai-scc",
+      "path": "tests/corpus/fuusen-pentai-scc",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Fuusen Pentai",
+      "device_families": [
+        "K051649"
+      ],
+      "observed_device_clocks_hz": {
+        "K051649": 1500000
+      },
+      "observed_vgm_versions": {
+        "0x161": 3
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "D2"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 3,
+        "total_samples_match_count": 3,
+        "declared_loop_count": 3,
+        "valid_loop_boundary_count": 3,
+        "loop_samples_match_count": 3
+      },
+      "fixture_count": 3,
+      "sha256_inventory": "tests/corpus/fuusen-pentai-scc.sha256",
+      "git_tree_sha1": "3932adedd734b20d1b959a66d38372353307ac8a",
+      "set_sha256": "63e17f2c817c5ae3e7262213efdac17e6967138a3c24b9a83af04961efc868fd"
+    },
+    {
+      "corpus_id": "jyangokushi-qsound",
+      "path": "tests/corpus/jyangokushi-qsound",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Jyangokushi",
+      "device_families": [
+        "QSound"
+      ],
+      "observed_device_clocks_hz": {
+        "QSound": 4000000
+      },
+      "observed_vgm_versions": {
+        "0x161": 5
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "63",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "C4"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 5,
+        "total_samples_match_count": 5,
+        "declared_loop_count": 5,
+        "valid_loop_boundary_count": 5,
+        "loop_samples_match_count": 5
+      },
+      "fixture_count": 5,
+      "sha256_inventory": "tests/corpus/jyangokushi-qsound.sha256",
+      "git_tree_sha1": "b8532b7e278090afd9644c73837a4ca71623448e",
+      "set_sha256": "ce6a24d440ca9f47ce19d4acb12315cbf22ac291cdfc8985805019a3bc321ce4"
+    },
+    {
+      "corpus_id": "magical-drop-okim6295",
+      "path": "tests/corpus/magical-drop-okim6295",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Magical Drop",
+      "device_families": [
+        "MSM6295"
+      ],
+      "observed_device_clocks_hz": {
+        "MSM6295": 2013750
+      },
+      "observed_clock_flags": [
+        {
+          "chip": "MSM6295",
+          "dual": false,
+          "flag31": true
+        }
+      ],
+      "observed_vgm_versions": {
+        "0x161": 3
+      },
+      "observed_command_bytes": [
+        "61",
+        "66",
+        "67",
+        "B8"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 3,
+        "total_samples_match_count": 3,
+        "declared_loop_count": 3,
+        "valid_loop_boundary_count": 3,
+        "loop_samples_match_count": 3
+      },
+      "fixture_count": 3,
+      "sha256_inventory": "tests/corpus/magical-drop-okim6295.sha256",
+      "git_tree_sha1": "c6430b99ebf87eb7a438aaad76a66abc6c22cc6c",
+      "set_sha256": "421c8d43646cd41f87ac950c3b8b51bcbfef3684ba1eb3f60fbca751bc32d6f5"
+    },
+    {
+      "corpus_id": "motocross-maniacs-game-boy",
+      "path": "tests/corpus/motocross-maniacs-game-boy",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Motocross Maniacs",
+      "device_families": [
+        "GameBoy DMG"
+      ],
+      "observed_device_clocks_hz": {
+        "GameBoy DMG": 4194304
+      },
+      "observed_vgm_versions": {
+        "0x161": 5
+      },
+      "observed_command_bytes": [
+        "61",
+        "66",
+        "70",
+        "71",
+        "72",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "B3"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 5,
+        "total_samples_match_count": 5,
+        "declared_loop_count": 5,
+        "valid_loop_boundary_count": 5,
+        "loop_samples_match_count": 5
+      },
+      "fixture_count": 5,
+      "sha256_inventory": "tests/corpus/motocross-maniacs-game-boy.sha256",
+      "git_tree_sha1": "d340898784389113d16cc4156ebf8b2eb274f131",
+      "set_sha256": "ccd9fc51d14c1e9cbbd30b6f6229739af70f022c71da7d380cce8160a529c342"
+    },
+    {
+      "corpus_id": "outrun-segapcm",
+      "path": "tests/corpus/outrun-segapcm",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "OutRun",
+      "device_families": [
+        "YM2151",
+        "SegaPCM"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2151": 4000000,
+        "SegaPCM": 4000000
+      },
+      "observed_vgm_versions": {
+        "0x151": 4
+      },
+      "observed_command_bytes": [
+        "54",
+        "61",
+        "63",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "C0"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 4,
+        "total_samples_match_count": 4,
+        "declared_loop_count": 3,
+        "valid_loop_boundary_count": 3,
+        "loop_samples_match_count": 3
+      },
+      "fixture_count": 4,
+      "sha256_inventory": "tests/corpus/outrun-segapcm.sha256",
+      "git_tree_sha1": "47d65fc5ecc8741d292708d021b680712cc16e43",
+      "set_sha256": "2e40b993591b0149fa6c8948886224c2e6d715ecb70ae5a806b323751d3bd457"
+    },
+    {
+      "corpus_id": "raimais-ym2610b",
+      "path": "tests/corpus/raimais-ym2610b",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Raimais",
+      "device_families": [
+        "YM2610B"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2610B": 8000000
+      },
+      "observed_clock_flags": [
+        {
+          "chip": "YM2610B",
+          "dual": false,
+          "flag31": true
+        }
+      ],
+      "observed_vgm_versions": {
+        "0x151": 7
+      },
+      "observed_command_bytes": [
+        "58",
+        "59",
+        "61",
+        "62",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 7,
+        "total_samples_match_count": 7,
+        "declared_loop_count": 6,
+        "valid_loop_boundary_count": 6,
+        "loop_samples_match_count": 6
+      },
+      "fixture_count": 7,
+      "sha256_inventory": "tests/corpus/raimais-ym2610b.sha256",
+      "git_tree_sha1": "154912005727c8fbae8bcf2437ae76b941e79f87",
+      "set_sha256": "4994ee9bc7ef952b994fcd8f597281ea8f8b6480662ea4ba6e55f5a5172cd25c"
     },
     {
       "corpus_id": "sonic-3-knuckles",
@@ -22,13 +569,504 @@
       "delivery": "direct-files",
       "source_family": "VGZ",
       "work": "Sonic 3 & Knuckles",
-      "device_families": ["YM2612", "SN76489"],
+      "device_families": [
+        "YM2612",
+        "SN76489"
+      ],
       "fixture_count": 58,
       "sha256_inventory": "tests/corpus/sonic-3-knuckles.sha256",
       "git_tree_sha1": "4944744ac234bbd12ac290de5cca7d9033e8a87b",
       "set_sha256": "cc6d558de8417e0f21adfe7b431aacfa2bc06385b1c95d288693ea0fdfae71b4",
-      "observed_device_clocks_hz": {"SN76489": 3579545, "YM2612": 7670453},
-      "observed_vgm_versions": {"0x150": 57, "0x110": 1}
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 57,
+        "0x110": 1
+      }
+    },
+    {
+      "corpus_id": "star-parodier-huc6280",
+      "path": "tests/corpus/star-parodier-huc6280",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Star Parodier",
+      "device_families": [
+        "HuC6280"
+      ],
+      "observed_device_clocks_hz": {
+        "HuC6280": 3579545
+      },
+      "observed_vgm_versions": {
+        "0x172": 3
+      },
+      "observed_command_bytes": [
+        "32",
+        "61",
+        "62",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "B9"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 3,
+        "total_samples_match_count": 3,
+        "declared_loop_count": 2,
+        "valid_loop_boundary_count": 2,
+        "loop_samples_match_count": 2
+      },
+      "fixture_count": 3,
+      "sha256_inventory": "tests/corpus/star-parodier-huc6280.sha256",
+      "git_tree_sha1": "e7b915274e4b5369b3e3fe0e5df448408c3f21eb",
+      "set_sha256": "e08db4289eb5649eda7be2a170c3cd8a5fd36b761f73b28f01484276e1aed09b"
+    },
+    {
+      "corpus_id": "star-soldier-nes-apu-vgm",
+      "path": "tests/corpus/star-soldier-nes-apu-vgm",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Star Soldier",
+      "device_families": [
+        "NES APU"
+      ],
+      "observed_device_clocks_hz": {
+        "NES APU": 1789772
+      },
+      "observed_vgm_versions": {
+        "0x161": 3
+      },
+      "observed_command_bytes": [
+        "61",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7D",
+        "7F",
+        "B4"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 3,
+        "total_samples_match_count": 3,
+        "declared_loop_count": 3,
+        "valid_loop_boundary_count": 3,
+        "loop_samples_match_count": 3
+      },
+      "fixture_count": 3,
+      "sha256_inventory": "tests/corpus/star-soldier-nes-apu-vgm.sha256",
+      "git_tree_sha1": "cd21c4a6648241305fbf20a306e80e8a1fbd041f",
+      "set_sha256": "d52dc3e1953900168df8cf9dc027c1812b45f07833f90854b3f1cd18be80fcb3"
+    },
+    {
+      "corpus_id": "star-soldier-nsf",
+      "path": "tests/corpus/star-soldier-nsf",
+      "delivery": "direct-files",
+      "source_family": "NSF",
+      "work": "Star Soldier",
+      "device_families": ["NES APU"],
+      "source_url": "https://fi.zophar.net/soundfiles/nintendo-nes-nsf/star-soldier/Star%20Soldier%20%28EMU%29.zophar.zip",
+      "source_page": "https://www.zophar.net/music/nintendo-nes-nsf/star-soldier",
+      "source_archive_sha256": "819e5b1fe277717b0f0ff3f48f7b77efdd1d8506170d7db0a830e379c7f9da9e",
+      "source_archive_retained": false,
+      "structural_validation": {
+        "valid_container": true,
+        "signature": "NESM\\x1A",
+        "version": 1,
+        "song_count": 21,
+        "starting_song_1_based": 1,
+        "load_address": 32768,
+        "init_address": 32768,
+        "play_address": 32792,
+        "expansion_audio": [],
+        "validation_scope": "container structure only; playback not validated"
+      },
+      "representation_relation": {
+        "related_corpus_id": "star-soldier-nes-apu-vgm",
+        "relation": "same work; different preserved representation",
+        "equivalence_limit": "No byte, event, track-order, or playback equivalence is claimed."
+      },
+      "fixture_count": 1,
+      "sha256_inventory": "tests/corpus/star-soldier-nsf.sha256",
+      "git_tree_sha1": "0334d007aacee4173b9982662ca36cf77fac3d01",
+      "set_sha256": "54bc8089c0d19456125f20e902e398ef2906122e3c828973131e26a4d195ae6a"
+    },
+    {
+      "corpus_id": "super-world-court-c140",
+      "path": "tests/corpus/super-world-court-c140",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Super World Court",
+      "device_families": [
+        "C140"
+      ],
+      "observed_device_clocks_hz": {
+        "C140": 25401600
+      },
+      "observed_vgm_versions": {
+        "0x161": 4
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "D4"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 4,
+        "total_samples_match_count": 4,
+        "declared_loop_count": 4,
+        "valid_loop_boundary_count": 4,
+        "loop_samples_match_count": 4
+      },
+      "fixture_count": 4,
+      "sha256_inventory": "tests/corpus/super-world-court-c140.sha256",
+      "git_tree_sha1": "ae96a2d173fc9de1c495f2a4fea38637e28e63e3",
+      "set_sha256": "4d7c17963b9fafc8969c4bd5031475e4d90318c41e9c5e9c353346bcb91263bb"
+    },
+    {
+      "corpus_id": "super-world-stadium-95-c352",
+      "path": "tests/corpus/super-world-stadium-95-c352",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Super World Stadium '95",
+      "device_families": [
+        "C352"
+      ],
+      "observed_device_clocks_hz": {
+        "C352": 24192000
+      },
+      "observed_clock_flags": [
+        {
+          "chip": "C352",
+          "dual": false,
+          "flag31": true
+        }
+      ],
+      "observed_vgm_versions": {
+        "0x171": 7
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "E1"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 7,
+        "total_samples_match_count": 7,
+        "declared_loop_count": 7,
+        "valid_loop_boundary_count": 7,
+        "loop_samples_match_count": 7
+      },
+      "fixture_count": 7,
+      "sha256_inventory": "tests/corpus/super-world-stadium-95-c352.sha256",
+      "git_tree_sha1": "d3fe48e7486fe849bed5e1ee0d00a72f90e3b329",
+      "set_sha256": "17573708d313b477d5c283bdd5e61208bd48d3293632aa5ce1db3516dcd3a697"
+    },
+    {
+      "corpus_id": "tetris-s16-ym2151",
+      "path": "tests/corpus/tetris-s16-ym2151",
+      "delivery": "direct-files",
+      "source_family": "VGM",
+      "work": "Tetris (Sega System 16)",
+      "device_families": [
+        "YM2151"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2151": 4000000
+      },
+      "observed_vgm_versions": {
+        "0x151": 7
+      },
+      "observed_command_bytes": [
+        "54",
+        "61",
+        "62",
+        "63",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 7,
+        "total_samples_match_count": 7,
+        "declared_loop_count": 6,
+        "valid_loop_boundary_count": 6,
+        "loop_samples_match_count": 6
+      },
+      "fixture_count": 7,
+      "sha256_inventory": "tests/corpus/tetris-s16-ym2151.sha256",
+      "git_tree_sha1": "a9781cde6e569880fac8ae62f4f314308d73f286",
+      "set_sha256": "0b2c33d7d4929b2c4d6999499ebf322fb9d2b89fdd3afc1f6b4e48f492bdef0b"
+    },
+    {
+      "corpus_id": "thexder-ym2203",
+      "path": "tests/corpus/thexder-ym2203",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Thexder",
+      "device_families": [
+        "YM2203"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2203": 3993600
+      },
+      "observed_vgm_versions": {
+        "0x170": 2
+      },
+      "observed_command_bytes": [
+        "55",
+        "61",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 2,
+        "total_samples_match_count": 2,
+        "declared_loop_count": 2,
+        "valid_loop_boundary_count": 2,
+        "loop_samples_match_count": 2
+      },
+      "fixture_count": 2,
+      "sha256_inventory": "tests/corpus/thexder-ym2203.sha256",
+      "git_tree_sha1": "898d10bd94df9cf08bd5666dd4e85ab212a5b9af",
+      "set_sha256": "1479a433d6f4af9fe25188cd7b98b86036de018faf2b1a4afc2bb28eabfddc70"
+    },
+    {
+      "corpus_id": "title-fight-multipcm",
+      "path": "tests/corpus/title-fight-multipcm",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Title Fight",
+      "device_families": [
+        "MultiPCM"
+      ],
+      "observed_device_clocks_hz": {
+        "MultiPCM": 8053975
+      },
+      "observed_vgm_versions": {
+        "0x161": 2
+      },
+      "observed_command_bytes": [
+        "61",
+        "62",
+        "63",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F",
+        "B5",
+        "C3"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 2,
+        "total_samples_match_count": 2,
+        "declared_loop_count": 1,
+        "valid_loop_boundary_count": 1,
+        "loop_samples_match_count": 1
+      },
+      "fixture_count": 2,
+      "sha256_inventory": "tests/corpus/title-fight-multipcm.sha256",
+      "git_tree_sha1": "c8853d539fe3d11321bb77fbc1f404c42fd09c9f",
+      "set_sha256": "f46637dc73b7c8e9274c1ecc6ef61f21759e49adf86e68a3ca24a2a22cddf6e7"
+    },
+    {
+      "corpus_id": "truxton-ym3812",
+      "path": "tests/corpus/truxton-ym3812",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Truxton",
+      "device_families": [
+        "YM3812"
+      ],
+      "observed_device_clocks_hz": {
+        "YM3812": 3500000
+      },
+      "observed_vgm_versions": {
+        "0x151": 7
+      },
+      "observed_command_bytes": [
+        "5A",
+        "61",
+        "63",
+        "66",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 7,
+        "total_samples_match_count": 7,
+        "declared_loop_count": 6,
+        "valid_loop_boundary_count": 6,
+        "loop_samples_match_count": 6
+      },
+      "fixture_count": 7,
+      "sha256_inventory": "tests/corpus/truxton-ym3812.sha256",
+      "git_tree_sha1": "57e58e18fa223d03cf2cc6b778cbe304c99dda17",
+      "set_sha256": "a6bd2b03eb0d48453516f5daac94c52ef28d383e48d10ee2d69d0388aa0f083c"
+    },
+    {
+      "corpus_id": "wanderers-from-super-scheme-ym2608",
+      "path": "tests/corpus/wanderers-from-super-scheme-ym2608",
+      "delivery": "direct-files",
+      "source_family": "VGZ",
+      "work": "Wanderers from Super Scheme",
+      "device_families": [
+        "YM2608"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2608": 8000000
+      },
+      "observed_vgm_versions": {
+        "0x170": 4
+      },
+      "observed_command_bytes": [
+        "56",
+        "57",
+        "61",
+        "62",
+        "66",
+        "67",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "7A",
+        "7B",
+        "7C",
+        "7D",
+        "7E",
+        "7F"
+      ],
+      "vgm_structure": {
+        "valid_parse_count": 4,
+        "total_samples_match_count": 4,
+        "declared_loop_count": 4,
+        "valid_loop_boundary_count": 4,
+        "loop_samples_match_count": 4
+      },
+      "fixture_count": 4,
+      "sha256_inventory": "tests/corpus/wanderers-from-super-scheme-ym2608.sha256",
+      "git_tree_sha1": "defacd06f5a6155c3809aa22117b9d12f7495f78",
+      "set_sha256": "57a639d9e34f927ab6457a4f46d3b5484c1e65a7a3bad2a8e0b6e16d7637230a"
     }
   ]
 }

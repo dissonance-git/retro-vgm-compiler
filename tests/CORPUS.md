@@ -32,7 +32,7 @@ The canonical supplied object depends on the delivery form:
 ```text
 direct runnable files
         ↓ preserve each byte-for-byte
-canonical VGM / VGZ / SPC fixtures
+canonical VGM / VGZ / SPC / NSF / NSFe fixtures
 
 archive supplied as a canonical object
         ↓ preserve archive byte-for-byte when retained
@@ -98,7 +98,7 @@ This rule is intentionally narrow. Other embedded fields may be inspected accord
 
 VGM Tooling owns:
 
-- the immutable VGM/VGZ/SPC fixture bytes;
+- the immutable VGM/VGZ/SPC/NSF/NSFe fixture bytes;
 - hashes and source-family inventory;
 - execution/synthesis/performance analysis of those fixtures;
 - corpus-specific regression expectations that belong to game-music machinery.
@@ -153,7 +153,7 @@ Each committed corpus set should have a manifest recording at least:
 - original supplied filename or archive name when applicable;
 - SHA-256 of every canonical runnable file;
 - deterministic whole-set digest and/or Git tree identity when available;
-- source family (`VGM/VGZ` or `SPC` initially);
+- source family (`VGM`, `VGZ`, `SPC`, `NSF`, or `NSFe`);
 - game/work identifier when known;
 - track/cue identifier when known;
 - chip/device family when determinable from the source;
@@ -238,6 +238,13 @@ For SPC:
 - runtime continuation may recover further executable behavior;
 - internal textual tags are metadata evidence only;
 - artist attribution must not be inferred from stale embedded artist fields.
+
+For NSF/NSFe:
+
+- the preserved object contains executable program/data rather than a VGM-style register timeline;
+- cheap admission checks may establish container identity, chunk/header structure, and declared subsong count;
+- valid container structure does not establish correct playback;
+- embedded text fields are artifact metadata and do not independently establish attribution.
 
 For both:
 

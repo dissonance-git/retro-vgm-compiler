@@ -1,21 +1,20 @@
 # Real-music corpus storage
 
-This directory is the permanent repository home for user-supplied real VGM/VGZ/SPC regression fixtures governed by [`tests/CORPUS.md`](../CORPUS.md).
+This directory is the permanent repository home for user-supplied real VGM/VGZ/SPC/NSF/NSFe regression fixtures governed by [`tests/CORPUS.md`](../CORPUS.md).
 
 Canonical layout:
 
 ```text
 tests/corpus/
 ├── manifest.json
-├── sonic-3-knuckles.sha256
-├── front-mission-gun-hazard.sha256
-├── sonic-3-knuckles/
-│   └── 58 immutable .vgz files
-└── front-mission-gun-hazard/
-    └── 61 immutable .spc files
+├── <corpus-id>.sha256
+└── <corpus-id>/
+    └── immutable runnable files
 ```
 
-The runnable files themselves are the canonical committed evidence objects for these two sets. They are preserved byte-for-byte. Do not retag, normalize, recompress, rename for metadata cleanup, or otherwise rewrite them.
+The runnable files themselves are the canonical committed evidence objects.
+They are preserved byte-for-byte. Do not retag, normalize, recompress, rename
+for metadata cleanup, or otherwise rewrite them.
 
 `manifest.json` records corpus-level provenance and whole-set digests. The adjacent `.sha256` inventories record SHA-256 for every runnable file. Each set also records its expected Git tree SHA-1, so verification can detect path changes and byte drift at both the object and directory levels.
 
@@ -24,6 +23,11 @@ Use `tools/corpus_import.py` to verify the committed corpus:
 ```text
 python tools/corpus_import.py --verify
 ```
+
+NSF and NSFe are admitted as distinct executable/ripped NES source families.
+They are not classified as VGM register logs. `tools/nsf_corpus_audit.py`
+performs only container-level admission checks; it does not execute the rip or
+validate playback.
 
 To index a future direct-file corpus already placed under `tests/corpus/<id>/`:
 
@@ -39,10 +43,71 @@ python tools/corpus_import.py --archive soundtrack.zip --id <id>
 
 An archive is a delivery container, not a mandatory duplicate of a direct-file corpus. If the runnable files are the canonical supplied objects, the repository does not need to retain a ZIP as well.
 
-Current committed pressure surface:
+## Current committed pressure surface
 
-- Sonic 3 & Knuckles: 58 VGZ objects;
-- Front Mission: Gun Hazard: 61 SPC snapshots;
-- total: 119 immutable real-music fixtures.
+| Corpus ID | Work | Source family | Declared device families | Fixtures |
+| --- | --- | --- | --- | ---: |
+| `antarctic-adventure-ay8910` | Antarctic Adventure | VGZ | AY8910 | 1 |
+| `bucket-relay-champ-ymf262` | Bucket Relay Champ | VGZ | YMF262 | 5 |
+| `cameltry-ym2610` | Cameltry | VGZ | YM2610 | 5 |
+| `dark-wizard-rf5c164` | Dark Wizard | VGZ | RF5C164 | 16 |
+| `disc-station-ym2413` | Disc Station | VGM | YM2413 | 2 |
+| `front-mission-gun-hazard` | Front Mission: Gun Hazard | SPC | SPC700, S-DSP | 61 |
+| `fuusen-pentai-scc` | Fuusen Pentai | VGZ | K051649 | 3 |
+| `jyangokushi-qsound` | Jyangokushi | VGZ | QSound | 5 |
+| `magical-drop-okim6295` | Magical Drop | VGZ | MSM6295 | 3 |
+| `motocross-maniacs-game-boy` | Motocross Maniacs | VGZ | GameBoy DMG | 5 |
+| `outrun-segapcm` | OutRun | VGZ | YM2151, SegaPCM | 4 |
+| `raimais-ym2610b` | Raimais | VGZ | YM2610B | 7 |
+| `sonic-3-knuckles` | Sonic 3 & Knuckles | VGZ | YM2612, SN76489 | 58 |
+| `star-parodier-huc6280` | Star Parodier | VGZ | HuC6280 | 3 |
+| `star-soldier-nes-apu-vgm` | Star Soldier | VGZ | NES APU | 3 |
+| `star-soldier-nsf` | Star Soldier | NSF | NES APU | 1 |
+| `super-world-court-c140` | Super World Court | VGZ | C140 | 4 |
+| `super-world-stadium-95-c352` | Super World Stadium '95 | VGZ | C352 | 7 |
+| `tetris-s16-ym2151` | Tetris (Sega System 16) | VGM | YM2151 | 7 |
+| `thexder-ym2203` | Thexder | VGZ | YM2203 | 2 |
+| `title-fight-multipcm` | Title Fight | VGZ | MultiPCM | 2 |
+| `truxton-ym3812` | Truxton | VGZ | YM3812 | 7 |
+| `wanderers-from-super-scheme-ym2608` | Wanderers from Super Scheme | VGZ | YM2608 | 4 |
+
+Total: 23 sets and 215 immutable real-music fixtures. The 2026-08-13
+heterogeneous expansion added 21 sets and 96 fixtures. `manifest.json` records
+the exact header clocks, VGM versions, command bytes, loop checks, whole-set
+SHA-256 values, and Git tree identities for the new VGM/VGZ controls.
+
+## 2026-08-13 selection boundaries
+
+The expansion searched the user's indexed local collection first and then
+validated the selected bytes. Preferred-title substitutions were required:
+
+- The Scheme was present only as rendered Opus audio, so Thexder and Wanderers
+  from Super Scheme provide the YM2203 and YM2608 controls respectively.
+- No local Tetris YM2610 or Ryu Jin YM2610B set was present; Cameltry and
+  Raimais provide those controls.
+- Blazeon was present only as SPC, so Tetris (Sega System 16) provides YM2151.
+- The local Puyo Puyo Tsuu VGM set declares YM2612 plus SN76489, not YMF262;
+  Bucket Relay Champ provides the single-device YMF262 control.
+- No local NSF/NSFe object was found. With explicit user authorization, the
+  Star Soldier NSF was downloaded from Zophar's Domain and its exact NSF bytes
+  were retained; the source ZIP was hashed but not committed. No early Namco
+  WSG set was found, so that requested generation remains absent.
+
+## Same-work NES cross-representation control
+
+`star-soldier-nsf` and `star-soldier-nes-apu-vgm` preserve the same work as
+different representations:
+
+```text
+NSF
+program/data intended to execute and drive NES audio
+
+VGZ
+captured downstream NES APU device-command timeline
+```
+
+This is a related-rip control, not an equivalence claim. The corpus does not
+assert byte identity, event identity, matching track boundaries/order, or
+playback equivalence between the NSF and three VGZ files.
 
 The corpus is intentionally committed to this private repository so future renderer, parser, execution, semantic, attribution-safeguard, and listening passes can exercise real files without depending on chat attachment lifetime.
