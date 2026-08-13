@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "kind": "hardware_device_reference",
+  "device": {
+    "id": "sn76489",
+    "name": "SN76489AN",
+    "family": "Texas Instruments PSG"
+  },
+  "sources": [
+    "sn76489-application-manual"
+  ],
+  "claims": [
+    {
+      "id": "sn76489.tone.channel_count",
+      "field": "tone.channel_count",
+      "value": 3,
+      "unit": "generators",
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 1,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal"
+    },
+    {
+      "id": "sn76489.noise.mode_count",
+      "field": "noise.modes",
+      "value": ["periodic", "white"],
+      "unit": null,
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 2,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal"
+    },
+    {
+      "id": "sn76489.tone.period_bits",
+      "field": "tone.period_bits",
+      "value": 10,
+      "unit": "bits",
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 2,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal"
+    },
+    {
+      "id": "sn76489.tone.frequency_formula",
+      "field": "tone.frequency_formula",
+      "value": "f = N / (32 n)",
+      "unit": "Hz when N is the reference clock in Hz",
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 2,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal",
+      "context": "n is the 10-bit tone-period value."
+    },
+    {
+      "id": "sn76489.attenuation.bits",
+      "field": "attenuation.bits",
+      "value": 4,
+      "unit": "bits",
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 2,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal"
+    },
+    {
+      "id": "sn76489.noise.shift_rate_sources",
+      "field": "noise.shift_rate_sources",
+      "value": ["N/512", "N/1024", "N/2048", "tone_generator_3_output"],
+      "unit": null,
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal"
+    },
+    {
+      "id": "sn76489.register.count",
+      "field": "register.count",
+      "value": 8,
+      "unit": "registers",
+      "source_id": "sn76489-application-manual",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "literal",
+      "context": "The manual describes eight internal control registers for three tone generators and the noise source."
+    }
+  ]
+}
