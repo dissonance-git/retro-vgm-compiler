@@ -22,6 +22,52 @@ Primary upstream library:
 
 VGM/VGZ is the enhancement design center. Existing GYM, DRO, and S98 input code is retained as upstream compatibility code but is not an enhancement priority.
 
+## VGM specification and primary hardware documentation
+
+Format semantics and device semantics are separate evidence layers.
+
+### VGMRips VGM specification
+
+Canonical format reference:
+
+- `https://vgmrips.net/wiki/VGM_Specification`
+
+Use the specification as the primary authority for VGM header fields, version gates, command bytes, operand sizes, chip-clock fields, dual-chip flags, data blocks, DAC Stream Control, wait/sample accounting and loop-field semantics.
+
+Do not use an emulator implementation to redefine a format byte when the specification already defines it. Emulator and player code remain valuable independent controls for whether a parser implements the specification correctly.
+
+Current code derived from this format-level role includes:
+
+- `vgm_format_version.h`;
+- `vgm_chip_clock.h`;
+- `vgm_yamaha_register_write.h`;
+- `vgm_dac_stream_command.h`;
+- `tools/vgm_corpus_audit.py`.
+
+### Sega/Yamaha development and hardware documents
+
+Sega Retro preserves scans and archives of official development and hardware material, including categories for Mega Drive official documentation and broader hardware documentation.
+
+High-value documents include material such as:
+
+- the YM2612 manual;
+- SN76489 documentation;
+- Mega Drive development-system documentation;
+- SNASM/Z80/68000 programming material;
+- schematics and board-revision documents.
+
+Use the **underlying official manual, application note, schematic, or development document** as primary evidence where applicable. A Sega Retro wiki summary, forum post, or editorial description remains secondary evidence unless independently corroborated.
+
+These documents are especially useful for:
+
+- documented versus later-discovered behavior;
+- official register terminology and ordering;
+- clocks, buses, memory maps and DAC behavior;
+- what programmers were expected to rely on;
+- discrete versus integrated hardware-revision distinctions.
+
+They do not replace modern emulator, die-analysis, driver-source or measurement work. Instead they provide another independent observatory that can strengthen or falsify a reverse-engineered claim.
+
 ## SPC foobar2000 component
 
 Legacy component:
@@ -60,11 +106,13 @@ These are research inputs, not automatically vendored dependencies.
 - `dgrfactory/spcplay`: current SNESAPU behavior and SPC internals
 - `ValleyBell/libvgm`: VGM playback/device architecture
 - `nukeykt/Nuked-OPN2` and related Nuked cores: high-fidelity FM/PSG reference implementations
-- `aaronsgiles/ymfm`: reusable Yamaha FM engine/channel/operator architecture
+- `aaronsgiles/ymfm`: reusable Yamaha FM engine/channel/operator architecture; observed research head during the cross-chip Yamaha pass: `81aec25ccbb98f4873a255f7551ac4dadac59b4a`
 - `ValleyBell/qsound-hle`: QSound DSP behavior and source-domain spatial architecture
 - `munt/munt`: MT-32/CM-32L family synthesis and device behavior
 - `nukeykt/Nuked-SC55`: low-level Sound Canvas reference implementation; licensing/ROM restrictions mean research reference unless a legally compatible route is established
 - MAME: whole-machine and device implementations that preserve system context around sound hardware and can expose behavior omitted by isolated music players
+
+The current Yamaha comparison uses ymfm as an implementation observatory rather than as proof that all Yamaha FM families share one register ontology. OPN, OPM, OPL and OPLL similarities graduate only when their independently different register/state implementations support the same semantic relation; explicit negative controls are retained when they do not.
 
 ### Driver and sequence semantics
 
