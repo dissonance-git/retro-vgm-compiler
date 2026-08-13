@@ -1,4 +1,4 @@
-#include "components/vgm/enhancement/vgm_yamaha_register_write.h"
+#include "vgm_yamaha_register_write.h"
 
 #include <array>
 #include <cassert>
