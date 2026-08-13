@@ -122,12 +122,26 @@ The complete YM2612 register timeline can now be captured allocation-free with e
 `ym2612_fm_backend` defines the synthesis boundary:
 
 - exact register writes in
+- exact source chip clock declared explicitly
+- consumer/output sample rate declared explicitly
 - six isolated FM channel stems out
 - reset + null-output state advancement required
 
-`ym2612_fm_timeline` applies writes at exact output-sample boundaries and is backend-agnostic.
+A mature FM engine may synthesize at a different native rate. Native-rate clocking and rate conversion therefore belong inside the backend. `ym2612_fm_timeline` remains backend-agnostic and schedules captured writes at exact consumer/output-sample boundaries rather than becoming a hidden resampler.
 
-The intended first FM backend is a mature Yamaha synthesis engine with channel output exposed **before final stereo summation**. `ymfm` is the leading architecture under investigation because it separates engine/channel/operator logic cleanly. Do not replace this with a simplistic four-sine approximation merely to make sound sooner.
+This keeps the clock domains honest:
+
+```text
+VGM / source timing
+        ↓ explicit mapping
+consumer output frames
+        ↓ backend contract
+native OPN2 synthesis clock/rate
+        ↓
+six isolated output-rate stems
+```
+
+The intended first FM backend is a mature Yamaha synthesis engine with channel output exposed **before final stereo summation**. `ymfm` remains the leading architecture under investigation because it separates engine/channel/operator logic cleanly and its internal FM engine can be evaluated channel-by-channel. Nuked-OPN2 remains an important independent high-accuracy reference. Do not replace either role with a simplistic four-sine approximation merely to make sound sooner.
 
 The first FM milestone remains:
 
@@ -201,6 +215,8 @@ See `../research/cases/historical-constraint-friction-counterfactual-rendering.m
 - warnings as errors
 - runs every produced executable
 
+The CMake core target now includes `ym2612_fm_timeline.cpp` and `source_stem_mixer.cpp`, and the CMake test registry includes the VGM regression files that the standalone runner already discovered. The two build surfaces should therefore describe the same dependency-free VGM core rather than silently testing different subsets.
+
 `tools/check_libvgm_patches.py <libvgm-checkout>`
 
 - requires pinned libvgm commit `61fc6725644886abc3168e240e4e51588d74bdf7`
@@ -214,13 +230,14 @@ GitHub-hosted Actions are currently manual-only because the account runner is re
 Do not enable every enhancement at once.
 
 1. finish/validate live YM2612 FM timeline capture in the wrapper
-2. add a mature six-stem FM backend
-3. establish strict reference parity with the programmed patch/control behavior
-4. build source-family substitution behind a reversible experimental mode
-5. first A/B: improved source realization while preserving authored stereo routing
-6. relax one candidate hardware ceiling at a time and retain only changes that preserve patch identity
-7. establish fixed headroom after source mixing, without limiter/compressor/AGC
-8. then add source-domain spatial expansion informed by QSound and test again
-9. Omniphony receives the resulting modern source-aware stereo master and remains responsible for the full headphone sphere
+2. feed exact YM2612 chip clock + output rate into the FM backend contract
+3. add a mature six-stem FM backend
+4. establish strict reference parity with the programmed patch/control behavior
+5. build source-family substitution behind a reversible experimental mode
+6. first A/B: improved source realization while preserving authored stereo routing
+7. relax one candidate hardware ceiling at a time and retain only changes that preserve patch identity
+8. establish fixed headroom after source mixing, without limiter/compressor/AGC
+9. then add source-domain spatial expansion informed by QSound and test again
+10. Omniphony receives the resulting modern source-aware stereo master and remains responsible for the full headphone sphere
 
 The product target is not a cleaner emulator. It is the highest-quality plausible realtime realization of the musical information and instrument identity still encoded in the source.
