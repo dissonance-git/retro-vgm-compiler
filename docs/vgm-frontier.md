@@ -2,6 +2,8 @@
 
 This document records the current engineering frontier. It is intentionally about what exists, not what is hoped for.
 
+For the durable enhancement target and evidence rules, see `source-native-enhanced-rendering.md`.
+
 ## Audible status
 
 **foobar2000 playback is still the unmodified libvgm reference render.**
@@ -9,6 +11,27 @@ This document records the current engineering frontier. It is intentionally abou
 The enhanced renderers below currently run as source-state/shadow infrastructure or dependency-free testable cores. None should be described as an audible improvement until a controlled substitution build has been listened to and retained.
 
 That is deliberate. Accuracy is the control; enhanced rendering must earn the right to replace each source family separately.
+
+## Enhancement target
+
+The product target is not generic modernization and not conversion to MIDI, SoundFont, VST instruments, or another arrangement.
+
+It is a **counterfactual source-native realization**:
+
+```text
+same executable musical idea
++ same notes / timing / articulation
++ same patch / sample / modulation relationships
++ same structural density and arrangement
+        ↓
+relax only implementation ceilings that are not identity-bearing
+        ↓
+higher-fidelity realization
+```
+
+Historical constraints are not assumed to be unwanted. Some were burdens or storage compromises; others became part of the instrument.
+
+Every relaxed limitation therefore needs an evidence basis and a reversible A/B.
 
 ## Live source observation
 
@@ -106,11 +129,26 @@ The complete YM2612 register timeline can now be captured allocation-free with e
 
 The intended first FM backend is a mature Yamaha synthesis engine with channel output exposed **before final stereo summation**. `ymfm` is the leading architecture under investigation because it separates engine/channel/operator logic cleanly. Do not replace this with a simplistic four-sine approximation merely to make sound sooner.
 
-The first FM milestone is not yet “remove YM2612 character.” It is:
+The first FM milestone remains:
 
 > same patch + same automation + mature synthesis semantics + six isolated source stems
 
-Only after that is verified should selected hardware restrictions be removed or reinterpreted experimentally.
+After reference parity is established, the next question is not “remove YM2612 character.” It is:
+
+> **Which hardware ceilings can be relaxed while the patch still sounds unmistakably like the same programmed FM instrument?**
+
+Candidate experiments, one at a time:
+
+- higher internal numerical precision;
+- improved reconstruction/output bandwidth;
+- reduced avoidable aliasing/imaging where it is not identity-bearing;
+- higher-quality PCM/DAC realization;
+- higher-precision summation and headroom;
+- removal of output-stage defects only when they are not used as part of the patch identity.
+
+The intended perceptual result is the best plausible descendant of the same FM instrument, not a substitute DX-style preset and not a different orchestration.
+
+SMPS/GEMS/source-side controls should be used where possible to verify that the enhanced renderer preserves authored driver/patch behavior rather than merely matching a VGM register trace superficially.
 
 ## Mixing boundary
 
@@ -128,6 +166,29 @@ It does **not**:
 `ym2612_authored_route()` preserves the chip's original L/R enable decisions for the first enhanced listening baseline.
 
 A later QSound-informed spatial layer may expand source extent before final summation, but synthesis quality and spatial reinterpretation should not be changed in the same first listening experiment.
+
+## Historical intent and constraint evidence
+
+Do not infer that a limitation was unwanted merely because modern hardware can remove it.
+
+Useful evidence includes:
+
+- creator statements about workflow burden or compromised sound quality;
+- songs/notes/sections explicitly cut for memory;
+- same-team CD or higher-quality versions;
+- surviving pre-compression samples or synth patches;
+- source-code/driver evidence showing the transformation into the shipped asset;
+- creator statements that a specific artifact was deliberately valued.
+
+Strong historical examples now tracked in research include:
+
+- Yuzo Koshiro shortening material rather than reduce sampling quality;
+- Masahiko Ishida using later CD recording capacity to move closer to his original compositional intention without rewriting the music;
+- David Wise treating some SNES waveform truncation artifacts as useful timbral material;
+- Harumi/Yasuaki Fujita describing cartridge sound-quality limits as real production trouble;
+- Koji Kondo and other practitioners describing low-level sound-programming workflow as substantial production work rather than an artistic end in itself.
+
+See `../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
 
 ## Validation without Codex or foobar SDK
 
@@ -154,11 +215,12 @@ Do not enable every enhancement at once.
 
 1. finish/validate live YM2612 FM timeline capture in the wrapper
 2. add a mature six-stem FM backend
-3. build source-family substitution behind a reversible experimental mode
-4. first A/B: improved source realization while preserving authored stereo routing
-5. retain only source families that beat the reference in listening tests
-6. establish fixed headroom after source mixing, without limiter/compressor/AGC
-7. then add source-domain spatial expansion informed by QSound and test again
-8. Omniphony receives the resulting modern source-aware stereo master and remains responsible for the full headphone sphere
+3. establish strict reference parity with the programmed patch/control behavior
+4. build source-family substitution behind a reversible experimental mode
+5. first A/B: improved source realization while preserving authored stereo routing
+6. relax one candidate hardware ceiling at a time and retain only changes that preserve patch identity
+7. establish fixed headroom after source mixing, without limiter/compressor/AGC
+8. then add source-domain spatial expansion informed by QSound and test again
+9. Omniphony receives the resulting modern source-aware stereo master and remains responsible for the full headphone sphere
 
-The product target is not a cleaner emulator. It is the highest-quality plausible realtime realization of the musical information still encoded in the source.
+The product target is not a cleaner emulator. It is the highest-quality plausible realtime realization of the musical information and instrument identity still encoded in the source.
