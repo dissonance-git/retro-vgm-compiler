@@ -4,7 +4,8 @@
   "title": "VGM Tooling hardware reference evidence",
   "oneOf": [
     { "$ref": "#/$defs/source_catalog" },
-    { "$ref": "#/$defs/device_reference" }
+    { "$ref": "#/$defs/device_reference" },
+    { "$ref": "#/$defs/platform_reference" }
   ],
   "$defs": {
     "source_catalog": {
@@ -73,6 +74,33 @@
             "id": { "type": "string", "minLength": 1 },
             "name": { "type": "string", "minLength": 1 },
             "family": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "claims": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "platform_reference": {
+      "type": "object",
+      "required": ["schema_version", "kind", "platform", "sources", "claims"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "const": "hardware_platform_reference" },
+        "platform": {
+          "type": "object",
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "name": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false
         },
