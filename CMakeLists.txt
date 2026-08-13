@@ -46,6 +46,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         ym2612_fm_timeline_test
         genesis_nominal_pitch_test
         smps_programmed_pitch_test
+        yamaha_nominal_pitch_test
         source_stem_mixer_test
         musical_execution_graph_test
         transformation_identity_test
@@ -104,6 +105,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(ym2612_fm_timeline_test tests/vgm/ym2612_fm_timeline_test.cpp)
     add_executable(genesis_nominal_pitch_test tests/vgm/genesis_nominal_pitch_test.cpp)
     add_executable(smps_programmed_pitch_test tests/vgm/smps_programmed_pitch_test.cpp)
+    add_executable(yamaha_nominal_pitch_test tests/vgm/yamaha_nominal_pitch_test.cpp)
     add_executable(source_stem_mixer_test tests/vgm/source_stem_mixer_test.cpp)
     add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
     add_executable(transformation_identity_test tests/model/transformation_identity_test.cpp)
@@ -190,6 +192,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME ym2612_fm_timeline COMMAND ym2612_fm_timeline_test)
     add_test(NAME genesis_nominal_pitch COMMAND genesis_nominal_pitch_test)
     add_test(NAME smps_programmed_pitch COMMAND smps_programmed_pitch_test)
+    add_test(NAME yamaha_nominal_pitch COMMAND yamaha_nominal_pitch_test)
     add_test(NAME source_stem_mixer COMMAND source_stem_mixer_test)
     add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
     add_test(NAME transformation_identity COMMAND transformation_identity_test)
