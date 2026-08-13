@@ -1,4 +1,4 @@
-#include "components/vgm/enhancement/vgm_chip_clock.h"
+#include "vgm_chip_clock.h"
 
 #include <cassert>
 
