@@ -4,7 +4,7 @@ This directory is the development home for the VGM/VGZ foobar2000 path and the c
 
 The imported upstream wrapper remains the reference playback foundation. Project-owned analysis and enhanced-rendering work must stay traceable to exact VGM command/device state and must not silently replace reference behavior.
 
-For full engineering status, see `../../docs/vgm-frontier.md`. For the common semantic model, see `../../docs/musical-execution-model.md`.
+For full engineering status, see `../../docs/vgm-frontier.md`. For the common semantic model, see `../../docs/musical-execution-model.md`. For the durable enhancement target, see `../../docs/source-native-enhanced-rendering.md`.
 
 ## Current execution path
 
@@ -74,6 +74,42 @@ The next major audible Genesis milestone remains a mature six-channel YM2612 ren
 Do not use a simplistic approximation merely to make sound sooner.
 
 Only after a mature source-faithful FM path is validated should selected hardware limitations be relaxed experimentally.
+
+The relaxed path is **not** a generic modern-synth replacement. Its target is the best plausible descendant of the same programmed FM instrument:
+
+```text
+same algorithm / operator relationships
+same patch parameters
+same envelopes / modulation / feedback
+same notes / timing / articulation
+        ↓
+selected non-identity-bearing hardware ceilings relaxed
+        ↓
+higher-fidelity FM realization
+```
+
+Candidate ceilings include numerical precision, reconstruction bandwidth, avoidable aliasing/imaging, DAC realization and final summation precision. Each must be tested separately.
+
+A YM2612-specific artifact that materially defines the patch remains part of the instrument until evidence and listening show a safe higher-quality equivalent.
+
+## Historical constraint evidence
+
+The project now distinguishes:
+
+```text
+unwanted production burden
+!= storage/quality compromise
+!= adapted limitation
+!= deliberately adopted artifact
+```
+
+Creator testimony shows all four cases existed.
+
+Examples include composers describing manual sound-data entry and low-level programming as burdens, material being shortened or stripped to fit memory, later recordings moving closer to original intentions, and other composers deliberately exploiting chip/sample artifacts because they became musically useful.
+
+This evidence controls enhancement permission; it does not become a platform-wide rule.
+
+See `../../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
 
 ## Musical-analysis relationship
 
