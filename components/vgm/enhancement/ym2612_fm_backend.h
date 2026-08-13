@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ym2612_timed_write.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -7,40 +9,42 @@ namespace gameaudio::vgm {
 
 struct ym2612_fm_backend_config {
     std::uint32_t chip_clock_hz = 0;
+    std::uint32_t source_tick_rate_hz = vgm_timeline_tick_rate_hz;
     std::uint32_t output_sample_rate_hz = 0;
 
     [[nodiscard]] constexpr bool valid() const noexcept {
-        return chip_clock_hz != 0 && output_sample_rate_hz != 0;
+        return chip_clock_hz != 0 && source_tick_rate_hz != 0 && output_sample_rate_hz != 0;
     }
 };
 
-// Synthesis boundary for source-native YM2612 enhancement.
+// Synthesis boundary for source-native YM2612 rendering.
 //
-// A backend owns Yamaha synthesis semantics and any rate conversion needed to
-// produce the requested realtime output rate. The surrounding realtime engine
-// owns VGM timing and source routing. Keeping those responsibilities separate
-// lets us evaluate mature OPN2 engines without coupling foobar playback to one
-// implementation or watering the source down to mixed stereo.
+// The backend receives each realtime block's entire ordered write set in the
+// source VGM clock. It owns source-tick -> native-FM-clock mapping and native
+// synthesis -> output-rate conversion. The caller must not quantize writes to
+// output frames before this boundary.
 class ym2612_fm_backend {
 public:
     static constexpr std::size_t channel_count = 6;
 
     virtual ~ym2612_fm_backend() = default;
-
-    // Configure the exact source chip clock and the consumer/output frame rate.
-    // A mature OPN2 core may synthesize at a different native rate internally;
-    // translating that native clock into output frames is backend-owned so the
-    // timeline remains an exact output-frame scheduler rather than a hidden
-    // resampler. Return false for unsupported/invalid configurations.
     virtual bool configure(const ym2612_fm_backend_config& config) noexcept = 0;
-
     virtual void reset() noexcept = 0;
-    virtual void write(std::uint8_t port, std::uint8_t reg, std::uint8_t data) noexcept = 0;
 
-    // Render six isolated mono FM channel stems at output_sample_rate_hz. Any
-    // output pointer may be null. The backend must still advance synthesis state
-    // when all outputs are null.
-    virtual void render(float* const outputs[channel_count], std::size_t frames) noexcept = 0;
+    // Fixed algorithmic output delay introduced by the backend's streaming
+    // reconstruction/rate-conversion path. Other source paths must be aligned
+    // to this latency before final source mixing.
+    [[nodiscard]] virtual std::size_t latency_frames() const noexcept = 0;
+
+    // Render the next sequential output block. Writes carry absolute source
+    // ticks and are ordered exactly as encountered in the VGM stream. Same-tick
+    // write order is significant. Any output pointer may be null; synthesis
+    // state and clocks must still advance identically.
+    virtual void render_timed(
+        const ym2612_timed_write* writes,
+        std::size_t write_count,
+        float* const outputs[channel_count],
+        std::size_t frames) noexcept = 0;
 };
 
 } // namespace gameaudio::vgm

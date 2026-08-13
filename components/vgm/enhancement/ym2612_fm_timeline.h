@@ -1,14 +1,15 @@
 #pragma once
 
-#include "ym2612_block_capture.h"
 #include "ym2612_fm_backend.h"
 
 #include <cstddef>
 
 namespace gameaudio::vgm {
 
-// Applies a captured YM2612 register timeline to an arbitrary six-stem FM
-// backend at exact output-sample boundaries. It contains no synthesis policy.
+// Binds captured YM2612 source-clock writes to a synthesis backend without
+// quantizing them onto consumer output frames. The backend receives the whole
+// ordered block so native clocking and streaming rate conversion can respect
+// register changes at their original source times.
 class ym2612_fm_timeline {
 public:
     explicit ym2612_fm_timeline(ym2612_fm_backend& backend) noexcept : backend_(backend) {}
