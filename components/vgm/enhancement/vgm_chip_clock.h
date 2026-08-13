@@ -1,14 +1,11 @@
 #pragma once
 
+#include "vgm_format_version.h"
+
 #include <cstdint>
 #include <optional>
 
 namespace gameaudio::vgm {
-
-inline constexpr std::uint32_t vgm_version_1_01 = 0x00000101u;
-inline constexpr std::uint32_t vgm_version_1_10 = 0x00000110u;
-inline constexpr std::uint32_t vgm_version_1_51 = 0x00000151u;
-inline constexpr std::uint32_t vgm_version_1_70 = 0x00000170u;
 
 // Raw VGM clock-word meaning after version gating. VGM 1.51 introduced the
 // dual-chip flag in bit 30 and several field-specific bit-31 meanings. Before
