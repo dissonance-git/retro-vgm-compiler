@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "kind": "hardware_source_catalog",
+  "sources": [
+    {
+      "id": "mega-drive-sound-tool-ym2612-jp",
+      "title": "Mega Drive Sound Tool Materials / YM2612 Application Manual",
+      "artifact_filename": "MEGADRIVE_Sound_Tool_Materials.pdf",
+      "publisher": "Yamaha / Sega development materials",
+      "document_date": null,
+      "language": "Japanese",
+      "page_count": 125,
+      "evidence_class": "primary_manual",
+      "repository_binary": false,
+      "external_locator": null,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": null,
+        "status": "not_recorded"
+      },
+      "notes": "User-supplied preserved scan. The opening section contains the preliminary YM2612 application manual. Exact public document URL and file checksum are not yet pinned; retain the artifact filename and page references until they are."
+    },
+    {
+      "id": "genesis-sound-software-manual-1992-02-21",
+      "title": "Genesis Sound Software Manual",
+      "artifact_filename": "Genesis_Sound_Software_Manual_-_21-_02_-_1992.pdf",
+      "publisher": "Sega",
+      "document_date": "1992-02-21",
+      "language": "English",
+      "page_count": 24,
+      "evidence_class": "primary_development_document",
+      "repository_binary": false,
+      "external_locator": null,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": null,
+        "status": "not_recorded"
+      },
+      "notes": "Preserved Sega development manual covering Z80 mapping/control, FM access, PSG control, and D/A control. Exact public document URL and file checksum are not yet pinned."
+    },
+    {
+      "id": "ym3438-application-manual-jp",
+      "title": "YM3438 Application Manual",
+      "artifact_filename": "YM3438_JP_Application_Manual.pdf",
+      "publisher": "Yamaha",
+      "document_date": null,
+      "language": "Japanese",
+      "page_count": 49,
+      "evidence_class": "primary_manual",
+      "repository_binary": false,
+      "external_locator": null,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": null,
+        "status": "not_recorded"
+      },
+      "notes": "Primary OPN2C/YM3438 scan. Exact public document URL and file checksum are not yet pinned."
+    },
+    {
+      "id": "sn76489-application-manual",
+      "title": "SN76489AN Application Manual",
+      "artifact_filename": "SN76489_Application_Manual.pdf",
+      "publisher": "Texas Instruments",
+      "document_date": null,
+      "language": "English",
+      "page_count": 9,
+      "evidence_class": "primary_manual",
+      "repository_binary": false,
+      "external_locator": null,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": null,
+        "status": "not_recorded"
+      },
+      "notes": "Texas Instruments primary device documentation for tone/noise generation, attenuation, register/data format, and timing. Exact public document URL and file checksum are not yet pinned."
+    },
+    {
+      "id": "ym2151-application-manual-en",
+      "title": "YM2151 Application Manual",
+      "artifact_filename": "YM2151_Application_Manual.pdf",
+      "publisher": "Yamaha",
+      "document_date": null,
+      "language": "English",
+      "page_count": 31,
+      "evidence_class": "primary_manual",
+      "repository_binary": false,
+      "external_locator": null,
+      "checksum": {
+        "algorithm": "sha256",
+        "value": null,
+        "status": "not_recorded"
+      },
+      "notes": "Primary English YM2151 manual covering OPM pitch, operator, envelope, LFO, timer, noise, accumulator, and interface semantics. Exact public document URL and file checksum are not yet pinned."
+    }
+  ]
+}
