@@ -104,6 +104,7 @@ See:
 - `docs/human-musical-discourse.md`
 - `docs/audio-programming-languages.md`
 - `docs/persistent-musical-identity.md`
+- `docs/source-native-enhanced-rendering.md`
 - `docs/vgm-frontier.md`
 - `docs/upstreams.md`
 - `research/cases/retro-composition-programming-listening.md`
@@ -484,7 +485,25 @@ Do not fabricate parity merely because a caller prefers one uniform shape.
 
 The accurate renderer is the scientific reference. It is not the quality ceiling.
 
-Enhanced rendering may exceed historical storage, interpolation, synthesis precision, DAC, bandwidth, mixing, and effects limitations when the result remains traceable to the encoded musical work.
+The enhanced renderer is not a generic "HD remaster," not a MIDI/SoundFont conversion path, and not permission to replace historical instruments with modern substitutes. Its target is a **counterfactual source-native realization** of the same executable musical idea.
+
+```text
+same piece
+same parts
+same musical gestures
+same recognizable instruments
+same arrangement
+        ↓
+remove only technical ceilings that are not identity-bearing
+        ↓
+let the intended sound breathe farther
+```
+
+Historical constraints are not presumed to be defects. Practitioner evidence shows both sides: storage, tooling and fidelity limits sometimes forced unwanted compromise, while other limitations were deliberately exploited until the artifact became part of the instrument itself.
+
+The durable rule is:
+
+> **Recover intention where evidence exists, relax unwanted implementation ceilings where identity survives, and preserve the constraints that the music actually adopted as part of itself.**
 
 Preserve:
 
@@ -507,11 +526,31 @@ Enhance where evidence supports it:
 - source extent and environmental rendering;
 - stereo presentation.
 
-A hardware limitation is not automatically artistic intent. A hardware artifact or limitation that materially defines the authored/programmed instrument may be.
+For sample systems, an upstream uncompressed sample is evidence, not an automatic replacement. Historical editing, filtering, truncation, tuning, loop preparation, encoding, envelopes and effect interaction may have become part of the shipped instrument.
+
+For FM systems, keep the programmed synthesis identity intact:
+
+```text
+same algorithm
+same operator relationships
+same envelopes
+same feedback / modulation
+same timing / articulation
+        ↓
+higher-quality source-native realization
+```
+
+The target is the best plausible descendant of the same FM instrument, not `YM2612 → unrelated DX preset`.
+
+Every relaxed ceiling is a separate reversible experiment against the accurate renderer. Do not change synthesis precision, reconstruction, mixing, spatial presentation and effects at once and then call the result an improvement.
+
+SoundFont, DLS, MIDI, VST and modern sampler/synth ecosystems are observatories for rendering practice and interoperability. They are not the canonical representation or planned foobar playback backend.
+
+See `docs/source-native-enhanced-rendering.md` for the evidence ladder and validation law.
 
 The long-term playback target is:
 
-> **Every supported soundtrack should aim to sound like the highest-quality realization its surviving musical data can support.**
+> **Every supported soundtrack should aim to sound like the highest-quality realization its surviving musical data and preserved instrument identity can support.**
 
 ## Realtime playback and offline analysis
 
@@ -546,7 +585,9 @@ exact VGM command
 → persistent musical identity remains source/evidence dependent
 ```
 
-The repository also contains source-state and enhanced-rendering work for SN76489-family PSG and YM2612 DAC/PCM paths. The next audible FM milestone remains a mature six-channel YM2612 renderer with isolated channel output and exact patch/control semantics before selected hardware constraints are experimentally relaxed.
+The repository also contains source-state and enhanced-rendering work for SN76489-family PSG and YM2612 DAC/PCM paths. The YM2612 FM boundary now preserves exact captured register timing while requiring each synthesis backend to declare the source chip clock and consumer output sample rate. A mature backend therefore owns its native-rate synthesis and rate conversion while the shared timeline remains an output-frame scheduler.
+
+The next audible FM milestone remains a mature six-channel YM2612 renderer with isolated channel output and exact patch/control semantics before selected hardware constraints are experimentally relaxed.
 
 See `docs/vgm-frontier.md` for the engineering frontier rather than inferring audible status from model/research commits.
 
