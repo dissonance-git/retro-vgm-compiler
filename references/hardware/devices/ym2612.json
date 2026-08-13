@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "kind": "hardware_device_reference",
+  "device": {
+    "id": "ym2612",
+    "name": "YM2612",
+    "family": "Yamaha OPN2"
+  },
+  "sources": [
+    "mega-drive-sound-tool-ym2612-jp"
+  ],
+  "claims": [
+    {
+      "id": "ym2612.fm.channel_count",
+      "field": "fm.channel_count",
+      "value": 6,
+      "unit": "channels",
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated",
+      "context": "Manual overview states six simultaneous FM voices."
+    },
+    {
+      "id": "ym2612.fm.operators_per_channel",
+      "field": "fm.operators_per_channel",
+      "value": 4,
+      "unit": "operators",
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated"
+    },
+    {
+      "id": "ym2612.fm.algorithm_count",
+      "field": "fm.algorithm_count",
+      "value": 8,
+      "unit": "algorithms",
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 4,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated"
+    },
+    {
+      "id": "ym2612.compatibility.ym2203",
+      "field": "compatibility.software",
+      "value": "YM2203",
+      "unit": null,
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated",
+      "context": "The manual describes YM2612 as software-compatible with OPN/YM2203 while extending simultaneous FM voices."
+    },
+    {
+      "id": "ym2612.lfo.waveform",
+      "field": "lfo.waveform",
+      "value": "sine",
+      "unit": null,
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 4,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated"
+    },
+    {
+      "id": "ym2612.output.dac_resolution",
+      "field": "output.dac_resolution",
+      "value": 9,
+      "unit": "bits",
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 3,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated"
+    },
+    {
+      "id": "ym2612.register.bank_count",
+      "field": "register.bank_count",
+      "value": 2,
+      "unit": "banks",
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 8,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated",
+      "context": "The two register banks share the $20-$B6 address range and are selected by A1."
+    },
+    {
+      "id": "ym2612.register.bank_channel_partition",
+      "field": "register.bank_channel_partition",
+      "value": {
+        "a1_0": [1, 2, 3],
+        "a1_1": [4, 5, 6]
+      },
+      "unit": null,
+      "source_id": "mega-drive-sound-tool-ym2612-jp",
+      "pdf_page": 8,
+      "evidence_class": "primary_manual",
+      "claim_status": "documented",
+      "interpretation": "translated"
+    }
+  ]
+}
