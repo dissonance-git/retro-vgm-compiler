@@ -27,6 +27,8 @@ Do not turn these files into replacement manuals.
 - `schema.json`: schema for source records and extracted claims.
 - `sources.json`: catalog of primary documents currently used by the project.
 - `devices/*.json`: small device-specific claim sets.
+- `platforms/*.json`: platform/bus/access claims that should not be collapsed into one chip's semantics.
+- `../../tools/validate_hardware_refs.py`: checks source IDs, page ranges, evidence classes, checksums, and claim-ID uniqueness without requiring a third-party schema library.
 
 ## What belongs here
 
@@ -38,6 +40,7 @@ Extract facts that are stable and repeatedly useful for implementation or testin
 - documented key-on or pitch encoding;
 - documented clock relationships and frequency formulas;
 - LFO, DAC/PCM, timer, routing, and envelope semantics;
+- platform bus/address and chip-access rules;
 - documented compatibility relationships;
 - documented variant distinctions.
 
