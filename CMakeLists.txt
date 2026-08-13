@@ -44,12 +44,14 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         ym2612_dac_block_capture_test
         ym2612_pcm_stream_test
         ym2612_fm_timeline_test
+        genesis_nominal_pitch_test
         source_stem_mixer_test
         musical_execution_graph_test
         transformation_identity_test
         voice_separation_hypothesis_test
         musical_inference_evidence_test
         musical_understanding_dependency_test
+        genesis_nominal_pitch_feature_test
         analysis_feature_test
         source_analysis_feature_adapter_test
         tracker_analysis_feature_test
@@ -90,12 +92,14 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(ym2612_dac_block_capture_test tests/vgm/ym2612_dac_block_capture_test.cpp)
     add_executable(ym2612_pcm_stream_test tests/vgm/ym2612_pcm_stream_test.cpp)
     add_executable(ym2612_fm_timeline_test tests/vgm/ym2612_fm_timeline_test.cpp)
+    add_executable(genesis_nominal_pitch_test tests/vgm/genesis_nominal_pitch_test.cpp)
     add_executable(source_stem_mixer_test tests/vgm/source_stem_mixer_test.cpp)
     add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
     add_executable(transformation_identity_test tests/model/transformation_identity_test.cpp)
     add_executable(voice_separation_hypothesis_test tests/model/voice_separation_hypothesis_test.cpp)
     add_executable(musical_inference_evidence_test tests/model/musical_inference_evidence_test.cpp)
     add_executable(musical_understanding_dependency_test tests/model/musical_understanding_dependency_test.cpp)
+    add_executable(genesis_nominal_pitch_feature_test tests/model/genesis_nominal_pitch_feature_test.cpp)
     add_executable(analysis_feature_test tests/model/analysis_feature_test.cpp)
     add_executable(source_analysis_feature_adapter_test tests/model/source_analysis_feature_adapter_test.cpp)
     add_executable(tracker_analysis_feature_test tests/model/tracker_analysis_feature_test.cpp)
@@ -121,11 +125,13 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_runtime_sample_adapter_test tests/spc/spc_runtime_sample_adapter_test.cpp)
     add_executable(spc_runtime_capture_test tests/spc/spc_runtime_capture_test.cpp)
     add_executable(spc_runtime_capture_adapter_test tests/spc/spc_runtime_capture_adapter_test.cpp)
+    target_include_directories(genesis_nominal_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(transformation_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(voice_separation_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_inference_evidence_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_understanding_dependency_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(genesis_nominal_pitch_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(analysis_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(source_analysis_feature_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(tracker_analysis_feature_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -161,12 +167,14 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME ym2612_dac_block_capture COMMAND ym2612_dac_block_capture_test)
     add_test(NAME ym2612_pcm_stream COMMAND ym2612_pcm_stream_test)
     add_test(NAME ym2612_fm_timeline COMMAND ym2612_fm_timeline_test)
+    add_test(NAME genesis_nominal_pitch COMMAND genesis_nominal_pitch_test)
     add_test(NAME source_stem_mixer COMMAND source_stem_mixer_test)
     add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
     add_test(NAME transformation_identity COMMAND transformation_identity_test)
     add_test(NAME voice_separation_hypothesis COMMAND voice_separation_hypothesis_test)
     add_test(NAME musical_inference_evidence COMMAND musical_inference_evidence_test)
     add_test(NAME musical_understanding_dependency COMMAND musical_understanding_dependency_test)
+    add_test(NAME genesis_nominal_pitch_feature COMMAND genesis_nominal_pitch_feature_test)
     add_test(NAME analysis_feature COMMAND analysis_feature_test)
     add_test(NAME source_analysis_feature_adapter COMMAND source_analysis_feature_adapter_test)
     add_test(NAME tracker_analysis_feature COMMAND tracker_analysis_feature_test)
