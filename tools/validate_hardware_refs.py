@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REF_ROOT = ROOT / "references" / "hardware"
 SOURCES_PATH = REF_ROOT / "sources.json"
 DEVICES_DIR = REF_ROOT / "devices"
+PLATFORMS_DIR = REF_ROOT / "platforms"
 
 
 def load_json(path: Path) -> dict:
@@ -29,6 +30,46 @@ def load_json(path: Path) -> dict:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise ValueError(message)
+
+
+def validate_claims(
+    path: Path,
+    doc: dict,
+    sources: dict[str, dict],
+    claim_ids: set[str],
+) -> int:
+    declared_sources = doc.get("sources")
+    require(isinstance(declared_sources, list) and declared_sources, f"{path}: sources must be non-empty")
+    for source_id in declared_sources:
+        require(source_id in sources, f"{path}: unknown declared source {source_id}")
+
+    claims = doc.get("claims")
+    require(isinstance(claims, list), f"{path}: claims must be a list")
+
+    count = 0
+    for claim in claims:
+        require(isinstance(claim, dict), f"{path}: claim entries must be objects")
+        claim_id = claim.get("id")
+        require(isinstance(claim_id, str) and claim_id, f"{path}: claim missing id")
+        require(claim_id not in claim_ids, f"duplicate claim id {claim_id}")
+        claim_ids.add(claim_id)
+
+        source_id = claim.get("source_id")
+        require(source_id in sources, f"{claim_id}: unknown source {source_id}")
+        require(source_id in declared_sources, f"{claim_id}: source not declared by {path.name}")
+
+        page = claim.get("pdf_page")
+        require(isinstance(page, int) and page > 0, f"{claim_id}: invalid pdf_page")
+        require(page <= sources[source_id]["page_count"], f"{claim_id}: page {page} exceeds source page count")
+
+        require(claim.get("evidence_class") == sources[source_id]["evidence_class"], f"{claim_id}: evidence class disagrees with source catalog")
+        require(claim.get("claim_status") in {"documented", "derived", "uncertain"}, f"{claim_id}: invalid claim_status")
+        require(claim.get("interpretation") in {"literal", "translated", "project_derived"}, f"{claim_id}: invalid interpretation")
+        require(isinstance(claim.get("field"), str) and claim["field"], f"{claim_id}: missing field")
+        require("value" in claim, f"{claim_id}: missing value")
+        count += 1
+
+    return count
 
 
 def main() -> int:
@@ -63,10 +104,12 @@ def main() -> int:
         sources[source_id] = source
 
     device_files = sorted(DEVICES_DIR.glob("*.json"))
+    platform_files = sorted(PLATFORMS_DIR.glob("*.json"))
     require(device_files, "no hardware device reference files found")
 
     claim_ids: set[str] = set()
     claim_count = 0
+
     for path in device_files:
         doc = load_json(path)
         require(doc.get("schema_version") == 1, f"{path}: unsupported schema_version")
@@ -76,36 +119,25 @@ def main() -> int:
         require(isinstance(device, dict), f"{path}: missing device object")
         require(isinstance(device.get("id"), str) and device["id"], f"{path}: missing device id")
 
-        declared_sources = doc.get("sources")
-        require(isinstance(declared_sources, list) and declared_sources, f"{path}: sources must be non-empty")
-        for source_id in declared_sources:
-            require(source_id in sources, f"{path}: unknown declared source {source_id}")
+        claim_count += validate_claims(path, doc, sources, claim_ids)
 
-        claims = doc.get("claims")
-        require(isinstance(claims, list), f"{path}: claims must be a list")
-        for claim in claims:
-            require(isinstance(claim, dict), f"{path}: claim entries must be objects")
-            claim_id = claim.get("id")
-            require(isinstance(claim_id, str) and claim_id, f"{path}: claim missing id")
-            require(claim_id not in claim_ids, f"duplicate claim id {claim_id}")
-            claim_ids.add(claim_id)
+    for path in platform_files:
+        doc = load_json(path)
+        require(doc.get("schema_version") == 1, f"{path}: unsupported schema_version")
+        require(doc.get("kind") == "hardware_platform_reference", f"{path}: wrong kind")
 
-            source_id = claim.get("source_id")
-            require(source_id in sources, f"{claim_id}: unknown source {source_id}")
-            require(source_id in declared_sources, f"{claim_id}: source not declared by {path.name}")
+        platform = doc.get("platform")
+        require(isinstance(platform, dict), f"{path}: missing platform object")
+        require(isinstance(platform.get("id"), str) and platform["id"], f"{path}: missing platform id")
 
-            page = claim.get("pdf_page")
-            require(isinstance(page, int) and page > 0, f"{claim_id}: invalid pdf_page")
-            require(page <= sources[source_id]["page_count"], f"{claim_id}: page {page} exceeds source page count")
+        claim_count += validate_claims(path, doc, sources, claim_ids)
 
-            require(claim.get("evidence_class") == sources[source_id]["evidence_class"], f"{claim_id}: evidence class disagrees with source catalog")
-            require(claim.get("claim_status") in {"documented", "derived", "uncertain"}, f"{claim_id}: invalid claim_status")
-            require(claim.get("interpretation") in {"literal", "translated", "project_derived"}, f"{claim_id}: invalid interpretation")
-            require(isinstance(claim.get("field"), str) and claim["field"], f"{claim_id}: missing field")
-            require("value" in claim, f"{claim_id}: missing value")
-            claim_count += 1
-
-    print(f"validated {len(sources)} source(s), {len(device_files)} device reference(s), {claim_count} claim(s)")
+    print(
+        f"validated {len(sources)} source(s), "
+        f"{len(device_files)} device reference(s), "
+        f"{len(platform_files)} platform reference(s), "
+        f"{claim_count} claim(s)"
+    )
     return 0
 
 
