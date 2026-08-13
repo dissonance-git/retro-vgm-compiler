@@ -10,6 +10,8 @@ add_library(gameaudio_vgm_core STATIC
     components/vgm/enhancement/sn76489_advance.cpp
     components/vgm/enhancement/ym2612_dac_enhanced.cpp
     components/vgm/enhancement/ym2612_pcm_stream.cpp
+    components/vgm/enhancement/ym2612_fm_timeline.cpp
+    components/vgm/enhancement/source_stem_mixer.cpp
 )
 
 target_include_directories(gameaudio_vgm_core
@@ -31,13 +33,18 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     set(GAMEAUDIO_TEST_TARGETS
         genesis_state_test
         genesis_event_tap_test
+        authored_stereo_route_test
         sn76489_enhanced_test
         sn76489_variants_test
         sn76489_advance_test
+        sn76489_alias_test
         psg_block_capture_test
+        ym2612_block_capture_test
         ym2612_dac_enhanced_test
         ym2612_dac_block_capture_test
         ym2612_pcm_stream_test
+        ym2612_fm_timeline_test
+        source_stem_mixer_test
         musical_execution_graph_test
         transformation_identity_test
         voice_separation_hypothesis_test
@@ -71,13 +78,18 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
     add_executable(genesis_event_tap_test tests/vgm/genesis_event_tap_test.cpp)
+    add_executable(authored_stereo_route_test tests/vgm/authored_stereo_route_test.cpp)
     add_executable(sn76489_enhanced_test tests/vgm/sn76489_enhanced_test.cpp)
     add_executable(sn76489_variants_test tests/vgm/sn76489_variants_test.cpp)
     add_executable(sn76489_advance_test tests/vgm/sn76489_advance_test.cpp)
+    add_executable(sn76489_alias_test tests/vgm/sn76489_alias_test.cpp)
     add_executable(psg_block_capture_test tests/vgm/psg_block_capture_test.cpp)
+    add_executable(ym2612_block_capture_test tests/vgm/ym2612_block_capture_test.cpp)
     add_executable(ym2612_dac_enhanced_test tests/vgm/ym2612_dac_enhanced_test.cpp)
     add_executable(ym2612_dac_block_capture_test tests/vgm/ym2612_dac_block_capture_test.cpp)
     add_executable(ym2612_pcm_stream_test tests/vgm/ym2612_pcm_stream_test.cpp)
+    add_executable(ym2612_fm_timeline_test tests/vgm/ym2612_fm_timeline_test.cpp)
+    add_executable(source_stem_mixer_test tests/vgm/source_stem_mixer_test.cpp)
     add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
     add_executable(transformation_identity_test tests/model/transformation_identity_test.cpp)
     add_executable(voice_separation_hypothesis_test tests/model/voice_separation_hypothesis_test.cpp)
@@ -135,13 +147,18 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
 
     add_test(NAME genesis_state COMMAND genesis_state_test)
     add_test(NAME genesis_event_tap COMMAND genesis_event_tap_test)
+    add_test(NAME authored_stereo_route COMMAND authored_stereo_route_test)
     add_test(NAME sn76489_enhanced COMMAND sn76489_enhanced_test)
     add_test(NAME sn76489_variants COMMAND sn76489_variants_test)
     add_test(NAME sn76489_advance COMMAND sn76489_advance_test)
+    add_test(NAME sn76489_alias COMMAND sn76489_alias_test)
     add_test(NAME psg_block_capture COMMAND psg_block_capture_test)
+    add_test(NAME ym2612_block_capture COMMAND ym2612_block_capture_test)
     add_test(NAME ym2612_dac_enhanced COMMAND ym2612_dac_enhanced_test)
     add_test(NAME ym2612_dac_block_capture COMMAND ym2612_dac_block_capture_test)
     add_test(NAME ym2612_pcm_stream COMMAND ym2612_pcm_stream_test)
+    add_test(NAME ym2612_fm_timeline COMMAND ym2612_fm_timeline_test)
+    add_test(NAME source_stem_mixer COMMAND source_stem_mixer_test)
     add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
     add_test(NAME transformation_identity COMMAND transformation_identity_test)
     add_test(NAME voice_separation_hypothesis COMMAND voice_separation_hypothesis_test)
