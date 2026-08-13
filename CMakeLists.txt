@@ -71,6 +71,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         vgm_dac_stream_command_test
         yamaha_opn_family_test
         yamaha_opn_register_test
+        yamaha_opm_register_test
+        yamaha_opl_family_test
+        yamaha_opl_register_test
+        yamaha_opll_register_test
         genesis_execution_graph_adapter_test
         genesis_performance_adapter_test
         genesis_pitch_control_adapter_test
@@ -125,6 +129,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(vgm_dac_stream_command_test tests/vgm/vgm_dac_stream_command_test.cpp)
     add_executable(yamaha_opn_family_test tests/vgm/yamaha_opn_family_test.cpp)
     add_executable(yamaha_opn_register_test tests/vgm/yamaha_opn_register_test.cpp)
+    add_executable(yamaha_opm_register_test tests/vgm/yamaha_opm_register_test.cpp)
+    add_executable(yamaha_opl_family_test tests/vgm/yamaha_opl_family_test.cpp)
+    add_executable(yamaha_opl_register_test tests/vgm/yamaha_opl_register_test.cpp)
+    add_executable(yamaha_opll_register_test tests/vgm/yamaha_opll_register_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
     add_executable(genesis_performance_adapter_test tests/vgm/genesis_performance_adapter_test.cpp)
     add_executable(genesis_pitch_control_adapter_test tests/vgm/genesis_pitch_control_adapter_test.cpp)
@@ -207,6 +215,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME vgm_dac_stream_command COMMAND vgm_dac_stream_command_test)
     add_test(NAME yamaha_opn_family COMMAND yamaha_opn_family_test)
     add_test(NAME yamaha_opn_register COMMAND yamaha_opn_register_test)
+    add_test(NAME yamaha_opm_register COMMAND yamaha_opm_register_test)
+    add_test(NAME yamaha_opl_family COMMAND yamaha_opl_family_test)
+    add_test(NAME yamaha_opl_register COMMAND yamaha_opl_register_test)
+    add_test(NAME yamaha_opll_register COMMAND yamaha_opll_register_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
     add_test(NAME genesis_performance_adapter COMMAND genesis_performance_adapter_test)
     add_test(NAME genesis_pitch_control_adapter COMMAND genesis_pitch_control_adapter_test)
