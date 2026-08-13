@@ -66,6 +66,9 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         authored_source_projection_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
+        vgm_yamaha_register_write_test
+        vgm_chip_clock_test
+        yamaha_opn_family_test
         genesis_execution_graph_adapter_test
         genesis_performance_adapter_test
         genesis_pitch_control_adapter_test
@@ -115,6 +118,9 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(authored_source_projection_test tests/model/authored_source_projection_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
+    add_executable(vgm_yamaha_register_write_test tests/vgm/vgm_yamaha_register_write_test.cpp)
+    add_executable(vgm_chip_clock_test tests/vgm/vgm_chip_clock_test.cpp)
+    add_executable(yamaha_opn_family_test tests/vgm/yamaha_opn_family_test.cpp)
     add_executable(genesis_execution_graph_adapter_test tests/vgm/genesis_execution_graph_adapter_test.cpp)
     add_executable(genesis_performance_adapter_test tests/vgm/genesis_performance_adapter_test.cpp)
     add_executable(genesis_pitch_control_adapter_test tests/vgm/genesis_pitch_control_adapter_test.cpp)
@@ -192,6 +198,9 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME authored_source_projection COMMAND authored_source_projection_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
+    add_test(NAME vgm_yamaha_register_write COMMAND vgm_yamaha_register_write_test)
+    add_test(NAME vgm_chip_clock COMMAND vgm_chip_clock_test)
+    add_test(NAME yamaha_opn_family COMMAND yamaha_opn_family_test)
     add_test(NAME genesis_execution_graph_adapter COMMAND genesis_execution_graph_adapter_test)
     add_test(NAME genesis_performance_adapter COMMAND genesis_performance_adapter_test)
     add_test(NAME genesis_pitch_control_adapter COMMAND genesis_pitch_control_adapter_test)
