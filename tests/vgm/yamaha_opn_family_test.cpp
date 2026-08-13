@@ -5,8 +5,10 @@
 using namespace gameaudio::vgm;
 
 int main() {
-    constexpr auto plain_clock = decode_chip_clock_word(8'000'000u);
-    constexpr auto variant_clock = decode_chip_clock_word(0x80000000u | 8'000'000u);
+    constexpr auto plain_clock = decode_chip_clock_word(vgm_version_1_51, 8'000'000u);
+    constexpr auto variant_clock = decode_chip_clock_word(
+        vgm_version_1_51,
+        0x80000000u | 8'000'000u);
 
     static_assert(resolve_opn_chip_variant(yamaha_register_target::ym2203, plain_clock) ==
                   opn_chip_variant::ym2203);
