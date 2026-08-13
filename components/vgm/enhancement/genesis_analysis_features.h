@@ -1,5 +1,6 @@
 #pragma once
 
+#include "genesis_nominal_pitch.h"
 #include "genesis_performance_adapter.h"
 #include "../../../model/analysis_feature.h"
 
@@ -44,9 +45,49 @@ inline vgmtooling::model::analysis_feature genesis_feature_from_attribute(
     return feature;
 }
 
+inline std::optional<double> derive_genesis_nominal_pitch_frequency_hz(
+    const vgmtooling::model::node& event,
+    const genesis_pitch_clock_context& clocks) {
+    using namespace vgmtooling::model;
+
+    const attribute* family_attribute = find_genesis_analysis_attribute(event, "device_family");
+    const attribute* pitch_attribute = find_genesis_analysis_attribute(event, "device_pitch_code");
+    if (family_attribute == nullptr || pitch_attribute == nullptr)
+        return std::nullopt;
+
+    const auto* family = std::get_if<std::string>(&family_attribute->value);
+    const auto* pitch = std::get_if<std::uint64_t>(&pitch_attribute->value);
+    if (family == nullptr || pitch == nullptr)
+        return std::nullopt;
+
+    if (*family == "YM2612") {
+        const attribute* block_attribute = find_genesis_analysis_attribute(event, "device_pitch_block");
+        if (block_attribute == nullptr)
+            return std::nullopt;
+        const auto* block = std::get_if<std::uint64_t>(&block_attribute->value);
+        if (block == nullptr || *pitch > 0x07ffu || *block > 7u)
+            return std::nullopt;
+        return ym2612_nominal_pitch_frequency_hz(
+            static_cast<std::uint16_t>(*pitch),
+            static_cast<std::uint8_t>(*block),
+            clocks.ym2612_clock_hz);
+    }
+
+    if (*family == "SN76489") {
+        if (*pitch > 0x03ffu)
+            return std::nullopt;
+        return sn76489_nominal_pitch_frequency_hz(
+            static_cast<std::uint16_t>(*pitch),
+            clocks.sn76489_clock_hz);
+    }
+
+    return std::nullopt;
+}
+
 inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analysis_features(
     const vgmtooling::model::musical_execution_graph& graph,
-    vgmtooling::model::node_id event_id) {
+    vgmtooling::model::node_id event_id,
+    const genesis_pitch_clock_context* pitch_clocks = nullptr) {
     using namespace vgmtooling::model;
 
     const node* event = graph.find_node(event_id);
@@ -123,6 +164,43 @@ inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analy
             event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
     }
 
+    if (pitch_clocks != nullptr) {
+        const auto nominal_frequency = derive_genesis_nominal_pitch_frequency_hz(*event, *pitch_clocks);
+        if (nominal_frequency.has_value()) {
+            analysis_feature feature = present_feature(
+                "device_nominal_pitch_frequency_hz",
+                semantic_layer::synthesis,
+                attribute_value{*nominal_frequency},
+                evidence_status::derived,
+                1.0,
+                "Hz");
+            feature.support_nodes.push_back(event_id);
+            feature.provenance = event->provenance;
+            feature.provenance.push_back({
+                evidence_status::exact,
+                1.0,
+                pitch_clocks->source.empty() ? "genesis-pitch-clock-context" : pitch_clocks->source,
+                std::nullopt,
+                "source-relative device clock used to derive the nominal channel/tone frequency; this is not a MIDI note, chord tone, or perceptual pitch",
+            });
+            features.add(std::move(feature));
+        } else {
+            features.add(unresolved_feature(
+                "device_nominal_pitch_frequency_hz",
+                semantic_layer::synthesis,
+                feature_availability::unknown,
+                "the supplied clock context is insufficient or incompatible with this device-native pitch state",
+                pitch_clocks->source.empty() ? "genesis-pitch-clock-context" : pitch_clocks->source));
+        }
+    } else {
+        features.add(unresolved_feature(
+            "device_nominal_pitch_frequency_hz",
+            semantic_layer::synthesis,
+            feature_availability::unknown,
+            "device-native pitch is preserved but no source-relative chip clock was supplied for frequency normalization",
+            event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
+    }
+
     const attribute* gate_or_level = find_genesis_analysis_attribute(*event, "gate_or_level");
     if (gate_or_level != nullptr) {
         analysis_feature feature = present_feature(
@@ -179,7 +257,7 @@ inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analy
         "performed_pitch_frequency_hz",
         semantic_layer::musical_performance,
         feature_availability::unknown,
-        "device-native pitch is preserved, but this extractor has not established a performance frequency in hertz from the required device clock/context",
+        "a nominal device frequency may be available, but performed/heard pitch remains a separate claim; FM operator ratios, detune/modulation, acoustic realization, and perceptual evidence may matter",
         event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
     features.add(unresolved_feature(
         "original_driver_track",
