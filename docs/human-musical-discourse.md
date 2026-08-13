@@ -21,6 +21,7 @@ discourse projection
         ├─ ordinary listener
         ├─ reviewer / critic
         ├─ composer / musician
+        ├─ musicologist / theorist
         ├─ producer
         ├─ mixing / mastering engineer
         └─ forensic / technical
@@ -62,7 +63,9 @@ it opens up here
 
 The first is a technical statement. The second is how a person might naturally describe the experience. Neither replaces the other.
 
-VGM Tooling should normally lead with the musical description and descend into mechanism when asked.
+Likewise, a useful listener-level account such as `the track opens up here` does not replace a musicological account of what the notes are doing. The same span may also support claims about key, chord identity, harmonic function, progression, cadence, voice leading, motivic relation, or form.
+
+VGM Tooling should normally lead with the register appropriate to the question and descend into mechanism when asked.
 
 ## Discourse communities
 
@@ -157,6 +160,50 @@ Intent requires independent evidence such as interviews, source comments, notes,
 musical effect
 != documented creator intent
 ```
+
+### Musicologist / theorist
+
+Musicological and theory discourse asks how musical events relate to one another beyond local texture or production effect.
+
+Typical concerns include:
+
+- global and local key / tonal center;
+- mode and pitch collection where the analytical system supports them;
+- chord spelling, root, quality, inversion and alteration;
+- chord tones versus figuration / non-chord tones;
+- harmonic function and tonal hierarchy;
+- tonicization versus modulation;
+- chord progression and harmonic rhythm;
+- preparation, prolongation and substitution relations;
+- cadence and phrase function;
+- voice leading and contrapuntal relations;
+- motivic, schematic and transformational relations;
+- repetition, formal function and large-scale tonal/formal path;
+- style, corpus, historical practice and alternative analytical readings.
+
+Natural theory-facing language may include:
+
+```text
+the phrase tonicizes V before returning to the home key
+this sonority works better as a first-inversion predominant than as an isolated chord label
+the bass changes the function even though the upper voices barely move
+the dominant is prepared across several chords rather than arriving as one local event
+the cadence closes the harmonic span before the melodic loop fully settles
+this return restores the original tonal center but changes the voice leading
+```
+
+These are analyses, not hidden source bytes. Familiar labels must retain theory and corpus scope.
+
+```text
+exact simultaneous pitches
+!= chord spelling
+!= harmonic function
+!= listener expectation
+```
+
+Several analyses may be legitimate over the same lower evidence. VGM Tooling should preserve competing readings when the evidence does not separate them instead of inventing a single `correct` Roman numeral merely because one projection wants a label.
+
+Western functional harmony is one powerful analytical language, not the universal definition of musical structure. Roman numerals, major/minor keys, common-practice function and related concepts must be used only where their stylistic and cultural assumptions fit.
 
 ### Producer
 
@@ -406,7 +453,29 @@ TECHNICAL EXPLANATION
 [driver / envelope / articulation explanation with exact provenance]
 ```
 
-Default discussion should sound like a knowledgeable person listening to music, not a telemetry dump.
+Theory questions take a parallel path rather than being forced through the listener/producer description first:
+
+```text
+USER
+What is it doing harmonically here?
+
+MUSICOLOGICAL EXPLANATION
+The phrase moves away from the local tonic, tonicizes the dominant, and then closes with a cadential return. An alternate reading treats the middle sonority as passing rather than as its own functional chord.
+
+USER
+What supports that?
+
+EVIDENCE DESCENT
+[exact performed pitches + bass motion + metric location + durations + voice leading + competing key/chord analyses + model/theory provenance]
+
+USER
+What produced those notes?
+
+TECHNICAL DESCENT
+[driver / register / patch / sample / timing evidence]
+```
+
+Default discussion should sound like a knowledgeable person listening to music, not a telemetry dump. When the question is theoretical, it should also be capable of sounding like a knowledgeable analyst rather than stopping at section/energy descriptions.
 
 ## Default register
 
@@ -414,7 +483,8 @@ Unless the user requests another register, the preferred user-facing mode is a *
 
 - musically informed without unnecessary jargon;
 - comfortable with ordinary metaphors;
-- able to mention melody, bass, rhythm, harmony, texture, timbre, section/form, groove, and production naturally;
+- able to mention melody, bass, rhythm, key/tonal center, chords/progressions, harmony, texture, timbre, section/form, groove, and production naturally;
+- able to move upward into harmonic, contrapuntal, motivic and formal analysis when that is what the question asks;
 - willing to say `I hear this as...` or present alternatives when interpretation is uncertain;
 - able to descend into exact technical evidence immediately when asked.
 
@@ -430,6 +500,7 @@ This is not reviewer cosplay and not forced casualness. It is simply the natural
 6. Culture-, genre-, era-, and community-specific vocabulary should not be treated as universal.
 7. Technical explanation remains available beneath every grounded natural description.
 8. Competing natural descriptions may coexist when the evidence supports multiple plausible interpretations.
+9. Musicological/theoretical labels must retain the analytical system, corpus/style scope, lower evidence, and meaningful alternatives when the reading is not unique.
 
 ## Research observatories
 
@@ -441,9 +512,13 @@ Useful sources include:
 - recording-studies literature on studio discourse;
 - cognitive-linguistic work on musical metaphor;
 - timbre semantics and perceptual descriptor research;
+- encoded expert-analysis corpora such as When in Rome and the DCML corpora;
+- chord/progression resources such as ChoCo and the Jazz Harmony Treebank;
+- symbolic analysis systems such as music21 and automatic-analysis challengers such as AugmentedNet;
+- computational music-theory work on tonal hierarchy, harmonic syntax, figuration, cadence, voice leading and musical form;
 - practitioner source code/comments where creator language and executable behavior can be compared directly.
 
-These are observatories for vocabulary, discourse acts, and evidence relationships, not phrase dictionaries to copy mechanically.
+These are observatories for vocabulary, analytical relations, discourse acts, and evidence relationships, not phrase dictionaries or universal theory labels to copy mechanically.
 
 ## Validation target
 
@@ -457,7 +532,14 @@ EVIDENCE-FACING
 Can each material claim descend into the strongest available musical, acoustic, historical, or executable evidence?
 ```
 
-A result fails if it is technically correct but linguistically alien, or natural-sounding but unsupported.
+For theory-facing questions add a third pressure test:
+
+```text
+ANALYTICAL
+Does the account explain key/chord/progression/hierarchy/form relations under a declared analytical scope, and can a competing valid reading coexist without changing the lower evidence?
+```
+
+A result fails if it is technically correct but linguistically alien, natural-sounding but unsupported, or theoretically specific without declaring the assumptions that made that reading possible.
 
 The durable project rule is:
 
