@@ -149,6 +149,46 @@
       "set_sha256": "86a15ade7618f3cde9ed45d3f3f637e548ae45bfa039623f7a183a55e2db2633"
     },
     {
+      "corpus_id": "chrono-cross-psf1-playstation",
+      "path": "tests/corpus/chrono-cross-psf1-playstation",
+      "delivery": "direct-files",
+      "source_family": "PSF1",
+      "work": "Chrono Cross",
+      "platform": "Sony PlayStation",
+      "source_url": "https://fi.zophar.net/soundfiles/playstation-psf/chrono-cross/Chrono%20Cross%20%28EMU%29.zophar.zip",
+      "source_page": "https://www.zophar.net/music/playstation-psf/chrono-cross",
+      "source_archive_sha256": "20b8167b1fb952f9c342c6edc2d16e2b5860e5ef4591ff70f677f46969c111be",
+      "source_archive_retained": false,
+      "downloaded_utc_date": "2026-08-13",
+      "xsf_structure": {
+        "signature": "PSF",
+        "version": "0x01",
+        "valid_container_count": 68,
+        "valid_outer_crc_count": 68,
+        "root_count": 68,
+        "library_count": 0,
+        "dependency_edge_count": 0,
+        "program_semantics": "PS-X EXE",
+        "effective_memory_base": "0x80010000",
+        "effective_memory_size_range_bytes": [
+          1140032,
+          1509120
+        ]
+      },
+      "observed_tag_keys_casefolded": [
+        "artist", "comment", "copyright", "fade", "game", "genre", "length",
+        "psfby", "replaygain_album_gain", "replaygain_album_peak",
+        "replaygain_track_gain", "replaygain_track_peak", "title", "utf8",
+        "volume", "year"
+      ],
+      "validation_scope": "Exact container, compressed-program CRC, zlib stream, tags, and PS-X EXE effective memory validated. PlayStation CPU/SPU runtime, driver, sequence, voices, and playback were not executed or validated.",
+      "regression_use": "Self-contained PSF1 control that separates xSF container admission and PS-X EXE reconstruction from machine runtime and musical interpretation.",
+      "fixture_count": 68,
+      "sha256_inventory": "tests/corpus/chrono-cross-psf1-playstation.sha256",
+      "git_tree_sha1": "2dfe33e8a5a2fd6196869c3de20b2febeb2ffff0",
+      "set_sha256": "d01a76975d5bc4d1e15a46f67be6ac1ce248baae0d0f85776d3a790869988a0c"
+    },
+    {
       "corpus_id": "dark-wizard-rf5c164",
       "path": "tests/corpus/dark-wizard-rf5c164",
       "delivery": "direct-files",
@@ -406,6 +446,46 @@
       "set_sha256": "421c8d43646cd41f87ac950c3b8b51bcbfef3684ba1eb3f60fbca751bc32d6f5"
     },
     {
+      "corpus_id": "mario-kart-ds-2sf-nintendo-ds",
+      "path": "tests/corpus/mario-kart-ds-2sf-nintendo-ds",
+      "delivery": "direct-files",
+      "source_family": "2SF",
+      "work": "Mario Kart DS",
+      "platform": "Nintendo DS",
+      "source_origin": "User-authorized local runnable set from C:/Users/dissonance/Music/VGM/M/Mario Kart DS",
+      "xsf_structure": {
+        "signature": "PSF",
+        "version": "0x24",
+        "valid_container_count": 86,
+        "valid_outer_crc_count": 86,
+        "root_count": 84,
+        "library_count": 2,
+        "dependency_edge_count": 84,
+        "library_reference_counts": {
+          "NTR-AMCE-USA.2sflib": 53,
+          "MKDSsound_data.2sflib": 31
+        },
+        "program_semantics": "little-endian Nintendo DS ROM offset/size map",
+        "reserved_save_record_count_across_roots": 0,
+        "effective_rom_size_range_bytes": [
+          4276320,
+          4276348
+        ],
+        "effective_rom_allocation_bytes": 8388608
+      },
+      "observed_tag_keys_casefolded": [
+        "_lib", "album artist", "artist", "comment", "fade", "game", "genre",
+        "length", "platform", "replaygain_track_gain", "replaygain_track_peak",
+        "sound team", "title", "totaltracks", "tracknumber", "utf8", "year"
+      ],
+      "validation_scope": "Exact container, compressed-program CRC, zlib stream, tags, dependency closure, and 2SF ROM-map overlay validated. Nintendo DS ARM runtime, driver, sequence, voices, and playback were not executed or validated.",
+      "regression_use": "Dependency-heavy 2SF control with two libraries and two root-to-library populations; preserves container, effective ROM, and runtime as distinct objects.",
+      "fixture_count": 86,
+      "sha256_inventory": "tests/corpus/mario-kart-ds-2sf-nintendo-ds.sha256",
+      "git_tree_sha1": "be69b2047fd6e832b65005c9aae00a7f6c195272",
+      "set_sha256": "5d8f29ef4a2682c3265dde0a9da87ff892e7961053e5d0a94afff968990711b5"
+    },
+    {
       "corpus_id": "motocross-maniacs-game-boy",
       "path": "tests/corpus/motocross-maniacs-game-boy",
       "delivery": "direct-files",
@@ -451,6 +531,45 @@
       "sha256_inventory": "tests/corpus/motocross-maniacs-game-boy.sha256",
       "git_tree_sha1": "d340898784389113d16cc4156ebf8b2eb274f131",
       "set_sha256": "ccd9fc51d14c1e9cbbd30b6f6229739af70f022c71da7d380cce8160a529c342"
+    },
+    {
+      "corpus_id": "ocarina-of-time-usf-nintendo-64",
+      "path": "tests/corpus/ocarina-of-time-usf-nintendo-64",
+      "delivery": "direct-files",
+      "source_family": "USF",
+      "work": "The Legend of Zelda: Ocarina of Time",
+      "platform": "Nintendo 64",
+      "source_url": "https://fi.zophar.net/soundfiles/nintendo-64-usf/legend-of-zelda-the-ocarina-of-time/Legend%20of%20Zelda%2C%20The%20-%20Ocarina%20of%20Time%20%28EMU%29.zophar.zip",
+      "source_page": "https://www.zophar.net/music/nintendo-64-usf/legend-of-zelda-the-ocarina-of-time",
+      "source_archive_sha256": "78a5183ad0908b664ff2df356f70fa245f35060f43edb1fb7788f9281370c885",
+      "source_archive_retained": false,
+      "downloaded_utc_date": "2026-08-13",
+      "xsf_structure": {
+        "signature": "PSF",
+        "version": "0x21",
+        "valid_container_count": 110,
+        "valid_outer_crc_count": 110,
+        "root_count": 109,
+        "library_count": 1,
+        "dependency_edge_count": 109,
+        "library_reference_counts": {
+          "NUS-CZLE-USA.usflib": 109
+        },
+        "program_section_nonempty_count": 0,
+        "reserved_semantics": "ordered SR64 ROM and Project64 save-state patch tables",
+        "effective_rom_size_bytes": 5087668,
+        "effective_save_state_size_bytes": 4204380
+      },
+      "observed_tag_keys_casefolded": [
+        "_64thbug1", "_lib", "artist", "copyright", "fade", "game", "genre",
+        "length", "title", "track", "usfby", "year"
+      ],
+      "validation_scope": "Exact container, compressed-program CRC, tags, dependency closure, and ordered USF ROM/save-state patches validated. Nintendo 64 CPU/RSP runtime, driver, sequence, voices, and playback were not executed or validated.",
+      "regression_use": "Downloaded dependency-heavy USF control whose root objects patch a shared library state; validates exact Ocarina of Time USF acquisition without claiming emulation or playback.",
+      "fixture_count": 110,
+      "sha256_inventory": "tests/corpus/ocarina-of-time-usf-nintendo-64.sha256",
+      "git_tree_sha1": "5c7509ffedfa47cd739718a4204329ccb4b2a3f3",
+      "set_sha256": "25792da7983abe791a8dcecd68277d1835a053e9c0fef0975e6d1bbd99a644a3"
     },
     {
       "corpus_id": "outrun-segapcm",
@@ -734,7 +853,9 @@
       "delivery": "direct-files",
       "source_family": "NSF",
       "work": "Star Soldier",
-      "device_families": ["NES APU"],
+      "device_families": [
+        "NES APU"
+      ],
       "source_url": "https://fi.zophar.net/soundfiles/nintendo-nes-nsf/star-soldier/Star%20Soldier%20%28EMU%29.zophar.zip",
       "source_page": "https://www.zophar.net/music/nintendo-nes-nsf/star-soldier",
       "source_archive_sha256": "819e5b1fe277717b0f0ff3f48f7b77efdd1d8506170d7db0a830e379c7f9da9e",

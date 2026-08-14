@@ -1,6 +1,6 @@
-# VGM Tooling test corpus
+# Game Music Interpreter test corpus
 
-This document governs user-supplied real-music fixtures used to pressure-test VGM Tooling beyond synthetic unit cases.
+This document governs user-supplied real-music fixtures used to pressure-test Game Music Interpreter beyond synthetic unit cases.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ can exact source/device state be captured?
 can persistent musical behavior be recovered conservatively?
 can parts / gestures / sections / repetition be analyzed?
 can the reference and enhanced renderers be compared?
-can VGM Tooling describe what a listener hears naturally?
+can Game Music Interpreter describe what a listener hears naturally?
 can every material description descend into evidence?
 can metadata remain separate from attribution evidence?
 ```
@@ -32,13 +32,13 @@ The canonical supplied object depends on the delivery form:
 ```text
 direct runnable files
         ↓ preserve each byte-for-byte
-canonical VGM / VGZ / SPC / NSF / NSFe fixtures
+canonical VGM / VGZ / SPC / NSF / NSFe / PSF1 / USF / 2SF fixtures
 
 archive supplied as a canonical object
         ↓ preserve archive byte-for-byte when retained
 archive evidence object
         ↓ extract without rewriting media
-runnable VGM / VGZ / SPC fixtures
+runnable source-family fixtures
 ```
 
 A ZIP is not required merely to duplicate files that were supplied and committed directly. When direct runnable files are the canonical corpus objects, preserve those files and their hashes. When an archive itself is intended to be retained as evidence, preserve its exact bytes and hash as a separate object. Record any extraction or transformation explicitly.
@@ -76,7 +76,7 @@ Library/Sources/Music/FoobarLibraryMetadata.jsonl
 optional compact query/index projections
 ```
 
-The historical capitalization above is retained because it is the source path recorded by the Helix ingestion report. VGM Tooling does not own or duplicate that database.
+The historical capitalization above is retained because it is the source path recorded by the Helix ingestion report. Game Music Interpreter does not own or duplicate that database.
 
 Therefore:
 
@@ -96,9 +96,9 @@ This rule is intentionally narrow. Other embedded fields may be inspected accord
 
 ## Cross-project ownership
 
-VGM Tooling owns:
+Game Music Interpreter owns:
 
-- the immutable VGM/VGZ/SPC/NSF/NSFe fixture bytes;
+- the immutable VGM/VGZ/SPC/NSF/NSFe/PSF1/USF/2SF fixture bytes;
 - hashes and source-family inventory;
 - execution/synthesis/performance analysis of those fixtures;
 - corpus-specific regression expectations that belong to game-music machinery.
@@ -153,7 +153,7 @@ Each committed corpus set should have a manifest recording at least:
 - original supplied filename or archive name when applicable;
 - SHA-256 of every canonical runnable file;
 - deterministic whole-set digest and/or Git tree identity when available;
-- source family (`VGM`, `VGZ`, `SPC`, `NSF`, or `NSFe`);
+- source family (`VGM`, `VGZ`, `SPC`, `NSF`, `NSFe`, `PSF1`, `USF`, or `2SF`);
 - game/work identifier when known;
 - track/cue identifier when known;
 - chip/device family when determinable from the source;
@@ -185,7 +185,7 @@ track / exact version
 
 The project has explicit prototype/final/replacement distinctions and unresolved composer/arranger conflicts. It also contains technical fingerprint hypotheses involving voice-bank use, MOD settings, FM/PSG initialization, patch reuse, SFX-heavy construction, and version divergence.
 
-This gives VGM Tooling a strong negative control:
+This gives Game Music Interpreter a strong negative control:
 
 ```text
 external artist tag
@@ -246,7 +246,15 @@ For NSF/NSFe:
 - valid container structure does not establish correct playback;
 - embedded text fields are artifact metadata and do not independently establish attribution.
 
-For both:
+For PSF1/USF/2SF:
+
+- the shared xSF envelope establishes container structure, version, reserved and compressed-program sections, outer CRC, tags, and library directives;
+- dependency order and effective-object overlays are provenance-bearing transformations rather than file identity;
+- PSF1 PS-X EXE memory, USF ROM/save-state patches, and 2SF ROM/save maps remain platform-specific;
+- a valid effective object does not establish a running CPU/SPU/RSP/ARM system, correct playback, driver or sequence identity, or recovered musical voices/parts;
+- embedded tags are artifact metadata and do not independently establish attribution.
+
+For all source families:
 
 - musical structure remains derived/hypothesis as appropriate;
 - listener/critic/producer/engineer descriptions are discourse projections over support bundles;

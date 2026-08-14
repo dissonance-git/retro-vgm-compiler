@@ -243,4 +243,12 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         COMMAND ${Python3_EXECUTABLE} -B -m unittest discover -s tests/xsf -p test_*.py
     )
     set_tests_properties(xsf_unit PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(
+        NAME xsf_real_corpus
+        COMMAND ${Python3_EXECUTABLE} -B tools/xsf_corpus_audit.py --quiet
+            tests/corpus/chrono-cross-psf1-playstation
+            tests/corpus/mario-kart-ds-2sf-nintendo-ds
+            tests/corpus/ocarina-of-time-usf-nintendo-64
+    )
+    set_tests_properties(xsf_real_corpus PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
