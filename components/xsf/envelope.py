@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import struct
 from typing import Callable
 import zlib
@@ -191,28 +191,51 @@ def resolve_xsf(
     max_depth: int = 32,
 ) -> ResolvedXsf:
     root = root.resolve()
-    base = root.parent
+    library_root = root.parent
     reader = read_bytes or Path.read_bytes
     objects: list[XsfObject] = []
     edges: list[DependencyEdge] = []
     active: list[Path] = []
     discovered_version: int | None = expected_version
 
+    def relative_source_id(path: Path) -> str:
+        try:
+            return path.relative_to(library_root).as_posix()
+        except ValueError as exc:
+            raise XsfDependencyError(f"dependency escapes root directory: {path}") from exc
+
+    def dependency_path(parent: Path, value: str) -> Path:
+        # The PSF/xSF library convention treats both slash styles as path
+        # separators and resolves every _lib* value relative to the file that
+        # contains the tag, not relative to the top-level root file.
+        normalized = value.replace("\\", "/")
+        posix_path = PurePosixPath(normalized)
+        windows_path = PureWindowsPath(value)
+        if posix_path.is_absolute() or windows_path.is_absolute() or windows_path.drive:
+            raise XsfDependencyError(
+                f"absolute xSF dependency is not allowed in {relative_source_id(parent)}: {value}"
+            )
+        candidate = (parent.parent / Path(*posix_path.parts)).resolve()
+        # Keep dependency traversal inside the tree explicitly selected by the
+        # caller. This permits standard subdirectories and nested relative
+        # references while still rejecting accidental/hostile filesystem escape.
+        relative_source_id(candidate)
+        return candidate
+
     def visit(path: Path, depth: int) -> None:
         nonlocal discovered_version
         resolved = path.resolve()
         if depth > max_depth:
             raise XsfDependencyError(f"dependency depth exceeds {max_depth}: {resolved}")
-        if resolved.parent != base:
-            raise XsfDependencyError(f"dependency escapes root directory: {resolved}")
+        source_id = relative_source_id(resolved)
         if resolved in active:
-            cycle = " -> ".join(item.name for item in (*active, resolved))
+            cycle = " -> ".join(relative_source_id(item) for item in (*active, resolved))
             raise XsfDependencyError(f"cyclic xSF dependency: {cycle}")
         if not resolved.is_file():
-            raise XsfDependencyError(f"missing xSF dependency: {resolved.name}")
+            raise XsfDependencyError(f"missing xSF dependency: {source_id}")
         obj = parse_xsf(
             reader(resolved),
-            source_id=resolved.name,
+            source_id=source_id,
             expected_version=discovered_version,
         )
         if discovered_version is None:
@@ -222,15 +245,15 @@ def resolve_xsf(
         try:
             primary = next((value for tag, value in directives if tag == "_lib"), None)
             if primary is not None:
-                child = (base / primary).resolve()
-                edges.append(DependencyEdge(obj.source_id, "_lib", child.name))
+                child = dependency_path(resolved, primary)
+                edges.append(DependencyEdge(obj.source_id, "_lib", relative_source_id(child)))
                 visit(child, depth + 1)
             objects.append(obj)
             for tag, value in directives:
                 if tag == "_lib":
                     continue
-                child = (base / value).resolve()
-                edges.append(DependencyEdge(obj.source_id, tag, child.name))
+                child = dependency_path(resolved, value)
+                edges.append(DependencyEdge(obj.source_id, tag, relative_source_id(child)))
                 visit(child, depth + 1)
         finally:
             active.pop()
