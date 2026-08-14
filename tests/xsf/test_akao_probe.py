@@ -84,6 +84,25 @@ class AkaoProbeTests(unittest.TestCase):
         self.assertTrue(result.sequence.warnings)
         self.assertIn("pointer table", result.sequence.warnings[0])
 
+    def test_sequence_layer_is_not_capped_to_playstation_spu_voice_count(self) -> None:
+        # Independent AKAO tooling reports Chrono Cross: The Brink of Death with
+        # 31 logical channels.  The PlayStation SPU has only 24 physical voices.
+        # This synthetic structural control protects the representation boundary
+        # without claiming all 31 tracks are simultaneously audible.
+        track_count = 31
+        pointer_table_end = 0x40 + 2 * track_count
+        tracks = tuple(pointer_table_end + index for index in range(track_count))
+        data = make_akao_v3_candidate(
+            tracks=tracks,
+            length=pointer_table_end + track_count + 0x20,
+            instrument_offset=None,
+        )
+        result = assess_akao_signature(data, 0)
+        self.assertTrue(result.accepted)
+        assert result.sequence is not None
+        self.assertEqual(result.sequence.track_count, 31)
+        self.assertGreater(result.sequence.track_count, 24)
+
 
 if __name__ == "__main__":
     unittest.main()
