@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Index, import, and verify immutable VGM Tooling real-music corpus files."""
+"""Index, import, and verify immutable Game Music Interpreter corpus files."""
 
 from __future__ import annotations
 
@@ -12,7 +12,12 @@ import sys
 import zipfile
 from pathlib import Path, PurePosixPath
 
-ALLOWED_SUFFIXES = {".vgm", ".vgz", ".spc", ".nsf", ".nsfe"}
+ALLOWED_SUFFIXES = {
+    ".vgm", ".vgz", ".spc", ".nsf", ".nsfe",
+    ".psf", ".minipsf", ".psflib", ".psf1", ".minipsf1", ".psf1lib",
+    ".usf", ".miniusf", ".usflib",
+    ".2sf", ".mini2sf", ".2sflib",
+}
 MANIFEST_VERSION = 2
 
 

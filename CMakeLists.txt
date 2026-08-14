@@ -29,6 +29,7 @@ endif()
 
 if(GAMEAUDIO_BUILD_CORE_TESTS)
     enable_testing()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     set(GAMEAUDIO_TEST_TARGETS
         genesis_state_test
@@ -237,4 +238,9 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME spc_runtime_sample_adapter COMMAND spc_runtime_sample_adapter_test)
     add_test(NAME spc_runtime_capture COMMAND spc_runtime_capture_test)
     add_test(NAME spc_runtime_capture_adapter COMMAND spc_runtime_capture_adapter_test)
+    add_test(
+        NAME xsf_unit
+        COMMAND ${Python3_EXECUTABLE} -B -m unittest discover -s tests/xsf -p test_*.py
+    )
+    set_tests_properties(xsf_unit PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
