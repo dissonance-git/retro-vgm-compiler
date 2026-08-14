@@ -192,6 +192,24 @@ After that, build a bounded event walker around one accepted object, beginning w
 
 Do not jump directly to MIDI.
 
+## New adversarial rule from VGMTrans internals
+
+Several VGMTrans event names are convenience labels around reverse-engineered state, not demonstrated hardware correspondences. In particular, the AKAO `0xC6` event is rendered as `FM (Pitch LFO) On`, while pitch-side-chain events are surfaced as generic miscellaneous state. The code does not demonstrate that either operation writes the PlayStation SPU PMON register.
+
+Game Music Interpreter therefore treats event naming as semantic evidence from one parser lineage, not physical-device evidence.
+
+A later runtime trace must be able to observe all of the following before a correspondence is promoted:
+
+```text
+same AKAO event occurrence
+same driver update interval
+same allocated physical voice relationship
+same SPU PMON/noise/reverb/register transition
+same resulting voice trajectory
+```
+
+A mismatch at any layer is informative and must remain visible.
+
 ## Stop conditions
 
 Stop rather than guess if:
