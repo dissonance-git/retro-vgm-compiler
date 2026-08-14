@@ -70,21 +70,23 @@ def inspect_gsf_upload(obj: XsfObject) -> GsfUpload:
     entry, load_address, payload_size = struct.unpack_from("<III", obj.program)
     if len(obj.program) != 12 + payload_size:
         raise GsfError(f"GSF payload size does not match program section: {obj.source_id}")
-    if GBA_EWRAM_BASE <= load_address <= GBA_EWRAM_BASE + GBA_EWRAM_SIZE:
+    if GBA_EWRAM_BASE <= load_address < GBA_EWRAM_BASE + GBA_EWRAM_SIZE:
         address_space = "gba-ewram"
         limit = GBA_EWRAM_BASE + GBA_EWRAM_SIZE
-    elif GBA_ROM_BASE <= load_address <= GBA_ROM_BASE + GBA_ROM_SIZE:
+        entry_matches_space = GBA_EWRAM_BASE <= entry < GBA_EWRAM_BASE + GBA_EWRAM_SIZE
+    elif GBA_ROM_BASE <= load_address < GBA_ROM_BASE + GBA_ROM_SIZE:
         address_space = "gba-rom"
         limit = GBA_ROM_BASE + GBA_ROM_SIZE
+        entry_matches_space = GBA_ROM_BASE <= entry < GBA_ROM_BASE + GBA_ROM_SIZE
     else:
         raise GsfError(f"GSF load address is outside supported GBA spaces: {obj.source_id}")
     if load_address + payload_size > limit:
         raise GsfError(f"GSF upload exceeds {address_space}: {obj.source_id}")
-    if not (
-        GBA_EWRAM_BASE <= entry < GBA_EWRAM_BASE + GBA_EWRAM_SIZE
-        or GBA_ROM_BASE <= entry < GBA_ROM_BASE + GBA_ROM_SIZE
-    ):
-        raise GsfError(f"GSF entry address is outside supported GBA spaces: {obj.source_id}")
+    if not entry_matches_space:
+        raise GsfError(
+            f"GSF entry/load address spaces disagree for {obj.source_id}: "
+            f"entry=0x{entry:08X}, load=0x{load_address:08X}"
+        )
     return GsfUpload(
         source_id=obj.source_id,
         entry_address=entry,
@@ -110,6 +112,12 @@ def build_gsf_effective_image(
     spaces = {upload.address_space for upload in uploads}
     if len(spaces) != 1:
         raise GsfError("mixed EWRAM and ROM uploads are not represented as one flat GSF image")
+    entries = {upload.entry_address for upload in uploads}
+    if len(entries) != 1:
+        details = ", ".join(
+            f"{upload.source_id}=0x{upload.entry_address:08X}" for upload in uploads
+        )
+        raise GsfError(f"ambiguous GSF entry state across dependency objects: {details}")
     space = next(iter(spaces))
     memory_base = GBA_EWRAM_BASE if space == "gba-ewram" else GBA_ROM_BASE
     max_size = GBA_EWRAM_SIZE if space == "gba-ewram" else GBA_ROM_SIZE
