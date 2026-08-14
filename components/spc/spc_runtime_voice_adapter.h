@@ -17,6 +17,7 @@ enum class spc_voice_runtime_event_kind : std::uint8_t {
     release_entered,
     became_inactive,
     source_latched,
+    routing_state_changed,
     continuation_lost,
     execution_reset,
 };
@@ -33,6 +34,8 @@ inline const char* spc_voice_runtime_event_name(spc_voice_runtime_event_kind kin
         return "became_inactive";
     case spc_voice_runtime_event_kind::source_latched:
         return "source_latched";
+    case spc_voice_runtime_event_kind::routing_state_changed:
+        return "routing_state_changed";
     case spc_voice_runtime_event_kind::continuation_lost:
         return "continuation_lost";
     case spc_voice_runtime_event_kind::execution_reset:
@@ -52,6 +55,9 @@ struct spc_voice_runtime_event {
     std::optional<std::uint32_t> pitch_rate{};
     std::optional<std::uint8_t> key_on_delay{};
     std::optional<bool> noise_enabled{};
+    std::optional<std::int8_t> route_gain_left{};
+    std::optional<std::int8_t> route_gain_right{};
+    std::optional<bool> echo_send_enabled{};
 };
 
 struct spc_runtime_voice_graph_handle {
@@ -204,6 +210,12 @@ inline vgmtooling::model::node_id add_spc_runtime_trace_event(
         event.attributes.push_back({"key_on_delay", static_cast<std::uint64_t>(*runtime_event.key_on_delay), evidence_status::exact, 1.0, "device_native"});
     if (runtime_event.noise_enabled.has_value())
         event.attributes.push_back({"noise_enabled", *runtime_event.noise_enabled, evidence_status::exact, 1.0, ""});
+    if (runtime_event.route_gain_left.has_value())
+        event.attributes.push_back({"route_gain_left", static_cast<std::int64_t>(*runtime_event.route_gain_left), evidence_status::exact, 1.0, "sdsp_signed_gain"});
+    if (runtime_event.route_gain_right.has_value())
+        event.attributes.push_back({"route_gain_right", static_cast<std::int64_t>(*runtime_event.route_gain_right), evidence_status::exact, 1.0, "sdsp_signed_gain"});
+    if (runtime_event.echo_send_enabled.has_value())
+        event.attributes.push_back({"echo_send_enabled", *runtime_event.echo_send_enabled, evidence_status::exact, 1.0, ""});
 
     provenance_flags event_flags = handle.provenance_flags | provenance_flag::runtime_capture;
     if (runtime_event.kind == spc_voice_runtime_event_kind::continuation_lost)
@@ -409,6 +421,14 @@ inline spc_runtime_append_result append_spc_runtime_voice_event(
             result.trace_event_id,
             *episode,
             "runtime source state belongs to this physical voice episode but does not establish instrument identity");
+        break;
+    case spc_voice_runtime_event_kind::routing_state_changed:
+        connect_spc_runtime_event_to_episode(
+            graph,
+            handle,
+            result.trace_event_id,
+            *episode,
+            "signed S-DSP output-routing state changed for this physical voice episode");
         break;
     case spc_voice_runtime_event_kind::became_inactive: {
         const node_id episode_id = *episode;
