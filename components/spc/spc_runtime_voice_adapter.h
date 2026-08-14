@@ -17,9 +17,9 @@ enum class spc_voice_runtime_event_kind : std::uint8_t {
     release_entered,
     became_inactive,
     source_latched,
-    routing_state_changed,
     continuation_lost,
     execution_reset,
+    routing_state_changed,
 };
 
 inline const char* spc_voice_runtime_event_name(spc_voice_runtime_event_kind kind) noexcept {
