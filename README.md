@@ -114,7 +114,7 @@ performed device trajectory
 
 They do not prove that an unrelated commercial soundtrack used the same toolchain. Historical linkage must be established independently.
 
-See `research/cases/game-music-driver-observatories.md`.
+See `research/game-music-driver-observatories.md`.
 
 ## Musical understanding
 
@@ -202,7 +202,7 @@ Chip-specific machinery stays here unless it becomes genuinely general.
 model/          shared provenance-aware primitives
 components/     source- and device-specific execution/analysis
 tests/          executable regressions and real-music corpus
-research/cases/ bounded mechanism and evidence investigations
+research/       bounded mechanism and evidence investigations
 docs/           durable architecture and analysis rules
 tools/          corpus and source-specific audit utilities
 ```
