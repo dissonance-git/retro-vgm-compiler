@@ -23,13 +23,11 @@ class NspcPanBehavioralEquivalenceTest(unittest.TestCase):
             )
 
     def test_other_declared_pan_coordinates_are_live(self):
-        # One scalar-pan bit, one right-phase bit, and one left-phase bit all
-        # change the declared semantic projection.
         self.assertNotEqual(MODULE.semantics(0x00), MODULE.semantics(0x01))
         self.assertNotEqual(MODULE.semantics(0x00), MODULE.semantics(0x40))
         self.assertNotEqual(MODULE.semantics(0x00), MODULE.semantics(0x80))
 
-    def test_exact_quotient_is_128_pairs(self):
+    def test_exact_driver_quotient_is_128_pairs(self):
         classes = MODULE.equivalence_classes()
         self.assertEqual(len(classes), 128)
         self.assertTrue(all(len(members) == 2 for members in classes.values()))
@@ -47,13 +45,30 @@ class NspcPanBehavioralEquivalenceTest(unittest.TestCase):
                     MODULE.semantics(MODULE.overwrite(b, action)),
                 )
 
+    def test_modern_authoring_vocabulary_is_stricter_than_driver_decoder(self):
+        authored = MODULE.addmusick_authored_values()
+        self.assertEqual(len(authored), 84)
+        self.assertTrue(all((raw & MODULE.DEAD_BIT) == 0 for raw in authored))
+        self.assertEqual(len({MODULE.semantics(raw) for raw in authored}), 84)
+
+        all_semantics = set(MODULE.equivalence_classes())
+        authored_semantics = {MODULE.semantics(raw) for raw in authored}
+        outside = all_semantics - authored_semantics
+        self.assertEqual(len(outside), 44)
+        self.assertTrue(all(pan >= 21 for pan, _, _ in outside))
+
     def test_full_control(self):
         report = MODULE.run_control()
         self.assertEqual(report["raw_state_count"], 256)
-        self.assertEqual(report["semantic_class_count"], 128)
-        self.assertEqual(report["class_size"], 2)
-        self.assertTrue(report["stable_quotient"])
+        self.assertEqual(report["driver_semantic_class_count"], 128)
+        self.assertEqual(report["semantic_class_size"], 2)
+        self.assertTrue(report["stable_driver_quotient"])
         self.assertEqual(report["transition_checks"], 128 * 256)
+        self.assertEqual(report["modern_addmusick_authoring"]["semantic_states"], 84)
+        self.assertEqual(
+            report["driver_semantics_outside_modern_authoring"]["semantic_state_count"],
+            44,
+        )
 
 
 if __name__ == "__main__":
