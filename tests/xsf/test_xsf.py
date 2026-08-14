@@ -127,6 +127,102 @@ class EnvelopeTests(unittest.TestCase):
             with self.assertRaises(XsfDependencyError):
                 resolve_xsf(root / "a.psflib")
 
+    def test_library_paths_are_relative_to_each_containing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "libs" / "common").mkdir(parents=True)
+            (root / "patches").mkdir()
+
+            (root / "libs" / "common" / "driver.psflib").write_bytes(
+                make_xsf(1, program=make_ps_x_exe(0x80010000, b"AAAA"))
+            )
+            (root / "libs" / "base.psflib").write_bytes(
+                make_xsf(
+                    1,
+                    program=make_ps_x_exe(0x80010001, b"bb"),
+                    # The format treats both slash styles as separators and
+                    # resolves this from libs/base.psflib, not song.minipsf.
+                    tags=(("_lib", "common\\driver.psflib"),),
+                )
+            )
+            (root / "patches" / "second.psflib").write_bytes(
+                make_xsf(1, program=make_ps_x_exe(0x80010003, b"2"))
+            )
+            song = root / "song.minipsf"
+            song.write_bytes(
+                make_xsf(
+                    1,
+                    program=make_ps_x_exe(0x80010002, b"R"),
+                    tags=(("_lib", "libs/base.psflib"), ("_lib2", "patches/second.psflib")),
+                )
+            )
+
+            resolved = resolve_xsf(song, expected_version=1)
+            self.assertEqual(
+                [obj.source_id for obj in resolved.objects],
+                [
+                    "libs/common/driver.psflib",
+                    "libs/base.psflib",
+                    "song.minipsf",
+                    "patches/second.psflib",
+                ],
+            )
+            self.assertEqual(
+                [(edge.parent, edge.tag, edge.child) for edge in resolved.edges],
+                [
+                    ("song.minipsf", "_lib", "libs/base.psflib"),
+                    ("libs/base.psflib", "_lib", "libs/common/driver.psflib"),
+                    ("song.minipsf", "_lib2", "patches/second.psflib"),
+                ],
+            )
+            state = build_psf1_effective_image(resolved)
+            self.assertEqual(state.memory, b"AbR2")
+            self.assertEqual(
+                state.provenance_at_address(0x80010000).source_id,
+                "libs/common/driver.psflib",
+            )
+
+    def test_nested_parent_reference_can_stay_inside_selected_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "libs").mkdir()
+            (root / "shared.psflib").write_bytes(
+                make_xsf(1, program=make_ps_x_exe(0x80010000, b"S"))
+            )
+            (root / "libs" / "base.psflib").write_bytes(
+                make_xsf(1, tags=(("_lib", "../shared.psflib"),))
+            )
+            song = root / "song.minipsf"
+            song.write_bytes(make_xsf(1, tags=(("_lib", "libs/base.psflib"),)))
+
+            resolved = resolve_xsf(song, expected_version=1)
+            self.assertEqual(
+                [obj.source_id for obj in resolved.objects],
+                ["shared.psflib", "libs/base.psflib", "song.minipsf"],
+            )
+
+    def test_dependency_escape_and_absolute_paths_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "set"
+            root.mkdir()
+            (workspace / "outside.psflib").write_bytes(make_xsf(1))
+
+            escaped = root / "escaped.minipsf"
+            escaped.write_bytes(make_xsf(1, tags=(("_lib", "../outside.psflib"),)))
+            with self.assertRaises(XsfDependencyError):
+                resolve_xsf(escaped, expected_version=1)
+
+            absolute = root / "absolute.minipsf"
+            absolute.write_bytes(make_xsf(1, tags=(("_lib", "/tmp/absolute.psflib"),)))
+            with self.assertRaises(XsfDependencyError):
+                resolve_xsf(absolute, expected_version=1)
+
+            windows_absolute = root / "windows-absolute.minipsf"
+            windows_absolute.write_bytes(make_xsf(1, tags=(("_lib", "C:\\Music\\base.psflib"),)))
+            with self.assertRaises(XsfDependencyError):
+                resolve_xsf(windows_absolute, expected_version=1)
+
 
 class PlatformTests(unittest.TestCase):
     def test_psf1_reconstructs_ps_x_exe_but_not_runtime(self) -> None:
