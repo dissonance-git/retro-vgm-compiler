@@ -1,121 +1,70 @@
-# Project history and repository lineage
+# Technical lineage
 
-VGM Tooling has implementation history that predates this repository.
+Game Music Interpreter carries forward several implementation ideas that were pressure-tested in earlier game-audio experiments and later refined under stricter evidence rules.
 
-## Canonical implementation line
+This document records the useful technical lineage, not a product or naming chronology.
 
-Current repository:
+## Durable ideas retained
 
-- `dissonance-git/vgm-tooling`
-- created initially as `foobar2000-game-audio`
-- renamed when the scope expanded from two playback components into executable game-music understanding
+Earlier work established practical value in keeping source/device state visible during playback rather than treating final stereo PCM as the only useful object.
 
-Historical predecessor:
+Mechanisms that survived into the current architecture include:
 
-- `dissonance-git/vgmspc`
-- private
-- final `main` observed at `773ae663be4966ee4019cfc8d5990c3ba7683694`
-- final commit message: `fix: removed asymmetrical anti-phase and normalized M/S width to fix left bias and crackling`
+- VGM register shadowing and timed device state;
+- YM2612 and SN76489 live-state inspection;
+- SPC/S-DSP voice telemetry;
+- OPN/OPM/OPL-family device distinctions;
+- persistent source identifiers where the source actually supports them;
+- realtime adapter boundaries;
+- explicit confidence and provenance;
+- reference-versus-enhanced rendering controls.
 
-Helix later recovered useful source-state concepts from this repository, including:
+The important architectural lesson was not any one old implementation. It was that useful musical reasoning requires preserving the route from encoded source through execution and synthesis rather than trying to reconstruct meaning only from the final mix.
 
-- VGM register shadowing
-- YM2612 state
-- SN76489 state
-- SPC eight-voice telemetry
-- OPM/OPN/OPL family routes
-- persistent source IDs
-- realtime adapter boundaries
-- confidence/provenance ideas
+## Ideas deliberately not inherited as law
 
-It also identified old semantic-role heuristics and spatial-rendering code as historical experiments rather than architecture to revive unchanged.
+Some early experiments used semantic-role heuristics, hardware-channel identity, or spatial behavior more aggressively than the evidence justified. Those experiments remain useful negative controls.
 
-## Required history migration
-
-Do **not** squash `vgmspc` into one import commit.
-
-Do **not** copy its final files into the root of VGM Tooling merely to claim the history was preserved.
-
-The intended migration is a true Git merge with unrelated histories while keeping the current VGM Tooling working tree:
-
-```bash
-git clone git@github.com:dissonance-git/vgm-tooling.git
-cd vgm-tooling
-
-git remote add vgmspc git@github.com:dissonance-git/vgmspc.git
-git fetch vgmspc main
-
-# Preserve the exact old tip as a named historical anchor.
-git tag -a history/vgmspc-final vgmspc/main \
-  -m "Final vgmspc main before consolidation into VGM Tooling"
-
-# Join the commit graphs without importing the obsolete working tree.
-git merge --allow-unrelated-histories --no-ff -s ours vgmspc/main \
-  -m "merge: preserve vgmspc history as VGM Tooling lineage"
-
-# Verify that the old exact commit is now an ancestor of main.
-git merge-base --is-ancestor 773ae663be4966ee4019cfc8d5990c3ba7683694 HEAD
-
-git push origin main
-git push origin history/vgmspc-final
-```
-
-Why `-s ours` is intentional:
+The current model therefore rejects several shortcuts:
 
 ```text
-current VGM Tooling tree
-= active implementation
+hardware channel != persistent musical part
 
-vgmspc tree
-= historical implementation state
+register activity != authored score
 
-vgmspc commit graph
-= project ancestry worth preserving
+source position != authored 3D scene
+
+implementation fingerprint != composer identity
+
+plausible reconstruction != recovered historical source
 ```
 
-The merge should preserve the **history**, not overwrite the current source tree with superseded files.
+A mechanism survives only when it can be justified by source evidence, independent implementations, real corpus controls, listening tests, or a combination appropriate to the claim.
 
-After the merge and push are verified, the old repository may be archived or deleted without losing its reachable commit history from the canonical repository.
+## Current continuity
 
-## Verification before deleting the old repository
-
-Run all of these against `vgm-tooling`:
-
-```bash
-git log --oneline --all --decorate --graph
-
-git cat-file -t 773ae663be4966ee4019cfc8d5990c3ba7683694
-# expected: commit
-
-git merge-base --is-ancestor \
-  773ae663be4966ee4019cfc8d5990c3ba7683694 \
-  origin/main
-# expected exit status: 0
-
-git rev-parse history/vgmspc-final^{commit}
-# expected: 773ae663be4966ee4019cfc8d5990c3ba7683694
-```
-
-Only then is deletion of `dissonance-git/vgmspc` safe from a Git-history perspective.
-
-## Why this is one continuous project
-
-The repository lineage should be read together with older Helix/VGMRips work:
+The present implementation extends the same technical questions upward:
 
 ```text
-2012-2015
-VGMRips / vgm2mid / SMPS / driver / ripping questions
+exact source object
         ↓
-2026 early
-vgmspc
-register shadows + chip telemetry + playback/semantic experiments
+program / driver execution
         ↓
-2026 Helix recovery
-chip-state analyzer and tooling lineage preserved
+device and synthesis state
         ↓
-2026 current
-VGM Tooling
-executable source + driver + device + render understanding
+performed musical trajectories
+        ↓
+persistent parts and auditory organization
+        ↓
+harmony / form / style / attribution hypotheses
+        ↓
+human musical explanation
 ```
 
-The current project can reject old mechanisms without erasing the work that led to them.
+The project can replace an old mechanism without erasing the evidence that motivated it. Corrections are part of the lineage.
+
+## Historical source preservation
+
+When an older repository, source release, emulator revision, driver dump, manual, or corpus object matters to a current claim, preserve the exact upstream commit/hash and its evidential role in `docs/upstreams.md`, `imports/MANIFEST.md`, the corpus manifest, or the relevant research case.
+
+Do not keep obsolete implementation behavior alive merely to preserve continuity. Preserve provenance; keep only mechanisms that still survive testing.
