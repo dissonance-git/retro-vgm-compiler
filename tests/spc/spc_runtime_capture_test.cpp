@@ -79,6 +79,9 @@ int main() {
     CHECK(semantic.noise_enabled.has_value() && !*semantic.noise_enabled);
     CHECK(!semantic.envelope_value.has_value());
     CHECK(!semantic.pitch_rate.has_value());
+    CHECK(!semantic.route_gain_left.has_value());
+    CHECK(!semantic.route_gain_right.has_value());
+    CHECK(!semantic.echo_send_enabled.has_value());
 
     // Draining a capture window must not reset execution identity. The next
     // record continues the same global trace ordinal across audio blocks.
@@ -166,6 +169,33 @@ int main() {
         0,
         0));
     CHECK(capture.records()[0].trace_index == 0);
+
+    // Routing is a separate time-bearing DSP observation. Signed route gains
+    // and EON membership must survive the realtime record without being
+    // collapsed into a scalar pan or a perceptual surround label.
+    spc_runtime_capture_record routing;
+    routing.kind = spc_voice_runtime_event_kind::routing_state_changed;
+    routing.fields =
+        spc_runtime_capture_field::voice |
+        spc_runtime_capture_field::route_gain_left |
+        spc_runtime_capture_field::route_gain_right |
+        spc_runtime_capture_field::echo_send_enabled;
+    routing.tick = 1;
+    routing.tick_rate = 1024000;
+    routing.voice = 0;
+    routing.route_gain_left = -48;
+    routing.route_gain_right = 64;
+    routing.echo_send_enabled = true;
+    capture.observe(routing);
+
+    const auto route_event = make_spc_voice_runtime_event(capture.records()[1]);
+    CHECK(route_event.kind == spc_voice_runtime_event_kind::routing_state_changed);
+    CHECK(route_event.voice.has_value() && *route_event.voice == 0);
+    CHECK(route_event.route_gain_left.has_value() && *route_event.route_gain_left == -48);
+    CHECK(route_event.route_gain_right.has_value() && *route_event.route_gain_right == 64);
+    CHECK(route_event.echo_send_enabled.has_value() && *route_event.echo_send_enabled);
+    CHECK(!route_event.source_index.has_value());
+    CHECK(!route_event.brr_address.has_value());
 
     return 0;
 }
