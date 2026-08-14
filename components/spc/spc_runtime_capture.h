@@ -18,6 +18,9 @@ enum class spc_runtime_capture_field : std::uint16_t {
     pitch_rate = 1u << 5u,
     key_on_delay = 1u << 6u,
     noise_enabled = 1u << 7u,
+    route_gain_left = 1u << 8u,
+    route_gain_right = 1u << 9u,
+    echo_send_enabled = 1u << 10u,
 };
 
 using spc_runtime_capture_fields = std::uint16_t;
@@ -62,6 +65,9 @@ struct spc_runtime_capture_record {
     std::uint32_t pitch_rate = 0;
     std::uint8_t key_on_delay = 0;
     bool noise_enabled = false;
+    std::int8_t route_gain_left = 0;
+    std::int8_t route_gain_right = 0;
+    bool echo_send_enabled = false;
 };
 
 inline spc_voice_runtime_event make_spc_voice_runtime_event(
@@ -85,6 +91,12 @@ inline spc_voice_runtime_event make_spc_voice_runtime_event(
         event.key_on_delay = record.key_on_delay;
     if (has_field(record.fields, spc_runtime_capture_field::noise_enabled))
         event.noise_enabled = record.noise_enabled;
+    if (has_field(record.fields, spc_runtime_capture_field::route_gain_left))
+        event.route_gain_left = record.route_gain_left;
+    if (has_field(record.fields, spc_runtime_capture_field::route_gain_right))
+        event.route_gain_right = record.route_gain_right;
+    if (has_field(record.fields, spc_runtime_capture_field::echo_send_enabled))
+        event.echo_send_enabled = record.echo_send_enabled;
 
     return event;
 }
