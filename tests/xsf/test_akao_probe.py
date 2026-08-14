@@ -77,7 +77,7 @@ class AkaoProbeTests(unittest.TestCase):
         self.assertEqual(result.sequence.raw_fe13_pairs, 1)
 
     def test_track_pointer_into_pointer_table_is_warning_not_fabricated_failure(self) -> None:
-        data = bytearray(make_akao_v3_candidate(tracks=(0x42,), length=0x80))
+        data = bytearray(make_akao_v3_candidate(tracks=(0x40,), length=0x80))
         result = assess_akao_signature(bytes(data), 0)
         self.assertTrue(result.accepted)
         assert result.sequence is not None
