@@ -342,6 +342,8 @@ class PlatformTests(unittest.TestCase):
             self.assertEqual(state.provenance_at_address(0x08000006).source_id, "song.minigsf")
             self.assertFalse(state.address_is_populated(0x08000004))
             self.assertFalse(state.runtime_available)
+            with self.assertRaises(GsfError):
+                build_gsf_effective_image(resolve_xsf(song), driver_evidence="verified")
 
             malformed = root / "bad.gsf"
             malformed.write_bytes(make_xsf(0x22, program=b"short"))
@@ -415,6 +417,10 @@ class PlatformTests(unittest.TestCase):
         self.assertEqual(len(gsf.image), 16_777_216)
         self.assertEqual(gsf.memory_base, 0x08000000)
         self.assertEqual(gsf.selected_entry_address, 0x08000000)
+        self.assertEqual(
+            gsf.image_sha256,
+            "b38bb28cecb4660d04e746830926db9c0a9d6d6c683f00e592a8cf5460cdd773",
+        )
         self.assertEqual([upload.payload_size for upload in gsf.uploads], [16_777_216, 2])
 
         ncsf_root = repo / "tests/corpus/mario-kart-ds-ncsf-nintendo-ds/0000.minincsf"

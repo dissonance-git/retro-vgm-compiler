@@ -15,6 +15,12 @@ GBA_EWRAM_BASE = 0x02000000
 GBA_EWRAM_SIZE = 0x00040000
 GBA_ROM_BASE = 0x08000000
 GBA_ROM_SIZE = 0x02000000
+GSF_DRIVER_EVIDENCE_STATES = frozenset({
+    "exact/source-established",
+    "signature-supported",
+    "behavioral-candidate",
+    "unknown",
+})
 
 
 class GsfError(ValueError):
@@ -96,7 +102,7 @@ def build_gsf_effective_image(
 ) -> GsfEffectiveImage:
     if resolved.version != GSF_VERSION:
         raise GsfError(f"not GSF: version 0x{resolved.version:02X}")
-    if driver_evidence not in {"unknown", "candidate", "verified", "rejected"}:
+    if driver_evidence not in GSF_DRIVER_EVIDENCE_STATES:
         raise GsfError(f"invalid driver evidence state: {driver_evidence}")
     uploads = tuple(inspect_gsf_upload(obj) for obj in resolved.objects)
     if not uploads:

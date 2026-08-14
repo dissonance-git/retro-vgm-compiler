@@ -55,8 +55,8 @@ The implemented loader accepts bounded EWRAM or ROM uploads, rejects mixed
 flat address spaces and malformed sizes, applies common xSF dependency order,
 records per-byte overlay provenance, and exposes populated ranges separately
 from zero-filled allocation gaps. Driver evidence is an explicit state:
-`unknown`, `candidate`, `verified`, or `rejected`; the loader defaults to
-`unknown`.
+`exact/source-established`, `signature-supported`, `behavioral-candidate`, or
+`unknown`; the loader defaults to `unknown`.
 
 ## Real receiving evidence
 
