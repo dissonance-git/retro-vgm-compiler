@@ -18,7 +18,7 @@ int main() {
     // corpus controls. The integer device coordinates below all land near A4,
     // but the test deliberately stops at nominal Hz and never assigns a note.
     const auto ay = ay8910_tone_nominal_frequency_hz(254, 1789773);
-    const auto scc = k051649_wave_nominal_frequency_hz(212, 1500000);
+    const auto scc = k051649_vgm_nominal_frequency_hz(212, 1500000);
     const auto huc = huc6280_wave_nominal_frequency_hz(254, 3579545);
     const auto nes_square = nes_apu_square_nominal_frequency_hz(253, 1789772);
     const auto nes_triangle = nes_apu_triangle_nominal_frequency_hz(126, 1789772);
@@ -33,6 +33,15 @@ int main() {
     expect_near(*nes_triangle, 440.3966535433071);
     expect_near(*gb_square, 439.83892617449663);
     expect_near(*gb_wave, 439.83892617449663);
+
+    // Some SCC VGMs carry the already-halved sound-core clock. MAME repairs
+    // those files by doubling the device clock before emulation. The two
+    // coordinate systems must converge to the same oscillator frequency, but
+    // they are not interchangeable inputs to one anonymous formula.
+    const auto scc_vgm_clock = k051649_vgm_nominal_frequency_hz(212, 1500000);
+    const auto scc_core_clock = k051649_core_clock_nominal_frequency_hz(212, 3000000);
+    assert(scc_vgm_clock && scc_core_clock);
+    expect_near(*scc_vgm_clock, *scc_core_clock);
 
     // A shared numerical coordinate does not imply a shared pitch law even
     // inside one chip. On DMG, the same 11-bit value feeds an 8-step square
@@ -61,7 +70,8 @@ int main() {
     // Fail closed on impossible coordinates or missing clocks.
     assert(!ay8910_tone_nominal_frequency_hz(0x1000, 1789773));
     assert(!game_boy_square_nominal_frequency_hz(0x0800, 4194304));
-    assert(!k051649_wave_nominal_frequency_hz(0x1000, 1500000));
+    assert(!k051649_vgm_nominal_frequency_hz(0x1000, 1500000));
+    assert(!k051649_core_clock_nominal_frequency_hz(0x1000, 3000000));
     assert(!huc6280_wave_nominal_frequency_hz(0x1000, 3579545));
     assert(!nes_apu_square_nominal_frequency_hz(0x0800, 1789772));
     assert(!nes_apu_triangle_nominal_frequency_hz(0x0800, 1789772));
