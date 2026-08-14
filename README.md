@@ -74,6 +74,7 @@ Current work spans materially different representations and architectures, inclu
 - VGM/VGZ command streams;
 - SPC snapshots and S-DSP state;
 - NSF and other executable-rip formats;
+- PSF1, USF, and 2SF executable-object families;
 - native music drivers and sequence formats;
 - MML and tracker source;
 - ROM-derived samples, patches, sequences, and control data;
@@ -81,13 +82,19 @@ Current work spans materially different representations and architectures, inclu
 
 These remain source-specific until independent systems force the same abstraction.
 
+PSF1, USF, and 2SF share only an xSF envelope/dependency mechanism here.
+Their effective objects remain PS-X EXE memory, Nintendo 64 ROM/save-state
+patches, and Nintendo DS ROM/save maps respectively. A reconstructed effective
+object is not yet a running machine, understood driver/sequence, recovered
+voice/part structure, or validated playback path.
+
 The common execution substrate lives in `model/`. Source-specific work lives under `components/` and retains its own timing, device, driver, and provenance semantics.
 
 ## Real corpus
 
 The permanent corpus is a scientific control surface with immutable files, hashes, provenance, and manifest metadata.
 
-It currently covers Genesis and SNES material plus controls for Yamaha OPN/OPM/OPL/OPLL families, AY-family PSG, SCC/K051649, HuC6280, NES APU and NSF, Game Boy audio, Namco WSG/C140/C352, SegaPCM, MultiPCM, RF5C164, OKIM6295, and QSound.
+It currently covers Genesis and SNES material plus controls for Yamaha OPN/OPM/OPL/OPLL families, AY-family PSG, SCC/K051649, HuC6280, NES APU and NSF, Game Boy audio, Namco WSG/C140/C352, SegaPCM, MultiPCM, RF5C164, OKIM6295, QSound, PlayStation PSF1, Nintendo 64 USF, and Nintendo DS 2SF.
 
 See `tests/CORPUS.md`, `tests/corpus/README.md`, and `tests/corpus/manifest.json`.
 

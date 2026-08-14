@@ -2,7 +2,7 @@
 
 This file records the starting sources, reference builds, and major research/reference systems used by this repository.
 
-The list is deliberately broader than the runtime dependency set. VGM Tooling treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
+The list is deliberately broader than the runtime dependency set. Game Music Interpreter treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
 
 ## VGM foobar2000 component
 
@@ -114,6 +114,18 @@ These are research inputs, not automatically vendored dependencies.
 
 The current Yamaha comparison uses ymfm as an implementation observatory rather than as proof that all Yamaha FM families share one register ontology. OPN, OPM, OPL and OPLL similarities graduate only when their independently different register/state implementations support the same semantic relation; explicit negative controls are retained when they do not.
 
+### xSF envelope and platform execution semantics
+
+- `kode54/psflib`, observed at `95509e0c6f13d769593bbf51a1b0e0efdc355ba1`: shared xSF envelope, tags, CRC, and library traversal order
+- `kode54/lazyusf2`, observed at `421f00bcaa1988b8e1825e91780129f24fbd1aa0`: USF/Nintendo 64 ROM and Project64 save-state upload semantics
+- `RGBA-CRT/vio2sf-fork`, observed at `cbad66408b72d3bdc9f6c5ba724fe3e17f996865`: 2SF/Nintendo DS ROM-map and reserved `SAVE` semantics
+- `vgmtrans/vgmtrans`, observed at `083f7c71fe773078061eb785573621082c3e0d1c`: independent PS1 AKAO and Nintendo DS SDAT structure observatory
+
+These references support a small shared container/dependency mechanism and
+separate PSF1, USF, and 2SF effective-object loaders. They do not support one
+shared runtime, driver model, sequence model, voice model, or playback claim.
+See `research/xsf-execution-observatories.md`.
+
 ### Driver and sequence semantics
 
 - `ValleyBell/SMPSPlay`: Sega SMPS track/instrument/modulation/channel-allocation behavior
@@ -148,7 +160,7 @@ These converters are not the target architecture. MIDI is too small to preserve 
 - Hoot: broad PC-88/PC-98/X68000/FM Towns/MSX/arcade/home-system driver execution, including external MIDI-module routes
 - `yoyofr/modizer`: practical integration of a very large set of replay engines, including libvgm, Game Music Emu, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX, XSF-family players, vgmstream and others
 
-Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for VGM Tooling:
+Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for Game Music Interpreter:
 
 ```text
 shared frontend
@@ -159,7 +171,7 @@ Game Music Emu shows the complementary pattern: a compact common playback API ca
 
 OpenMPT shows that richer source families should not be forced down to that least-common-denominator boundary when pattern/structure state is actually available.
 
-Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent VGM Tooling capability schema is deferred until concrete adapters require one.
+Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent Game Music Interpreter capability schema is deferred until concrete adapters require one.
 
 ## Music representation and production research
 
@@ -172,7 +184,7 @@ These systems pressure-test the layers above device execution.
 - MEI / Music Encoding Initiative: structured music notation and metadata/provenance representation
 - MusicXML and Humdrum: additional notation/analysis interchange references to inspect where materially useful
 
-The purpose is not to make VGM Tooling a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
+The purpose is not to make Game Music Interpreter a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
 
 ### Computer-assisted composition
 
@@ -193,7 +205,7 @@ These systems reinforce that a final mix is a projection of a larger graph and t
 - `spotify/basic-pitch`: useful inverse case where frame/onset/pitch-contour evidence is richer than the eventual MIDI projection
 - chord/progression corpora such as `ldrolez/free-midi-chords`: potential fixtures for harmony and transposition tests rather than architecture
 
-The key lesson is that an output format may be smaller than the internal evidence used to derive it. VGM Tooling should preserve the richer evidence when source execution provides it.
+The key lesson is that an output format may be smaller than the internal evidence used to derive it. Game Music Interpreter should preserve the richer evidence when source execution provides it.
 
 ### Algorithmic sequencing
 
@@ -307,7 +319,7 @@ libaural may use executable game-music internal state as ground truth for artifi
 The intended relationship is:
 
 ```text
-VGM Tooling
+Game Music Interpreter
 exact source / driver / synthesis state
         ↓
 reference acoustic render
