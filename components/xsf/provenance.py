@@ -58,3 +58,20 @@ class OverlayBuffer:
             if contribution.target_start <= offset < contribution.target_end:
                 return contribution
         return None
+
+    def populated_ranges(self) -> tuple[tuple[int, int], ...]:
+        """Return merged half-open ranges that have an observed byte source.
+
+        Zero-filled gaps in ``data`` are allocation artifacts, not observed
+        bytes.  Consumers must use this range set (or ``provenance_at``) to
+        distinguish them from zero bytes supplied by an xSF object.
+        """
+        ranges: list[tuple[int, int]] = []
+        for contribution in sorted(
+            self.contributions, key=lambda item: (item.target_start, item.target_end)
+        ):
+            if not ranges or contribution.target_start > ranges[-1][1]:
+                ranges.append((contribution.target_start, contribution.target_end))
+            else:
+                ranges[-1] = (ranges[-1][0], max(ranges[-1][1], contribution.target_end))
+        return tuple(ranges)

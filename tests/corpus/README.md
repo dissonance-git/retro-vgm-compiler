@@ -1,6 +1,6 @@
 # Real-music corpus storage
 
-This directory is the permanent repository home for user-supplied real VGM/VGZ/SPC/NSF/NSFe/PSF1/USF/2SF regression fixtures governed by [`tests/CORPUS.md`](../CORPUS.md).
+This directory is the permanent repository home for real VGM/VGZ/SPC/NSF/NSFe/PSF1/GSF/USF/2SF/NCSF regression fixtures governed by [`tests/CORPUS.md`](../CORPUS.md).
 
 Canonical layout:
 
@@ -29,11 +29,12 @@ They are not classified as VGM register logs. `tools/nsf_corpus_audit.py`
 performs only container-level admission checks; it does not execute the rip or
 validate playback.
 
-PSF1, USF, and 2SF share an xSF envelope but not an execution model. The
+PSF1, GSF, USF, 2SF, and NCSF share an xSF envelope but not an execution model. The
 common audit validates exact bytes, versions, outer compressed-program CRCs,
 tags, dependency closure, deterministic overlay order, and byte provenance.
-Platform-specific loaders reconstruct PS-X EXE memory, Nintendo 64
-ROM/Project64 save-state patches, or Nintendo DS ROM/save maps respectively.
+Platform-specific loaders reconstruct PS-X EXE memory, GBA uploads, Nintendo 64
+ROM/Project64 save-state patches, Nintendo DS ROM/save maps, or selected SDAT
+structures respectively.
 None of those effective objects is reported as a running machine, understood
 driver/sequence, recovered voice/part set, or validated playback result.
 
@@ -66,10 +67,12 @@ An archive is a delivery container, not a mandatory duplicate of a direct-file c
 | `jyangokushi-qsound` | Jyangokushi | VGZ | QSound | 5 |
 | `magical-drop-okim6295` | Magical Drop | VGZ | MSM6295 | 3 |
 | `mario-kart-ds-2sf-nintendo-ds` | Mario Kart DS | 2SF | Nintendo DS machine runtime not yet executed | 86 |
+| `mario-kart-ds-ncsf-nintendo-ds` | Mario Kart DS | NCSF | Derived selected-SDAT control; runtime not executed | 77 |
 | `motocross-maniacs-game-boy` | Motocross Maniacs | VGZ | GameBoy DMG | 5 |
 | `ocarina-of-time-usf-nintendo-64` | The Legend of Zelda: Ocarina of Time | USF | Nintendo 64 machine runtime not yet executed | 110 |
 | `outrun-segapcm` | OutRun | VGZ | YM2151, SegaPCM | 4 |
 | `ponpoko-namco-wsg` | Ponpoko | VGZ | C352 (converted from 3-voice Namco WSG) | 12 |
+| `pokemon-emerald-gsf-game-boy-advance` | Pokemon Emerald | GSF | Game Boy Advance runtime not yet executed | 17 |
 | `raimais-ym2610b` | Raimais | VGZ | YM2610B | 7 |
 | `sonic-3-knuckles` | Sonic 3 & Knuckles | VGZ | YM2612, SN76489 | 58 |
 | `star-parodier-huc6280` | Star Parodier | VGZ | HuC6280 | 3 |
@@ -83,7 +86,7 @@ An archive is a delivery container, not a mandatory duplicate of a direct-file c
 | `truxton-ym3812` | Truxton | VGZ | YM3812 | 7 |
 | `wanderers-from-super-scheme-ym2608` | Wanderers from Super Scheme | VGZ | YM2608 | 4 |
 
-Total: 27 sets and 491 immutable real-music fixtures. The 2026-08-13
+Total: 29 sets and 585 immutable real-music fixtures. The 2026-08-13
 heterogeneous expansion added 22 sets and 108 fixtures. `manifest.json` records
 the exact header clocks, VGM versions, command bytes, loop checks, whole-set
 SHA-256 values, and Git tree identities for the new VGM/VGZ controls.
@@ -92,6 +95,15 @@ The xSF expansion added 264 exact runnable objects. Chrono Cross and Ocarina
 of Time were downloaded with explicit user authorization; their source ZIP
 hashes and URLs are recorded in `manifest.json`, while the ZIPs themselves are
 not retained. Mario Kart DS came from the user's authorized local set.
+
+The 2026-08-13 GSF/NCSF expansion added 94 objects. The Pokémon Emerald ZIP
+was downloaded with explicit user authorization, hashed, inspected, and not
+retained. No separately published Mario Kart DS NCSF set was found in the
+inspected public archive, so the NCSF set was derived deterministically from
+the exact SDAT bytes in the already admitted Mario Kart DS 2SF effective ROM.
+That paired control asserts byte identity only for the bounded SDAT range; it
+does not assert container, selection-state, runtime, driver-state, or audio
+equivalence.
 
 ## 2026-08-13 selection boundaries
 

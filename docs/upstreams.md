@@ -117,12 +117,19 @@ The current Yamaha comparison uses ymfm as an implementation observatory rather 
 ### xSF envelope and platform execution semantics
 
 - `kode54/psflib`, observed at `95509e0c6f13d769593bbf51a1b0e0efdc355ba1`: shared xSF envelope, tags, CRC, and library traversal order
+- `kode54/viogsf`, observed at `6c43a9926a6a85fbb736ea8f5f7f6c4f59ed3d64`: current GSF player-side GBA execution observatory
+- `loveemu/gsfopt`, observed at `41538ea8bb9e3087f0c485e937467ed6b354f7b6`: GSF 12-byte upload headers, address mapping, dependency overlay, and `gsf2rom` lineage
+- `loveemu/saptapper`, observed at `ff7ec3e4da1f1ffc3bcc05793268036a319b4466`: GSF construction and little-endian entry/load/size header emission
+- `ipatix/agbplay`, observed at `0960aadec72dddbefc144216886d86bef220a0bb`: independent GSF header and GBA music-player observatory
 - `kode54/lazyusf2`, observed at `421f00bcaa1988b8e1825e91780129f24fbd1aa0`: USF/Nintendo 64 ROM and Project64 save-state upload semantics
 - `RGBA-CRT/vio2sf-fork`, observed at `cbad66408b72d3bdc9f6c5ba724fe3e17f996865`: 2SF/Nintendo DS ROM-map and reserved `SAVE` semantics
+- `CyberBotX/NCSF`, observed at `fe1b91afec25fe18a10fe1697f95341e8dd5a44d`: current NCSF construction, sequence selection, SDAT stripping, INFO/FAT, SSEQ/SBNK/SWAR, and PLAYER behavior
+- `CyberBotX/in_xsf`, observed at `74fceae1f09f2e42afff4f71fb68b1952f494916`: independent historical GSF/NCSF player-side mapping control
+- `fincs/FSS`, observed at `c0f69d6105e8877ca8ff3b929d230e49e05726c7`: historical DS sequence/player implementation lineage used by NCSF
 - `vgmtrans/vgmtrans`, observed at `083f7c71fe773078061eb785573621082c3e0d1c`: independent PS1 AKAO and Nintendo DS SDAT structure observatory
 
 These references support a small shared container/dependency mechanism and
-separate PSF1, USF, and 2SF effective-object loaders. They do not support one
+separate PSF1, GSF, USF, 2SF, and NCSF effective-object loaders. They do not support one
 shared runtime, driver model, sequence model, voice model, or playback claim.
 See `research/xsf-execution-observatories.md`.
 

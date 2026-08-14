@@ -17,6 +17,8 @@ ALLOWED_SUFFIXES = {
     ".psf", ".minipsf", ".psflib", ".psf1", ".minipsf1", ".psf1lib",
     ".usf", ".miniusf", ".usflib",
     ".2sf", ".mini2sf", ".2sflib",
+    ".gsf", ".minigsf", ".gsflib",
+    ".ncsf", ".minincsf", ".ncsflib",
 }
 MANIFEST_VERSION = 2
 

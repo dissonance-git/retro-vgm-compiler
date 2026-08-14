@@ -32,7 +32,7 @@ The canonical supplied object depends on the delivery form:
 ```text
 direct runnable files
         ↓ preserve each byte-for-byte
-canonical VGM / VGZ / SPC / NSF / NSFe / PSF1 / USF / 2SF fixtures
+canonical VGM / VGZ / SPC / NSF / NSFe / PSF1 / GSF / USF / 2SF / NCSF fixtures
 
 archive supplied as a canonical object
         ↓ preserve archive byte-for-byte when retained
@@ -98,7 +98,7 @@ This rule is intentionally narrow. Other embedded fields may be inspected accord
 
 Game Music Interpreter owns:
 
-- the immutable VGM/VGZ/SPC/NSF/NSFe/PSF1/USF/2SF fixture bytes;
+- the immutable VGM/VGZ/SPC/NSF/NSFe/PSF1/GSF/USF/2SF/NCSF fixture bytes;
 - hashes and source-family inventory;
 - execution/synthesis/performance analysis of those fixtures;
 - corpus-specific regression expectations that belong to game-music machinery.

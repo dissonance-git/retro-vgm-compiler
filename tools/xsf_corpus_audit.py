@@ -14,6 +14,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from components.psf.psf1 import build_psf1_effective_image
+from components.gsf.gsf import build_gsf_effective_image
+from components.ncsf.ncsf import build_ncsf_effective_state
 from components.twosf.twosf import build_twosf_effective_state
 from components.usf.usf import build_usf_effective_state
 from components.xsf.envelope import parse_xsf, resolve_xsf
@@ -32,8 +34,14 @@ SUFFIX_VERSION = {
     ".2sf": 0x24,
     ".mini2sf": 0x24,
     ".2sflib": 0x24,
+    ".gsf": 0x22,
+    ".minigsf": 0x22,
+    ".gsflib": 0x22,
+    ".ncsf": 0x25,
+    ".minincsf": 0x25,
+    ".ncsflib": 0x25,
 }
-LIBRARY_SUFFIXES = {".psflib", ".psf1lib", ".usflib", ".2sflib"}
+LIBRARY_SUFFIXES = {".psflib", ".psf1lib", ".usflib", ".2sflib", ".gsflib", ".ncsflib"}
 
 
 def audit_directory(directory: Path) -> dict:
@@ -72,6 +80,25 @@ def audit_directory(directory: Path) -> dict:
         elif expected == 0x24:
             state = build_twosf_effective_state(resolved)
             detail = {"kind": "nds-rom-save-map", "rom_bytes": len(state.rom), "save_bytes": len(state.save_state)}
+        elif expected == 0x22:
+            state = build_gsf_effective_image(resolved)
+            detail = {
+                "kind": "gba-upload-image",
+                "bytes": len(state.image),
+                "sha256": state.image_sha256,
+                "memory_base": state.memory_base,
+                "selected_entry": state.selected_entry_address,
+                "driver_evidence": state.driver_evidence,
+            }
+        elif expected == 0x25:
+            state = build_ncsf_effective_state(resolved)
+            detail = {
+                "kind": "nds-sdat-sequence",
+                "sdat_bytes": len(state.sdat),
+                "sdat_sha256": state.sdat_sha256,
+                "sequence_count": state.structure.sequence_count,
+                "selected_sequence": state.selected_sequence_index,
+            }
         else:
             raise AssertionError(expected)
         if state.runtime_available:

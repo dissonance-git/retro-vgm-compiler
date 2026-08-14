@@ -1,6 +1,17 @@
 # xSF test boundaries
 
-These tests protect container/effective-object and bounded structural claims for PSF1, USF, and 2SF.
+These tests protect container/effective-object and bounded structural claims for PSF1, GSF, USF, 2SF, and NCSF.
+
+GSF tests treat the 12-byte little-endian entry/load/size header as a GBA
+upload contract, preserve root-selected entry state and byte provenance, and
+keep zero-filled gaps unknown. They do not equate GSF with MP2K or the
+effective upload image with an original ROM.
+
+NCSF tests require an empty or four-byte reserved sequence selector and an
+empty or structurally valid SDAT program. They expose INFO/SSEQ/PLAYER/bank/
+wave-archive references without claiming NCSF equals 2SF or that an NCSF SDAT
+is an original complete cartridge SDAT. Same-work comparisons name each
+observable and preserve non-comparability instead of asserting state identity.
 
 For PSF1 AKAO work:
 

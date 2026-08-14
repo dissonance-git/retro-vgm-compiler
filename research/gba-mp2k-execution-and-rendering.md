@@ -18,8 +18,8 @@ Pinned/documentary observatories used here:
 
 - `loveemu/agbinator` `ec56b1ecfebddd29131f4934f65a94dfabcaf65d`
 - `loveemu/vgmdocs` `6c3c455071d81457e7a8cfec378a2edb8125ce7b`
-- `ipatix/agbplay` current `master` surface inspected in this pass
-- `ipatix/gba-hq-mixer` current `main` surface inspected in this pass
+- `ipatix/agbplay` `0960aadec72dddbefc144216886d86bef220a0bb`
+- `ipatix/gba-hq-mixer` `2bd31435101e4c3a4af568a6ed33d7cc9f1a6da9`
 
 This does not make MP2K representative of every GBA engine. It is one unusually well-observed lineage.
 
