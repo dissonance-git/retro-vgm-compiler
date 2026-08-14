@@ -1,87 +1,55 @@
 # AGENTS.md
 
-## GitHub connector entrance
+## Entrance sequence
 
-When entering this repository through GitHub, an LLM connector, or another remote agent surface, do not reconstruct VGM Tooling from code search or one active format alone.
-
-Use this bounded entrance sequence:
+For substantive work, use this bounded entry path:
 
 ```text
 current main HEAD
 → README.md
 → AGENTS.md at the same HEAD
 → recent commits
-→ current source-family / research frontier
-→ smallest task-relevant model / component / test / document
-→ exact target file
+→ task-relevant source family / research frontier
+→ exact target code, test, or document
 ```
 
-1. Resolve `dissonance-git/vgm-tooling` and record the current `main` commit before substantive work.
-2. Read `README.md` for current project orientation and this `AGENTS.md` for source, identity, rendering, evidence, and project-boundary law from the same repository state.
-3. Inspect recent commits before selecting a work area. This repository can advance quickly; recent commits are activity hints, not authority over exact source evidence or governing contracts.
-4. Hydrate only the source family and layer relevant to the task. Do not load every emulator, format, research case, libaural, Omniphony, or Sonic 3 context when one bounded subsystem is enough.
-5. Before any GitHub replacement write, re-fetch current `main` and the exact target file. If `main` changed since preflight, re-read this file and reconstruct the edit from current target content.
-6. Write against the exact current blob SHA. Preserve unrelated concurrent work. Never replace a file from a cached or reconstructed older copy.
-7. After publication, fetch the resulting commit, inspect its changed paths, and confirm the commit remains in current `main` history. Report publication, build/tests, CI, reference parity, and listening validation as separate evidence states.
+1. Resolve `dissonance-git/game-music-interpreter` and record current `main`.
+2. Read `README.md` and this file from the same commit.
+3. Inspect recent commits before choosing the smallest relevant work area.
+4. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
+5. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
+6. Work on `main`; do not create branches or PRs unless explicitly requested.
+7. Never force-push.
+8. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, and listening validation as separate evidence states.
 
-Fast routes:
+Direct user correction outranks project prose.
 
-- project orientation and current priorities: `README.md`
-- governing project/source law: `AGENTS.md`
-- common semantic layer: `docs/musical-execution-model.md`
-- VGM/VGZ frontier: `docs/vgm-frontier.md`
-- upstream provenance and licenses: `docs/upstreams.md`
-- shared/source models: `model/`
-- source-family implementations: `components/`, `imports/`, and task-specific adapters
-- executable tools and diagnostics: `tools/`
-- exact regressions: `tests/`
-- bounded research inputs and cases: `research/`
+## Project scope
 
-For active work, prefer `README.md` → recent commits → the exact source-family code/tests → the smallest relevant research case. Do not begin with a broad historical or cross-project scan unless the question requires it.
+Game Music Interpreter owns executable understanding, musical analysis, and source-native rendering of digital game music.
 
-## Instruction chain
-
-This repository is the independent implementation home for `project:vgm-tooling`, tracked by Helix.
-
-Before substantive work, read:
-
-1. `dissonance-git/Helix/AGENTS.md` for applicable shared operating law;
-2. this file for VGM Tooling-specific law.
-
-Peer-project instructions are not inherited globally. Read and apply libaural, Omniphony, Sonic 3, or another project's local instructions only when work actually crosses that project boundary.
-
-Direct user instruction or correction outranks the chain.
-
-## Scope
-
-VGM Tooling owns executable understanding, analysis, and source-native rendering of digital game music.
-
-`VGM` in the project name is historical shorthand for video game music tooling. The project is not limited to the `.vgm` format and is not defined by foobar2000.
-
-The repository may own:
+It may own:
 
 - format/container parsers;
-- authored symbolic inputs such as MML;
-- driver/sequence models;
+- tracker, MML, and other authored symbolic inputs;
+- driver and sequence models;
 - device/chip models;
 - reference and enhanced synthesis;
-- source/performance/device state;
+- source, performance, device, sample, and routing state;
 - provenance-aware musical analysis;
-- deterministic fixtures;
-- consumer bridges and frontends.
+- deterministic fixtures and corpus tooling;
+- playback/front-end bridges.
 
-The foobar2000 SPC and VGM/VGZ components are important realtime applications, not the project ontology.
+VGM/VGZ and SPC are important source families, not the project ontology.
 
 ## Project boundaries
 
-Keep connected projects independent.
-
 ```text
 Helix
-  shared research / evidence / project continuity
+  shared research execution, evidence discipline, project continuity
 
-VGM Tooling
-  executable game-music source / driver / synthesis understanding
+Game Music Interpreter
+  game-music source, driver, device, performance, analysis, rendering
 
 libaural
   general artificial hearing
@@ -90,13 +58,13 @@ Omniphony
   general headphone spatial rendering
 ```
 
-Sonic 3 Music Attribution is a bounded VGM Tooling subproject/case in Helix because its technical questions depend directly on SMPS, YM2612, PSG, DAC, prototype/final and arrangement evidence.
+Chip-specific machinery stays here unless it becomes genuinely general. Peer-project instructions apply only when work actually crosses that boundary.
 
-Do not copy another project's implementation into this repository merely to make a relationship visible.
+Sonic 3 attribution is a bounded adversarial case because it depends on SMPS, YM2612, PSG, DAC, prototype/final, and arrangement evidence. Technical similarity must never become automatic authorship proof.
 
 ## Core execution law
 
-Different source formats require different ingestion and execution machinery, but higher-level musical reasoning should not require a separate ontology for every codec, driver, chip or platform.
+Different sources require different ingestion and execution machinery. Normalize meaning only after the source-specific semantics have been respected.
 
 ```text
 source-specific representation
@@ -105,467 +73,190 @@ source-specific parser / compiler / executor
         ↓
 exact execution and synthesis state
         ↓
-common musical execution model
+common musical execution model where earned
         ↓
-reasoning / rendering / libaural / forensics
+analysis / rendering / forensics / perceptual comparison
 ```
 
-Normalize meaning **after execution**, not the source before execution.
+Do not make MIDI, PCM, stems, notation, or chord sequences the canonical representation.
 
-Do not convert everything to MIDI, PCM, stems, or another lowest-common-denominator representation as the canonical model.
+Keep source evidence attached so higher reasoning can descend to exact bytes, addresses, commands, registers, samples, driver events, MML/tracker commands, device state, or documentary sources.
 
-Keep source-specific evidence attached so higher reasoning can descend to the exact bytes, addresses, commands, registers, samples, driver events, MML commands, or device state when needed.
-
-See `docs/musical-execution-model.md`.
-
-## Levels of truth
-
-Keep these distinct:
-
-```text
-authored representation
-≠ compiled driver/sequence state
-≠ physical device/channel state
-≠ rendered audio
-≠ perceptual interpretation
-≠ downstream application
-```
-
-Examples:
-
-- an MML note command may directly prove an authored symbolic event while a VGM-derived note is only reconstructed from device execution;
-- YM2612 channel 2 is a physical synthesis lane, not automatically one persistent musical object;
-- a GEMS logical note may move between hardware channels while remaining one musical source;
-- a VGM register log may prove device state without proving the original driver track or score;
-- an SPC may preserve machine state and driver data without making the driver grammar explicit;
-- a MIDI note may be one logical event that expands into several synthesis partials inside a module;
-- a perceptual stream may fuse several physical sources or split one physical source into several useful components;
-- an arranger fingerprint is evidence, not authorship confirmation.
-
-Every higher-level inference needs provenance and confidence appropriate to the layer that supports it.
-
-## Identity law
+## Identity and evidence law
 
 Do not equate implementation coordinates with musical identity.
 
 ```text
-musical event / part
-        ↓ realizes through
-synthesis object / voice
-        ↓ occupies
-physical execution slot
-        ↓ produces
-acoustic contribution
-        ↓ may become
-auditory event / stream
+physical slot
+!= bounded voice episode
+!= persistent musical part
+!= auditory stream
 ```
 
-These mappings may be one-to-one, one-to-many, many-to-one, or time-varying.
+```text
+register frequency
+!= nominal frequency
+!= programmed pitch
+!= transposed pitch
+!= frequency displacement
+!= performed pitch
+!= heard pitch
+!= note spelling
+```
 
-Examples:
+```text
+source / implementation fingerprint
+!= composition fingerprint
+!= authorship proof
+```
 
-- GEMS can reallocate logical notes across FM channels;
-- an exact BRR sample may move between SPC SRCN slots across songs;
-- an MT-32/LA-synthesis note may use multiple partials;
-- one FM voice contains multiple operators;
-- several physical sources may perceptually fuse into one stream.
+Mappings may be one-to-one, one-to-many, many-to-one, or time-varying.
 
-Persistent identity must use the strongest available combination of authored identity, driver-track identity, synthesis-object identity, exact content identity, control continuity, temporal continuity, and provenance.
+Every higher inference needs provenance and an evidence status appropriate to the layer that actually supports it. Preserve meaningful alternatives when the evidence does not separate them.
 
-## Source families
+## Source-family rules
 
-Treat source families according to what evidence they actually retain.
+### Authored symbolic / programming source
 
-### Authored symbolic / programming representations
+MML, trackers, score-like data, and source code can provide explicit notes, rests, effects, loops, macros, instrument references, articulation, modulation, and logical-part identity. Preserve the exact dialect/toolchain. A source note or effect token can be exact while the realized performance still requires stateful execution.
 
-Examples: MML dialects and related source languages.
+### Driver / sequence data
 
-Potentially strong evidence:
+Known drivers such as SMPS, GEMS, N-SPC, MDX, PMD, and other identified engines can expose logical tracks, performance events, instruments, modulation, loops, and allocation policy.
 
-- explicit notes/rests/ties;
-- length and tempo commands;
-- loops/macros/control flow;
-- instrument/program selection;
-- envelope/modulation/articulation instructions;
-- chip-specific synthesis parameters;
-- part/channel intent before runtime allocation.
+### Logged execution
 
-MML is not one universal standardized language. MUCOM88, PMD, FMP, MCK/PPMCK, mml2vgm and other dialects have different semantics and targets. Preserve the dialect and compiler provenance.
+VGM/VGZ can strongly establish command order/timing, device configuration, register state, and embedded data. It does not automatically reveal the original score, tracker, driver track, or authoring grammar.
 
-### Driver / sequence representations
+Format semantics come from the format specification; chip semantics come from device documentation and validated implementations.
 
-Examples: SMPS, GEMS, N-SPC, MDX, PMD compiled data and other known driver formats.
+### Executable snapshots / rips
 
-Potential evidence:
-
-- logical tracks;
-- performance events;
-- instrument/sample/patch identity;
-- modulation and articulation;
-- loops/control flow;
-- allocation policy into physical devices.
-
-### Logged execution traces
-
-Examples: VGM/VGZ.
-
-Strong evidence:
-
-- commands present in the log;
-- command timing;
-- register state;
-- embedded data/ROM blocks;
-- device configuration represented by the format.
-
-Do not invent original driver-level truth when the log does not retain it. Also preserve capture quality as evidence: incomplete initialization, logging jitter, stripped commands, or transformed traces may make a technically valid VGM an imperfect record of the original execution.
-
-### Executable snapshots / ripped machine states
-
-Examples: SPC, NSF/NSFe, HES, KSS and PSF-family objects where code/state survives.
-
-Potential evidence:
-
-- CPU/program state;
-- RAM;
-- sound-driver code/data;
-- samples/instruments;
-- live device state;
-- enough machine context to recover semantics by controlled execution.
+SPC, NSF/NSFe, HES, KSS, PSF-family and related objects may preserve CPU/program state, RAM, driver code/data, samples, and live device state. Their semantic altitude must be discovered rather than inferred from the extension.
 
 ### Symbolic performance formats
 
-Example: MIDI.
+MIDI may preserve notes, controllers, bends, programs, banks, and SysEx. The target module/synth remains part of the realization.
 
-Potential evidence:
+## Realtime law
 
-- note-on/off;
-- velocity;
-- pitch bend;
-- controllers;
-- program/bank state;
-- SysEx and device-specific state.
+Realtime players must not require whole-song reverse compilation before playback. Small causal state, streaming analysis, and bounded lookahead are allowed when justified.
 
-The target synthesizer/module remains part of the musical realization. MIDI alone does not prove the final instrument physics.
-
-### Tracker/module formats
-
-Potential evidence:
-
-- pattern/order structure;
-- explicit notes;
-- instrument/sample identity;
-- channel/effect commands;
-- source mixing state.
-
-## Realtime playback law
-
-Normal playback frontends are realtime players, not offline compilers.
-
-Do not require whole-song analysis before playback. Do not require stem export or preparation of an offline master. Do not reverse-compile a VGM into a score as a mandatory playback stage.
-
-Use live source/register/DSP/driver state as playback proceeds.
-
-Small causal state, streaming analysis, and bounded lookahead are permitted where justified.
-
-The broader VGM Tooling project may contain offline or forensic analysis utilities when the research question requires them. Those are analysis tools, not hidden prerequisites for realtime playback.
+Offline forensic/research tools are allowed but must not become hidden playback prerequisites.
 
 ## Accuracy and enhancement
 
-The accurate renderer is the reference and foundation.
+The reference renderer is the scientific control, not the quality ceiling.
 
-It is not the quality ceiling.
+Enhanced rendering may relax a specific historical implementation ceiling only when the same musical identity survives. Preserve:
 
-Enhanced mode is allowed to exceed historical hardware limitations in bandwidth, interpolation, synthesis precision, sample reconstruction, dynamics, mixing, spatial presentation, and effects realization when the result remains traceable to the encoded music.
+- notes and timing relationships;
+- groove and phrasing;
+- logical part relationships;
+- patch/sample/instrument identity;
+- programmed articulation, modulation, and automation;
+- deliberate effects and structural density;
+- device behavior that became part of an instrument's identity.
 
-Preserve:
+Candidate improvements include better interpolation, bandwidth, numerical precision, sample reconstruction, DAC realization, summation/headroom, or source-aware effects when independently validated.
 
-- notes;
-- timing;
-- groove;
-- phrasing;
-- instrument identity;
-- authored modulation/automation;
-- musical hierarchy;
-- deliberate effects;
-- meaningful hardware coloration that became part of the instrument.
-
-Enhance where justified:
-
-- source reconstruction;
-- bandwidth;
-- interpolation;
-- transient fidelity;
-- low-frequency body;
-- synthesis quality;
-- masking/separation;
-- mixing precision;
-- source extent;
-- environmental rendering;
-- stereo presentation.
-
-Do not use “sounds more modern” as sufficient evidence.
-
-## Driver and compiler knowledge matters
-
-Prefer the highest trustworthy source layer available.
-
-```text
-MML / authored symbolic event
-→ compiled sequence / driver event
-→ persistent logical track
-→ instrument/sample/patch
-→ hardware allocation
-→ register/device state
-→ acoustic render
-```
-
-Not every source preserves the whole route. Each adapter must say which links are exact, derived, or uncertain.
-
-A useful validation pattern is round-trip or paired-direction testing where possible:
-
-```text
-authored symbolic source
-→ known compiler / driver
-→ device execution
-→ recovered common musical model
-```
-
-The recovered model should preserve the intended musical operation without pretending that all device-specific details are universal.
-
-## Baseline before enhancement
-
-Do not begin audible enhancement work until the relevant source path has a reproducible reference baseline.
-
-For SPC:
-
-1. Preserve/import the editable SNESAPU source.
-2. Treat the supplied `spcplay-2.21.3.9130` files as the newest behavioral/version reference.
-3. Port the editable source forward until intended behavior matches that reference as closely as can be verified.
-4. Only then begin enhancement work.
-
-For VGM:
-
-1. Preserve/import the supplied `foo_input_vgm` source and its MPL-2.0 license.
-2. Establish a clean baseline build against the intended libvgm revision.
-3. Update dependencies deliberately and verify reference playback before audible replacement.
+Every audible change needs reference-vs-enhanced comparison. Change one meaningful variable at a time where possible.
 
 ## Source-domain first
 
-When source-level state exists, prefer acting there instead of repairing the final stereo bus.
+Prefer improving the known source object before repairing the final stereo bus.
 
 Examples:
 
-- improve a PCM voice before the device mixer rather than EQing the whole mix;
-- reconstruct a DAC transient at its trigger rather than running a generic transient shaper over stereo;
-- render an FM patch from live operator/register state rather than applying a generic exciter afterward;
-- preserve dry/effect distinctions when the source exposes them;
-- preserve persistent driver identity when hardware-channel allocation changes.
+- improve a PCM voice before summation rather than EQ the whole mix;
+- reconstruct a DAC event at its trigger rather than use a generic transient shaper;
+- render an FM patch from live operator/register state rather than apply a stereo exciter;
+- preserve dry/effect distinctions and persistent driver identity when available.
 
-Generic bus EQ/compression/widening is a fallback, not the design center.
-
-## VGM/VGZ priorities
-
-VGM/VGZ is the current realtime trace-format design center.
-
-GYM, DRO, and S98 are legacy compatibility formats. Keep them working when practical, but do not spend research effort on bespoke enhancement unless explicitly requested.
-
-Enhancement should dispatch by active device/source family:
-
-- FM;
-- PSG / wavetable;
-- PCM / ADPCM / DAC;
-- authored spatial DSP such as QSound.
-
-Do not create one universal “VGM enhancer” that ignores chip structure.
-
-## QSound
-
-Native QSound playback must preserve authored QSound behavior.
-
-Separately, QSound may serve as a controlled reference for generalized source-domain stereo rendering and for libaural auditory-scene experiments.
-
-Potentially reusable ideas include:
-
-- per-source positioning;
-- source-dependent pan behavior;
-- spectral localization cues;
-- controlled interchannel phase behavior;
-- source extent;
-- direct/environment separation;
-- per-source effect sends;
-- spatial processing before final summation.
-
-Do not run unrelated sources through a literal QSound emulator merely to make them wider.
-
-## Sonic 3 subproject boundary
-
-Sonic 3 Music Attribution is a Helix subproject/case under VGM Tooling.
-
-VGM Tooling may provide:
-
-- SMPS track/command understanding;
-- stable logical-track identity;
-- YM2612 patch/operator state;
-- PSG behavior;
-- DAC sample identity and timing;
-- prototype/final technical comparison;
-- technical realization fingerprints.
-
-It must not silently upgrade technical similarity into composer/arranger confirmation. The Sonic 3 evidence hierarchy remains independent and stricter than implementation resemblance.
-
-## Omniphony boundary
-
-Omniphony owns general headphone spatial rendering.
-
-This repository owns source-native game-audio rendering.
-
-Do not move chip-specific implementation details into Omniphony.
-
-Primary contract:
-
-- enhanced stereo PCM.
-
-Possible later optional side information:
-
-- source multiplicity;
-- directness;
-- source extent;
-- stable motion;
-- environmental energy;
-- confidence.
-
-Do not send arbitrary chip channel numbers as spatial coordinates. Source state may grant presentation permission; it does not reveal authored 3D truth.
-
-## libaural boundary
-
-libaural is a peer project for general artificial hearing.
-
-VGM Tooling can provide unusually strong answer keys:
-
-```text
-known executable source / performance state
-→ controlled reference render
-→ libaural observes only audio
-→ compare inferred auditory organization with the answer key
-```
-
-This can test concurrent grouping, sequential grouping, source continuity, pitch crossings, onset synchrony, harmonicity, common modulation, timbre similarity, masking, authored spatial routing, echo/reverb and source count.
-
-Physical-source truth is not identical to perceptual truth. The experiment exists to measure that relationship.
-
-Large learned models, source-separation systems, or expensive research pipelines do not belong in normal realtime playback unless reduced to a small validated mechanism.
+Generic bus processing is a fallback, not the design center.
 
 ## Shared-core rule
 
-Do not prematurely force source families into one abstraction.
+A mechanism becomes shared only when materially different source families genuinely require the same abstraction and sharing does not erase useful source information.
 
-A mechanism becomes shared only when multiple source families genuinely need the same abstraction and sharing does not erase useful source-specific information.
+Good candidates include exact event timing, provenance structures, persistent source identifiers, diagnostics, high-quality resampling, source-aware headroom/mixing primitives, and common performance-event/trajectory objects.
 
-Good candidates include:
+BRR reconstruction stays SNES-specific. FM operator rendering stays FM-specific. QSound behavior stays QSound-specific. Driver allocation and MML/tracker grammar remain source-specific until evidence earns a generalization.
 
-- exact event timing;
-- persistent source IDs;
-- provenance/confidence structures;
-- high-quality resampling;
-- source-aware headroom/mixing primitives;
-- diagnostics and A/B capture;
-- common musical event/trajectory objects.
+> **Shared abstractions should be discovered by agreement and disagreement.**
 
-BRR reconstruction is SNES-specific. FM operator rendering is FM-specific. QSound register handling is QSound-specific. GEMS allocation behavior is driver-specific. MML dialect grammar is compiler-specific.
+## Upstream and research policy
+
+Mature repositories, manuals, source releases, reverse-engineered implementations, and literature are observatories before they are dependencies.
+
+Use evidence roles explicitly:
+
+```text
+format spec → file semantics
+official manual → documented hardware/platform behavior
+validated emulator/device core → implementation and undocumented behavior
+identified driver/source → actual software semantics
+real corpus → observed preserved execution
+literature → pressure-test general analytical claims
+```
+
+Pin repository commits when behavior matters. Record source provenance. Respect licenses. Do not churn imported upstream bytes or line endings.
+
+A research pass should end in one of: an executable mechanism, a regression, a bounded negative result, a stronger evidence rule, or a clearly stated next discriminating test.
+
+## Corpus law
+
+`tests/corpus/` is permanent experimental apparatus.
+
+- Source files are immutable once admitted unless provenance is proven wrong.
+- Hashes and manifest metadata must remain reproducible.
+- New controls should add orthogonal information, not raw volume.
+- Related-version or same-work controls must state exactly what equivalence is and is not claimed.
+- A valid file is not automatically an authentic or complete execution witness.
+
+The corpus should contain both confirmations and counterexamples for proposed abstractions.
 
 ## Testing
 
-Every audible change requires a reference-vs-enhanced comparison.
+Core tests are registered through CMake. Use strict warnings where practical.
 
-Prefer deterministic fixtures and measurable invariants where possible:
+Important mechanisms need more than synthetic unit tests. Use whichever controls fit the claim:
 
-- exact timing preserved;
-- loop points preserved;
-- note/event sequence unchanged;
-- source identity survives legal hardware reallocation;
-- channel/device activity preserved;
-- no accidental clipping;
-- no unstable gain pumping;
-- no new discontinuities at loops;
-- no stereo collapse;
-- no transient smearing from source-aware spatial processing.
+- deterministic invariants;
+- real corpus fixtures;
+- negative controls;
+- independent implementations;
+- official documentation;
+- source→driver→device forward controls;
+- paired preserved representations;
+- reference-vs-enhanced captures;
+- listening tests for perceptual quality.
 
-For semantic layers, include cross-representation controls where possible:
+Do not call CI green unless the runner actually executed successfully. A blocked runner is not a pass or a failure of the code.
 
-- MML → compiler/driver → device trace;
-- driver sequence → device trace;
-- VGM/SPC execution → recovered musical events;
-- MIDI → known module → internal partials/audio.
+## Current analytical frontier
 
-A parser that cannot prove a higher layer must say so rather than inventing it.
+The project already has device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, and a broad cross-architecture corpus.
 
-Listening tests remain decisive for perceptual quality, but measurements should catch regressions before listening.
+The next high-information work is time-bearing performance reconstruction across non-Genesis controls:
 
-Keep known winning listening baselines and make rollback easy.
+1. recover device-native pitch/voice/sample trajectories;
+2. separate physical episodes from persistent parts;
+3. compare executable-rip and downstream-trace representations where a same-work control exists;
+4. build bounded source/driver adapters that can be followed forward into device state;
+5. only then push higher into harmony, form, style, and attribution on those controls.
 
-## Research discipline
+## Write discipline
 
-Before a substantive new mechanism, inspect relevant literature and mature open-source implementations.
+Before each GitHub replacement write:
 
-Important recurring sources include:
+```text
+current main
+→ exact target at that main
+→ current blob SHA
+→ smallest coherent edit
+→ publish to main
+→ verify resulting commit
+```
 
-- chip/device emulators;
-- MAME whole-machine/device implementations;
-- driver disassemblies and native players;
-- MML compilers and source languages;
-- VGM Tools / libvgm / VGMTrans;
-- Hoot and its driver corpus;
-- VGMRips documentation/forum archaeology;
-- HCS64;
-- sequence/conversion tooling;
-- patents where relevant;
-- symbolic-music representation research;
-- score-informed source separation;
-- differentiable/parametric synthesis research;
-- auditory-scene-analysis and music-cognition literature.
-
-Record what is borrowed conceptually, what is implemented, what is only a hypothesis, and what licensing prevents direct reuse.
-
-Use established terminology where possible. Do not create product-y names for ordinary DSP, MIR, compiler, emulator, or reverse-engineering concepts.
-
-## Provenance and licensing
-
-Preserve upstream licenses and attribution alongside imported source.
-
-Do not silently relicense imported code.
-
-Keep upstream source provenance documented in `docs/upstreams.md`.
-
-Where licensing prevents direct reuse, treat the implementation as a research/reference source and implement independently only when legally appropriate.
-
-## Documentation naming
-
-Use lowercase kebab-case for documentation filenames.
-
-`README.md` and `AGENTS.md` are the only intentional uppercase documentation names.
-
-Examples:
-
-- `docs/musical-execution-model.md`
-- `docs/vgm-frontier.md`
-- `docs/research-sources.md`
-
-## Historical lineage
-
-The earlier private `dissonance-git/vgmspc` repository is project ancestry.
-
-Preserve its Git history rather than copying only its final working tree. Current architecture may reject old role heuristics or spatial experiments while retaining the commits as historical evidence.
-
-See `docs/history.md`.
-
-## Repository workflow
-
-Work on `main` unless explicitly instructed otherwise.
-
-Keep commits small enough that an audible, semantic, or architectural change can be reverted independently.
-
-Do not rewrite working upstream code merely to make the tree aesthetically uniform.
-
-For playback paths: establish reference behavior, expose source truth, then enhance.
-
-For semantic/driver/compiler paths: establish exact source evidence, preserve uncertainty, then infer only what the evidence supports.
+Do not rewrite unrelated files for style. Do not modify immutable corpus source bytes during documentation or architecture work. Corrections outrank narrative consistency.
