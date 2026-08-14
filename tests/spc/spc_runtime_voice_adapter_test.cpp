@@ -141,6 +141,25 @@ int main() {
     CHECK(graph.nodes_of_kind(node_kind::voice_instance).size() == 1);
     CHECK(graph.edges_from(sample_started.trace_event_id, edge_kind::contributes_to).size() == 1);
 
+    // Signed routing is time-bearing state of the running physical episode.
+    // Preserve the native S-DSP coordinates and EON membership without
+    // projecting them into pan, width, surround, or a new musical note.
+    auto routing = voice_event(spc_voice_runtime_event_kind::routing_state_changed, 0, 150);
+    routing.route_gain_left = -48;
+    routing.route_gain_right = 64;
+    routing.echo_send_enabled = true;
+    const auto routed = append_spc_runtime_voice_event(graph, runtime, routing);
+    CHECK(routed.physical_voice_episode_id.has_value());
+    CHECK(*routed.physical_voice_episode_id == first_episode_id);
+    CHECK(graph.nodes_of_kind(node_kind::voice_instance).size() == 1);
+    CHECK(graph.edges_from(routed.trace_event_id, edge_kind::contributes_to).size() == 1);
+    const node* routing_event = graph.find_node(routed.trace_event_id);
+    CHECK(routing_event != nullptr);
+    CHECK(std::get<std::string>(find_attribute(routing_event, "event_kind")->value) == "routing_state_changed");
+    CHECK(std::get<std::int64_t>(find_attribute(routing_event, "route_gain_left")->value) == -48);
+    CHECK(std::get<std::int64_t>(find_attribute(routing_event, "route_gain_right")->value) == 64);
+    CHECK(std::get<bool>(find_attribute(routing_event, "echo_send_enabled")->value));
+
     // KOFF/release does not terminate the voice. The envelope may continue to
     // produce sound until the DSP reports the resource inactive.
     auto release = voice_event(spc_voice_runtime_event_kind::release_entered, 0, 200);
@@ -203,6 +222,15 @@ int main() {
         runtime,
         voice_event(spc_voice_runtime_event_kind::sample_phase_started, 0, 340));
     CHECK(!post_gap_phase.physical_voice_episode_id.has_value());
+
+    // Routing observations also cannot bridge a semantic gap by inventing a
+    // physical episode. The trace event remains exact device evidence.
+    auto post_gap_routing = voice_event(spc_voice_runtime_event_kind::routing_state_changed, 0, 350);
+    post_gap_routing.route_gain_left = -1;
+    post_gap_routing.route_gain_right = 1;
+    const auto orphan_routing = append_spc_runtime_voice_event(graph, runtime, post_gap_routing);
+    CHECK(!orphan_routing.physical_voice_episode_id.has_value());
+    CHECK(std::get<std::string>(find_attribute(graph.find_node(orphan_routing.trace_event_id), "event_kind")->value) == "routing_state_changed");
 
     // Reset also terminates an observed episode, but with a complete explicit
     // boundary rather than a gap.
