@@ -1,6 +1,6 @@
 # Source-native enhanced rendering
 
-VGM Tooling's enhanced renderer is not a generic remastering stage, a MIDI/SoundFont conversion path, or a new arrangement of old game music.
+Game Music Interpreter's enhanced renderer is not a generic remastering stage, a MIDI/SoundFont conversion path, or a new arrangement of old game music.
 
 Its target is:
 
@@ -209,7 +209,7 @@ Graphics do not literally consume this local audio RAM. Cartridge ROM is a separ
 
 Cartridge ROM is shared across the game and allocations among code, graphics, music data, PCM, tables and other assets are title specific.
 
-Therefore VGM Tooling should record actual per-game resource evidence when available rather than assume one generic soundtrack budget.
+Therefore Game Music Interpreter should record actual per-game resource evidence when available rather than assume one generic soundtrack budget.
 
 The important project principle is broader:
 
