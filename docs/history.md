@@ -2,7 +2,7 @@
 
 Game Music Interpreter carries forward several implementation ideas that were pressure-tested in earlier game-audio experiments and later refined under stricter evidence rules.
 
-This document records the useful technical lineage, not a product or naming chronology.
+This document records useful technical lineage that still informs the current architecture.
 
 ## Durable ideas retained
 
