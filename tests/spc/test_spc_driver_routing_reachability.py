@@ -40,11 +40,39 @@ class SpcDriverRoutingReachabilityTest(unittest.TestCase):
         self.assertEqual(MODULE.cycle_product(voice_a, voice_b), -1)
         self.assertNotEqual(MODULE.determinant(voice_a, voice_b), 0)
 
+    def test_nspc_e1_reaches_all_four_phase_quadrants(self):
+        observed = {
+            MODULE.apply_nspc_phase(40, 24, raw)
+            for raw in (0x0A, 0x4A, 0x8A, 0xCA)
+        }
+        self.assertEqual(
+            observed,
+            {(40, 24), (40, -24), (-40, 24), (-40, -24)},
+        )
+
+    def test_capcom_megaman_x_final_pan_stage_never_sets_sign_bit(self):
+        for magnitude in range(0x80):
+            for level in range(0x100):
+                gain = MODULE.capcom_final_route_gain(magnitude, level)
+                self.assertGreaterEqual(gain, 0)
+                self.assertLessEqual(gain, 0x7E)
+
+    def test_konami_axelay_final_pan_stage_never_sets_sign_bit(self):
+        for magnitude in range(0x80):
+            for level in range(0x80):
+                gain = MODULE.konami_final_route_gain(magnitude, level)
+                self.assertGreaterEqual(gain, 0)
+                self.assertLessEqual(gain, 0x7F)
+
     def test_full_control(self):
         report = MODULE.run_control()
-        self.assertFalse(report["gun_hazard"]["negative_route_reachable"])
+        self.assertFalse(report["square_akao_gun_hazard"]["signed_route_reachable"])
         self.assertTrue(report["wolf_team"]["all_four_sign_quadrants_reachable"])
         self.assertTrue(report["wolf_team"]["unbalanced_two_voice_cycle_reachable"])
+        self.assertTrue(report["nintendo_nspc"]["all_four_sign_quadrants_reachable"])
+        self.assertTrue(report["nintendo_nspc"]["unbalanced_two_voice_cycle_reachable"])
+        self.assertFalse(report["capcom_megaman_x"]["signed_route_reachable_through_ordinary_pan"])
+        self.assertFalse(report["konami_axelay"]["signed_route_reachable_through_ordinary_pan"])
 
 
 if __name__ == "__main__":
