@@ -12,13 +12,20 @@ int main() {
     assert(vgm_caps.stable_source_evidence);
     assert(vgm_caps.authored_stereo_route);
     assert(vgm_caps.readiness == vgmtooling::model::spatial_source_readiness::isolated_audio_partial);
+    assert(vgm_caps.isolated_dry_pcm);
+    assert(vgm_caps.protected_reference_mix);
+    assert(!vgm_caps.shared_effect_return);
+    assert(!vgm_caps.exact_linear_recomposition);
     assert(!vgm_caps.authored_3d_position);
 
     const auto spc_caps = vgmtooling::model::spatial_capabilities_for(spatial_source_family::spc);
     assert(spc_caps.stable_source_evidence);
     assert(spc_caps.authored_stereo_route);
     assert(spc_caps.effect_send_state);
-    assert(!spc_caps.isolated_pcm);
+    assert(spc_caps.protected_reference_mix);
+    assert(!spc_caps.isolated_dry_pcm);
+    assert(!spc_caps.shared_effect_return);
+    assert(!spc_caps.exact_linear_recomposition);
     assert(!spc_caps.authored_3d_position);
 
     for (const auto family : {
@@ -31,7 +38,10 @@ int main() {
         const auto caps = vgmtooling::model::spatial_capabilities_for(family);
         assert(caps.readiness == vgmtooling::model::spatial_source_readiness::unavailable);
         assert(!caps.stable_source_evidence);
-        assert(!caps.isolated_pcm);
+        assert(!caps.isolated_dry_pcm);
+        assert(!caps.shared_effect_return);
+        assert(!caps.exact_linear_recomposition);
+        assert(!caps.protected_reference_mix);
         assert(!caps.authored_3d_position);
     }
 
