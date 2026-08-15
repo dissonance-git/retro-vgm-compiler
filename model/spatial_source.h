@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 
 namespace vgmtooling::model {
@@ -33,6 +34,12 @@ enum class spatial_evidence_authority : std::uint8_t {
     inferred,
 };
 
+enum class spatial_audio_lane_kind : std::uint8_t {
+    dry_source = 0,
+    shared_effect_return = 1,
+    reference_mix = 2,
+};
+
 struct stereo_route_evidence {
     bool present = false;
     float left_gain = 0.0f;
@@ -40,10 +47,24 @@ struct stereo_route_evidence {
     spatial_evidence_authority authority = spatial_evidence_authority::unknown;
 };
 
+// Higher musical/perceptual evidence that may inform a renderer's presentation
+// policy. None of these fields are source-authored coordinates. A register or
+// role estimate can justify a conservative presentation tendency while keeping
+// the resulting 3-D pose explicitly renderer-inferred.
+struct spatial_presentation_evidence {
+    float foundation = 0.0f;
+    float foreground = 0.0f;
+    float diffuse = 0.0f;
+    float width = 0.0f;
+    float vertical_affinity = 0.0f; // [-1, +1], negative=lower, positive=upper
+    float confidence = 0.0f;
+    spatial_evidence_authority authority = spatial_evidence_authority::inferred;
+};
+
 // Realtime-safe source evidence carried beside isolated source audio when that
-// audio exists. This record intentionally contains no presentation pose.
-// Omniphony or another renderer may construct a conservative presentation from
-// this evidence, but must not relabel that construction as authored geometry.
+// audio exists. This record intentionally contains no inferred presentation
+// pose. Omniphony or another renderer may construct a presentation from this
+// evidence, but must not relabel that construction as authored geometry.
 struct spatial_source_evidence {
     std::uint64_t source_id = 0;
     std::uint64_t generation = 0;
@@ -61,11 +82,28 @@ struct spatial_source_evidence {
     std::uint64_t persistent_part_id = 0;
     float persistent_part_confidence = 0.0f;
 
+    spatial_presentation_evidence presentation{};
+
     // This may become true only when the source representation itself carries
     // a position. Stereo pan, signed L/R gains, voice number, spectral role or
     // inferred musical identity are not authored 3-D coordinates.
     bool authored_position_present = false;
     float authored_position[3] = {0.0f, 0.0f, 0.0f};
+};
+
+// Non-owning realtime view over one mono source lane. Ownership stays with the
+// source-specific renderer so this shared model does not impose allocation,
+// interleaving, or synthesis semantics on VGM/SPC.
+struct spatial_audio_lane_view {
+    spatial_audio_lane_kind kind = spatial_audio_lane_kind::dry_source;
+    const float* mono_pcm = nullptr;
+    spatial_source_evidence evidence{};
+};
+
+struct spatial_source_block_view {
+    const spatial_audio_lane_view* lanes = nullptr;
+    std::size_t lane_count = 0;
+    std::size_t frame_count = 0;
 };
 
 // Audio separability is deliberately more precise than a single "has stems"
@@ -152,6 +190,10 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
 
 constexpr float clamp_unit_gain(float value) noexcept {
     return value < -1.0f ? -1.0f : (value > 1.0f ? 1.0f : value);
+}
+
+constexpr float clamp_unit_interval(float value) noexcept {
+    return value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
 }
 
 constexpr bool may_claim_authored_3d(const spatial_source_evidence& source) noexcept {
