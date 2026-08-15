@@ -3,6 +3,8 @@
 #include "../../enhancement/dac_stream_source.h"
 #include "../../enhancement/genesis_state.h"
 #include "../../enhancement/psg_block_capture.h"
+#include "../../enhancement/qsound_block_capture.h"
+#include "../../enhancement/qsound_control_state.h"
 #include "../../enhancement/sn76489_enhanced.h"
 #include "../../enhancement/ym2612_dac_block_capture.h"
 #include "../../enhancement/ym2612_dac_enhanced.h"
@@ -19,6 +21,8 @@ private:
 	gameaudio::vgm::genesis_state m_genesis_state;
 	gameaudio::vgm::psg_block_capture m_psg_capture;
 	gameaudio::vgm::ym2612_dac_block_capture m_dac_capture;
+	gameaudio::vgm::qsound_block_capture m_qsound_capture;
+	gameaudio::vgm::qsound_control_state m_qsound_state;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
 	std::array<gameaudio::vgm::ym2612_pcm_stream, 256> m_pcm_streams;
@@ -28,6 +32,8 @@ private:
 	std::array<bool, 2> m_psg_shadow_valid{{false, false}};
 	std::array<bool, 2> m_dac_present{{false, false}};
 	std::array<bool, 2> m_dac_shadow_valid{{false, false}};
+	bool m_qsound_present = false;
+	bool m_qsound_shadow_valid = false;
 
 	bool m_source_capture_active = false;
 	bool m_shadow_configured = false;
