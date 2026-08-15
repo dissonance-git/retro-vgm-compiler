@@ -58,6 +58,9 @@ inline qsound_recomposition_result qsound_recompose_reference_channel(
 inline bool qsound_reference_frame_recomposes_exactly(
     const qsound_native_mix_frame& frame) noexcept
 {
+    if (!frame.accounting_valid)
+        return false;
+
     for (std::size_t ch = 0; ch < 2; ++ch) {
         const qsound_recomposition_result recomposed = qsound_recompose_reference_channel(
             frame.wet_post_delay[ch], frame.dry_post_delay[ch]);
