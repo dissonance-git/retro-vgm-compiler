@@ -23,7 +23,7 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/model/spatial_source_test.cpp -o /tmp/spatial_source_test
           /tmp/spatial_source_test
-      - name: QSound source controls and native audio sidecar
+      - name: QSound source controls and native evidence sidecars
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_spatial_source_test.cpp -o /tmp/qsound_spatial_source_test
@@ -34,6 +34,12 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_native_source_capture_test.cpp -o /tmp/qsound_native_source_capture_test
           /tmp/qsound_native_source_capture_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_native_mix_capture_test.cpp -o /tmp/qsound_native_mix_capture_test
+          /tmp/qsound_native_mix_capture_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_reference_recomposition_test.cpp -o /tmp/qsound_reference_recomposition_test
+          /tmp/qsound_reference_recomposition_test
       - name: Behavioral equivalence controls
         run: |
           python3 -B tools/nes_pulse_behavioral_equivalence.py
