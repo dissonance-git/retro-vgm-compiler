@@ -10,6 +10,7 @@
 #include "../../enhancement/qsound_native_source_capture.h"
 #include "../../enhancement/qsound_native_source_window.h"
 #include "../../enhancement/qsound_native_time_map.h"
+#include "../../enhancement/qsound_spatial_source_bus.h"
 #include "../../enhancement/sn76489_enhanced.h"
 #include "../../enhancement/ym2612_dac_block_capture.h"
 #include "../../enhancement/ym2612_dac_enhanced.h"
@@ -33,6 +34,7 @@ private:
 	gameaudio::vgm::qsound_native_time_map m_qsound_consumer_time_map;
 	gameaudio::vgm::qsound_native_source_window m_qsound_consumer_source_window;
 	gameaudio::vgm::qsound_consumer_source_storage m_qsound_consumer_source_storage;
+	gameaudio::vgm::qsound_spatial_source_bus_storage m_qsound_spatial_source_bus;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
 	std::array<gameaudio::vgm::ym2612_pcm_stream, 256> m_pcm_streams;
