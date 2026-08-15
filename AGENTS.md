@@ -26,7 +26,11 @@ Direct user correction outranks project prose.
 
 ## Project scope
 
-Game Music Interpreter owns executable understanding, musical analysis, and source-native rendering of digital game music across the full vertical route from encoded data to listener-level musical understanding.
+Game Music Interpreter exists primarily to build holistic musical understanding of digital game soundtracks. Executable understanding, source recovery, device/chip modeling, perceptual organization, provenance, and source-native rendering are supporting capabilities that make that musical understanding deeper, more accurate, more specific, and more defensible.
+
+The ideal system should be able to discuss a game's score with the integrated understanding of a strong critic, composer/musician, producer, and musicologist: composition, arrangement, harmony, rhythm, melody, form, timbre, sound design, dramatic/game function, thematic relations, soundtrack-scale identity, stylistic lineage, and meaningful exceptions. It should seem to have internalized the musical logic of the score from the inside without inventing undocumented creator intent.
+
+See `docs/holistic-soundtrack-understanding.md`.
 
 It may own:
 
@@ -38,10 +42,35 @@ It may own:
 - source, performance, device, sample, and routing state;
 - provenance-aware musical analysis;
 - listener-level musical organization grounded in lower evidence;
+- soundtrack-scale composition, arrangement, thematic, dramatic, stylistic, and critical models;
 - deterministic fixtures and corpus tooling;
 - playback/front-end bridges.
 
 VGM/VGZ and SPC are important source families, not the project ontology.
+
+## North-star priority
+
+The top layer is the objective. The lower layers are microscopes and support structures.
+
+```text
+PRIMARY
+holistic understanding of the soundtrack as a musical world
+
+SECONDARY BUT OFTEN NECESSARY
+track/part/event analysis
+perceptual organization
+source / driver / device reconstruction
+exact technical provenance
+rendering and tooling
+```
+
+Do not measure progress mainly by how much implementation state has been decoded. Measure whether the work materially improves the system's ability to understand a soundtrack, a track's musical logic, a relation among tracks, a compositional/arranging habit, a dramatic function, or a meaningful ambiguity.
+
+A low-level investigation is primary research when it discriminates among important musical hypotheses. Examples include proving that an apparent delay is programmed counterpoint, recovering persistent parts that reveal voice leading, distinguishing authored articulation from an emulator artifact, or separating composition from implementation in an attribution problem.
+
+A technically exact result that does not improve the musical model may still be valuable infrastructure, but it is supporting work rather than the project destination.
+
+`explain why these bytes became this musical moment` is therefore an optional depth capability. It is powerful evidence descent, not the headline product.
 
 ## Project boundaries
 
@@ -90,7 +119,7 @@ auditory organization
         ↓
 listener musical model of the song
         ↓
-analysis / discourse / response / forensics
+track and soundtrack-scale analysis / discourse / response / forensics
 ```
 
 No layer is allowed to impersonate another. Raw bytes are not automatically notes. Registers are not automatically musical parts. PCM is not automatically auditory organization. An auditory stream is not automatically a melody, accompaniment role, section, cadence, or song-form interpretation. A listener response is not the same thing as a listener's musical understanding.
@@ -200,6 +229,8 @@ Examples:
 
 Generic bus processing is a fallback, not the design center.
 
+This rule governs implementation work. It does not mean bottom-up technical work outranks soundtrack-level understanding when choosing research priorities.
+
 ## Shared-core rule
 
 A mechanism becomes shared only when materially different source families genuinely require the same abstraction and sharing does not erase useful source information.
@@ -227,7 +258,7 @@ literature → pressure-test general analytical claims
 
 Pin repository commits when behavior matters. Record source provenance. Respect licenses. Do not churn imported upstream bytes or line endings.
 
-A research pass should end in one of: an executable mechanism, a regression, a bounded negative result, a stronger evidence rule, or a clearly stated next discriminating test.
+A research pass should end in one of: an improved musical model, a discriminating soundtrack/track analysis, an executable mechanism, a regression, a bounded negative result, a stronger evidence rule, or a clearly stated next discriminating test.
 
 ## Corpus law
 
@@ -240,6 +271,8 @@ A research pass should end in one of: an executable mechanism, a regression, a b
 - A valid file is not automatically an authentic or complete execution witness.
 
 The corpus should contain both confirmations and counterexamples for proposed abstractions.
+
+The corpus should also support soundtrack-level tests: multiple cues from the same game, contrasting cue functions, thematic relations, transformed reprises, stylistic exceptions, and where possible documentary/contextual controls.
 
 ## Testing
 
@@ -256,24 +289,30 @@ Important mechanisms need more than synthetic unit tests. Use whichever controls
 - paired preserved representations;
 - reference-vs-enhanced captures;
 - auditory/perceptual controls where the claim crosses into heard organization;
-- listening tests for perceptual quality and listener-level musical interpretation where appropriate.
+- listening tests for perceptual quality and listener-level musical interpretation where appropriate;
+- whole-soundtrack reviews tested for specificity, cross-track coherence, explanatory depth, competing interpretations, and evidence descent;
+- counterfactual musical questions that test whether the model learned the soundtrack's own grammar rather than generic genre clichés.
 
 Do not call CI green unless the runner actually executed successfully. A blocked runner is not a pass or a failure of the code.
 
 ## Current analytical frontier
 
-The project already has device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, and a broad cross-architecture corpus.
+The project already has substantial lower infrastructure: device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, source-native rendering experiments, and a broad cross-architecture corpus.
 
-The next high-information work is time-bearing performance reconstruction across non-Genesis controls, followed by explicit bridges into heard musical organization:
+The next high-information frontier is to make those capabilities converge upward into holistic soundtrack models rather than continuing to expand the lower stack indefinitely.
 
-1. recover device-native pitch/voice/sample trajectories;
-2. separate physical episodes from persistent parts;
-3. compare executable-rip and downstream-trace representations where a same-work control exists;
-4. build bounded source/driver adapters that can be followed forward into device state;
-5. push higher into acoustic contribution and auditory organization without discarding source identity;
-6. recover listener-level roles, phrases, sections, form, tension/release, and other song-level relations only where the lower evidence supports them;
-7. test whether natural human musical descriptions can be generated from that vertical evidence path without reducing them to one-feature phrase rules;
-8. only then strengthen style and attribution claims on those controls.
+Priority order:
+
+1. choose representative complete or near-complete soundtrack cases with multiple cue functions and enough audio/source/context to support serious analysis;
+2. produce a whole-score model first: musical identity, track families, contrasts, recurring grammar, thematic/timbral networks, dramatic/game function, stylistic lineage and meaningful exceptions;
+3. pressure-test that model on representative individual cues using melody, rhythm, bass, harmony, form, orchestration, sound design, production and loop/game-function analysis together;
+4. test cross-track reasoning: transformed motifs, shared schemas, arrangement habits, soundtrack-scale pacing, reprises and changed contextual meaning;
+5. test counterfactual understanding: plausible continuations, variations, substitutions and transformations under the soundtrack's own musical grammar;
+6. descend into source/driver/device/perceptual machinery only where it resolves a meaningful musical ambiguity, strengthens a higher claim, or provides an unusually strong explanatory bridge;
+7. keep lower infrastructure moving where necessary for missing formats and source-native rendering, but do not let technical completeness substitute for musical understanding;
+8. evaluate the final result as a critic/musicologist/composer-level account of the soundtrack, with technical evidence available underneath rather than dominating the surface.
+
+The default question is no longer `what lower layer can we decode next?` It is `what prevents us from understanding this soundtrack more completely?`
 
 ## Write discipline
 
