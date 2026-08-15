@@ -11,6 +11,14 @@ std::uint32_t fake_major() { return 0; }
 std::uint32_t fake_minor() { return 3; }
 std::uint32_t old_minor() { return 2; }
 
+std::int32_t fake_reset(void* processor)
+{
+    auto* reset_count = static_cast<int*>(processor);
+    assert(reset_count != nullptr);
+    ++*reset_count;
+    return 0;
+}
+
 std::int32_t fake_process(
     void* processor,
     const float* input,
@@ -52,20 +60,25 @@ int main()
 {
     using namespace vgmtooling::model;
 
-    int opaque_processor = 1;
+    int opaque_processor = 0;
     omniphony_realtime_client<4, 4> client{};
     assert(!client.bind(
         static_cast<void*>(&opaque_processor),
         fake_major,
         old_minor,
+        fake_reset,
         fake_process));
     assert(!client.bound());
     assert(client.bind(
         static_cast<void*>(&opaque_processor),
         fake_major,
         fake_minor,
+        fake_reset,
         fake_process));
     assert(client.bound());
+
+    assert(client.reset_renderer());
+    assert(opaque_processor == 1);
 
     constexpr std::size_t frames = 3;
     const std::array<float, frames> lead{0.1f, 0.2f, 0.3f};
@@ -114,5 +127,6 @@ int main()
 
     client.unbind();
     assert(!client.bound());
+    assert(!client.reset_renderer());
     return 0;
 }
