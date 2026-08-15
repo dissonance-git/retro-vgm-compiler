@@ -19,6 +19,9 @@
     <ClInclude Include="..\enhancement\genesis_state.h" />
     <ClInclude Include="..\enhancement\sn76489_enhanced.h" />
     <ClInclude Include="..\enhancement\psg_block_capture.h" />
+    <ClInclude Include="..\enhancement\qsound_block_capture.h" />
+    <ClInclude Include="..\enhancement\qsound_control_state.h" />
+    <ClInclude Include="..\enhancement\qsound_native_source_capture.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_enhanced.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_block_capture.h" />
     <ClInclude Include="..\enhancement\dac_stream_source.h" />
