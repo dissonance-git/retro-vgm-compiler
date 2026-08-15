@@ -1,8 +1,10 @@
 # VGM / SPC designer-grade closure
 
 Status: active closure control  
-Scope: stable VGM through 1.71 and SPC v0.30 / S-SMP / S-DSP execution  
+Scope: VGM 1.72d and SPC v0.30 / S-SMP / S-DSP execution  
 Purpose: replace informal percentage estimates with executable stop conditions for the claim "understood as if we designed it"
+
+`VGM 1.72d` is this project's shorthand for the complete currently documented upstream VGM 1.72 beta surface, with `d` meaning the diss closure target. It is not an upstream VGM revision number. Upstream beta provenance remains attached wherever compatibility matters.
 
 ## Definition of 100%
 
@@ -24,7 +26,7 @@ for every higher claim that is not uniquely recoverable
 
 A proven information-loss boundary is closure. An unexplained unknown is not.
 
-The claim is always scoped. VGM 1.72 is currently beta and is not included in the stable-VGM closure target. A future stable revision reopens the format-level closure gate.
+The claim is always scoped. `VGM 1.72d` includes stable VGM through 1.71 plus the complete currently documented 1.72 beta delta. If upstream changes the beta surface, only the affected closure gates reopen.
 
 ## Validation method
 
@@ -37,7 +39,17 @@ Use four independent evidence classes where they exist:
 
 For emulation/rendering claims, compare state trajectories and continuous output rather than only successful playback. Perceptual enhancement is a separate listening-validation axis and must not be used to certify reference accuracy.
 
-## VGM 1.71 closure matrix
+## VGM 1.72d closure matrix
+
+### Current upstream 1.72 beta delta included by 1.72d
+
+The currently documented beta extension is small but real:
+
+- header `0xE4`: Atari Lynx Mikey input clock;
+- command `0x40 aa dd`: write `dd` to Mikey register `aa`;
+- PCM data block type `0x08`: Mikey PCM data.
+
+These are part of `1.72d`; the nickname does not change their upstream semantics.
 
 ### A. Container and transport
 
@@ -45,7 +57,7 @@ Required before format-level closure:
 
 - [x] VGM/VGZ identification and gzip handling;
 - [x] version-aware data offset;
-- [x] version-aware chip-clock header fields through 1.71;
+- [x] version-aware chip-clock header fields through the current upstream 1.72 beta, including Mikey at `0xE4`;
 - [x] legacy 1.00/1.01 overloaded YM clock interpretation;
 - [x] dual-chip and selected bit-31 variant semantics;
 - [x] wait/sample accounting;
@@ -53,14 +65,14 @@ Required before format-level closure:
 - [x] variable-length `0x67` data blocks;
 - [x] `0x68` PCM RAM write framing;
 - [x] DAC Stream Control `0x90-0x95` framing;
-- [x] command-width families sufficient to walk the complete 1.71 stream;
+- [x] command-width families sufficient to walk the current 1.72 beta stream, including `0x40` framing;
 - [ ] EoF-offset consistency as an explicit validation state;
 - [ ] GD3 framing/offset/version/string-block validation;
 - [ ] reserved-header-byte validation;
 - [ ] VGM 1.70 extra-header bounds, second-chip clocks and chip-volume list parsing;
-- [ ] data-block type classification/provenance, including unknown-type skip behavior;
-- [ ] version gates that distinguish stable 1.71 commands from 1.72 beta additions;
-- [ ] synthetic command-table regression covering every assigned and reserved 1.71 opcode family.
+- [ ] data-block type classification/provenance, including Mikey PCM block `0x08` and unknown-type skip behavior;
+- [ ] explicit stable/beta provenance in audit output;
+- [ ] synthetic command-table regression covering every assigned and reserved opcode family through the current upstream 1.72 beta.
 
 Format-level `100%` is blocked until every unchecked item above is executable and the real corpus remains admitted.
 
@@ -85,6 +97,8 @@ Genesis YM2612/SN76489 is currently the deepest device vertical slice. Important
 - coherent isolated six-channel YM2612 rendering from one shared FM engine, preserving global/LFO/phase state and exact VGM-tick scheduling.
 
 Do not obtain six stems by instantiating six unrelated emulators.
+
+Mikey is part of the `1.72d` format surface, but Mikey device-execution closure remains a separate device task. Correctly parsing a `0x40` write or `0x08` PCM block is not equivalent to reproducing Atari Lynx audio behavior.
 
 ### C. Source/musical inversion
 
