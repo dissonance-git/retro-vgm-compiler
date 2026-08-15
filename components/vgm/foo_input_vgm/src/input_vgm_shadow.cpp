@@ -52,7 +52,7 @@ void input_vgm::configure_enhancement_shadow()
 		else if (device.type == DEVID_QSOUND && instance == 0)
 		{
 			// VGM command C4 addresses the single QSound instance used by the
-			// format/player path. The command shadow and native audio tap remain
+			// format/player path. Source audio and native mix accounting are
 			// evidence sidecars; libvgm stays the only audible renderer.
 			m_qsound_present = true;
 			m_qsound_shadow_valid = true;
@@ -60,6 +60,11 @@ void input_vgm::configure_enhancement_shadow()
 			m_qsound_audio_shadow_valid = true;
 #else
 			m_qsound_audio_shadow_valid = false;
+#endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+			m_qsound_mix_shadow_valid = true;
+#else
+			m_qsound_mix_shadow_valid = false;
 #endif
 			m_qsound_state.reset();
 		}
@@ -80,6 +85,29 @@ void input_vgm::qsound_source_callback(void* user_param, const VGM_QSOUND_SOURCE
 		event->nativeSample,
 		event->source,
 		static_cast<size_t>(event->sourceCount));
+}
+#endif
+
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+void input_vgm::qsound_mix_callback(void* user_param, const VGM_QSOUND_MIX_FRAME* event)
+{
+	input_vgm* self = static_cast<input_vgm*>(user_param);
+	if (self == nullptr || event == nullptr || !self->m_qsound_mix_capture_active)
+		return;
+
+	gameaudio::vgm::qsound_native_mix_frame frame;
+	frame.native_sample = event->nativeSample;
+	frame.accounting_valid = event->accountingValid != 0;
+	frame.echo_input = event->echoInput;
+	frame.echo_output = event->echoOutput;
+	for (size_t ch = 0; ch < 2; ++ch)
+	{
+		frame.wet_post_delay[ch] = event->wetPostDelay[ch];
+		frame.dry_post_delay[ch] = event->dryPostDelay[ch];
+		frame.reference_output[ch] = event->output[ch];
+	}
+
+	self->m_qsound_mix_capture.observe(event->chipID, event->sampleRate, &frame);
 }
 #endif
 
@@ -124,6 +152,11 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 		self->m_qsound_audio_shadow_valid = self->m_qsound_present;
 #else
 		self->m_qsound_audio_shadow_valid = false;
+#endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+		self->m_qsound_mix_shadow_valid = self->m_qsound_present;
+#else
+		self->m_qsound_mix_shadow_valid = false;
 #endif
 		self->m_shadow_replay_sample = 0;
 		return;
@@ -353,6 +386,7 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 	m_dac_capture.begin_block(block_start);
 	m_qsound_capture.begin_block(block_start);
 	m_qsound_audio_capture.begin_block();
+	m_qsound_mix_capture.begin_block();
 
 	bool qsound_audio_attached = false;
 #ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
@@ -365,31 +399,53 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 	}
 #endif
 	m_qsound_audio_capture_active = qsound_audio_attached;
+
+	bool qsound_mix_attached = false;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+	if (m_qsound_present && m_qsound_mix_shadow_valid && m_vgm_player != nullptr)
+	{
+		qsound_mix_attached =
+			m_vgm_player->SetQSoundMixObserver(&input_vgm::qsound_mix_callback, this) != 0;
+		if (!qsound_mix_attached)
+			m_qsound_mix_shadow_valid = false;
+	}
+#endif
+	m_qsound_mix_capture_active = qsound_mix_attached;
 	m_source_capture_active = true;
 
 	bool result = false;
 	try
 	{
-		// This remains the only audible renderer. The QSound source callback is
-		// a read-only sidecar around the same native frames pulled by libvgm's
-		// resampler; p_chunk is still produced solely by the reference path.
+		// This remains the only audible renderer. QSound source and native-mix
+		// callbacks are read-only evidence sidecars around the same native frames;
+		// p_chunk is still produced solely by the historical reference path.
 		result = input_base::decode_run(p_chunk, p_abort);
 	}
 	catch (...)
 	{
 		m_source_capture_active = false;
 		m_qsound_audio_capture_active = false;
+		m_qsound_mix_capture_active = false;
 #ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
 		if (qsound_audio_attached && m_vgm_player != nullptr)
 			m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
+#endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+		if (qsound_mix_attached && m_vgm_player != nullptr)
+			m_vgm_player->SetQSoundMixObserver(nullptr, nullptr);
 #endif
 		throw;
 	}
 	m_source_capture_active = false;
 	m_qsound_audio_capture_active = false;
+	m_qsound_mix_capture_active = false;
 #ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
 	if (qsound_audio_attached && m_vgm_player != nullptr)
 		m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
+#endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+	if (qsound_mix_attached && m_vgm_player != nullptr)
+		m_vgm_player->SetQSoundMixObserver(nullptr, nullptr);
 #endif
 
 	if (!result)
@@ -397,6 +453,25 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 
 	if (qsound_audio_attached && !m_qsound_audio_capture.valid())
 		m_qsound_audio_shadow_valid = false;
+	if (qsound_mix_attached && !m_qsound_mix_capture.valid())
+		m_qsound_mix_shadow_valid = false;
+
+	// Both observers originate from the same coherent superctr native update.
+	// A disagreement is evidence corruption, not a resampling problem to repair.
+	if (qsound_audio_attached && qsound_mix_attached &&
+		m_qsound_audio_shadow_valid && m_qsound_mix_shadow_valid)
+	{
+		const bool aligned =
+			m_qsound_audio_capture.native_sample_rate() == m_qsound_mix_capture.native_sample_rate() &&
+			m_qsound_audio_capture.count() == m_qsound_mix_capture.count() &&
+			(m_qsound_audio_capture.count() == 0 ||
+				m_qsound_audio_capture.first_native_sample() == m_qsound_mix_capture.first_native_sample());
+		if (!aligned)
+		{
+			m_qsound_audio_shadow_valid = false;
+			m_qsound_mix_shadow_valid = false;
+		}
+	}
 
 	replay_captured_sources(m_render_done);
 	return true;
@@ -407,15 +482,21 @@ void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)
 	configure_enhancement_shadow();
 	m_source_capture_active = false;
 	m_qsound_audio_capture_active = false;
+	m_qsound_mix_capture_active = false;
 #ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
 	if (m_vgm_player != nullptr)
 		m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
 #endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER
+	if (m_vgm_player != nullptr)
+		m_vgm_player->SetQSoundMixObserver(nullptr, nullptr);
+#endif
 	m_qsound_audio_capture.begin_block();
+	m_qsound_mix_capture.begin_block();
 
 	// libvgm emits reset/replayed source events during seek. The command tap
 	// rebuilds source controls while the historical QSound renderer remains
-	// authoritative. Native source audio is captured only during real decode
+	// authoritative. Native source/mix audio is captured only during real decode
 	// blocks, never while seeking through discarded audio.
 	input_base::decode_seek(p_seconds, p_abort);
 
