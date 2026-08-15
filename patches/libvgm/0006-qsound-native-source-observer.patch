@@ -1,0 +1,248 @@
+diff --git a/emu/cores/qsound_ctr.h b/emu/cores/qsound_ctr.h
+--- a/emu/cores/qsound_ctr.h
++++ b/emu/cores/qsound_ctr.h
+@@ -3,7 +3,22 @@
+ 
+ #include "../EmuStructs.h"
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#define QSOUND_CTR_SOURCE_COUNT 19
++
++typedef void (*QSOUND_CTR_SOURCE_CB)(void* userParam,
++		UINT64 nativeSample, UINT32 sampleRate, const INT16* source);
++
+ extern DEV_DEF devDef_QSound_ctr;
++
++void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void* cbParam);
++
++#ifdef __cplusplus
++}
++#endif
+ 
+ #endif	// __QSOUND_CTR_H__
+diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
+--- a/emu/cores/qsound_ctr.c
++++ b/emu/cores/qsound_ctr.c
+@@ -86,6 +86,11 @@ struct qsound_chip {
+ 	int state_counter;
+ 	UINT8 ready_flag;
+ 
++	QSOUND_CTR_SOURCE_CB source_cb;
++	void* source_cb_param;
++	UINT32 source_sample_rate;
++	UINT64 source_sample_index;
++
+ 	UINT8 opt_nowait;
+ 
+ 	UINT16 *register_map[256];
+@@ -155,7 +160,8 @@ static UINT8 device_start_qsound_ctr(const DEV_GEN_CFG* cfg, DEV_INFO* retDevInf
+ 	init_register_map(chip);
+ 
+ 	chip->_devData.chipInf = chip;
+-	INIT_DEVINF(retDevInf, &chip->_devData, cfg->clock / 2 / 1248, &devDef_QSound_ctr);
++	chip->source_sample_rate = cfg->clock / 2 / 1248;
++	INIT_DEVINF(retDevInf, &chip->_devData, chip->source_sample_rate, &devDef_QSound_ctr);
+ 
+ 	return 0x00;
+ }
+@@ -178,6 +184,7 @@ static void device_reset_qsound_ctr(void* info)
+ 	chip->state = 0;
+ 	chip->state_counter = 0;
++	chip->source_sample_index = 0;
+ 
+ 	return;
+ }
+@@ -278,14 +285,35 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 	
+ 	if (chip->romData == NULL)
+ 	{
++		static const INT16 silent_sources[QSOUND_CTR_SOURCE_COUNT] = {0};
++		UINT32 silentSmpl;
++
+ 		memset(outputs[0], 0, samples * sizeof(*outputs[0]));
+ 		memset(outputs[1], 0, samples * sizeof(*outputs[1]));
++		if (chip->source_cb != NULL)
++		{
++			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
++			{
++				chip->source_cb(chip->source_cb_param, chip->source_sample_index,
++					chip->source_sample_rate, silent_sources);
++				chip->source_sample_index ++;
++			}
++		}
++		else
++		{
++			chip->source_sample_index += samples;
++		}
+ 		return;
+ 	}
+ 
+ 	for (curSmpl = 0; curSmpl < samples; curSmpl ++)
+ 	{
+ 		update_sample(chip);
+ 		outputs[0][curSmpl] = chip->out[0];
+ 		outputs[1][curSmpl] = chip->out[1];
++		if (chip->source_cb != NULL)
++			chip->source_cb(chip->source_cb_param, chip->source_sample_index,
++				chip->source_sample_rate, chip->voice_output);
++		chip->source_sample_index ++;
+ 	}
+ 
+ 	return;
+ }
++
++void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void* cbParam)
++{
++	struct qsound_chip* chip = (struct qsound_chip*)info;
++	chip->source_cb = cbFunc;
++	chip->source_cb_param = cbParam;
++	return;
++}
+ 
+ static void qsoundc_alloc_rom(void* info, UINT32 memsize)
+ {
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -7,6 +7,7 @@
+ #include "../utils/StrUtils.h"
+ #include "helper.h"
+ #include "playerbase.hpp"
++#include "../emu/cores/qsound_ctr.h"
+ #include "../utils/DataLoader.h"
+ #include "../emu/logging.h"
+ #include "dblk_compr.h"
+@@ -104,6 +105,23 @@ typedef void (*VGM_DAC_STREAM_SOURCE_CB)(void* userParam,
+ 		const VGM_DAC_STREAM_SOURCE_EVENT* event);
+ 
++#define LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER 1
++#define VGM_QSOUND_SOURCE_COUNT QSOUND_CTR_SOURCE_COUNT
++
++struct VGM_QSOUND_SOURCE_FRAME
++{
++	UINT8 chipID;
++	UINT32 sampleRate;
++	UINT64 nativeSample;
++	const INT16* source;
++	UINT32 sourceCount;
++};
++
++typedef void (*VGM_QSOUND_SOURCE_OBSERVER_CB)(void* userParam,
++		const VGM_QSOUND_SOURCE_FRAME* event);
++
+ 
+ class VGMPlayer : public PlayerBase
+ {
+@@ -168,6 +186,11 @@ protected:
+ 		UINT16 startAddrCache[16];	// QSound register 0x01
+ 		UINT16 pitchCache[16];		// QSound register 0x02
+ 	};
++	struct QSOUND_SOURCE_OBSERVER_CONTEXT
++	{
++		VGMPlayer* player;
++		UINT8 chipID;
++	};
+ 	
+ public:
+@@ -238,6 +261,7 @@ public:
+ 	const std::vector<DACSTRM_DEV>& GetStreamDevInfo(void) const;
+ 	void SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam);
+ 	void SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam);
++	UINT8 SetQSoundSourceObserver(VGM_QSOUND_SOURCE_OBSERVER_CB cbFunc, void* cbParam);
+ 	
+ 	UINT8 Start(void);
+@@ -289,6 +313,8 @@ protected:
+ 	void NotifyDACStreamSource(UINT8 type, const DACSTRM_DEV& stream,
+ 		UINT32 startOffset = 0, UINT32 length = 0);
++	static void QSoundSourceObserverCB(void* userParam, UINT64 nativeSample,
++		UINT32 sampleRate, const INT16* source);
+ 
+ 	void ParseFileForFMClocks();
+@@ -389,6 +415,9 @@ protected:
+ 	void* _commandObserverParam;
+ 	VGM_DAC_STREAM_SOURCE_CB _dacStreamObserver;
+ 	void* _dacStreamObserverParam;
++	VGM_QSOUND_SOURCE_OBSERVER_CB _qsoundSourceObserver;
++	void* _qsoundSourceObserverParam;
++	QSOUND_SOURCE_OBSERVER_CONTEXT _qsoundSourceObserverContext[2];
+ 	//PLAYER_EVENT_CB _eventCbFunc;
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -155,8 +155,14 @@ VGMPlayer::VGMPlayer() :
+ 	_commandObserver(NULL),
+ 	_commandObserverParam(NULL),
+ 	_dacStreamObserver(NULL),
+-	_dacStreamObserverParam(NULL)
++	_dacStreamObserverParam(NULL),
++	_qsoundSourceObserver(NULL),
++	_qsoundSourceObserverParam(NULL)
+ {
++	_qsoundSourceObserverContext[0].player = this;
++	_qsoundSourceObserverContext[0].chipID = 0;
++	_qsoundSourceObserverContext[1].player = this;
++	_qsoundSourceObserverContext[1].chipID = 1;
+ 	UINT8 retVal;
+ 	UINT16 optChip;
+@@ -212,6 +218,9 @@ VGMPlayer::~VGMPlayer()
+ 	_commandObserverParam = NULL;
+ 	_dacStreamObserver = NULL;
+ 	_dacStreamObserverParam = NULL;
++	SetQSoundSourceObserver(NULL, NULL);
++	_qsoundSourceObserver = NULL;
++	_qsoundSourceObserverParam = NULL;
+ 	
+ 	if (_playState & PLAYSTATE_PLAY)
+@@ -981,6 +990,54 @@ void VGMPlayer::NotifyDACStreamSource(UINT8 type, const DACSTRM_DEV& stream,
+ 	return;
+ }
+ 
++UINT8 VGMPlayer::SetQSoundSourceObserver(VGM_QSOUND_SOURCE_OBSERVER_CB cbFunc, void* cbParam)
++{
++	UINT8 hooked = 0;
++	_qsoundSourceObserver = cbFunc;
++	_qsoundSourceObserverParam = cbParam;
++
++	for (size_t curDev = 0; curDev < _devices.size(); curDev ++)
++	{
++		CHIP_DEVICE& chipDev = _devices[curDev];
++		if (chipDev.chipType != DEVID_QSOUND || chipDev.chipID >= 2)
++			continue;
++		if (chipDev.base.defInf.dataPtr == NULL || chipDev.base.defInf.devDef == NULL)
++			continue;
++		if (chipDev.base.defInf.devDef->coreID != FCC_CTR_)
++			continue;
++
++		qsoundc_set_source_callback(chipDev.base.defInf.dataPtr,
++			cbFunc != NULL ? &VGMPlayer::QSoundSourceObserverCB : NULL,
++			cbFunc != NULL ? &_qsoundSourceObserverContext[chipDev.chipID] : NULL);
++		hooked ++;
++	}
++	return hooked;
++}
++
++/*static*/ void VGMPlayer::QSoundSourceObserverCB(void* userParam, UINT64 nativeSample,
++		UINT32 sampleRate, const INT16* source)
++{
++	QSOUND_SOURCE_OBSERVER_CONTEXT* context = (QSOUND_SOURCE_OBSERVER_CONTEXT*)userParam;
++	if (context == NULL || context->player == NULL)
++		return;
++	VGMPlayer* oThis = context->player;
++	if (oThis->_qsoundSourceObserver == NULL)
++		return;
++
++	VGM_QSOUND_SOURCE_FRAME event;
++	event.chipID = context->chipID;
++	event.sampleRate = sampleRate;
++	event.nativeSample = nativeSample;
++	event.source = source;
++	event.sourceCount = VGM_QSOUND_SOURCE_COUNT;
++	oThis->_qsoundSourceObserver(oThis->_qsoundSourceObserverParam, &event);
++	return;
++}
++
+ void VGMPlayer::NotifyCommandObserver(UINT8 command)
+ {
