@@ -23,6 +23,12 @@ struct qsound_native_mix_frame {
     // shared echo-input equation, not independent wet stems.
     std::array<std::int16_t, qsound_native_pcm_count> pcm_echo_contribution{};
 
+    // Runtime parameters actually consumed by the shared echo transition on
+    // this fresh tick. They keep block verification on the native clock and do
+    // not require command-to-native timing to be guessed.
+    std::int16_t echo_feedback = 0;
+    std::uint16_t echo_length = 0;
+
     std::int32_t echo_input = 0;
     std::int16_t echo_output = 0;
     std::array<std::int32_t, 2> wet_post_delay{};
