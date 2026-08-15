@@ -34,10 +34,17 @@ int main() {
     CHECK(r.status == qsound_recomposition_status::historical_int32_overflow_domain);
 
     qsound_native_mix_frame frame;
+    frame.accounting_valid = true;
     frame.wet_post_delay = {{8192, -8193}};
     frame.dry_post_delay = {{0, 0}};
     frame.reference_output = {{1, -1}};
     CHECK(qsound_reference_frame_recomposes_exactly(frame));
+
+    // Timeline presence is not enough. Init/filter-refresh ticks carry no fresh
+    // normal-render accounting and therefore cannot earn recomposition.
+    frame.accounting_valid = false;
+    CHECK(!qsound_reference_frame_recomposes_exactly(frame));
+    frame.accounting_valid = true;
 
     frame.reference_output[1] = 0;
     CHECK(!qsound_reference_frame_recomposes_exactly(frame));
