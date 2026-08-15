@@ -66,15 +66,15 @@ Required before format-level closure:
 - [x] `0x68` PCM RAM write framing;
 - [x] DAC Stream Control `0x90-0x95` framing;
 - [x] command-width families sufficient to walk the current 1.72 beta stream, including `0x40` framing;
-- [ ] EoF-offset consistency as an explicit validation state;
-- [ ] GD3 framing/offset/version/string-block validation;
-- [ ] reserved-header-byte validation;
-- [ ] VGM 1.70 extra-header bounds, second-chip clocks and chip-volume list parsing;
-- [ ] data-block type classification/provenance, including Mikey PCM block `0x08` and unknown-type skip behavior;
-- [ ] explicit stable/beta provenance in audit output;
+- [x] EoF-offset consistency as an explicit validation state;
+- [x] GD3 framing/offset/version/string-block validation;
+- [ ] reserved-header-byte and reserved-bit validation;
+- [x] VGM 1.70 extra-header bounds, second-chip clocks and chip-volume list parsing;
+- [x] data-block type classification/provenance, including Mikey PCM block `0x08` and unknown-type skip behavior;
+- [x] explicit stable/beta provenance in audit output;
 - [ ] synthetic command-table regression covering every assigned and reserved opcode family through the current upstream 1.72 beta.
 
-Format-level `100%` is blocked until every unchecked item above is executable and the real corpus remains admitted.
+The first five newly closed transport gates above are protected by `tests/vgm/test_vgm_corpus_audit.py`, including a synthetic `1.72d` Mikey file, a `1.70` extra-header + GD3 file, invalid EOF rejection, and unknown ROM/RAM block visibility. Format-level `100%` remains blocked on the two unchecked negative/exhaustive gates and real-corpus admission.
 
 ### B. Device execution
 
