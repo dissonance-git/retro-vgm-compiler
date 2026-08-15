@@ -3,6 +3,7 @@
 #include "../../../model/spatial_source.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace gameaudio::vgm {
