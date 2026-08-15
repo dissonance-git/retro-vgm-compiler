@@ -18,7 +18,7 @@ jobs:
         run: python3 -B -m unittest discover -s tests/vgm -p 'test_*.py'
       - name: SPC Python audits
         run: python3 -B -m unittest discover -s tests/spc -p 'test_*.py'
-      - name: Spatial source authority contract
+      - name: Spatial source authority and realtime musical scene
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/model/spatial_source_test.cpp -o /tmp/spatial_source_test
@@ -26,6 +26,12 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/model/spatial_source_timed_evidence_test.cpp -o /tmp/spatial_source_timed_evidence_test
           /tmp/spatial_source_timed_evidence_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_spatial_scene_dsp_test.cpp -o /tmp/realtime_spatial_scene_dsp_test
+          /tmp/realtime_spatial_scene_dsp_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_spatial_observer_test.cpp -o /tmp/realtime_musical_spatial_observer_test
+          /tmp/realtime_musical_spatial_observer_test
       - name: QSound source controls and native evidence sidecars
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
