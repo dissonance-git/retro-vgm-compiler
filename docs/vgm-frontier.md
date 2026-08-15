@@ -93,10 +93,12 @@ The repo carries a libvgm patch series that exposes realtime playback state with
    - refresh stream pointers if an appended PCM block reallocates a bank
 5. `0005-fix-dac-stream-millisecond-length.patch`
    - convert millisecond stream lengths using `frequency * ms / 1000`
+6. `0006-qsound-native-source-observer.patch`
+   - read-only superctr QSound observation of all 19 pre-pan source samples at the core's native rate, carrying absolute native sample index and native sample rate
 
 The resolved observer remains useful, but the raw `0x90-0x95` decoder now provides an independent spec-level oracle beneath it.
 
-The same realtime observer now feeds QSound source-control evidence from the ordinary VGM `0xC4` command stream. This does not require a new libvgm callback and does not alter reference rendering.
+The ordinary command observer feeds QSound source-control evidence from VGM `0xC4`. The dedicated QSound observer is separate because source audio exists on the QSound core's own native timeline after synthesis and before the device's dry/wet spatial renderer.
 
 ## Genesis source truth
 
@@ -171,6 +173,7 @@ Current authority boundary:
 | decoded dry L/R coefficients | device-authored stereo route evidence |
 | decoded wet L/R coefficients | QSound-specific source-routing evidence |
 | PCM `0xBA..0xC9` echo contribution | signed source-to-shared-echo evidence |
+| superctr `voice_output[19]` | native-rate causal source audio evidence |
 | global `0x93` echo feedback | historical renderer state |
 | global `0xD9` echo delay | historical renderer state |
 | FIR table selection | historical renderer state |
@@ -211,7 +214,7 @@ raw pan 0x130
 
 The gaps and unknown raw pan words are preserved but **not decoded**. The HLE's defensive index clamp is not promoted into source truth because the MAME LLE executes the real DSP ROM rather than that defensive approximation.
 
-### Live VGM shadow now implemented
+### Live VGM control shadow
 
 VGM command `0xC4` carries:
 
@@ -219,7 +222,7 @@ VGM command `0xC4` carries:
 [data MSB] [data LSB] [QSound address]
 ```
 
-The modified foobar path now captures source-facing C4 writes at exact output-sample offsets using the same allocation-free/fail-closed pattern as the Genesis source observers.
+The modified foobar path captures source-facing C4 writes at exact output-sample offsets using the same allocation-free/fail-closed pattern as the Genesis source observers.
 
 Admitted live controls are limited to:
 
@@ -233,29 +236,56 @@ The shadow resets to the recovered DL-1425 initialization state: all 19 pan word
 
 Overflow, malformed commands and out-of-order block timing fail closed.
 
-### Current audible boundary
+### Native source-audio tap now implemented
 
-QSound source **control evidence** is now live. QSound source **audio** is not yet substituted.
-
-libvgm remains the audible historical QSound renderer.
-
-The next audio tap is the decoded QSound `voice_output[19]` point after source synthesis/voice volume but before the four dry/wet pan coefficients are applied. That is the correct causal source boundary for Omniphony.
-
-The intended experiment is therefore:
+The pinned superctr core reports its native QSound sample rate as:
 
 ```text
-same VGM QSound command stream
-        ├─ historical libvgm/QSound renderer → stereo control
-        └─ 19 causal source voices
-              + authored QSound source controls
-              + separately preserved environmental path
-                    ↓
-                 Omniphony
-                    ↓
-           modern full-sphere binaural
+chip clock / 2 / 1248
 ```
 
+libvgm's `RESMPL_STATE` then pulls the number of native core samples needed for each destination/output block. Therefore a QSound native sample is not generally one foobar/output sample.
+
+`0006-qsound-native-source-observer.patch` exposes the 19 `voice_output` samples after source synthesis/voice volume and before the dry/wet pan tables consume them. Each callback frame carries:
+
+- chip instance;
+- native sample rate;
+- absolute native sample index;
+- exactly 19 signed source samples.
+
+The VGMPlayer hook admits only the superctr core. Selecting another QSound implementation does not silently claim equivalent source internals.
+
+`qsound_native_source_capture` copies those borrowed frames into a fixed-capacity block sidecar. The capture fails closed on wrong source count, wrong chip instance under the current model, zero/changing native rate, native-index gap/reordering, null source data or overflow.
+
+The foobar wrapper attaches the callback only around normal reference decode blocks and detaches it on success, exception and seek paths. Discarded seek audio is not admitted into the next audible block's source evidence.
+
+### Current audible boundary
+
+QSound source **control evidence** and native-rate **source-audio evidence** are now live.
+
+QSound source audio is **not substituted into playback**. `p_chunk` still comes from the historical libvgm QSound renderer, which remains the listening/reference control.
+
+The 19-lane sidecar is also **not yet a consumer-rate source bus**. The next causal steps are:
+
+```text
+19 native source lanes
++ exact QSound source controls
++ separately extracted shared environmental return
+        ↓
+one coherent shared-phase native→consumer conversion
+        ↓
+reference-recomposition bounds / A-B control
+        ↓
+Omniphony source bus
+        ↓
+modern full-sphere binaural presentation
+```
+
+Do not instantiate 19 unrelated resamplers. The lanes were produced by one coherent QSound engine and must stay on one phase/time map.
+
 QSound is a historical authored-spatial base and calibration system, not a ceiling. The original two-speaker transfer function remains the scientific control while the modern renderer is free to improve externalization and three-dimensional presentation without rewriting the source controls as fictional coordinates.
+
+See `../research/qsound-native-source-tap.md` for the exact tap and native-time boundary.
 
 ### GitHub and literature controls
 
@@ -535,7 +565,7 @@ The current audit validates declared timing and loops only. It does not propose 
 - uses C++17, optimization and warnings-as-errors;
 - runs every produced executable.
 
-The manual `core-tests` workflow now also owns strict standalone QSound spatial-source and control-capture tests. GitHub-hosted Actions remain unavailable while the account runner is rejected before execution by the platform billing/spending-limit state. Absence of CI is not a pass or a failure.
+The manual `core-tests` workflow now also owns strict standalone QSound spatial-source, control-capture and native-source-capture tests. GitHub-hosted Actions remain unavailable while the account runner is rejected before execution by the platform billing/spending-limit state. Absence of CI is not a pass or a failure.
 
 The QSound regressions currently protect:
 
@@ -546,23 +576,31 @@ The QSound regressions currently protect:
 - PCM-only signed shared-echo contribution;
 - exclusion of global renderer registers from source evidence;
 - exact VGM C4 payload parsing and sample offsets;
+- exact copy of all 19 native pre-pan source samples;
+- explicit native sample rate and absolute native sample index;
+- rejection of native-rate changes, index gaps/reordering, wrong source counts and wrong chip instances;
+- decode-block observer attach/detach and seek exclusion;
 - bounded realtime capture and fail-closed overflow;
+- continued historical ownership of the returned foobar audio chunk;
 - no authored 3-D position claim.
+
+The dependency-free native-source capture ruler has also been compiled locally with C++17 and warnings-as-errors. This is local evidence only, not a substitute for the blocked hosted runner.
 
 ## Next sequence
 
 Do not enable every enhancement or chip family at once.
 
 1. keep the VGM 1.72d format/spec tests as the common transport floor;
-2. admit a small orthogonal real QSound corpus and compare the live C4 shadow against reference QSound behavior;
-3. expose the QSound `voice_output[19]` causal audio point without altering the historical renderer;
-4. preserve the QSound shared/environmental return separately and prove reference recomposition where the renderer is linear enough for that claim;
-5. feed the earned QSound lanes and source evidence to Omniphony while retaining historical QSound stereo as the A/B control;
-6. continue the YM2612 six-stem mature FM backend and clock/resampling work;
-7. admit small orthogonal real corpora for YM2203, YM2608, YM2151, YM2413, YM3812 and YMF262;
-8. build stable time-bearing pitch/part trajectories above device-specific state;
-9. establish reference render parity before relaxing any synthesis ceiling;
-10. retain only enhancements that preserve musical and instrument identity.
+2. admit a small orthogonal real QSound corpus and compare live C4/source-audio evidence against the historical reference renderer;
+3. expose the QSound shared echo/FIR/delay environmental return separately from the 19 causal source lanes;
+4. convert all 19 native lanes to the consumer rate through one shared-phase timeline rather than independent per-lane resamplers;
+5. establish the strongest valid reference-recomposition/error bound across the source lanes + shared return while respecting finite arithmetic;
+6. feed the earned QSound source bus to Omniphony while retaining historical QSound stereo as the A/B control;
+7. continue the YM2612 six-stem mature FM backend and clock/resampling work;
+8. admit small orthogonal real corpora for YM2203, YM2608, YM2151, YM2413, YM3812 and YMF262;
+9. build stable time-bearing pitch/part trajectories above device-specific state;
+10. establish reference render parity before relaxing any synthesis ceiling;
+11. retain only enhancements that preserve musical and instrument identity.
 
 The target is not one giant Yamaha emulator and not a cleaner VGM player.
 
