@@ -6,6 +6,8 @@ Executable understanding, musical analysis, source-native rendering, perceptual 
 
 Game Music Interpreter follows the transformations that actually produce and are heard as a game soundtrack instead of flattening every source into MIDI, stems, final PCM, or a detached analytical summary.
 
+**The primary objective is holistic musical understanding.** The project should ultimately understand and discuss a game soundtrack with the integrated musical awareness expected from a strong critic, musicologist, composer, arranger, producer, and audio engineer. Exact decoding, execution tracing, source isolation, synthesis reconstruction, and provenance are supporting machinery. They matter when they improve, constrain, explain, or validate the top-level understanding; they are not equal end goals merely because they are technically difficult.
+
 ```text
 physical encoding / exact bits and bytes
         ↓
@@ -33,12 +35,16 @@ cadence • phrase • motif • form
         ↓
 style • work/version • attribution hypotheses
         ↓
+holistic soundtrack understanding
+        ↓
 listener response and human musical discourse
 ```
 
-The project is vertically end-to-end: the lowest useful fact may be a bit field, byte, address, command, sample word, or machine-state transition; the highest useful result may be a listener-level explanation of what the piece is doing as a song. Every higher claim should retain a route back to the strongest evidence underneath it, and every lower layer should expose enough structure for the next layer without pretending machine state is already musical meaning.
+The project is vertically end-to-end: the lowest useful fact may be a bit field, byte, address, command, sample word, or machine-state transition; the highest useful result may be an integrated account of what a piece or soundtrack is doing as music. Lower layers exist to serve that understanding. Descend as far as the musical question requires, but do not mistake exactness at a lower layer for completion of the task.
 
 The listener musical model is distinct from listener response. `that is the returning melody`, `this bass part is answering it`, `the texture opens here`, or `this section delays the return` are claims about how the heard performance is organized as music. `surprising`, `familiar`, `moving`, `groovy`, or `I like it` are responses to that organization. Both must remain traceable to the evidence they actually use.
+
+See `docs/holistic-musical-understanding.md` for the top-level evaluation target.
 
 ## Evidence boundaries
 
@@ -160,9 +166,13 @@ cadence / phrase
 motivic and formal relations
 ↓
 listener model of the piece as a song
+↓
+holistic interpretation of the track and soundtrack
 ```
 
-A listener-level song model may organize the same lower evidence into foreground and accompaniment, melody and bass roles, repeated sections, arrivals, departures, builds, returns, transitions, tension and release, or other musically meaningful relations. These are not free-form prose labels. They must be supported by the audible and structural evidence appropriate to the claim.
+A listener-level song model may organize the same lower evidence into foreground and accompaniment, melody and bass roles, repeated sections, arrivals, departures, builds, returns, transitions, tension and release, or other musically meaningful relations. The holistic layer then integrates these with timbre, orchestration, production, spatial design, stylistic language, game function, cross-track relationships, and larger expressive trajectory.
+
+The goal is not to concatenate separate analyses of harmony, rhythm, timbre, form, and space. The goal is to understand how those dimensions cooperate to make a passage, track, and soundtrack behave as a musical whole.
 
 Alternative readings may coexist over unchanged lower evidence. Analytical systems such as Western functional harmony are used only where their assumptions fit.
 
@@ -170,9 +180,11 @@ Alternative readings may coexist over unchanged lower evidence. Analytical syste
 
 Human-facing language is a projection over evidence, not another truth layer. The same musical object may be discussed naturally as a listener, critic, composer, theorist, producer, engineer, or forensic analyst.
 
-Descriptions such as `it opens up here`, `the bass starts pushing harder`, or `the phrase keeps delaying the return to tonic` are useful when they summarize traceable evidence rather than one-feature phrase rules.
+The aspirational standard is composer-grade structural understanding without invented intent: the system should understand how musical choices support one another well enough to discuss why a passage works, how material develops, how an arrangement creates contrast, and how a track participates in the identity of the larger soundtrack. Documentary claims about what a creator consciously intended remain separate from structural musical inference.
 
-See `docs/human-musical-discourse.md`.
+Descriptions such as `it opens up here`, `the bass starts pushing harder`, or `the phrase keeps delaying the return to tonic` are useful when they summarize integrated evidence rather than one-feature phrase rules.
+
+See `docs/human-musical-discourse.md` and `docs/holistic-musical-understanding.md`.
 
 ## Source-native enhanced rendering
 
@@ -230,6 +242,7 @@ tools/          corpus and source-specific audit utilities
 Start with:
 
 - `AGENTS.md`
+- `docs/holistic-musical-understanding.md`
 - `docs/musical-execution-model.md`
 - `docs/musical-inference-evidence.md`
 - `docs/musical-understanding-dependencies.md`
@@ -255,15 +268,16 @@ Important mechanisms should also be challenged by real corpus controls, negative
 
 ## Working rules
 
-1. Source-domain first, beginning at exact encoded data when it is available.
-2. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model clocks or alignments separately where the distinction exists.
-3. Keep exact, derived, inferred, perceptual, listener-model, and external claims distinct.
-4. Do not infer a commercial toolchain from output similarity alone.
-5. Do not call a physical channel a persistent musical part without evidence.
-6. Do not jump from nominal frequency to note spelling, harmony, style, authorship, or listener understanding.
-7. Mature repositories and literature are observatories, not automatic dependencies.
-8. Corrections outrank narrative coherence.
-9. Accuracy/reference behavior remains available beneath every enhancement.
-10. Every meaningful higher claim should retain a path back to its strongest evidence, from listener-level song understanding down to exact machine or encoded state when that route exists.
+1. Holistic musical understanding is the primary objective; descend into lower layers when doing so materially improves that understanding.
+2. Source-domain first when a lower-level question is actually needed, beginning at exact encoded data when available.
+3. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model clocks or alignments separately where the distinction exists.
+4. Keep exact, derived, inferred, perceptual, listener-model, and external claims distinct.
+5. Do not infer a commercial toolchain from output similarity alone.
+6. Do not call a physical channel a persistent musical part without evidence.
+7. Do not jump from nominal frequency directly to note spelling, harmony, style, authorship, or listener understanding.
+8. Mature repositories and literature are observatories, not automatic dependencies.
+9. Corrections outrank narrative coherence.
+10. Accuracy/reference behavior remains available beneath every enhancement.
+11. Traceability is supporting infrastructure: preserve it where useful, but never confuse a perfect lower-level explanation with a complete understanding of the music.
 
-> **Understand the music by following the transformations from encoded object to heard song.**
+> **Understand the soundtrack as a musical whole; use every lower layer that helps you get there.**
