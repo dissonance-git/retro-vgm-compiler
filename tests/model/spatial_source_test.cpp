@@ -45,7 +45,7 @@ int main() {
         assert(!caps.authored_3d_position);
     }
 
-    const auto genesis = gameaudio::vgm::make_genesis_spatial_source(
+    auto genesis = gameaudio::vgm::make_genesis_spatial_source(
         gameaudio::vgm::genesis_spatial_device::ym2612_fm,
         0,
         3,
@@ -57,6 +57,27 @@ int main() {
     assert(genesis.stereo_route.left_gain == 1.0f);
     assert(genesis.stereo_route.right_gain == 0.0f);
     assert(!vgmtooling::model::may_claim_authored_3d(genesis));
+
+    // Musical/presentation evidence is allowed to guide Omniphony, but remains
+    // explicitly inferred and never upgrades itself into authored geometry.
+    genesis.presentation.foundation = 0.85f;
+    genesis.presentation.foreground = 0.40f;
+    genesis.presentation.vertical_affinity = -0.25f;
+    genesis.presentation.confidence = 0.90f;
+    assert(genesis.presentation.authority == vgmtooling::model::spatial_evidence_authority::inferred);
+    assert(!vgmtooling::model::may_claim_authored_3d(genesis));
+
+    float mono[4] = {0.0f, 0.25f, -0.25f, 0.0f};
+    const vgmtooling::model::spatial_audio_lane_view lane{
+        vgmtooling::model::spatial_audio_lane_kind::dry_source,
+        mono,
+        genesis,
+    };
+    const vgmtooling::model::spatial_source_block_view block{&lane, 1, 4};
+    assert(block.lane_count == 1);
+    assert(block.frame_count == 4);
+    assert(block.lanes[0].mono_pcm == mono);
+    assert(block.lanes[0].kind == vgmtooling::model::spatial_audio_lane_kind::dry_source);
 
     gameaudio::spc::spc_runtime_capture_record record;
     record.fields = gameaudio::spc::spc_runtime_capture_field::voice
@@ -83,6 +104,10 @@ int main() {
     true_position.authored_position[1] = -0.5f;
     true_position.authored_position[2] = 1.0f;
     assert(vgmtooling::model::may_claim_authored_3d(true_position));
+
+    assert(vgmtooling::model::clamp_unit_interval(-0.5f) == 0.0f);
+    assert(vgmtooling::model::clamp_unit_interval(0.5f) == 0.5f);
+    assert(vgmtooling::model::clamp_unit_interval(1.5f) == 1.0f);
 
     return 0;
 }
