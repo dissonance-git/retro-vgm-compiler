@@ -98,6 +98,8 @@ void input_vgm::qsound_mix_callback(void* user_param, const VGM_QSOUND_MIX_FRAME
 	gameaudio::vgm::qsound_native_mix_frame frame;
 	frame.native_sample = event->nativeSample;
 	frame.accounting_valid = event->accountingValid != 0;
+	for (size_t voice = 0; voice < gameaudio::vgm::qsound_native_pcm_count; ++voice)
+		frame.pcm_echo_contribution[voice] = event->pcmEcho[voice];
 	frame.echo_input = event->echoInput;
 	frame.echo_output = event->echoOutput;
 	for (size_t ch = 0; ch < 2; ++ch)
