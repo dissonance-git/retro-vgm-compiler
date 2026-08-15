@@ -59,6 +59,9 @@ jobs:
             tests/vgm/qsound_echo_input_recomposition_test.cpp -o /tmp/qsound_echo_input_recomposition_test
           /tmp/qsound_echo_input_recomposition_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_echo_state_test.cpp -o /tmp/qsound_echo_state_test
+          /tmp/qsound_echo_state_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_reference_recomposition_test.cpp -o /tmp/qsound_reference_recomposition_test
           /tmp/qsound_reference_recomposition_test
       - name: Behavioral equivalence controls
