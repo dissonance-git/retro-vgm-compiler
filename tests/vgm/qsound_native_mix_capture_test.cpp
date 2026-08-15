@@ -11,6 +11,7 @@ int main() {
     qsound_native_mix_capture capture;
     qsound_native_mix_frame frame;
     frame.native_sample = 500;
+    frame.accounting_valid = true;
     frame.echo_input = 123456;
     frame.echo_output = -321;
     frame.wet_post_delay = {{1000, -2000}};
@@ -27,6 +28,7 @@ int main() {
     CHECK(capture.count() == 1u);
     CHECK(capture.native_sample_rate() == 24038u);
     CHECK(capture.first_native_sample() == 500u);
+    CHECK(capture.frames()[0].accounting_valid);
     CHECK(capture.frames()[0].echo_input == 123456);
     CHECK(capture.frames()[0].echo_output == -321);
     CHECK(capture.frames()[0].wet_post_delay[0] == 1000);
@@ -36,18 +38,35 @@ int main() {
     CHECK(capture.frames()[0].reference_output[0] == 17);
     CHECK(capture.frames()[0].reference_output[1] == -23);
 
+    // A QSound init/filter-refresh tick is still a real native timeline frame.
+    // It is not a structural capture error merely because normal mix accounting
+    // was unavailable on that tick.
     frame.native_sample = 501;
-    frame.echo_output = 77;
+    frame.accounting_valid = false;
+    frame.echo_input = 0;
+    frame.echo_output = 0;
+    frame.wet_post_delay = {{0, 0}};
+    frame.dry_post_delay = {{0, 0}};
+    frame.reference_output = {{0, 0}};
     capture.observe(0, 24038, &frame);
     CHECK(capture.valid());
     CHECK(capture.count() == 2u);
-    CHECK(capture.frames()[1].echo_output == 77);
+    CHECK(!capture.frames()[1].accounting_valid);
+
+    frame.native_sample = 502;
+    frame.accounting_valid = true;
+    frame.echo_output = 77;
+    capture.observe(0, 24038, &frame);
+    CHECK(capture.valid());
+    CHECK(capture.count() == 3u);
+    CHECK(capture.frames()[2].accounting_valid);
+    CHECK(capture.frames()[2].echo_output == 77);
 
     // One coherent native timeline is mandatory. Never repair a gap/reorder.
-    frame.native_sample = 503;
+    frame.native_sample = 504;
     capture.observe(0, 24038, &frame);
     CHECK(!capture.valid());
-    CHECK(capture.count() == 2u);
+    CHECK(capture.count() == 3u);
 
     capture.begin_block();
     frame.native_sample = 1;
