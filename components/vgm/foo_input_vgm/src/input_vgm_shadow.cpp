@@ -52,15 +52,36 @@ void input_vgm::configure_enhancement_shadow()
 		else if (device.type == DEVID_QSOUND && instance == 0)
 		{
 			// VGM command C4 addresses the single QSound instance used by the
-			// format/player path. Keep libvgm as the audible renderer and shadow
-			// only source-facing pan/echo controls for now.
+			// format/player path. The command shadow and native audio tap remain
+			// evidence sidecars; libvgm stays the only audible renderer.
 			m_qsound_present = true;
 			m_qsound_shadow_valid = true;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+			m_qsound_audio_shadow_valid = true;
+#else
+			m_qsound_audio_shadow_valid = false;
+#endif
 			m_qsound_state.reset();
 		}
 	}
 #endif
 }
+
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+void input_vgm::qsound_source_callback(void* user_param, const VGM_QSOUND_SOURCE_FRAME* event)
+{
+	input_vgm* self = static_cast<input_vgm*>(user_param);
+	if (self == nullptr || event == nullptr || !self->m_qsound_audio_capture_active)
+		return;
+
+	self->m_qsound_audio_capture.observe(
+		event->chipID,
+		event->sampleRate,
+		event->nativeSample,
+		event->source,
+		static_cast<size_t>(event->sourceCount));
+}
+#endif
 
 void input_vgm::invalidate_unobserved_dac_stream(const gameaudio::vgm::command_event& event) noexcept
 {
@@ -97,6 +118,11 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 		}
 		self->m_qsound_state.reset();
 		self->m_qsound_shadow_valid = self->m_qsound_present;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+		self->m_qsound_audio_shadow_valid = self->m_qsound_present;
+#else
+		self->m_qsound_audio_shadow_valid = false;
+#endif
 		self->m_shadow_replay_sample = 0;
 		return;
 	}
@@ -322,24 +348,51 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 	m_psg_capture.begin_block(block_start);
 	m_dac_capture.begin_block(block_start);
 	m_qsound_capture.begin_block(block_start);
+	m_qsound_audio_capture.begin_block();
+
+	bool qsound_audio_attached = false;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+	if (m_qsound_present && m_qsound_audio_shadow_valid && m_vgm_player != nullptr)
+	{
+		qsound_audio_attached =
+			m_vgm_player->SetQSoundSourceObserver(&input_vgm::qsound_source_callback, this) != 0;
+		if (!qsound_audio_attached)
+			m_qsound_audio_shadow_valid = false;
+	}
+#endif
+	m_qsound_audio_capture_active = qsound_audio_attached;
 	m_source_capture_active = true;
 
 	bool result = false;
 	try
 	{
-		// This remains the only audible renderer. Enhanced sources run in shadow
-		// until their state/timing survive real playback and seek validation.
+		// This remains the only audible renderer. The QSound source callback is
+		// a read-only sidecar around the same native frames pulled by libvgm's
+		// resampler; p_chunk is still produced solely by the reference path.
 		result = input_base::decode_run(p_chunk, p_abort);
 	}
 	catch (...)
 	{
 		m_source_capture_active = false;
+		m_qsound_audio_capture_active = false;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+		if (qsound_audio_attached && m_vgm_player != nullptr)
+			m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
+#endif
 		throw;
 	}
 	m_source_capture_active = false;
+	m_qsound_audio_capture_active = false;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+	if (qsound_audio_attached && m_vgm_player != nullptr)
+		m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
+#endif
 
 	if (!result)
 		return false;
+
+	if (qsound_audio_attached && !m_qsound_audio_capture.valid())
+		m_qsound_audio_shadow_valid = false;
 
 	replay_captured_sources(m_render_done);
 	return true;
@@ -349,11 +402,17 @@ void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)
 {
 	configure_enhancement_shadow();
 	m_source_capture_active = false;
+	m_qsound_audio_capture_active = false;
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+	if (m_vgm_player != nullptr)
+		m_vgm_player->SetQSoundSourceObserver(nullptr, nullptr);
+#endif
+	m_qsound_audio_capture.begin_block();
 
-	// libvgm emits reset/replayed source events during seek. The tap rebuilds
-	// source state while the PSG fast path advances oscillator/LFSR time without
-	// generating discarded audio. QSound source controls rebuild from the same
-	// replayed C4 stream while the historical QSound renderer remains authoritative.
+	// libvgm emits reset/replayed source events during seek. The command tap
+	// rebuilds source controls while the historical QSound renderer remains
+	// authoritative. Native source audio is captured only during real decode
+	// blocks, never while seeking through discarded audio.
 	input_base::decode_seek(p_seconds, p_abort);
 
 	if (m_vgm_player != nullptr)
