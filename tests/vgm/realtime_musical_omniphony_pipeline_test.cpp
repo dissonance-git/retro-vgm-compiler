@@ -12,10 +12,20 @@ struct fake_renderer_state {
     bool fail = false;
     float observed_foundation = -1.0f;
     std::size_t calls = 0;
+    std::size_t resets = 0;
 };
 
 std::uint32_t fake_major() { return 0; }
 std::uint32_t fake_minor() { return 3; }
+
+std::int32_t fake_reset(void* processor)
+{
+    auto* state = static_cast<fake_renderer_state*>(processor);
+    assert(state != nullptr);
+    ++state->resets;
+    state->observed_foundation = -1.0f;
+    return 0;
+}
 
 std::int32_t fake_process(
     void* processor,
@@ -73,6 +83,7 @@ int main()
         static_cast<void*>(&renderer),
         fake_major,
         fake_minor,
+        fake_reset,
         fake_process));
 
     std::array<float, frames> source_scratch{};
@@ -133,6 +144,24 @@ int main()
     assert(renderer.observed_foundation > 0.0f);
     assert(std::fabs(pipeline.frontend().tracker().stream_seconds() - 0.20) < 1.0e-9);
     assert(renderer.calls == 3);
+
+    // A seek/track reset clears both the musical-memory side and the renderer
+    // side. The first block after reset must again be history-free.
+    assert(pipeline.reset());
+    assert(renderer.resets == 1);
+    assert(pipeline.frontend().tracker().stream_seconds() == 0.0);
+    const auto after_reset = pipeline.process_block(
+        block,
+        sample_rate,
+        source_scratch.data(),
+        source_scratch.size(),
+        stereo.data(),
+        stereo.size(),
+        0,
+        96);
+    assert(after_reset.rendered);
+    assert(after_reset.learned);
+    assert(renderer.observed_foundation == 0.0f);
 
     return 0;
 }
