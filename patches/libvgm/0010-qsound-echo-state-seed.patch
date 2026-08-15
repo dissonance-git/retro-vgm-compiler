@@ -1,46 +1,146 @@
-from pathlib import Path
-import unittest
-
-
-ROOT = Path(__file__).resolve().parents[2]
-PATCH = ROOT / "patches" / "libvgm" / "0010-qsound-echo-state-seed.patch"
-
-
-class QSoundEchoSeedPatchTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.text = PATCH.read_text(encoding="utf-8")
-
-    def test_runtime_echo_parameters_are_small_per_tick_witnesses(self):
-        self.assertIn("INT16 echoFeedback;", self.text)
-        self.assertIn("UINT16 echoLength;", self.text)
-        self.assertIn("chip->echo.feedback", self.text)
-        self.assertIn("chip->echo.length", self.text)
-
-    def test_seed_contains_only_recurrence_memory(self):
-        self.assertIn("INT16 lastSample;", self.text)
-        self.assertIn("INT16 delayLine[1024];", self.text)
-        self.assertIn("INT16 delayPos;", self.text)
-        seed = self.text[self.text.find("typedef struct _qsound_ctr_echo_seed"):]
-        seed = seed[: seed.find("} QSOUND_CTR_ECHO_SEED;")]
-        self.assertNotIn("feedback", seed.lower())
-        self.assertNotIn("length", seed.lower())
-
-    def test_snapshot_is_on_demand_not_in_realtime_callback(self):
-        self.assertIn("qsoundc_get_echo_seed", self.text)
-        update = self.text[self.text.find("static void qsoundc_update"):]
-        update = update[: update.find("void qsoundc_set_mix_callback")]
-        self.assertNotIn("memcpy(seed->delayLine", update)
-        self.assertEqual(self.text.count("memcpy(seed->delayLine"), 2)
-
-    def test_only_superctr_seed_is_exposed_through_player(self):
-        self.assertIn("devDef->coreID != FCC_CTR_", self.text)
-        self.assertIn("GetQSoundEchoSeed", self.text)
-
-    def test_patch_does_not_touch_historical_output_assignments(self):
-        self.assertNotIn("outputs[0][curSmpl]", self.text)
-        self.assertNotIn("outputs[1][curSmpl]", self.text)
-
-
-if __name__ == "__main__":
-    unittest.main()
+diff --git a/emu/cores/qsound_ctr.h b/emu/cores/qsound_ctr.h
+--- a/emu/cores/qsound_ctr.h
++++ b/emu/cores/qsound_ctr.h
+@@ -15,6 +15,8 @@ typedef struct _qsound_ctr_mix_frame
+ {
+ 	UINT8 accountingValid;
+ 	INT16 pcmEcho[16];
++	INT16 echoFeedback;
++	UINT16 echoLength;
+ 	INT32 echoInput;
+ 	INT16 echoOutput;
+ 	INT32 wetPostDelay[2];
+@@ -23,6 +25,13 @@ typedef struct _qsound_ctr_mix_frame
+ } QSOUND_CTR_MIX_FRAME;
+ 
++typedef struct _qsound_ctr_echo_seed
++{
++	INT16 lastSample;
++	INT16 delayLine[1024];
++	INT16 delayPos;
++} QSOUND_CTR_ECHO_SEED;
++
+ typedef void (*QSOUND_CTR_MIX_CB)(void* userParam,
+ 		UINT64 nativeSample, UINT32 sampleRate, const QSOUND_CTR_MIX_FRAME* frame);
+ 
+@@ -31,6 +40,7 @@ extern DEV_DEF devDef_QSound_ctr;
+ 
+ void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void* cbParam);
+ void qsoundc_set_mix_callback(void* info, QSOUND_CTR_MIX_CB cbFunc, void* cbParam);
++UINT8 qsoundc_get_echo_seed(void* info, QSOUND_CTR_ECHO_SEED* seed);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
+--- a/emu/cores/qsound_ctr.c
++++ b/emu/cores/qsound_ctr.c
+@@ -335,6 +335,8 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 				frame.pcmEcho[voice] = chip->mix_accounting_valid
+ 					? chip->voice[voice].echo
+ 					: 0;
++			frame.echoFeedback = chip->mix_accounting_valid ? chip->echo.feedback : 0;
++			frame.echoLength = chip->mix_accounting_valid ? (UINT16)chip->echo.length : 0;
+ 			frame.echoInput = chip->mix_accounting_valid ? chip->mix_echo_input : 0;
+ 			frame.echoOutput = chip->mix_accounting_valid ? chip->mix_echo_output : 0;
+ 			frame.wetPostDelay[0] = chip->mix_accounting_valid ? chip->mix_wet_post_delay[0] : 0;
+@@ -365,6 +367,18 @@ void qsoundc_set_mix_callback(void* info, QSOUND_CTR_MIX_CB cbFunc, void* cbParam)
+ 	return;
+ }
+ 
++UINT8 qsoundc_get_echo_seed(void* info, QSOUND_CTR_ECHO_SEED* seed)
++{
++	struct qsound_chip* chip = (struct qsound_chip*)info;
++	if (chip == NULL || seed == NULL)
++		return 0xFF;
++
++	seed->lastSample = chip->echo.last_sample;
++	memcpy(seed->delayLine, chip->echo.delay_line, sizeof(seed->delayLine));
++	seed->delayPos = chip->echo.delay_pos;
++	return 0x00;
++}
++
+ static void qsoundc_alloc_rom(void* info, UINT32 memsize)
+ {
+ 	struct qsound_chip* chip = (struct qsound_chip*)info;
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -130,6 +130,8 @@ struct VGM_QSOUND_MIX_FRAME
+ 	UINT64 nativeSample;
+ 	UINT8 accountingValid;
+ 	INT16 pcmEcho[16];
++	INT16 echoFeedback;
++	UINT16 echoLength;
+ 	INT32 echoInput;
+ 	INT16 echoOutput;
+ 	INT32 wetPostDelay[2];
+@@ -137,6 +139,15 @@ struct VGM_QSOUND_MIX_FRAME
+ 	INT16 output[2];
+ };
+ 
++#define LIBVGM_GAMEAUDIO_QSOUND_ECHO_SEED 1
++
++struct VGM_QSOUND_ECHO_SEED
++{
++	INT16 lastSample;
++	INT16 delayLine[1024];
++	INT16 delayPos;
++};
++
+ typedef void (*VGM_QSOUND_MIX_OBSERVER_CB)(void* userParam,
+ 		const VGM_QSOUND_MIX_FRAME* event);
+ 
+@@ -283,6 +294,7 @@ public:
+ 	void SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam);
+ 	UINT8 SetQSoundSourceObserver(VGM_QSOUND_SOURCE_OBSERVER_CB cbFunc, void* cbParam);
+ 	UINT8 SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* cbParam);
++	UINT8 GetQSoundEchoSeed(UINT8 chipID, VGM_QSOUND_ECHO_SEED* seed);
+ 	
+ 	UINT8 Start(void);
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -1083,6 +1083,8 @@ UINT8 VGMPlayer::SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* c
+ 	event.accountingValid = frame->accountingValid;
+ 	for (UINT8 voice = 0; voice < 16; voice ++)
+ 		event.pcmEcho[voice] = frame->pcmEcho[voice];
++	event.echoFeedback = frame->echoFeedback;
++	event.echoLength = frame->echoLength;
+ 	event.echoInput = frame->echoInput;
+ 	event.echoOutput = frame->echoOutput;
+ 	for (UINT8 ch = 0; ch < 2; ch ++)
+@@ -1095,6 +1097,38 @@ UINT8 VGMPlayer::SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* c
+ 	return;
+ }
+ 
++UINT8 VGMPlayer::GetQSoundEchoSeed(UINT8 chipID, VGM_QSOUND_ECHO_SEED* seed)
++{
++	if (seed == NULL || chipID >= 2)
++		return 0xFF;
++
++	for (size_t curDev = 0; curDev < _devices.size(); curDev ++)
++	{
++		CHIP_DEVICE& chipDev = _devices[curDev];
++		if (chipDev.chipType != DEVID_QSOUND || chipDev.chipID != chipID)
++			continue;
++		if (chipDev.base.defInf.dataPtr == NULL || chipDev.base.defInf.devDef == NULL)
++			continue;
++		if (chipDev.base.defInf.devDef->coreID != FCC_CTR_)
++			continue;
++
++		QSOUND_CTR_ECHO_SEED coreSeed;
++		UINT8 retVal = qsoundc_get_echo_seed(chipDev.base.defInf.dataPtr, &coreSeed);
++		if (retVal)
++			return retVal;
++
++		seed->lastSample = coreSeed.lastSample;
++		memcpy(seed->delayLine, coreSeed.delayLine, sizeof(seed->delayLine));
++		seed->delayPos = coreSeed.delayPos;
++		return 0x00;
++	}
++
++	return 0x01;
++}
++
+ /*static*/ void VGMPlayer::QSoundSourceObserverCB(void* userParam, UINT64 nativeSample,
+ 		UINT32 sampleRate, const INT16* source)
