@@ -50,6 +50,12 @@ jobs:
             tests/vgm/qsound_native_source_window_test.cpp -o /tmp/qsound_native_source_window_test
           /tmp/qsound_native_source_window_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_native_linear_projection_test.cpp -o /tmp/qsound_native_linear_projection_test
+          /tmp/qsound_native_linear_projection_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_consumer_source_block_test.cpp -o /tmp/qsound_consumer_source_block_test
+          /tmp/qsound_consumer_source_block_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_echo_input_recomposition_test.cpp -o /tmp/qsound_echo_input_recomposition_test
           /tmp/qsound_echo_input_recomposition_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
