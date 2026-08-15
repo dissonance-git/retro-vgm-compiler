@@ -23,6 +23,9 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/model/spatial_source_test.cpp -o /tmp/spatial_source_test
           /tmp/spatial_source_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/spatial_source_timed_evidence_test.cpp -o /tmp/spatial_source_timed_evidence_test
+          /tmp/spatial_source_timed_evidence_test
       - name: QSound source controls and native evidence sidecars
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
