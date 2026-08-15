@@ -1,6 +1,7 @@
 #pragma once
 
 #include "realtime_musical_role_tracker.h"
+#include "realtime_musical_spatial_projection.h"
 
 #include <array>
 #include <cmath>
@@ -38,6 +39,7 @@ public:
         event_count_ = 0;
         frame_count_ = 0;
         history_seconds_ = 0.0;
+        projected_view_ = {};
         valid_ = false;
     }
 
@@ -55,12 +57,23 @@ public:
         return events_[index];
     }
 
+    // A renderer-ready view over the same current PCM pointers with only the
+    // presentation/evidence sidecar replaced by past-only projected state. The
+    // storage owns the lane/event records, not the PCM itself. Its lifetime is
+    // therefore bounded by both this handoff object and the caller's input PCM.
+    const spatial_source_block_view& projected_view() const noexcept {
+        return projected_view_;
+    }
+
 private:
     template <std::size_t, std::size_t, std::size_t>
     friend class realtime_musical_spatial_frontend;
 
     std::array<realtime_musical_spatial_lane_state, MaxLanes> lanes_{};
     std::array<realtime_musical_spatial_role_event, MaxEvents> events_{};
+    std::array<spatial_audio_lane_view, MaxLanes> projected_lanes_{};
+    std::array<spatial_source_evidence_event, MaxEvents> projected_events_{};
+    spatial_source_block_view projected_view_{};
     std::size_t lane_count_ = 0;
     std::size_t event_count_ = 0;
     std::size_t frame_count_ = 0;
@@ -107,11 +120,18 @@ public:
         }
 
         for (std::size_t lane_index = 0; lane_index < input.lane_count; ++lane_index) {
+            const spatial_source_evidence& raw_evidence = input.lanes[lane_index].evidence;
             realtime_musical_spatial_lane_state& destination = output.lanes_[lane_index];
-            destination.evidence = input.lanes[lane_index].evidence;
             destination.roles_available = tracker_.lookup(
-                destination.evidence,
+                raw_evidence,
                 destination.roles);
+            destination.evidence = project_realtime_musical_spatial_evidence(
+                raw_evidence,
+                destination.roles_available,
+                destination.roles);
+
+            output.projected_lanes_[lane_index] = input.lanes[lane_index];
+            output.projected_lanes_[lane_index].evidence = destination.evidence;
         }
 
         for (std::size_t event_index = 0; event_index < input.evidence_event_count; ++event_index) {
@@ -119,12 +139,26 @@ public:
             realtime_musical_spatial_role_event& destination = output.events_[event_index];
             destination.frame_offset = source_event.frame_offset;
             destination.lane_index = source_event.lane_index;
-            destination.evidence = source_event.evidence;
             destination.roles_available = tracker_.lookup(
-                destination.evidence,
+                source_event.evidence,
                 destination.roles);
+            destination.evidence = project_realtime_musical_spatial_evidence(
+                source_event.evidence,
+                destination.roles_available,
+                destination.roles);
+
+            output.projected_events_[event_index] = spatial_source_evidence_event{
+                source_event.frame_offset,
+                source_event.lane_index,
+                destination.evidence,
+            };
         }
 
+        output.projected_view_.lanes = output.projected_lanes_.data();
+        output.projected_view_.lane_count = input.lane_count;
+        output.projected_view_.frame_count = input.frame_count;
+        output.projected_view_.evidence_events = output.projected_events_.data();
+        output.projected_view_.evidence_event_count = input.evidence_event_count;
         output.lane_count_ = input.lane_count;
         output.event_count_ = input.evidence_event_count;
         output.frame_count_ = input.frame_count;
@@ -134,9 +168,10 @@ public:
     }
 
     // Phase 2: call only after the audio represented by input has passed the
-    // renderer. The just-completed PCM may then update observations and role
-    // memory for later blocks. This split makes the no-lookahead law executable:
-    // current audio cannot influence its own prepared semantic state.
+    // renderer. The just-completed RAW PCM/evidence may then update observations
+    // and role memory for later blocks. Never feed handoff.projected_view() into
+    // this phase: that would let prior semantic guesses become new evidence and
+    // create a self-reinforcing feedback loop.
     //
     // Stream time advances even if observation fails, because the audio clock
     // itself still moved. A malformed/ambiguous analysis block therefore loses
