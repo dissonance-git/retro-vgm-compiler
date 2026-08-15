@@ -1,6 +1,7 @@
 #pragma once
 
 #include "qsound_control_state.h"
+#include "qsound_environment_control_state.h"
 #include "vgm_command_event.h"
 
 #include <array>
@@ -15,9 +16,15 @@ struct qsound_timed_source_control {
     qsound_source_control_write write{};
 };
 
-// Realtime-safe collector for source-facing QSound C4 writes. It intentionally
-// ignores global echo/FIR/delay/output state because those belong to the
-// historical QSound renderer, not to one causal source.
+struct qsound_timed_environment_control {
+    std::size_t sample_offset = 0;
+    qsound_environment_control_write write{};
+};
+
+// Realtime-safe collector for QSound C4 controls. One parser owns the command
+// timing, while source-local controls and shared renderer/environment controls
+// remain separate typed streams. Neither stream is allowed to masquerade as
+// the other.
 class qsound_block_capture {
 public:
     static constexpr std::size_t capacity = 4096;
@@ -27,6 +34,9 @@ public:
         count_ = 0;
         overflow_ = false;
         dropped_ = 0;
+        environment_count_ = 0;
+        environment_overflow_ = false;
+        environment_dropped_ = 0;
     }
 
     void observe(const command_event& event, std::uint64_t absolute_sample) noexcept {
@@ -39,29 +49,47 @@ public:
             static_cast<std::uint16_t>(event.payload[1]));
         const std::uint8_t address = event.payload[2];
 
-        qsound_source_control_write write;
-        if (!qsound_decode_source_control_write(address, value, write))
-            return;
-
         std::uint64_t delta = 0;
         if (absolute_sample > block_start_sample_)
             delta = absolute_sample - block_start_sample_;
         const std::uint64_t size_max = static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max());
         const std::size_t offset = static_cast<std::size_t>(delta > size_max ? size_max : delta);
 
-        if (count_ >= capacity) {
-            overflow_ = true;
-            ++dropped_;
+        qsound_source_control_write source_write;
+        if (qsound_decode_source_control_write(address, value, source_write)) {
+            if (count_ >= capacity) {
+                overflow_ = true;
+                ++dropped_;
+                return;
+            }
+            controls_[count_++] = qsound_timed_source_control{offset, source_write};
             return;
         }
 
-        controls_[count_++] = qsound_timed_source_control{offset, write};
+        qsound_environment_control_write environment_write;
+        if (qsound_decode_environment_control_write(address, value, environment_write)) {
+            if (environment_count_ >= capacity) {
+                environment_overflow_ = true;
+                ++environment_dropped_;
+                return;
+            }
+            environment_controls_[environment_count_++] =
+                qsound_timed_environment_control{offset, environment_write};
+        }
     }
 
     const qsound_timed_source_control* controls() const noexcept { return controls_.data(); }
     std::size_t count() const noexcept { return count_; }
     bool overflowed() const noexcept { return overflow_; }
     std::uint64_t dropped() const noexcept { return dropped_; }
+
+    const qsound_timed_environment_control* environment_controls() const noexcept {
+        return environment_controls_.data();
+    }
+    std::size_t environment_count() const noexcept { return environment_count_; }
+    bool environment_overflowed() const noexcept { return environment_overflow_; }
+    std::uint64_t environment_dropped() const noexcept { return environment_dropped_; }
+
     std::uint64_t block_start_sample() const noexcept { return block_start_sample_; }
 
 private:
@@ -69,6 +97,12 @@ private:
     std::size_t count_ = 0;
     bool overflow_ = false;
     std::uint64_t dropped_ = 0;
+
+    std::array<qsound_timed_environment_control, capacity> environment_controls_{};
+    std::size_t environment_count_ = 0;
+    bool environment_overflow_ = false;
+    std::uint64_t environment_dropped_ = 0;
+
     std::uint64_t block_start_sample_ = 0;
 };
 
