@@ -46,18 +46,25 @@ The current format layer protects:
 - dual-chip declarations;
 - selected bit-31 chip variants;
 - the VGM 1.00/1.01 overloaded Yamaha clock field;
-- VGM 1.70 distinct second-instance clocks;
+- VGM 1.70 distinct second-instance clocks and extra-header metadata;
+- EOF and GD3 structure;
+- data-block classification;
 - Yamaha register-write transport `0x51-0x5F` and `0xA1-0xAF`;
 - `0xA0` remaining AY8910;
 - generic DAC Stream Control `0x90-0x95`;
-- structural VGM/VGZ timing and loop validation.
+- strict reserved-field checks and exhaustive fixed-width opcode controls;
+- structural VGM/VGZ timing and loop validation;
+- the complete currently defined VGM 1.72 beta Mikey surface under the project shorthand **VGM 1.72d**: Mikey clock, `0x40` register writes and Mikey PCM data blocks.
 
-Relevant code:
+`1.72d` is a project label for the currently defined upstream 1.72 beta delta, not an upstream version claim.
+
+Relevant code includes:
 
 - `vgm_format_version.h`
 - `vgm_chip_clock.h`
 - `vgm_yamaha_register_write.h`
 - `vgm_dac_stream_command.h`
+- strict VGM conformance tests under `tests/vgm/`
 - `tools/vgm_corpus_audit.py`
 
 The boundary is:
@@ -89,6 +96,8 @@ The repo carries a libvgm patch series that exposes realtime playback state with
 
 The resolved observer remains useful, but the raw `0x90-0x95` decoder now provides an independent spec-level oracle beneath it.
 
+The same realtime observer now feeds QSound source-control evidence from the ordinary VGM `0xC4` command stream. This does not require a new libvgm callback and does not alter reference rendering.
+
 ## Genesis source truth
 
 `genesis_state` currently tracks two YM2612 instances and two SN76489-family instances.
@@ -110,6 +119,161 @@ YM2612 state includes:
 PSG state includes tone periods, attenuation, noise state/control and stereo mask.
 
 No instrument name, musical role, importance, width, height or other semantic inference is stored as source truth.
+
+## QSound spatial frontier
+
+QSound is a particularly valuable VGM control family because the historical system already keeps source voices separate through an authored spatial-routing stage before the final stereo renderer.
+
+Two mature implementation paths were compared before adding the GMI model:
+
+- MAME's current QSound LLE executes the DL-1425 DSP16A program and documents the host-visible command words;
+- the superctr QSound HLE used by MAME/libvgm exposes the decoded source voices, pan tables, shared echo, filters and delays recovered from the DSP program.
+
+They agree on the source-facing command structure that matters here.
+
+### Source topology
+
+The decoded QSound engine contains:
+
+```text
+16 PCM source voices
++ 3 ADPCM source voices
+        ↓
+19 source outputs
+        ↓
+per-source pan word
+        ↓
+per-source dry L/R + wet L/R coefficients
+        ↓
+shared echo / FIR / delay / output stages
+        ↓
+final stereo
+```
+
+For PCM voices, a second source-facing control contributes the source to the shared echo input.
+
+This creates two distinct concepts that must not be collapsed:
+
+```text
+QSound wet pan-table contribution
+!=
+PCM per-channel shared-echo contribution
+```
+
+### Source evidence versus renderer state
+
+Current authority boundary:
+
+| QSound state | GMI treatment |
+|---|---|
+| physical PCM/ADPCM voice | source/execution identity |
+| raw pan word | preserved source control |
+| decoded dry L/R coefficients | device-authored stereo route evidence |
+| decoded wet L/R coefficients | QSound-specific source-routing evidence |
+| PCM `0xBA..0xC9` echo contribution | signed source-to-shared-echo evidence |
+| global `0x93` echo feedback | historical renderer state |
+| global `0xD9` echo delay | historical renderer state |
+| FIR table selection | historical renderer state |
+| dry/wet output delays | historical renderer state |
+| dry/wet output volumes | historical renderer state |
+| final QSound stereo | protected reference render |
+
+No row in this table is an authored 3-D coordinate.
+
+### Pan regions currently decoded
+
+The recovered program gives two bounded regions that both MAME HLE and libvgm expose coherently:
+
+```text
+0x110..0x130
+33-position QSound spatial table
+with distinct dry and wet coefficients
+
+0x140..0x160
+33-position dry-only linear-pan table
+```
+
+A characteristic control case is useful because it proves the wet path is not a generic reverb-send scalar:
+
+```text
+raw pan 0x110
+  dry: L=1, R=0
+  wet: L=0, R=1
+
+raw pan 0x120
+  dry: L=1, R=1
+  wet: L=0.625, R=0.625
+
+raw pan 0x130
+  dry: L=0, R=1
+  wet: L=1, R=0
+```
+
+The gaps and unknown raw pan words are preserved but **not decoded**. The HLE's defensive index clamp is not promoted into source truth because the MAME LLE executes the real DSP ROM rather than that defensive approximation.
+
+### Live VGM shadow now implemented
+
+VGM command `0xC4` carries:
+
+```text
+[data MSB] [data LSB] [QSound address]
+```
+
+The modified foobar path now captures source-facing C4 writes at exact output-sample offsets using the same allocation-free/fail-closed pattern as the Genesis source observers.
+
+Admitted live controls are limited to:
+
+- PCM pan `0x80..0x8F`;
+- ADPCM pan `0x90..0x92`;
+- PCM shared-echo contribution `0xBA..0xC9`.
+
+The adjacency is tested explicitly: `0x93` is global echo feedback, not a twentieth pan control.
+
+The shadow resets to the recovered DL-1425 initialization state: all 19 pan words at center `0x120`, PCM echo contributions cleared.
+
+Overflow, malformed commands and out-of-order block timing fail closed.
+
+### Current audible boundary
+
+QSound source **control evidence** is now live. QSound source **audio** is not yet substituted.
+
+libvgm remains the audible historical QSound renderer.
+
+The next audio tap is the decoded QSound `voice_output[19]` point after source synthesis/voice volume but before the four dry/wet pan coefficients are applied. That is the correct causal source boundary for Omniphony.
+
+The intended experiment is therefore:
+
+```text
+same VGM QSound command stream
+        ├─ historical libvgm/QSound renderer → stereo control
+        └─ 19 causal source voices
+              + authored QSound source controls
+              + separately preserved environmental path
+                    ↓
+                 Omniphony
+                    ↓
+           modern full-sphere binaural
+```
+
+QSound is a historical authored-spatial base and calibration system, not a ceiling. The original two-speaker transfer function remains the scientific control while the modern renderer is free to improve externalization and three-dimensional presentation without rewriting the source controls as fictional coordinates.
+
+### GitHub and literature controls
+
+Implementation authorities used for this boundary include:
+
+- MAME `src/devices/sound/qsound.cpp`: current DL-1425 LLE and host command semantics;
+- MAME `src/devices/sound/qsoundhle.cpp`: HLE recovered from the DSP program;
+- libvgm `emu/cores/qsound_ctr.c`: independent product-side HLE integration used by the current VGM playback foundation.
+
+The Arcade Projects CPS QSound amplifier reverse-engineering thread is useful secondary evidence for a separate point: the cabinet amplifier/filter stage is downstream of the QSound spatial processing, so adding another QSound-like spatial effect after the final CPS stereo output would be double processing. It is a research lead, not authority for DSP register semantics.
+
+Peer-reviewed spatial-audio work supports the architectural separation rather than QSound-specific register claims:
+
+- Landschoot & Jot, 2023, *Binaural externalization processing method for object-based audio rendering*, JASA, DOI `10.1121/10.0018389`: object-aware externalization can be treated separately from source identity;
+- Coleman et al., 2017, *Object-Based Reverberation for Spatial Audio*, JAES, DOI `10.17743/JAES.2016.0059`: direct objects and environmental/reverberant contribution can remain separately renderable;
+- Sunder et al., 2015, *Natural Sound Rendering for Headphones*, IEEE Signal Processing Magazine, DOI `10.1109/MSP.2014.2372062`: headphone rendering must balance spatial and timbral fidelity.
+
+These papers support the rendering split. They do not prove historical QSound intent for a particular song or pan word.
 
 ## Yamaha cross-chip state frontier
 
@@ -142,7 +306,7 @@ feedback  bits 3..5
 register slot order 1,3,2,4
 ```
 
-That surface is intentionally narrower than “Yamaha FM.”
+That surface is intentionally narrower than "Yamaha FM."
 
 ### OPL
 
@@ -305,9 +469,11 @@ All 58 declare SN76489 at `3,579,545 Hz` and YM2612 at `7,670,453 Hz`.
 
 This is now the known-good control for admitting additional VGMRips families. External OPN/OPNA/OPM/OPL/OPLL packs are research candidates but are not yet permanent byte-verified fixtures.
 
-See `../research/cases/vgm-cross-chip-controls.md`.
+See `../research/vgm-cross-chip-controls.md`.
 
-## Mixing boundary
+QSound should now receive its own small orthogonal corpus rather than being tested only with synthetic table values. Useful controls include static hard-left/center/hard-right pan, time-varying pan, nonzero PCM echo contribution, quiet sources and tracks that exercise the dry-only linear range if real material uses it. Store derived evidence and hashes, not copyrighted game data.
+
+## Mixing and spatial boundary
 
 `source_stem_mixer` performs only explicit linear source routing with double-precision accumulation.
 
@@ -315,7 +481,21 @@ It does **not** compress, limit, normalize, widen, infer source roles, or invent
 
 `ym2612_authored_route()` preserves the chip's original L/R enable decisions for the first enhanced listening baseline.
 
-A later source-domain spatial layer may expand source extent before final summation, but synthesis quality and spatial reinterpretation should not be changed in the same first listening experiment.
+For QSound, the source model preserves the richer dry/wet routing grammar but still does not create a 3-D position. The modern headphone scene belongs downstream in Omniphony.
+
+The durable source-aware spatial boundary is therefore:
+
+```text
+causal VGM source audio
++ device-authored routing/effect evidence
++ protected historical reference mix
+        ↓
+Omniphony presentation inference
+        ↓
+full-sphere binaural renderer
+```
+
+Synthesis quality and spatial reinterpretation should not be changed in the same first listening experiment. QSound is useful precisely because the same command stream can drive the original historical renderer and the modern source-aware renderer as an A/B control.
 
 ## Primary documentation and historical evidence
 
@@ -334,7 +514,7 @@ Useful intent evidence includes:
 - source-code/driver evidence showing the transformation into the shipped asset;
 - creator statements that a specific artifact was deliberately valued.
 
-See `../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
+See `../research/historical-constraint-friction-counterfactual-rendering.md`.
 
 ## Future VGM-set assistance
 
@@ -355,23 +535,34 @@ The current audit validates declared timing and loops only. It does not propose 
 - uses C++17, optimization and warnings-as-errors;
 - runs every produced executable.
 
-The CMake test surface now also includes the cross-chip VGM format, OPN, OPM, OPL, OPLL and nominal-pitch regressions.
+The manual `core-tests` workflow now also owns strict standalone QSound spatial-source and control-capture tests. GitHub-hosted Actions remain unavailable while the account runner is rejected before execution by the platform billing/spending-limit state. Absence of CI is not a pass or a failure.
 
-GitHub-hosted Actions remain unavailable when the account runner is rejected before execution by the platform billing/spending-limit state. Absence of CI is not a pass or a failure.
+The QSound regressions currently protect:
+
+- 16 PCM + 3 ADPCM source topology;
+- exact decoded hard-left/center/hard-right dry/wet table behavior;
+- the dry-only linear pan region;
+- raw preservation of unknown pan words;
+- PCM-only signed shared-echo contribution;
+- exclusion of global renderer registers from source evidence;
+- exact VGM C4 payload parsing and sample offsets;
+- bounded realtime capture and fail-closed overflow;
+- no authored 3-D position claim.
 
 ## Next sequence
 
 Do not enable every enhancement or chip family at once.
 
-1. keep the VGM format decoder/spec tests as the common transport floor;
-2. admit a small orthogonal real corpus for YM2203, YM2608, YM2151, YM2413, YM3812 and YMF262;
-3. pressure-test the new family-specific state and pitch helpers against those bytes;
-4. continue the YM2612 six-stem mature FM backend and clock/resampling work;
-5. build stable time-bearing pitch/part trajectories above device-specific state;
-6. only then let harmony/key/progression/cadence/form consume those trajectories;
-7. use Sonic 3 as an eventual adversarial integration case once those upper layers are earned;
-8. establish reference render parity before relaxing any hardware ceiling;
-9. retain only enhancements that preserve musical and instrument identity.
+1. keep the VGM 1.72d format/spec tests as the common transport floor;
+2. admit a small orthogonal real QSound corpus and compare the live C4 shadow against reference QSound behavior;
+3. expose the QSound `voice_output[19]` causal audio point without altering the historical renderer;
+4. preserve the QSound shared/environmental return separately and prove reference recomposition where the renderer is linear enough for that claim;
+5. feed the earned QSound lanes and source evidence to Omniphony while retaining historical QSound stereo as the A/B control;
+6. continue the YM2612 six-stem mature FM backend and clock/resampling work;
+7. admit small orthogonal real corpora for YM2203, YM2608, YM2151, YM2413, YM3812 and YMF262;
+8. build stable time-bearing pitch/part trajectories above device-specific state;
+9. establish reference render parity before relaxing any synthesis ceiling;
+10. retain only enhancements that preserve musical and instrument identity.
 
 The target is not one giant Yamaha emulator and not a cleaner VGM player.
 
