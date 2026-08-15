@@ -31,6 +31,8 @@
     <ClInclude Include="..\enhancement\qsound_native_linear_projection.h" />
     <ClInclude Include="..\enhancement\qsound_consumer_source_block.h" />
     <ClInclude Include="..\enhancement\qsound_consumer_source_storage.h" />
+    <ClInclude Include="..\enhancement\qsound_spatial_routing_segments.h" />
+    <ClInclude Include="..\enhancement\qsound_spatial_source_bus.h" />
     <ClInclude Include="..\enhancement\qsound_echo_input_recomposition.h" />
     <ClInclude Include="..\enhancement\qsound_echo_state.h" />
     <ClInclude Include="..\enhancement\qsound_reference_recomposition.h" />
