@@ -12,6 +12,22 @@ int main()
     static_assert(omniphony_source_abi_major_required == 0);
     static_assert(omniphony_source_abi_minor_required >= 3);
 
+    // Omniphony source_ffi ABI 0.3 uses the same C layout on its Rust side.
+    // Pin the binary shape so a future field insertion/reorder cannot silently
+    // reinterpret musical evidence across the DLL boundary.
+    static_assert(sizeof(omniphony_source_evidence_v1_transport) == 72);
+    static_assert(alignof(omniphony_source_evidence_v1_transport) == 8);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, lane_kind) == 0);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, flags) == 4);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, source_id) == 8);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, persistent_part_id) == 16);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, left_gain) == 24);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, authored_x) == 32);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, foundation) == 44);
+    static_assert(offsetof(omniphony_source_evidence_v1_transport, confidence) == 64);
+    static_assert(sizeof(omniphony_source_evidence_event_v1_transport) == 80);
+    static_assert(offsetof(omniphony_source_evidence_event_v1_transport, evidence) == 8);
+
     constexpr std::size_t frames = 4;
     const std::array<float, frames> a{0.1f, 0.2f, 0.3f, 0.4f};
     const std::array<float, frames> b{-0.1f, -0.2f, -0.3f, -0.4f};
