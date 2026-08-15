@@ -1,10 +1,15 @@
 #include "../../components/vgm/enhancement/psg_block_capture.h"
+#include "../../components/vgm/enhancement/psg_spatial_routing.h"
 
+#include <array>
 #include <cstdint>
 
+using gameaudio::vgm::build_sn76489_route_segments;
 using gameaudio::vgm::command_event;
 using gameaudio::vgm::command_event_kind;
 using gameaudio::vgm::psg_block_capture;
+using gameaudio::vgm::sn76489_route_segment;
+using gameaudio::vgm::sn76489_timed_write;
 using gameaudio::vgm::sn76489_write_kind;
 
 #define CHECK(expression) do { if (!(expression)) return __LINE__; } while (false)
@@ -52,6 +57,47 @@ int main() {
     CHECK(capture.count(0) == 0);
     CHECK(capture.count(1) == 0);
     CHECK(capture.dropped(0) == 0);
+
+    // Routing is segmented at exact sample offsets. Two mask writes at the same
+    // sample collapse to the last mask and never create a zero-length interval.
+    const std::array<sn76489_timed_write, 5> route_writes{{
+        {2, sn76489_write_kind::register_write, 0x91},
+        {3, sn76489_write_kind::stereo_mask, 0x10},
+        {3, sn76489_write_kind::stereo_mask, 0x11},
+        {7, sn76489_write_kind::stereo_mask, 0x01},
+        {10, sn76489_write_kind::stereo_mask, 0x88},
+    }};
+    std::array<sn76489_route_segment, 4> segments{};
+    const auto segmented = build_sn76489_route_segments(
+        0xFF,
+        route_writes.data(),
+        route_writes.size(),
+        10,
+        segments.data(),
+        segments.size());
+    CHECK(segmented.valid_order);
+    CHECK(!segmented.overflowed);
+    CHECK(segmented.segment_count == 3);
+    CHECK(segments[0].begin_frame == 0 && segments[0].end_frame == 3 && segments[0].stereo_mask == 0xFF);
+    CHECK(segments[1].begin_frame == 3 && segments[1].end_frame == 7 && segments[1].stereo_mask == 0x11);
+    CHECK(segments[2].begin_frame == 7 && segments[2].end_frame == 10 && segments[2].stereo_mask == 0x01);
+    CHECK(segmented.final_stereo_mask == 0x88);
+
+    // Out-of-order timing is not repaired silently. The source observer is
+    // expected to preserve execution order, so this becomes an explicit invalid
+    // block instead of ambiguous spatial metadata.
+    const std::array<sn76489_timed_write, 2> bad_order{{
+        {8, sn76489_write_kind::stereo_mask, 0x10},
+        {4, sn76489_write_kind::stereo_mask, 0x01},
+    }};
+    const auto invalid = build_sn76489_route_segments(
+        0xFF,
+        bad_order.data(),
+        bad_order.size(),
+        10,
+        segments.data(),
+        segments.size());
+    CHECK(!invalid.valid_order);
 
     return 0;
 }
