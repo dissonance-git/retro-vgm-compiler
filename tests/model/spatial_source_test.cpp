@@ -2,6 +2,7 @@
 #include "model/spatial_playback_options.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
 #include "components/spc/spc_spatial_source.h"
+#include "components/spc/spc_source_bus.h"
 
 #include <cassert>
 #include <cmath>
@@ -122,6 +123,24 @@ int main() {
     assert(std::fabs(spc.stereo_route.right_gain - (64.0f / 127.0f)) < 1.0e-6f);
     assert(spc.effect_send_known && spc.effect_send_enabled);
     assert(!vgmtooling::model::may_claim_authored_3d(spc));
+
+    // The S-DSP echo return is one shared stereo field, not eight fictional
+    // per-instrument wet stems. Preserve L/R polarity and link both halves to
+    // one stable field identity for Omniphony presentation.
+    const auto echo_left = gameaudio::spc::spc_source_bus::make_echo_source(
+        gameaudio::spc::spc_source_bus::echo_side::left, 9, -128);
+    const auto echo_right = gameaudio::spc::spc_source_bus::make_echo_source(
+        gameaudio::spc::spc_source_bus::echo_side::right, 9, 64);
+    assert(echo_left.persistent_part_present && echo_right.persistent_part_present);
+    assert(echo_left.persistent_part_id == echo_right.persistent_part_id);
+    assert(echo_left.source_id != echo_right.source_id);
+    assert(echo_left.stereo_route.left_gain == -1.0f);
+    assert(echo_left.stereo_route.right_gain == 0.0f);
+    assert(echo_right.stereo_route.left_gain == 0.0f);
+    assert(std::fabs(echo_right.stereo_route.right_gain - (64.0f / 127.0f)) < 1.0e-6f);
+    assert(echo_left.presentation.diffuse == 1.0f);
+    assert(echo_left.presentation.width == 1.0f);
+    assert(!vgmtooling::model::may_claim_authored_3d(echo_left));
 
     auto true_position = spc;
     true_position.authored_position_present = true;
