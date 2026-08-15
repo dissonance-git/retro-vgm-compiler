@@ -47,6 +47,9 @@ jobs:
             tests/vgm/qsound_native_time_map_test.cpp -o /tmp/qsound_native_time_map_test
           /tmp/qsound_native_time_map_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_native_source_window_test.cpp -o /tmp/qsound_native_source_window_test
+          /tmp/qsound_native_source_window_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_echo_input_recomposition_test.cpp -o /tmp/qsound_echo_input_recomposition_test
           /tmp/qsound_echo_input_recomposition_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
