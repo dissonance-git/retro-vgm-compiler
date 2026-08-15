@@ -5,6 +5,7 @@
 #include "../../enhancement/psg_block_capture.h"
 #include "../../enhancement/qsound_block_capture.h"
 #include "../../enhancement/qsound_control_state.h"
+#include "../../enhancement/qsound_native_source_capture.h"
 #include "../../enhancement/sn76489_enhanced.h"
 #include "../../enhancement/ym2612_dac_block_capture.h"
 #include "../../enhancement/ym2612_dac_enhanced.h"
@@ -23,6 +24,7 @@ private:
 	gameaudio::vgm::ym2612_dac_block_capture m_dac_capture;
 	gameaudio::vgm::qsound_block_capture m_qsound_capture;
 	gameaudio::vgm::qsound_control_state m_qsound_state;
+	gameaudio::vgm::qsound_native_source_capture m_qsound_audio_capture;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
 	std::array<gameaudio::vgm::ym2612_pcm_stream, 256> m_pcm_streams;
@@ -34,6 +36,8 @@ private:
 	std::array<bool, 2> m_dac_shadow_valid{{false, false}};
 	bool m_qsound_present = false;
 	bool m_qsound_shadow_valid = false;
+	bool m_qsound_audio_shadow_valid = false;
+	bool m_qsound_audio_capture_active = false;
 
 	bool m_source_capture_active = false;
 	bool m_shadow_configured = false;
@@ -62,6 +66,9 @@ private:
 #endif
 #ifdef LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER
 	static void dac_stream_source_callback(void* user_param, const VGM_DAC_STREAM_SOURCE_EVENT* event);
+#endif
+#ifdef LIBVGM_GAMEAUDIO_QSOUND_SOURCE_OBSERVER
+	static void qsound_source_callback(void* user_param, const VGM_QSOUND_SOURCE_FRAME* event);
 #endif
 	static void source_event_tap(void* user_param, const gameaudio::vgm::command_event& event) noexcept;
 	void configure_enhancement_shadow();
