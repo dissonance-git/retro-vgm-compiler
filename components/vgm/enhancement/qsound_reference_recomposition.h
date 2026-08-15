@@ -42,10 +42,12 @@ inline qsound_recomposition_result qsound_recompose_reference_channel(
     if (biased < 0 && (biased % q14) != 0)
         --rounded; // explicit arithmetic right-shift semantics
 
-    if (rounded > std::numeric_limits<std::int16_t>::max())
-        rounded = std::numeric_limits<std::int16_t>::max();
-    else if (rounded < std::numeric_limits<std::int16_t>::min())
-        rounded = std::numeric_limits<std::int16_t>::min();
+    // The recovered QSound DSP program/HLE clamps to +/-0x7fff, not the full
+    // signed-int16 range. Preserve that asymmetric historical boundary exactly.
+    if (rounded > 32767)
+        rounded = 32767;
+    else if (rounded < -32767)
+        rounded = -32767;
 
     return {
         qsound_recomposition_status::exact,
