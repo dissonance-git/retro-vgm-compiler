@@ -79,6 +79,7 @@ int main() {
     pan_event.payload_size = static_cast<std::uint32_t>(pan_payload.size());
     capture.observe(pan_event, 1017);
     CHECK(capture.count() == 1u);
+    CHECK(capture.environment_count() == 0u);
     CHECK(capture.controls()[0].sample_offset == 17u);
     CHECK(capture.controls()[0].write.kind == qsound_source_control_kind::pan);
     CHECK(capture.controls()[0].write.physical_slot == 0u);
@@ -89,6 +90,7 @@ int main() {
     echo_event.payload = echo_payload.data();
     capture.observe(echo_event, 1000);
     CHECK(capture.count() == 2u);
+    CHECK(capture.environment_count() == 0u);
     CHECK(capture.controls()[1].sample_offset == 0u);
     CHECK(capture.controls()[1].write.kind == qsound_source_control_kind::pcm_echo_contribution);
     CHECK(capture.controls()[1].write.raw_value == 0xFF00u);
@@ -99,32 +101,67 @@ int main() {
     CHECK(capture.count() == 3u);
     CHECK(capture.controls()[2].sample_offset == 0u);
 
-    // Global renderer state is intentionally not admitted to the source trace.
+    // Shared renderer state is captured on the same command timeline without
+    // being admitted to the source-local trace.
     const std::array<std::uint8_t, 3> feedback_payload{{0x12, 0x34, 0x93}};
     command_event feedback_event = pan_event;
     feedback_event.payload = feedback_payload.data();
     capture.observe(feedback_event, 1020);
     CHECK(capture.count() == 3u);
+    CHECK(capture.environment_count() == 1u);
+    CHECK(capture.environment_controls()[0].sample_offset == 20u);
+    CHECK(capture.environment_controls()[0].write.kind == qsound_environment_control_kind::echo_feedback);
+    CHECK(capture.environment_controls()[0].write.channel == qsound_environment_global_channel);
+    CHECK(capture.environment_controls()[0].write.raw_value == 0x1234u);
+
+    const std::array<std::uint8_t, 3> wet_delay_payload{{0x00, 0x07, 0xDE}};
+    command_event wet_delay_event = pan_event;
+    wet_delay_event.payload = wet_delay_payload.data();
+    capture.observe(wet_delay_event, 1021);
+    CHECK(capture.count() == 3u);
+    CHECK(capture.environment_count() == 2u);
+    CHECK(capture.environment_controls()[1].sample_offset == 21u);
+    CHECK(capture.environment_controls()[1].write.kind == qsound_environment_control_kind::wet_delay);
+    CHECK(capture.environment_controls()[1].write.channel == 0u);
+    CHECK(capture.environment_controls()[1].write.raw_value == 7u);
 
     command_event wrong_command = pan_event;
     wrong_command.command = 0xC5;
     capture.observe(wrong_command, 1020);
     CHECK(capture.count() == 3u);
+    CHECK(capture.environment_count() == 2u);
 
     command_event malformed = pan_event;
     malformed.payload_size = 2;
     capture.observe(malformed, 1020);
     CHECK(capture.count() == 3u);
+    CHECK(capture.environment_count() == 2u);
 
+    // Source and environment capacities are independent. Exhausting one stream
+    // does not silently discard valid controls from the other.
     capture.begin_block(0);
     for (std::size_t i = 0; i < qsound_block_capture::capacity; ++i)
         capture.observe(pan_event, static_cast<std::uint64_t>(i));
     CHECK(capture.count() == qsound_block_capture::capacity);
+    CHECK(capture.environment_count() == 0u);
     CHECK(!capture.overflowed());
+    CHECK(!capture.environment_overflowed());
     capture.observe(pan_event, qsound_block_capture::capacity);
     CHECK(capture.overflowed());
     CHECK(capture.dropped() == 1u);
     CHECK(capture.count() == qsound_block_capture::capacity);
+
+    capture.begin_block(0);
+    for (std::size_t i = 0; i < qsound_block_capture::capacity; ++i)
+        capture.observe(feedback_event, static_cast<std::uint64_t>(i));
+    CHECK(capture.count() == 0u);
+    CHECK(capture.environment_count() == qsound_block_capture::capacity);
+    CHECK(!capture.overflowed());
+    CHECK(!capture.environment_overflowed());
+    capture.observe(feedback_event, qsound_block_capture::capacity);
+    CHECK(capture.environment_overflowed());
+    CHECK(capture.environment_dropped() == 1u);
+    CHECK(capture.environment_count() == qsound_block_capture::capacity);
 
     return 0;
 }
