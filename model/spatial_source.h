@@ -68,12 +68,33 @@ struct spatial_source_evidence {
     float authored_position[3] = {0.0f, 0.0f, 0.0f};
 };
 
+// Audio separability is deliberately more precise than a single "has stems"
+// bit. A causal source trajectory can be known even when it cannot be rendered
+// as an independently additive stem. Shared feedback, cross-resource
+// modulation and finite-width/nonlinear mixing are all counterexamples.
 struct spatial_source_capabilities {
     spatial_source_readiness readiness = spatial_source_readiness::unavailable;
     bool stable_source_evidence = false;
     bool authored_stereo_route = false;
     bool effect_send_state = false;
-    bool isolated_pcm = false;
+
+    // At least one source path in this family currently exposes isolated dry
+    // PCM. For a partially ready family this does not imply every source does.
+    bool isolated_dry_pcm = false;
+
+    // A separately observable shared wet/effect return is available. This is
+    // intentionally distinct from knowing only the per-source send state.
+    bool shared_effect_return = false;
+
+    // Summing the isolated source lanes reproduces the protected reference mix
+    // under the declared arithmetic boundary. Leave false whenever coupling,
+    // shared feedback, saturation/nonlinear mixing or missing lanes prevent it.
+    bool exact_linear_recomposition = false;
+
+    // A protected reference renderer/mix exists and should remain available as
+    // the scientific control while source-aware presentation is developed.
+    bool protected_reference_mix = false;
+
     bool authored_3d_position = false;
 };
 
@@ -89,7 +110,10 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
             true,  // exact chip/source state exists
             true,  // YM2612 LR and supported PSG routing
             false,
-            false, // some PSG/DAC stems exist, but the whole format is not isolated yet
+            true,  // selected PSG/DAC source lanes exist
+            false, // no family-wide shared wet-return contract
+            false, // VGM spans devices where source contributions need not add linearly
+            true,  // imported libvgm playback remains the protected reference
             false,
         };
     case spatial_source_family::spc:
@@ -98,7 +122,10 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
             true,  // bounded runtime voice episodes exist
             true,  // signed per-voice S-DSP routing is captured
             true,  // echo-send state is captured
-            false, // per-voice PCM taps/echo separation are still the render frontier
+            false, // per-voice dry PCM taps are still the render frontier
+            false, // shared echo return is not exposed as a source-bus lane yet
+            false, // PMON/shared echo/finite arithmetic forbid a blanket sum-of-stems claim
+            true,  // SNESAPU/reference playback remains the control
             false,
         };
     case spatial_source_family::psf1:
@@ -108,6 +135,9 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
     case spatial_source_family::ncsf:
         return {
             spatial_source_readiness::unavailable,
+            false,
+            false,
+            false,
             false,
             false,
             false,
