@@ -7,6 +7,8 @@
 
 namespace vgmtooling::model {
 
+using omniphony_source_reset_fn = std::int32_t (*)(omniphony_source_processor_handle*);
+
 struct omniphony_realtime_process_result {
     bool transport_valid = false;
     std::int32_t renderer_status = -1;
@@ -14,8 +16,8 @@ struct omniphony_realtime_process_result {
 
 // Allocation-free caller for a host-resolved Omniphony source_ffi ABI 0.3
 // instance. Dynamic-library loading stays outside the portable model layer;
-// once the host resolves the opaque processor and three function pointers, the
-// audio callback no longer needs to know the transport details.
+// once the host resolves the opaque processor and ABI functions, the audio
+// callback no longer needs to know the transport details.
 template <std::size_t MaxLanes = 64, std::size_t MaxEvents = 256>
 class omniphony_realtime_client {
 public:
@@ -23,29 +25,37 @@ public:
         omniphony_source_processor_handle* processor,
         omniphony_source_abi_version_fn abi_major,
         omniphony_source_abi_version_fn abi_minor,
+        omniphony_source_reset_fn reset,
         omniphony_source_process_events_f32_fn process_events) noexcept
     {
         unbind();
         if (processor == nullptr || abi_major == nullptr || abi_minor == nullptr ||
-            process_events == nullptr)
+            reset == nullptr || process_events == nullptr)
             return false;
         if (abi_major() != omniphony_source_abi_major_required ||
             abi_minor() < omniphony_source_abi_minor_required)
             return false;
 
         processor_ = processor;
+        reset_ = reset;
         process_events_ = process_events;
         return true;
     }
 
     void unbind() noexcept {
         processor_ = nullptr;
+        reset_ = nullptr;
         process_events_ = nullptr;
         transport_.reset();
     }
 
     bool bound() const noexcept {
-        return processor_ != nullptr && process_events_ != nullptr;
+        return processor_ != nullptr && reset_ != nullptr && process_events_ != nullptr;
+    }
+
+    bool reset_renderer() noexcept {
+        transport_.reset();
+        return bound() && reset_(processor_) == 0;
     }
 
     omniphony_realtime_process_result process(
@@ -112,6 +122,7 @@ public:
 
 private:
     omniphony_source_processor_handle* processor_ = nullptr;
+    omniphony_source_reset_fn reset_ = nullptr;
     omniphony_source_process_events_f32_fn process_events_ = nullptr;
     omniphony_source_transport_storage<MaxLanes, MaxEvents> transport_{};
 };
