@@ -18,6 +18,11 @@ jobs:
         run: python3 -B -m unittest discover -s tests/vgm -p 'test_*.py'
       - name: SPC Python audits
         run: python3 -B -m unittest discover -s tests/spc -p 'test_*.py'
+      - name: Spatial source authority contract
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/spatial_source_test.cpp -o /tmp/spatial_source_test
+          /tmp/spatial_source_test
       - name: Behavioral equivalence controls
         run: |
           python3 -B tools/nes_pulse_behavioral_equivalence.py
