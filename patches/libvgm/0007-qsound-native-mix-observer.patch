@@ -1,0 +1,273 @@
+diff --git a/emu/cores/qsound_ctr.h b/emu/cores/qsound_ctr.h
+--- a/emu/cores/qsound_ctr.h
++++ b/emu/cores/qsound_ctr.h
+@@ -11,9 +11,24 @@ typedef void (*QSOUND_CTR_SOURCE_CB)(void* userParam,
+ 		UINT64 nativeSample, UINT32 sampleRate, const INT16* source);
+ 
++typedef struct _qsound_ctr_mix_frame
++{
++	INT32 echoInput;
++	INT16 echoOutput;
++	INT32 wetPostDelay[2];
++	INT32 dryPostDelay[2];
++	INT16 output[2];
++} QSOUND_CTR_MIX_FRAME;
++
++typedef void (*QSOUND_CTR_MIX_CB)(void* userParam,
++		UINT64 nativeSample, UINT32 sampleRate, const QSOUND_CTR_MIX_FRAME* frame);
++
+ extern DEV_DEF devDef_QSound_ctr;
+ 
+ void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void* cbParam);
++void qsoundc_set_mix_callback(void* info, QSOUND_CTR_MIX_CB cbFunc, void* cbParam);
+ 
+ #ifdef __cplusplus
+ }
+ #endif
+ 
+diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
+--- a/emu/cores/qsound_ctr.c
++++ b/emu/cores/qsound_ctr.c
+@@ -91,6 +91,13 @@ struct qsound_chip {
+ 	UINT32 source_sample_rate;
+ 	UINT64 source_sample_index;
+ 
++	QSOUND_CTR_MIX_CB mix_cb;
++	void* mix_cb_param;
++	INT32 mix_echo_input;
++	INT16 mix_echo_output;
++	INT32 mix_wet_post_delay[2];
++	INT32 mix_dry_post_delay[2];
++
+ 	UINT8 opt_nowait;
+ 
+ 	UINT16 *register_map[256];
+@@ -185,6 +192,12 @@ static void device_reset_qsound_ctr(void* info)
+ 	chip->state = 0;
+ 	chip->state_counter = 0;
+ 	chip->source_sample_index = 0;
++	chip->mix_echo_input = 0;
++	chip->mix_echo_output = 0;
++	chip->mix_wet_post_delay[0] = chip->mix_wet_post_delay[1] = 0;
++	chip->mix_dry_post_delay[0] = chip->mix_dry_post_delay[1] = 0;
+ 
+ 	return;
+ }
+@@ -289,6 +302,7 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 	if (chip->romData == NULL)
+ 	{
+ 		static const INT16 silent_sources[QSOUND_CTR_SOURCE_COUNT] = {0};
++		static const QSOUND_CTR_MIX_FRAME silent_mix = {0};
+ 		UINT32 silentSmpl;
+ 
+ 		memset(outputs[0], 0, samples * sizeof(*outputs[0]));
+@@ -302,6 +316,10 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 					chip->source_sample_rate, silent_sources);
+ 				chip->source_sample_index ++;
+ 			}
++			else if (chip->mix_cb != NULL)
++			{
++				/* source index advancement is shared below */
++			}
+ 		}
+-		else
++		if (chip->source_cb == NULL)
+ 		{
+-			chip->source_sample_index += samples;
++			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
++			{
++				if (chip->mix_cb != NULL)
++					chip->mix_cb(chip->mix_cb_param, chip->source_sample_index,
++						chip->source_sample_rate, &silent_mix);
++				chip->source_sample_index ++;
++			}
++		}
++		else if (chip->mix_cb != NULL)
++		{
++			UINT64 firstSample = chip->source_sample_index - samples;
++			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
++				chip->mix_cb(chip->mix_cb_param, firstSample + silentSmpl,
++					chip->source_sample_rate, &silent_mix);
+ 		}
+ 		return;
+ 	}
+@@ -313,6 +331,21 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 		if (chip->source_cb != NULL)
+ 			chip->source_cb(chip->source_cb_param, chip->source_sample_index,
+ 				chip->source_sample_rate, chip->voice_output);
++		if (chip->mix_cb != NULL)
++		{
++			QSOUND_CTR_MIX_FRAME frame;
++			frame.echoInput = chip->mix_echo_input;
++			frame.echoOutput = chip->mix_echo_output;
++			frame.wetPostDelay[0] = chip->mix_wet_post_delay[0];
++			frame.wetPostDelay[1] = chip->mix_wet_post_delay[1];
++			frame.dryPostDelay[0] = chip->mix_dry_post_delay[0];
++			frame.dryPostDelay[1] = chip->mix_dry_post_delay[1];
++			frame.output[0] = chip->out[0];
++			frame.output[1] = chip->out[1];
++			chip->mix_cb(chip->mix_cb_param, chip->source_sample_index,
++				chip->source_sample_rate, &frame);
++		}
+ 		chip->source_sample_index ++;
+ 	}
+ 
+@@ -328,6 +361,14 @@ void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void*
+ 	return;
+ }
+ 
++void qsoundc_set_mix_callback(void* info, QSOUND_CTR_MIX_CB cbFunc, void* cbParam)
++{
++	struct qsound_chip* chip = (struct qsound_chip*)info;
++	chip->mix_cb = cbFunc;
++	chip->mix_cb_param = cbParam;
++	return;
++}
++
+ static void qsoundc_alloc_rom(void* info, UINT32 memsize)
+ {
+@@ -568,6 +609,8 @@ static void state_normal_update(struct qsound_chip *chip)
+ 	
+ 	echo_output = echo(&chip->echo,echo_input);
++	chip->mix_echo_input = echo_input;
++	chip->mix_echo_output = echo_output;
+ 	
+ 	// now, we do the magic stuff
+ 	for(ch=0; ch<2; ch++)
+@@ -596,7 +639,12 @@ static void state_normal_update(struct qsound_chip *chip)
+ 		if(chip->state == STATE_NORMAL2)
+ 			dry = fir(&chip->alt_filter[ch], dry >> 16);
+ 		
+-		output = (delay(&chip->wet[ch], wet) + delay(&chip->dry[ch], dry));
++		/* The delay states are disjoint. Naming both return values exposes the
++		 * exact historical branch accounting without changing either state. */
++		chip->mix_wet_post_delay[ch] = delay(&chip->wet[ch], wet);
++		chip->mix_dry_post_delay[ch] = delay(&chip->dry[ch], dry);
++		output = chip->mix_wet_post_delay[ch] + chip->mix_dry_post_delay[ch];
+ 		
+ 		// DSP round function
+ 		output = (output + 0x2000) >> 14;
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -122,6 +122,24 @@ typedef void (*VGM_QSOUND_SOURCE_OBSERVER_CB)(void* userParam,
+ 		const VGM_QSOUND_SOURCE_FRAME* event);
+ 
++#define LIBVGM_GAMEAUDIO_QSOUND_MIX_OBSERVER 1
++
++struct VGM_QSOUND_MIX_FRAME
++{
++	UINT8 chipID;
++	UINT32 sampleRate;
++	UINT64 nativeSample;
++	INT32 echoInput;
++	INT16 echoOutput;
++	INT32 wetPostDelay[2];
++	INT32 dryPostDelay[2];
++	INT16 output[2];
++};
++
++typedef void (*VGM_QSOUND_MIX_OBSERVER_CB)(void* userParam,
++		const VGM_QSOUND_MIX_FRAME* event);
++
+ 
+ class VGMPlayer : public PlayerBase
+ {
+@@ -262,6 +280,7 @@ public:
+ 	void SetCommandObserver(VGM_COMMAND_OBSERVER_CB cbFunc, void* cbParam);
+ 	void SetDACStreamSourceObserver(VGM_DAC_STREAM_SOURCE_CB cbFunc, void* cbParam);
+ 	UINT8 SetQSoundSourceObserver(VGM_QSOUND_SOURCE_OBSERVER_CB cbFunc, void* cbParam);
++	UINT8 SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* cbParam);
+ 	
+ 	UINT8 Start(void);
+@@ -314,6 +333,8 @@ protected:
+ 	static void QSoundSourceObserverCB(void* userParam, UINT64 nativeSample,
+ 		UINT32 sampleRate, const INT16* source);
++	static void QSoundMixObserverCB(void* userParam, UINT64 nativeSample,
++		UINT32 sampleRate, const QSOUND_CTR_MIX_FRAME* frame);
+ 
+ 	void ParseFileForFMClocks();
+@@ -418,6 +439,8 @@ protected:
+ 	VGM_QSOUND_SOURCE_OBSERVER_CB _qsoundSourceObserver;
+ 	void* _qsoundSourceObserverParam;
++	VGM_QSOUND_MIX_OBSERVER_CB _qsoundMixObserver;
++	void* _qsoundMixObserverParam;
+ 	QSOUND_SOURCE_OBSERVER_CONTEXT _qsoundSourceObserverContext[2];
+ 	//PLAYER_EVENT_CB _eventCbFunc;
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -158,7 +158,9 @@ VGMPlayer::VGMPlayer() :
+ 	_dacStreamObserverParam(NULL),
+ 	_qsoundSourceObserver(NULL),
+-	_qsoundSourceObserverParam(NULL)
++	_qsoundSourceObserverParam(NULL),
++	_qsoundMixObserver(NULL),
++	_qsoundMixObserverParam(NULL)
+ {
+ 	_qsoundSourceObserverContext[0].player = this;
+@@ -221,6 +223,9 @@ VGMPlayer::~VGMPlayer()
+ 	SetQSoundSourceObserver(NULL, NULL);
+ 	_qsoundSourceObserver = NULL;
+ 	_qsoundSourceObserverParam = NULL;
++	SetQSoundMixObserver(NULL, NULL);
++	_qsoundMixObserver = NULL;
++	_qsoundMixObserverParam = NULL;
+ 	
+ 	if (_playState & PLAYSTATE_PLAY)
+@@ -1038,6 +1043,64 @@ void VGMPlayer::QSoundSourceObserverCB(void* userParam, UINT64 nativeSample,
+ 	return;
+ }
+ 
++UINT8 VGMPlayer::SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* cbParam)
++{
++	UINT8 hooked = 0;
++	_qsoundMixObserver = cbFunc;
++	_qsoundMixObserverParam = cbParam;
++
++	for (size_t curDev = 0; curDev < _devices.size(); curDev ++)
++	{
++		CHIP_DEVICE& chipDev = _devices[curDev];
++		if (chipDev.chipType != DEVID_QSOUND || chipDev.chipID >= 2)
++			continue;
++		if (chipDev.base.defInf.dataPtr == NULL || chipDev.base.defInf.devDef == NULL)
++			continue;
++		if (chipDev.base.defInf.devDef->coreID != FCC_CTR_)
++			continue;
++
++		qsoundc_set_mix_callback(chipDev.base.defInf.dataPtr,
++			cbFunc != NULL ? &VGMPlayer::QSoundMixObserverCB : NULL,
++			cbFunc != NULL ? &_qsoundSourceObserverContext[chipDev.chipID] : NULL);
++		hooked ++;
++	}
++	return hooked;
++}
++
++/*static*/ void VGMPlayer::QSoundMixObserverCB(void* userParam, UINT64 nativeSample,
++		UINT32 sampleRate, const QSOUND_CTR_MIX_FRAME* frame)
++{
++	QSOUND_SOURCE_OBSERVER_CONTEXT* context = (QSOUND_SOURCE_OBSERVER_CONTEXT*)userParam;
++	if (context == NULL || context->player == NULL || frame == NULL)
++		return;
++	VGMPlayer* oThis = context->player;
++	if (oThis->_qsoundMixObserver == NULL)
++		return;
++
++	VGM_QSOUND_MIX_FRAME event;
++	event.chipID = context->chipID;
++	event.sampleRate = sampleRate;
++	event.nativeSample = nativeSample;
++	event.echoInput = frame->echoInput;
++	event.echoOutput = frame->echoOutput;
++	for (UINT8 ch = 0; ch < 2; ch ++)
++	{
++		event.wetPostDelay[ch] = frame->wetPostDelay[ch];
++		event.dryPostDelay[ch] = frame->dryPostDelay[ch];
++		event.output[ch] = frame->output[ch];
++	}
++	oThis->_qsoundMixObserver(oThis->_qsoundMixObserverParam, &event);
++	return;
++}
++
+ void VGMPlayer::NotifyCommandObserver(UINT8 command)
+ {
