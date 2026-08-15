@@ -22,6 +22,10 @@ class QSoundLiveMixWiringTest(unittest.TestCase):
     def test_callback_preserves_freshness_and_exact_native_terms(self):
         self.assertIn("frame.native_sample = event->nativeSample;", self.shadow)
         self.assertIn("frame.accounting_valid = event->accountingValid != 0;", self.shadow)
+        self.assertIn(
+            "frame.pcm_echo_contribution[voice] = event->pcmEcho[voice];",
+            self.shadow,
+        )
         self.assertIn("frame.echo_input = event->echoInput;", self.shadow)
         self.assertIn("frame.echo_output = event->echoOutput;", self.shadow)
         self.assertIn("frame.wet_post_delay[ch] = event->wetPostDelay[ch];", self.shadow)
