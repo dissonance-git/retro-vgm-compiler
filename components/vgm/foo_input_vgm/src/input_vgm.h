@@ -4,9 +4,12 @@
 #include "../../enhancement/genesis_state.h"
 #include "../../enhancement/psg_block_capture.h"
 #include "../../enhancement/qsound_block_capture.h"
+#include "../../enhancement/qsound_consumer_source_storage.h"
 #include "../../enhancement/qsound_control_state.h"
 #include "../../enhancement/qsound_native_mix_capture.h"
 #include "../../enhancement/qsound_native_source_capture.h"
+#include "../../enhancement/qsound_native_source_window.h"
+#include "../../enhancement/qsound_native_time_map.h"
 #include "../../enhancement/sn76489_enhanced.h"
 #include "../../enhancement/ym2612_dac_block_capture.h"
 #include "../../enhancement/ym2612_dac_enhanced.h"
@@ -27,6 +30,9 @@ private:
 	gameaudio::vgm::qsound_control_state m_qsound_state;
 	gameaudio::vgm::qsound_native_source_capture m_qsound_audio_capture;
 	gameaudio::vgm::qsound_native_mix_capture m_qsound_mix_capture;
+	gameaudio::vgm::qsound_native_time_map m_qsound_consumer_time_map;
+	gameaudio::vgm::qsound_native_source_window m_qsound_consumer_source_window;
+	gameaudio::vgm::qsound_consumer_source_storage m_qsound_consumer_source_storage;
 	std::array<gameaudio::vgm::sn76489_enhanced, 2> m_enhanced_psg;
 	std::array<gameaudio::vgm::ym2612_dac_enhanced, 2> m_enhanced_dac;
 	std::array<gameaudio::vgm::ym2612_pcm_stream, 256> m_pcm_streams;
@@ -42,6 +48,8 @@ private:
 	bool m_qsound_audio_capture_active = false;
 	bool m_qsound_mix_shadow_valid = false;
 	bool m_qsound_mix_capture_active = false;
+	bool m_qsound_consumer_source_configured = false;
+	bool m_qsound_consumer_source_shadow_valid = false;
 
 	bool m_source_capture_active = false;
 	bool m_shadow_configured = false;
@@ -85,6 +93,8 @@ private:
 	void advance_pcm_streams_to(uint_fast64_t absolute_sample) noexcept;
 	void reset_pcm_streams() noexcept;
 	void replay_captured_sources(uint_fast32_t rendered_samples) noexcept;
+	void reset_qsound_consumer_source_path(bool source_observer_available) noexcept;
+	void project_qsound_consumer_sources(uint_fast64_t block_start, uint_fast32_t rendered_samples) noexcept;
 #ifndef LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER
 	void invalidate_unobserved_dac_stream(const gameaudio::vgm::command_event& event) noexcept;
 #endif
