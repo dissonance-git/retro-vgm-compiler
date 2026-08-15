@@ -49,6 +49,15 @@ void input_vgm::configure_enhancement_shadow()
 			m_dac_shadow_valid[instance] = true;
 			m_enhanced_dac[instance].reset();
 		}
+		else if (device.type == DEVID_QSOUND && instance == 0)
+		{
+			// VGM command C4 addresses the single QSound instance used by the
+			// format/player path. Keep libvgm as the audible renderer and shadow
+			// only source-facing pan/echo controls for now.
+			m_qsound_present = true;
+			m_qsound_shadow_valid = true;
+			m_qsound_state.reset();
+		}
 	}
 #endif
 }
@@ -86,6 +95,8 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 			self->m_enhanced_dac[instance].reset();
 			self->m_dac_shadow_valid[instance] = self->m_dac_present[instance];
 		}
+		self->m_qsound_state.reset();
+		self->m_qsound_shadow_valid = self->m_qsound_present;
 		self->m_shadow_replay_sample = 0;
 		return;
 	}
@@ -102,6 +113,8 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 	{
 		self->m_psg_capture.observe(event, absolute_sample);
 		self->m_dac_capture.observe(event, absolute_sample);
+		if (self->m_qsound_present && self->m_qsound_shadow_valid)
+			self->m_qsound_capture.observe(event, absolute_sample);
 		return;
 	}
 
@@ -163,6 +176,15 @@ void input_vgm::apply_source_event_outside_render(const gameaudio::vgm::command_
 			else
 				m_enhanced_psg[psg_instance].write(event.payload[0]);
 		}
+	}
+
+	if (m_qsound_present && m_qsound_shadow_valid &&
+		event.kind == gameaudio::vgm::command_event_kind::command && event.command == 0xC4 &&
+		event.payload != nullptr && event.payload_size >= 3)
+	{
+		const uint16_t value = static_cast<uint16_t>(
+			(static_cast<uint16_t>(event.payload[0]) << 8) | static_cast<uint16_t>(event.payload[1]));
+		m_qsound_state.apply(event.payload[2], value);
 	}
 
 	size_t dac_instance = 0;
@@ -256,6 +278,36 @@ void input_vgm::replay_captured_sources(uint_fast32_t rendered_samples) noexcept
 		}
 	}
 
+	if (m_qsound_present && m_qsound_shadow_valid)
+	{
+		if (m_qsound_capture.overflowed())
+		{
+			m_qsound_shadow_valid = false;
+		}
+		else
+		{
+			const gameaudio::vgm::qsound_timed_source_control* controls = m_qsound_capture.controls();
+			const size_t control_count = m_qsound_capture.count();
+			size_t previous_offset = 0;
+			bool have_previous = false;
+
+			for (size_t index = 0; index < control_count; ++index)
+			{
+				const size_t offset = controls[index].sample_offset > rendered_samples
+					? static_cast<size_t>(rendered_samples)
+					: controls[index].sample_offset;
+				if (have_previous && offset < previous_offset)
+				{
+					m_qsound_shadow_valid = false;
+					break;
+				}
+				previous_offset = offset;
+				have_previous = true;
+				m_qsound_state.apply(controls[index].write);
+			}
+		}
+	}
+
 	m_shadow_replay_sample = m_psg_capture.block_start_sample() + rendered_samples;
 }
 
@@ -269,6 +321,7 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 	advance_shadow_to(block_start);
 	m_psg_capture.begin_block(block_start);
 	m_dac_capture.begin_block(block_start);
+	m_qsound_capture.begin_block(block_start);
 	m_source_capture_active = true;
 
 	bool result = false;
@@ -299,7 +352,8 @@ void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)
 
 	// libvgm emits reset/replayed source events during seek. The tap rebuilds
 	// source state while the PSG fast path advances oscillator/LFSR time without
-	// generating discarded audio.
+	// generating discarded audio. QSound source controls rebuild from the same
+	// replayed C4 stream while the historical QSound renderer remains authoritative.
 	input_base::decode_seek(p_seconds, p_abort);
 
 	if (m_vgm_player != nullptr)
