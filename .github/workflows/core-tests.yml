@@ -32,6 +32,15 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/realtime_musical_spatial_observer_test.cpp -o /tmp/realtime_musical_spatial_observer_test
           /tmp/realtime_musical_spatial_observer_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_role_hypothesis_test.cpp -o /tmp/realtime_musical_role_hypothesis_test
+          /tmp/realtime_musical_role_hypothesis_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_role_tracker_test.cpp -o /tmp/realtime_musical_role_tracker_test
+          /tmp/realtime_musical_role_tracker_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_spatial_frontend_test.cpp -o /tmp/realtime_musical_spatial_frontend_test
+          /tmp/realtime_musical_spatial_frontend_test
       - name: QSound source controls and native evidence sidecars
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
