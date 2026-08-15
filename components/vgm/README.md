@@ -123,13 +123,19 @@ The project now preserves a QSound-specific four-way source route rather than re
 
 PCM channels also preserve the signed `0xBA..0xC9` per-channel contribution to the shared echo input. That value is distinct from the per-source wet routing table and is not collapsed into it.
 
-The modified foobar VGM path now observes VGM `0xC4` writes in realtime and maintains a fail-closed sample-timed QSound source-control shadow. Source-facing pan and PCM echo-contribution writes are admitted; global echo feedback, FIR selection, output delays and output component volumes remain renderer state.
+The modified foobar VGM path observes VGM `0xC4` writes in realtime and maintains a fail-closed sample-timed QSound source-control shadow. Source-facing pan and PCM echo-contribution writes are admitted; global echo feedback, FIR selection, output delays and output component volumes remain renderer state.
 
-This is currently **control/evidence state, not audible QSound source substitution**. libvgm remains the historical QSound renderer and therefore the listening/reference control.
+The pinned libvgm patch `0006-qsound-native-source-observer.patch` now also exposes the superctr core's 19 `voice_output` values before the QSound dry/wet pan tables. Those samples are captured at the QSound core's native rate, not mislabeled as foobar/output-rate frames. Each captured frame carries its native sample index and sample rate so later conversion can keep all 19 lanes phase/time coherent.
 
-The next QSound audio milestone is to expose the 19 synthesized source outputs before the QSound dry/wet pan tables, preserve the shared environmental path separately, and feed those causal lanes to Omniphony. QSound is a historical spatial baseline and calibration family, not a ceiling on the modern binaural presentation.
+The foobar wrapper attaches that observer only around normal decode blocks, copies the borrowed 19-lane frame into a fixed-capacity fail-closed sidecar, then detaches it on both normal and exception paths. Seek never admits discarded QSound audio into the sidecar.
+
+This is now **live source-audio evidence, not audible QSound source substitution**. `p_chunk` still comes from the historical libvgm QSound renderer and remains the listening/reference control.
+
+The next QSound audio milestones are to extract the shared environmental return separately, convert the 19 native lanes to the consumer rate with one coherent shared-phase timeline, prove the strongest reference-recomposition claim the finite/shared renderer permits, and then hand the earned source bus to Omniphony. QSound is a historical spatial baseline and calibration family, not a ceiling on the modern binaural presentation.
 
 No QSound pan value is promoted to authored 3-D coordinates. Device-authored routing constrains presentation; Omniphony owns the final headphone scene.
+
+See `../../research/qsound-native-source-tap.md` for the exact native-rate and observer boundary.
 
 ## Enhanced source engines
 
@@ -140,7 +146,7 @@ Project-owned source-domain work currently includes:
 - `ym2612_pcm_stream` for the current YM2612 sink of VGM source-bank streams;
 - exact YM2612 register timeline capture and an isolated six-channel FM backend contract;
 - explicit authored stereo routing and high-precision source summation primitives;
-- QSound 19-source spatial-control evidence with four-way dry/wet routing and PCM echo contribution preserved before source-audio tapping.
+- QSound 19-source spatial-control evidence plus a live native-rate 19-lane pre-pan audio sidecar, while shared environmental return extraction remains pending.
 
 The VGM `0x90-0x95` stream transport itself is now decoded generically so future chip-specific PCM/ADPCM sinks do not each invent private format semantics.
 
