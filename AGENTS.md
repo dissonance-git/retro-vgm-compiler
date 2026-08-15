@@ -26,17 +26,18 @@ Direct user correction outranks project prose.
 
 ## Project scope
 
-Game Music Interpreter owns executable understanding, musical analysis, and source-native rendering of digital game music.
+Game Music Interpreter owns executable understanding, musical analysis, and source-native rendering of digital game music across the full vertical route from encoded data to listener-level musical understanding.
 
 It may own:
 
-- format/container parsers;
+- bit/byte, format, container, memory-map, and object parsers;
 - tracker, MML, and other authored symbolic inputs;
 - driver and sequence models;
 - device/chip models;
 - reference and enhanced synthesis;
 - source, performance, device, sample, and routing state;
 - provenance-aware musical analysis;
+- listener-level musical organization grounded in lower evidence;
 - deterministic fixtures and corpus tooling;
 - playback/front-end bridges.
 
@@ -66,21 +67,39 @@ Sonic 3 attribution is a bounded adversarial case because it depends on SMPS, YM
 
 Different sources require different ingestion and execution machinery. Normalize meaning only after the source-specific semantics have been respected.
 
+The project must remain vertically traceable across all materially available layers:
+
 ```text
+physical encoding / exact bits and bytes
+        ↓
+format / object / memory semantics
+        ↓
 source-specific representation
         ↓
 source-specific parser / compiler / executor
         ↓
-exact execution and synthesis state
+program and driver execution
         ↓
-common musical execution model where earned
+exact device / synthesis / routing state
         ↓
-analysis / rendering / forensics / perceptual comparison
+performed musical gestures and persistent parts
+        ↓
+acoustic realization
+        ↓
+auditory organization
+        ↓
+listener musical model of the song
+        ↓
+analysis / discourse / response / forensics
 ```
 
-Do not make MIDI, PCM, stems, notation, or chord sequences the canonical representation.
+No layer is allowed to impersonate another. Raw bytes are not automatically notes. Registers are not automatically musical parts. PCM is not automatically auditory organization. An auditory stream is not automatically a melody, accompaniment role, section, cadence, or song-form interpretation. A listener response is not the same thing as a listener's musical understanding.
 
-Keep source evidence attached so higher reasoning can descend to exact bytes, addresses, commands, registers, samples, driver events, MML/tracker commands, device state, or documentary sources.
+Do not make MIDI, PCM, stems, notation, chord sequences, or prose summaries the canonical representation.
+
+Keep source evidence attached so higher reasoning can descend to exact bits, bytes, addresses, commands, registers, samples, driver events, MML/tracker commands, device state, acoustic contributions, auditory evidence, or documentary sources. A higher claim may compress its support, but it must not sever the route back down.
+
+Likewise, lower layers should expose sufficient causal structure to support higher reasoning where possible. Do not stop at technically exact machine state when the task is to understand the music as heard, and do not fabricate a higher layer when the required bridge has not been established.
 
 ## Identity and evidence law
 
@@ -91,6 +110,7 @@ physical slot
 != bounded voice episode
 != persistent musical part
 != auditory stream
+!= listener-assigned musical role
 ```
 
 ```text
@@ -108,6 +128,11 @@ register frequency
 source / implementation fingerprint
 != composition fingerprint
 != authorship proof
+```
+
+```text
+listener musical understanding
+!= listener response
 ```
 
 Mappings may be one-to-one, one-to-many, many-to-one, or time-varying.
@@ -230,7 +255,8 @@ Important mechanisms need more than synthetic unit tests. Use whichever controls
 - source→driver→device forward controls;
 - paired preserved representations;
 - reference-vs-enhanced captures;
-- listening tests for perceptual quality.
+- auditory/perceptual controls where the claim crosses into heard organization;
+- listening tests for perceptual quality and listener-level musical interpretation where appropriate.
 
 Do not call CI green unless the runner actually executed successfully. A blocked runner is not a pass or a failure of the code.
 
@@ -238,13 +264,16 @@ Do not call CI green unless the runner actually executed successfully. A blocked
 
 The project already has device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, and a broad cross-architecture corpus.
 
-The next high-information work is time-bearing performance reconstruction across non-Genesis controls:
+The next high-information work is time-bearing performance reconstruction across non-Genesis controls, followed by explicit bridges into heard musical organization:
 
 1. recover device-native pitch/voice/sample trajectories;
 2. separate physical episodes from persistent parts;
 3. compare executable-rip and downstream-trace representations where a same-work control exists;
 4. build bounded source/driver adapters that can be followed forward into device state;
-5. only then push higher into harmony, form, style, and attribution on those controls.
+5. push higher into acoustic contribution and auditory organization without discarding source identity;
+6. recover listener-level roles, phrases, sections, form, tension/release, and other song-level relations only where the lower evidence supports them;
+7. test whether natural human musical descriptions can be generated from that vertical evidence path without reducing them to one-feature phrase rules;
+8. only then strengthen style and attribution claims on those controls.
 
 ## Write discipline
 
