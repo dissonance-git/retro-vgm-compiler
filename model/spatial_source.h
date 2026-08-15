@@ -97,6 +97,21 @@ struct spatial_source_evidence {
 struct spatial_audio_lane_view {
     spatial_audio_lane_kind kind = spatial_audio_lane_kind::dry_source;
     const float* mono_pcm = nullptr;
+    spatial_source_evidence evidence{}; // state at block frame 0
+
+    // Optional per-frame evidence-validity mask for mono_pcm. A null pointer
+    // means the source owner asserts that every PCM frame in this block is
+    // available. A zero entry means the sample value must not be interpreted as
+    // observed source audio, even if the transport buffer contains zero there.
+    const std::uint8_t* availability = nullptr;
+};
+
+// A source's authored/device route may change inside one audio block. This
+// record changes the evidence for one lane beginning at frame_offset. The event
+// is evidence-time state, not a renderer pose and not a new source identity.
+struct spatial_source_evidence_event {
+    std::size_t frame_offset = 0;
+    std::size_t lane_index = 0;
     spatial_source_evidence evidence{};
 };
 
@@ -104,6 +119,12 @@ struct spatial_source_block_view {
     const spatial_audio_lane_view* lanes = nullptr;
     std::size_t lane_count = 0;
     std::size_t frame_count = 0;
+
+    // Optional ordered evidence automation. Each event applies from its frame
+    // boundary onward. Source-specific adapters must preserve event ordering and
+    // fail closed rather than silently sorting ambiguous timelines.
+    const spatial_source_evidence_event* evidence_events = nullptr;
+    std::size_t evidence_event_count = 0;
 };
 
 // Audio separability is deliberately more precise than a single "has stems"
