@@ -50,6 +50,9 @@ jobs:
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/omniphony_realtime_client_test.cpp -o /tmp/omniphony_realtime_client_test
           /tmp/omniphony_realtime_client_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_omniphony_pipeline_test.cpp -o /tmp/realtime_musical_omniphony_pipeline_test
+          /tmp/realtime_musical_omniphony_pipeline_test
       - name: QSound source controls and native evidence sidecars
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
