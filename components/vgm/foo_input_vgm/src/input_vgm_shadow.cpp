@@ -83,6 +83,7 @@ void input_vgm::qsound_source_callback(void* user_param, const VGM_QSOUND_SOURCE
 }
 #endif
 
+#ifndef LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER
 void input_vgm::invalidate_unobserved_dac_stream(const gameaudio::vgm::command_event& event) noexcept
 {
 	// VGM 0x90 configures dac_control. Its payload is:
@@ -100,6 +101,7 @@ void input_vgm::invalidate_unobserved_dac_stream(const gameaudio::vgm::command_e
 	if (chip_type == DEVID_YM2612 && (destination & 0x00FF) == 0x2A)
 		m_dac_shadow_valid[instance] = false;
 }
+#endif
 
 void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command_event& event) noexcept
 {
@@ -127,7 +129,9 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 		return;
 	}
 
+#ifndef LIBVGM_GAMEAUDIO_DAC_STREAM_OBSERVER
 	self->invalidate_unobserved_dac_stream(event);
+#endif
 
 	if (self->m_vgm_player == nullptr)
 		return;
