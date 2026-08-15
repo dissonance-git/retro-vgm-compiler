@@ -6,6 +6,7 @@ void input_vgm::reset_qsound_consumer_source_path(bool source_observer_available
 	m_qsound_consumer_source_shadow_valid = m_qsound_present && source_observer_available;
 	m_qsound_consumer_source_window.reset();
 	m_qsound_consumer_source_storage.reset();
+	m_qsound_spatial_source_bus.reset();
 }
 
 void input_vgm::project_qsound_consumer_sources(
@@ -13,6 +14,7 @@ void input_vgm::project_qsound_consumer_sources(
 	uint_fast32_t rendered_samples) noexcept
 {
 	m_qsound_consumer_source_storage.reset();
+	m_qsound_spatial_source_bus.reset();
 
 	if (!m_qsound_consumer_source_shadow_valid)
 		return;
@@ -72,10 +74,27 @@ void input_vgm::project_qsound_consumer_sources(
 	{
 		m_qsound_consumer_source_shadow_valid = false;
 		m_qsound_consumer_source_storage.reset();
+		return;
 	}
 
-	// Missing source brackets are intentionally not a structural failure. The
-	// storage availability mask distinguishes unavailable evidence from genuine
-	// source silence, including the known startup pre-sample gap in libvgm's
-	// linear-upsample initialization path.
+	// m_qsound_state is still the block-start source state here. Timed C4 writes
+	// are replayed into it only after this function returns, so the adapter can
+	// express exact within-block evidence changes without freezing first/last pan.
+	const bool controls_complete = m_qsound_shadow_valid && !m_qsound_capture.overflowed();
+	m_qsound_spatial_source_bus.build(
+		m_qsound_consumer_source_storage,
+		m_qsound_state,
+		m_qsound_capture.controls(),
+		m_qsound_capture.count(),
+		controls_complete,
+		static_cast<std::size_t>(rendered_samples));
+
+	// A malformed/dropped C4 timeline invalidates only the spatial handoff. The
+	// source PCM sidecar remains valid evidence and is not erased merely because
+	// route automation could not be proven for this block.
+	//
+	// Missing source brackets are likewise not a structural failure. The storage
+	// availability mask distinguishes unavailable evidence from genuine source
+	// silence, including the known startup pre-sample gap in libvgm's linear-
+	// upsample initialization path.
 }
