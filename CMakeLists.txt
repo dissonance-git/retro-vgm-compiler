@@ -174,6 +174,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_runtime_capture_adapter_test tests/spc/spc_runtime_capture_adapter_test.cpp)
     target_include_directories(genesis_nominal_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(smps_programmed_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(spatial_source_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(spatial_source_timed_evidence_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(musical_execution_graph_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(transformation_identity_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(voice_separation_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -280,7 +282,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         NAME xsf_real_corpus
         COMMAND ${Python3_EXECUTABLE} -B tools/xsf_corpus_audit.py --quiet
             tests/corpus/chrono-cross-psf1-playstation
-            tests/corpus/mario-kart-ds-2sf-nintendo-ds
+            tests/corpus/mario-kart-ds-2sf-nintendo-64
             tests/corpus/ocarina-of-time-usf-nintendo-64
     )
     set_tests_properties(xsf_real_corpus PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
