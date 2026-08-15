@@ -6,6 +6,8 @@
 
 namespace gameaudio::vgm {
 
+constexpr std::size_t qsound_native_pcm_count = 16;
+
 struct qsound_native_mix_frame {
     std::uint64_t native_sample = 0;
 
@@ -15,6 +17,12 @@ struct qsound_native_mix_frame {
     // echo/FIR/delay accounting sample. Never reinterpret those ticks as fresh
     // environment evidence.
     bool accounting_valid = false;
+
+    // Exact signed PCM echo-contribution words observed from the same superctr
+    // native tick as echo_input. These are verification witnesses for the
+    // shared echo-input equation, not independent wet stems.
+    std::array<std::int16_t, qsound_native_pcm_count> pcm_echo_contribution{};
+
     std::int32_t echo_input = 0;
     std::int16_t echo_output = 0;
     std::array<std::int32_t, 2> wet_post_delay{};
