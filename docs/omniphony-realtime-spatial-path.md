@@ -125,6 +125,22 @@ This prevents a stolen/reused hardware channel from making a new instrument appe
 
 Presentation identity is committed only after a render succeeds, so a failed block cannot poison the next block's continuity decision.
 
+## Reset / seek lifecycle
+
+A track change, seek or decoder restart resets the complete causal timeline, not merely one half of it.
+
+`realtime_musical_omniphony_pipeline::reset()` clears:
+
+```text
+GMI acoustic observer state
+GMI musical-role / time memory
+pending projected handoff state
+Omniphony binaural/spatial runtime state
+Omniphony source-presentation identity state
+```
+
+The reset function is part of the bound source ABI client. This prevents a fresh track or seek target from inheriting either an old musical hypothesis or an old renderer pose/identity decision.
+
 ## DSP ownership
 
 There is one audible spatial-motion owner in the canonical path: Omniphony.
@@ -184,4 +200,4 @@ code compiles / tests pass
 != personalized listening quality improved
 ```
 
-The transport, timing, identity and causality work establishes the realtime mechanism. Numeric role-to-space policy and personalized tuning still require controlled reference comparisons and physical listening.
+The transport, timing, identity, reset and causality work establishes the realtime mechanism. Numeric role-to-space policy and personalized tuning still require controlled reference comparisons and physical listening.
