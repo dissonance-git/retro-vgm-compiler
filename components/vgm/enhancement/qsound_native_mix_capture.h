@@ -8,6 +8,13 @@ namespace gameaudio::vgm {
 
 struct qsound_native_mix_frame {
     std::uint64_t native_sample = 0;
+
+    // A frame can be structurally present on the coherent native timeline while
+    // its mix-accounting terms are intentionally unavailable. QSound init and
+    // filter-refresh states advance the device without producing a fresh normal
+    // echo/FIR/delay accounting sample. Never reinterpret those ticks as fresh
+    // environment evidence.
+    bool accounting_valid = false;
     std::int32_t echo_input = 0;
     std::int16_t echo_output = 0;
     std::array<std::int32_t, 2> wet_post_delay{};
@@ -20,6 +27,11 @@ struct qsound_native_mix_frame {
 // immediately before their final sum, round and output clamp. They are not
 // independent source stems and they do not imply a separable environmental
 // return.
+//
+// valid() describes the structural capture timeline. Per-frame
+// accounting_valid describes whether that native tick produced fresh mix
+// accounting. Keeping the two states separate preserves init/refresh timing
+// without smuggling stale accounting forward.
 class qsound_native_mix_capture {
 public:
     static constexpr std::size_t capacity = 4096;
