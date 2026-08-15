@@ -53,7 +53,7 @@ diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
  
  	return;
  }
-@@ -289,6 +302,7 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+@@ -289,23 +302,23 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
  	if (chip->romData == NULL)
  	{
  		static const INT16 silent_sources[QSOUND_CTR_SOURCE_COUNT] = {0};
@@ -61,37 +61,29 @@ diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
  		UINT32 silentSmpl;
  
  		memset(outputs[0], 0, samples * sizeof(*outputs[0]));
-@@ -302,6 +316,10 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
- 					chip->source_sample_rate, silent_sources);
- 				chip->source_sample_index ++;
- 			}
-+			else if (chip->mix_cb != NULL)
-+			{
-+				/* source index advancement is shared below */
-+			}
- 		}
--		else
-+		if (chip->source_cb == NULL)
+ 		memset(outputs[1], 0, samples * sizeof(*outputs[1]));
+-		if (chip->source_cb != NULL)
++		for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
  		{
+-			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
+-			{
++			if (chip->source_cb != NULL)
+ 				chip->source_cb(chip->source_cb_param, chip->source_sample_index,
+ 					chip->source_sample_rate, silent_sources);
+-				chip->source_sample_index ++;
+-			}
+-		}
+-		else
+-		{
 -			chip->source_sample_index += samples;
-+			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
-+			{
-+				if (chip->mix_cb != NULL)
-+					chip->mix_cb(chip->mix_cb_param, chip->source_sample_index,
-+						chip->source_sample_rate, &silent_mix);
-+				chip->source_sample_index ++;
-+			}
-+		}
-+		else if (chip->mix_cb != NULL)
-+		{
-+			UINT64 firstSample = chip->source_sample_index - samples;
-+			for (silentSmpl = 0; silentSmpl < samples; silentSmpl ++)
-+				chip->mix_cb(chip->mix_cb_param, firstSample + silentSmpl,
++			if (chip->mix_cb != NULL)
++				chip->mix_cb(chip->mix_cb_param, chip->source_sample_index,
 +					chip->source_sample_rate, &silent_mix);
++			chip->source_sample_index ++;
  		}
  		return;
  	}
-@@ -313,6 +331,21 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+@@ -313,6 +326,21 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
  		if (chip->source_cb != NULL)
  			chip->source_cb(chip->source_cb_param, chip->source_sample_index,
  				chip->source_sample_rate, chip->voice_output);
@@ -112,7 +104,7 @@ diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
  		chip->source_sample_index ++;
  	}
  
-@@ -328,6 +361,14 @@ void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void*
+@@ -328,6 +356,14 @@ void qsoundc_set_source_callback(void* info, QSOUND_CTR_SOURCE_CB cbFunc, void*
  	return;
  }
  
@@ -126,7 +118,7 @@ diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
 +
  static void qsoundc_alloc_rom(void* info, UINT32 memsize)
  {
-@@ -568,6 +609,8 @@ static void state_normal_update(struct qsound_chip *chip)
+@@ -568,6 +604,8 @@ static void state_normal_update(struct qsound_chip *chip)
  	
  	echo_output = echo(&chip->echo,echo_input);
 +	chip->mix_echo_input = echo_input;
@@ -134,13 +126,13 @@ diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
  	
  	// now, we do the magic stuff
  	for(ch=0; ch<2; ch++)
-@@ -596,7 +639,12 @@ static void state_normal_update(struct qsound_chip *chip)
+@@ -596,7 +634,12 @@ static void state_normal_update(struct qsound_chip *chip)
  		if(chip->state == STATE_NORMAL2)
  			dry = fir(&chip->alt_filter[ch], dry >> 16);
  		
 -		output = (delay(&chip->wet[ch], wet) + delay(&chip->dry[ch], dry));
-+		/* The delay states are disjoint. Naming both return values exposes the
-+		 * exact historical branch accounting without changing either state. */
++		/* wet/dry delay objects are disjoint state. Naming both return values
++		 * exposes exact branch accounting while preserving renderer behavior. */
 +		chip->mix_wet_post_delay[ch] = delay(&chip->wet[ch], wet);
 +		chip->mix_dry_post_delay[ch] = delay(&chip->dry[ch], dry);
 +		output = chip->mix_wet_post_delay[ch] + chip->mix_dry_post_delay[ch];
