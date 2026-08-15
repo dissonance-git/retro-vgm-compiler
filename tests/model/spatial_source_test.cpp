@@ -1,4 +1,5 @@
 #include "model/spatial_source.h"
+#include "model/spatial_playback_options.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
 #include "components/spc/spc_spatial_source.h"
 
@@ -44,6 +45,30 @@ int main() {
         assert(!caps.protected_reference_mix);
         assert(!caps.authored_3d_position);
     }
+
+    // Both foobar components share the same UI semantics: the existing
+    // Surround checkbox is the hard reference/source-aware switch. Full sphere
+    // and externalization are the intended defaults behind Surround ON.
+    vgmtooling::model::spatial_playback_options playback{};
+    assert(!playback.surround);
+    assert(playback.externalization);
+    assert(playback.depth == vgmtooling::model::spatial_depth_mode::full);
+    assert(vgmtooling::model::resolve_spatial_playback(playback)
+        == vgmtooling::model::spatial_playback_path::reference_stereo);
+    assert(!vgmtooling::model::uses_source_renderer(playback));
+    assert(!vgmtooling::model::uses_externalization(playback));
+
+    playback.surround = true;
+    assert(vgmtooling::model::resolve_spatial_playback(playback)
+        == vgmtooling::model::spatial_playback_path::source_full_sphere);
+    assert(vgmtooling::model::uses_source_renderer(playback));
+    assert(vgmtooling::model::uses_externalization(playback));
+
+    playback.depth = vgmtooling::model::spatial_depth_mode::native;
+    assert(vgmtooling::model::resolve_spatial_playback(playback)
+        == vgmtooling::model::spatial_playback_path::source_native_routing);
+    playback.externalization = false;
+    assert(!vgmtooling::model::uses_externalization(playback));
 
     auto genesis = gameaudio::vgm::make_genesis_spatial_source(
         gameaudio::vgm::genesis_spatial_device::ym2612_fm,
