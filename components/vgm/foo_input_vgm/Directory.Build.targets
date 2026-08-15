@@ -21,8 +21,11 @@
     <ClInclude Include="..\enhancement\psg_block_capture.h" />
     <ClInclude Include="..\enhancement\qsound_block_capture.h" />
     <ClInclude Include="..\enhancement\qsound_control_state.h" />
+    <ClInclude Include="..\enhancement\qsound_environment_control_state.h" />
+    <ClInclude Include="..\enhancement\qsound_environment_control_replay.h" />
     <ClInclude Include="..\enhancement\qsound_native_source_capture.h" />
     <ClInclude Include="..\enhancement\qsound_native_mix_capture.h" />
+    <ClInclude Include="..\enhancement\qsound_echo_input_recomposition.h" />
     <ClInclude Include="..\enhancement\qsound_reference_recomposition.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_enhanced.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_block_capture.h" />
