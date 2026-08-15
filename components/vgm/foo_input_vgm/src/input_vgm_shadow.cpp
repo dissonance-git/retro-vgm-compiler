@@ -67,6 +67,7 @@ void input_vgm::configure_enhancement_shadow()
 			m_qsound_mix_shadow_valid = false;
 #endif
 			m_qsound_state.reset();
+			reset_qsound_consumer_source_path(m_qsound_audio_shadow_valid);
 		}
 	}
 #endif
@@ -160,6 +161,7 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 #else
 		self->m_qsound_mix_shadow_valid = false;
 #endif
+		self->reset_qsound_consumer_source_path(self->m_qsound_audio_shadow_valid);
 		self->m_shadow_replay_sample = 0;
 		return;
 	}
@@ -475,6 +477,7 @@ bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 		}
 	}
 
+	project_qsound_consumer_sources(block_start, m_render_done);
 	replay_captured_sources(m_render_done);
 	return true;
 }
@@ -495,6 +498,7 @@ void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)
 #endif
 	m_qsound_audio_capture.begin_block();
 	m_qsound_mix_capture.begin_block();
+	reset_qsound_consumer_source_path(m_qsound_audio_shadow_valid);
 
 	// libvgm emits reset/replayed source events during seek. The command tap
 	// rebuilds source controls while the historical QSound renderer remains
