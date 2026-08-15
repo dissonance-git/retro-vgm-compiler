@@ -12,11 +12,13 @@ diff --git a/emu/cores/qsound_ctr.h b/emu/cores/qsound_ctr.h
 diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
 --- a/emu/cores/qsound_ctr.c
 +++ b/emu/cores/qsound_ctr.c
-@@ -331,6 +331,10 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+@@ -330,7 +330,12 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 		if (chip->mix_cb != NULL)
  		{
  			QSOUND_CTR_MIX_FRAME frame;
++			UINT8 voice;
  			frame.accountingValid = chip->mix_accounting_valid;
-+			for (UINT8 voice = 0; voice < 16; voice ++)
++			for (voice = 0; voice < 16; voice ++)
 +				frame.pcmEcho[voice] = chip->mix_accounting_valid
 +					? chip->voice[voice].echo
 +					: 0;
