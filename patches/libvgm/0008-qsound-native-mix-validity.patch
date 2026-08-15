@@ -1,0 +1,89 @@
+diff --git a/emu/cores/qsound_ctr.h b/emu/cores/qsound_ctr.h
+--- a/emu/cores/qsound_ctr.h
++++ b/emu/cores/qsound_ctr.h
+@@ -13,6 +13,7 @@ typedef void (*QSOUND_CTR_SOURCE_CB)(void* userParam,
+ 
+ typedef struct _qsound_ctr_mix_frame
+ {
++	UINT8 accountingValid;
+ 	INT32 echoInput;
+ 	INT16 echoOutput;
+ 	INT32 wetPostDelay[2];
+diff --git a/emu/cores/qsound_ctr.c b/emu/cores/qsound_ctr.c
+--- a/emu/cores/qsound_ctr.c
++++ b/emu/cores/qsound_ctr.c
+@@ -93,6 +93,7 @@ struct qsound_chip {
+ 	QSOUND_CTR_MIX_CB mix_cb;
+ 	void* mix_cb_param;
++	UINT8 mix_accounting_valid;
+ 	INT32 mix_echo_input;
+ 	INT16 mix_echo_output;
+ 	INT32 mix_wet_post_delay[2];
+@@ -194,6 +195,7 @@ static void device_reset_qsound_ctr(void* info)
+ 	chip->state_counter = 0;
+ 	chip->source_sample_index = 0;
++	chip->mix_accounting_valid = 0;
+ 	chip->mix_echo_input = 0;
+ 	chip->mix_echo_output = 0;
+ 	chip->mix_wet_post_delay[0] = chip->mix_wet_post_delay[1] = 0;
+@@ -328,13 +330,14 @@ static void qsoundc_update(void* param, UINT32 samples, DEV_SMPL** outputs)
+ 		if (chip->mix_cb != NULL)
+ 		{
+ 			QSOUND_CTR_MIX_FRAME frame;
+-			frame.echoInput = chip->mix_echo_input;
+-			frame.echoOutput = chip->mix_echo_output;
+-			frame.wetPostDelay[0] = chip->mix_wet_post_delay[0];
+-			frame.wetPostDelay[1] = chip->mix_wet_post_delay[1];
+-			frame.dryPostDelay[0] = chip->mix_dry_post_delay[0];
+-			frame.dryPostDelay[1] = chip->mix_dry_post_delay[1];
+-			frame.output[0] = chip->out[0];
+-			frame.output[1] = chip->out[1];
++			frame.accountingValid = chip->mix_accounting_valid;
++			frame.echoInput = chip->mix_accounting_valid ? chip->mix_echo_input : 0;
++			frame.echoOutput = chip->mix_accounting_valid ? chip->mix_echo_output : 0;
++			frame.wetPostDelay[0] = chip->mix_accounting_valid ? chip->mix_wet_post_delay[0] : 0;
++			frame.wetPostDelay[1] = chip->mix_accounting_valid ? chip->mix_wet_post_delay[1] : 0;
++			frame.dryPostDelay[0] = chip->mix_accounting_valid ? chip->mix_dry_post_delay[0] : 0;
++			frame.dryPostDelay[1] = chip->mix_accounting_valid ? chip->mix_dry_post_delay[1] : 0;
++			frame.output[0] = chip->mix_accounting_valid ? chip->out[0] : 0;
++			frame.output[1] = chip->mix_accounting_valid ? chip->out[1] : 0;
+ 			chip->mix_cb(chip->mix_cb_param, chip->source_sample_index,
+ 				chip->source_sample_rate, &frame);
+ 		}
+@@ -568,8 +571,10 @@ static void update_sample(struct qsound_chip *chip)
+ {
++	chip->mix_accounting_valid = 0;
++
+ 	switch(chip->state)
+ 	{
+ 		default:
+@@ -658,6 +663,7 @@ static void state_normal_update(struct qsound_chip *chip)
+ 	}
+ 	
+ 	chip->delay_update = 0;
++	chip->mix_accounting_valid = 1;
+ 	
+ 	// after 6 samples, the next state is executed.
+ 	chip->state_counter++;
+diff --git a/player/vgmplayer.hpp b/player/vgmplayer.hpp
+--- a/player/vgmplayer.hpp
++++ b/player/vgmplayer.hpp
+@@ -128,6 +128,7 @@ struct VGM_QSOUND_MIX_FRAME
+ 	UINT8 chipID;
+ 	UINT32 sampleRate;
+ 	UINT64 nativeSample;
++	UINT8 accountingValid;
+ 	INT32 echoInput;
+ 	INT16 echoOutput;
+ 	INT32 wetPostDelay[2];
+diff --git a/player/vgmplayer.cpp b/player/vgmplayer.cpp
+--- a/player/vgmplayer.cpp
++++ b/player/vgmplayer.cpp
+@@ -1080,6 +1080,7 @@ UINT8 VGMPlayer::SetQSoundMixObserver(VGM_QSOUND_MIX_OBSERVER_CB cbFunc, void* c
+ 	event.chipID = context->chipID;
+ 	event.sampleRate = sampleRate;
+ 	event.nativeSample = nativeSample;
++	event.accountingValid = frame->accountingValid;
+ 	event.echoInput = frame->echoInput;
+ 	event.echoOutput = frame->echoOutput;
+ 	for (UINT8 ch = 0; ch < 2; ch ++)
