@@ -30,9 +30,9 @@ struct qsound_source_spatial_segment_result {
 //
 // Pan and PCM echo-contribution writes are both retained because QSound's wet
 // pan-table route and its signed source-to-shared-echo contribution are distinct
-// causal controls. Writes for other physical sources do not split this source's
-// timeline. Multiple writes at one sample collapse naturally into the state that
-// applies after that sample boundary.
+// causal controls. Writes for other physical sources advance the shared carry
+// state but do not split this source's timeline. Multiple writes at one sample
+// collapse naturally into the state that applies after that sample boundary.
 inline qsound_source_spatial_segment_result build_qsound_source_spatial_segments(
     const qsound_control_state& initial_state,
     std::uint8_t instance,
@@ -84,15 +84,18 @@ inline qsound_source_spatial_segment_result build_qsound_source_spatial_segments
         previous_offset = timed.sample_offset;
         have_previous = true;
 
-        if (timed.write.physical_slot != physical_slot)
-            continue;
-
-        const std::size_t offset = timed.sample_offset < frames ? timed.sample_offset : frames;
-        if (offset > cursor) {
-            append(cursor, offset);
-            cursor = offset;
+        const bool affects_target = timed.write.physical_slot == physical_slot;
+        if (affects_target) {
+            const std::size_t offset = timed.sample_offset < frames ? timed.sample_offset : frames;
+            if (offset > cursor) {
+                append(cursor, offset);
+                cursor = offset;
+            }
         }
 
+        // The state is global across all QSound source controls. Non-target
+        // writes must therefore survive into final_state for the next block even
+        // though they do not create a boundary in this source's segment list.
         if (!result.final_state.apply(timed.write)) {
             result.structurally_valid = false;
             return result;
