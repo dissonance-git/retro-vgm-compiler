@@ -2,13 +2,19 @@
 
 ## Completed runtime boundary
 
-Game Music Interpreter can now hand a source-aware musical scene to Omniphony without a whole-track prepass or cached soundtrack automation.
+Game Music Interpreter can hand a source-aware musical scene to Omniphony without a whole-track prepass or cached soundtrack automation.
 
-The runtime sequence is:
+The canonical runtime entry point is now:
+
+```text
+realtime_musical_omniphony_pipeline::process_block(raw block, ...)
+```
+
+Internally it enforces:
 
 ```text
 source-specific decoder / renderer
-→ spatial_source_block_view
+→ raw spatial_source_block_view
 → realtime_musical_spatial_frontend::prepare_block()
 → past-only musical role projection
 → handoff.projected_view()
@@ -19,7 +25,7 @@ source-specific decoder / renderer
 → realtime_musical_spatial_frontend::complete_block(raw block)
 ```
 
-The order matters. `prepare_block()` is called before rendering and may consult only already-completed musical history. `complete_block()` is called after rendering and receives the original raw source block, never the projected view.
+The order is part of the API rather than a convention a host must remember. `prepare_block()` may consult only already-completed musical history. `complete_block()` runs only after the renderer accepts the block and receives the original raw source block, never the projected view.
 
 That makes this invariant executable:
 
@@ -29,6 +35,8 @@ same observed history through frame N
 ```
 
 Current-block PCM cannot retroactively spatialize itself.
+
+A renderer failure does not advance musical memory. The caller can retry or fall back without the semantic state moving ahead of the audio that actually sounded.
 
 ## Musical projection
 
@@ -52,7 +60,7 @@ The projection deliberately does not invent geometry.
 - no current role hypothesis invents elevation;
 - authored 3-D coordinates, when genuinely present, remain separate and untouched.
 
-A confidently near-zero role classification is also not treated as positive permission to move a source. Renderer confidence is driven by positive presentation support.
+A confidently near-zero role classification is not positive permission to move a source. Renderer confidence is driven by positive presentation support.
 
 ## No semantic feedback loop
 
@@ -68,17 +76,17 @@ raw source evidence + completed PCM
 → future memory
 ```
 
-Never feed `handoff.projected_view()` into `complete_block()`. Doing so would let a previous hypothesis become evidence for itself.
+Never feed `handoff.projected_view()` into `complete_block()`. The canonical pipeline prevents that misuse by construction. Doing so manually would let a previous hypothesis become evidence for itself.
 
 ## Timed events
 
-GMI source evidence already supports exact intra-block events:
+GMI source evidence supports exact intra-block events:
 
 ```text
 frame_offset + lane_index + new evidence
 ```
 
-Omniphony source ABI 0.3 now exposes the corresponding timed event form. A host renders only up to the next event boundary, applies every change at that boundary, then continues.
+Omniphony source ABI 0.3 exposes the corresponding timed event form. A host renders only up to the next event boundary, applies every change at that boundary, then continues.
 
 Therefore a change at frame 137 remains a change at frame 137. It does not need to be quantized to the next host block and it does not need a precomputed song timeline.
 
@@ -97,11 +105,13 @@ It:
 - interleaves planar causal mono lanes into caller-owned scratch;
 - refuses to manufacture zero PCM for unavailable source frames.
 
+The C++ transport and Rust `repr(C)` records pin the ABI 0.3 binary layout from both sides. Field-order or size drift must fail tests rather than silently reinterpret musical evidence across the DLL boundary.
+
 GMI retains exact source provenance internally. Omniphony ABI 0.3 has one 64-bit runtime source token, so the transport derives a renderer-local episode token from GMI `source_id + generation`. That token is presentation identity only and must never be used as a GMI provenance key.
 
 ## Identity continuity
 
-Omniphony now distinguishes physical channel reuse from presentation identity.
+Omniphony distinguishes physical channel reuse from presentation identity.
 
 ```text
 same persistent musical part
@@ -112,6 +122,28 @@ unrelated source reuses same lane
 ```
 
 This prevents a stolen/reused hardware channel from making a new instrument appear to fly through space from the outgoing instrument's last location.
+
+Presentation identity is committed only after a render succeeds, so a failed block cannot poison the next block's continuity decision.
+
+## DSP ownership
+
+There is one audible spatial-motion owner in the canonical path: Omniphony.
+
+GMI supplies causal musical/perceptual target evidence. Omniphony maps that evidence into presentation geometry and performs the actual sample-domain/ramped binaural rendering. This avoids stacking two independent spatial smoothers and keeps the existing Omniphony perceptual field as the renderer baseline.
+
+`model/realtime_spatial_scene_dsp.h` remains useful as an executable reference for causal control trajectories, smoothing laws and tests, but it is not inserted as a second audible motion stage in front of Omniphony.
+
+The path is still a DSP path:
+
+```text
+streaming source audio
++ bounded causal state
++ sample-timed evidence events
+→ continuously updated Omniphony renderer state
+→ audio out
+```
+
+It is not a precached soundtrack script.
 
 ## deepSTRF boundary
 
@@ -128,15 +160,28 @@ GMI source-authoritative fixtures
 
 The current runtime already reflects its strongest state laws: source identity, acoustic continuity and perceptual object identity stay separate; ambiguous re-entry can remain ambiguous; durable memory can freeze under weak evidence; continuity and precision need not share one confidence clock.
 
-## Validation states
+## What is finished versus what remains empirical
 
-Keep these separate:
+The spatial engineering path is closed when a format exposes causal source lanes:
+
+```text
+source lanes
+→ causal musical state
+→ exact timed renderer evidence
+→ ABI-safe transport
+→ Omniphony binaural DSP
+→ future-state learning
+```
+
+Format/source-extraction coverage is a separate upstream problem. A format that does not yet expose trustworthy isolated source audio cannot be promoted by guessing stems.
+
+Likewise, engineering completion is not a listening claim:
 
 ```text
 code compiles / tests pass
 != reference parity
 != auditory mechanism validated
-!= listening quality improved
+!= personalized listening quality improved
 ```
 
-The transport and timing work establishes the realtime mechanism. Whether a particular musical-role policy or spatial mapping sounds better still requires reference comparisons and physical listening.
+The transport, timing, identity and causality work establishes the realtime mechanism. Numeric role-to-space policy and personalized tuning still require controlled reference comparisons and physical listening.
