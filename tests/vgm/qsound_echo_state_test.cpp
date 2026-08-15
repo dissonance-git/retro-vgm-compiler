@@ -93,5 +93,39 @@ int main() {
     CHECK(echo.delay_position() == before_overflow);
     CHECK(echo.last_sample() == last_before_overflow);
 
+    // A seed carries only the recurrence memory. Runtime feedback/length can
+    // then vary independently on every observed native tick.
+    qsound_echo_seed seed;
+    seed.last_sample = 6;
+    seed.delay_position = 3;
+    seed.delay_line[3] = 10;
+    echo.reset(qsound_echo_mode::mode1);
+    CHECK(echo.load_seed(seed));
+    CHECK(echo.last_sample() == 6);
+    CHECK(echo.delay_position() == 3u);
+    step = echo.step_runtime(0, 0, 6);
+    CHECK(step.status == qsound_echo_step_status::exact);
+    CHECK(step.output == 8);
+    CHECK(echo.last_sample() == 10);
+    CHECK(echo.delay_position() == 4u);
+
+    const qsound_echo_seed after = echo.seed();
+    CHECK(after.last_sample == 10);
+    CHECK(after.delay_position == 4u);
+    CHECK(after.delay_line[3] == 0);
+
+    qsound_echo_seed invalid_seed = after;
+    invalid_seed.delay_position = qsound_echo_state::delay_capacity;
+    const qsound_echo_seed before_invalid_seed = echo.seed();
+    CHECK(!echo.load_seed(invalid_seed));
+    CHECK(echo.seed().last_sample == before_invalid_seed.last_sample);
+    CHECK(echo.seed().delay_position == before_invalid_seed.delay_position);
+
+    const qsound_echo_seed before_bad_runtime = echo.seed();
+    step = echo.step_runtime(0, 0, 1025);
+    CHECK(step.status == qsound_echo_step_status::runtime_length_out_of_range);
+    CHECK(echo.seed().last_sample == before_bad_runtime.last_sample);
+    CHECK(echo.seed().delay_position == before_bad_runtime.delay_position);
+
     return 0;
 }
