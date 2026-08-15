@@ -32,6 +32,12 @@ jobs:
             tests/vgm/qsound_control_capture_test.cpp -o /tmp/qsound_control_capture_test
           /tmp/qsound_control_capture_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_environment_control_state_test.cpp -o /tmp/qsound_environment_control_state_test
+          /tmp/qsound_environment_control_state_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_environment_control_replay_test.cpp -o /tmp/qsound_environment_control_replay_test
+          /tmp/qsound_environment_control_replay_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_native_source_capture_test.cpp -o /tmp/qsound_native_source_capture_test
           /tmp/qsound_native_source_capture_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
