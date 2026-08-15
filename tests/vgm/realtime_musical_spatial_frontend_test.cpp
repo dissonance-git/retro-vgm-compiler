@@ -44,22 +44,33 @@ int main()
     const spatial_source_block_view block{&source_lane, 1, frame_count};
 
     // Before any audio has completed, prepare_block has no learned future state
-    // to offer. It may carry current source evidence, but not inspect current PCM.
+    // to offer. The renderer-ready view therefore preserves current raw evidence
+    // and the same PCM pointer without manufacturing presentation confidence.
     assert(frontend.prepare_block(block, handoff));
     assert(handoff.valid());
     assert(!handoff.lane(0).roles_available);
     assert(handoff.history_seconds() == 0.0);
+    assert(handoff.projected_view().lane_count == 1);
+    assert(handoff.projected_view().lanes[0].mono_pcm == low.data());
+    assert(handoff.projected_view().lanes[0].evidence.presentation.confidence == 0.0f);
 
     // Learning occurs only after the block completes. The following block can
-    // then receive that past-only musical-role memory.
+    // then receive that past-only musical-role memory and project it into the
+    // presentation vocabulary consumed by the realtime spatial DSP.
     assert(frontend.complete_block(block, sample_rate));
+    assert(source_lane.evidence.presentation.confidence == 0.0f); // raw evidence stayed raw
     assert(frontend.prepare_block(block, handoff));
     assert(handoff.lane(0).roles_available);
     assert(handoff.lane(0).roles.foundation.confidence > 0.0f);
+    assert(handoff.projected_view().lanes[0].evidence.presentation.foundation > 0.0f);
+    assert(handoff.projected_view().lanes[0].evidence.presentation.confidence > 0.0f);
+    assert(handoff.projected_view().lanes[0].evidence.presentation.vertical_affinity == 0.0f);
+    assert(!handoff.projected_view().lanes[0].evidence.authored_position_present);
     assert(std::fabs(handoff.history_seconds() - 0.10) < 1.0e-9);
 
     // No-lookahead regression: two frontends with identical completed history
-    // must prepare identical role state even when their current PCM differs.
+    // must prepare identical role and projected presentation state even when
+    // their current PCM differs.
     frontend_type causal_a{};
     frontend_type causal_b{};
     assert(causal_a.complete_block(block, sample_rate));
@@ -77,6 +88,10 @@ int main()
     assert(high_handoff.lane(0).roles_available);
     assert(low_handoff.lane(0).roles.foundation.score
         == high_handoff.lane(0).roles.foundation.score);
+    assert(low_handoff.projected_view().lanes[0].evidence.presentation.foundation
+        == high_handoff.projected_view().lanes[0].evidence.presentation.foundation);
+    assert(low_handoff.projected_view().lanes[0].evidence.presentation.confidence
+        == high_handoff.projected_view().lanes[0].evidence.presentation.confidence);
     assert(low_handoff.history_seconds() == high_handoff.history_seconds());
 
     // Completing a multi-source block advances musical time exactly once.
@@ -95,7 +110,9 @@ int main()
         frontend.tracker().stream_seconds() - before_multi_lane - 0.10) < 1.0e-9);
 
     // Timed source identity changes receive a role-memory lookup at the exact
-    // event boundary during prepare. Unknown identities remain unavailable.
+    // event boundary during prepare. Unknown identities remain unavailable and
+    // their projected event keeps the exact frame boundary without inheriting
+    // presentation memory from the physical lane's previous occupant.
     spatial_source_evidence replacement = lanes[0].evidence;
     replacement.source_id = 999;
     const spatial_source_evidence_event identity_event{100, 0, replacement};
@@ -110,6 +127,11 @@ int main()
     assert(handoff.event_count() == 1);
     assert(handoff.event(0).frame_offset == 100);
     assert(!handoff.event(0).roles_available);
+    assert(handoff.projected_view().evidence_event_count == 1);
+    assert(handoff.projected_view().evidence_events[0].frame_offset == 100);
+    assert(handoff.projected_view().evidence_events[0].lane_index == 0);
+    assert(handoff.projected_view().evidence_events[0].evidence.source_id == 999);
+    assert(handoff.projected_view().evidence_events[0].evidence.presentation.confidence == 0.0f);
 
     // The block-level acoustic observer refuses to merge two identities into one
     // summary. Completion therefore loses learning for this ambiguous block, but
