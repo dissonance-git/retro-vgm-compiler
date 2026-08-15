@@ -16,11 +16,18 @@ enum class qsound_echo_step_status : std::uint8_t {
     exact = 0,
     historical_int32_overflow_domain = 1,
     end_position_conversion_domain = 2,
+    runtime_length_out_of_range = 3,
 };
 
 struct qsound_echo_step_result {
     qsound_echo_step_status status = qsound_echo_step_status::exact;
     std::int16_t output = 0;
+};
+
+struct qsound_echo_seed {
+    std::int16_t last_sample = 0;
+    std::array<std::int16_t, 1024> delay_line{};
+    std::size_t delay_position = 0;
 };
 
 // Project-owned model of the recovered superctr shared echo transition only.
@@ -44,6 +51,23 @@ public:
         delay_position_ = 0;
     }
 
+    bool load_seed(const qsound_echo_seed& seed) noexcept {
+        if (seed.delay_position >= delay_capacity)
+            return false;
+        last_sample_ = seed.last_sample;
+        delay_line_ = seed.delay_line;
+        delay_position_ = seed.delay_position;
+        return true;
+    }
+
+    qsound_echo_seed seed() const noexcept {
+        qsound_echo_seed out;
+        out.last_sample = last_sample_;
+        out.delay_line = delay_line_;
+        out.delay_position = delay_position_;
+        return out;
+    }
+
     void set_feedback(std::uint16_t raw) noexcept {
         feedback_ = signed16(raw);
     }
@@ -63,14 +87,35 @@ public:
         const qsound_echo_step_status length_status = current_length(length);
         if (length_status != qsound_echo_step_status::exact)
             return {length_status, 0};
+        return step_exact(input, feedback_, length);
+    }
 
+    // Verification route for a live native frame. The reference observer may
+    // supply the exact runtime feedback and already-clamped echo length used on
+    // that tick, avoiding any need to infer command-to-native timing here.
+    qsound_echo_step_result step_runtime(
+        std::int32_t input,
+        std::int16_t feedback,
+        std::uint16_t length) noexcept
+    {
+        if (length > delay_capacity)
+            return {qsound_echo_step_status::runtime_length_out_of_range, 0};
+        return step_exact(input, feedback, static_cast<std::size_t>(length));
+    }
+
+private:
+    qsound_echo_step_result step_exact(
+        std::int32_t input,
+        std::int16_t feedback,
+        std::size_t length) noexcept
+    {
         const std::int32_t line_sample = delay_line_[delay_position_];
         const std::int32_t previous = last_sample_;
         const std::int32_t averaged = arithmetic_shift_right(
             static_cast<std::int64_t>(line_sample) + static_cast<std::int64_t>(previous), 1);
 
         const std::int64_t feedback_product = static_cast<std::int64_t>(averaged)
-            * static_cast<std::int64_t>(feedback_);
+            * static_cast<std::int64_t>(feedback);
         const std::int64_t feedback_scaled = feedback_product * 4;
         constexpr std::int64_t int32_min = std::numeric_limits<std::int32_t>::min();
         constexpr std::int64_t int32_max = std::numeric_limits<std::int32_t>::max();
@@ -99,7 +144,6 @@ public:
         };
     }
 
-private:
     static constexpr std::uint16_t base_end_position(qsound_echo_mode mode) noexcept {
         return mode == qsound_echo_mode::mode2 ? 0x053cu : 0x0554u;
     }
