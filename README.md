@@ -1,12 +1,16 @@
 # Game Music Interpreter
 
-Executable understanding, musical analysis, source-native rendering, and human-readable reasoning for digital game music.
+Executable understanding, musical analysis, source-native rendering, perceptual organization, and human-readable reasoning for digital game music.
 
 ## Objective
 
-Game Music Interpreter follows the transformations that actually produce a game soundtrack instead of flattening every source into MIDI, stems, or final PCM.
+Game Music Interpreter follows the transformations that actually produce and are heard as a game soundtrack instead of flattening every source into MIDI, stems, final PCM, or a detached analytical summary.
 
 ```text
+physical encoding / exact bits and bytes
+        ↓
+format / memory / object semantics
+        ↓
 authored / preserved source
         ↓
 program and driver execution
@@ -19,6 +23,8 @@ acoustic realization
         ↓
 auditory organization
         ↓
+listener musical model
+        ↓
 parts • pitch • rhythm
         ↓
 harmony • tonality • progression • voice leading
@@ -27,10 +33,12 @@ cadence • phrase • motif • form
         ↓
 style • work/version • attribution hypotheses
         ↓
-human musical discourse
+listener response and human musical discourse
 ```
 
-Every higher claim should retain a route back to the strongest evidence underneath it.
+The project is vertically end-to-end: the lowest useful fact may be a bit field, byte, address, command, sample word, or machine-state transition; the highest useful result may be a listener-level explanation of what the piece is doing as a song. Every higher claim should retain a route back to the strongest evidence underneath it, and every lower layer should expose enough structure for the next layer without pretending machine state is already musical meaning.
+
+The listener musical model is distinct from listener response. `that is the returning melody`, `this bass part is answering it`, `the texture opens here`, or `this section delays the return` are claims about how the heard performance is organized as music. `surprising`, `familiar`, `moving`, `groovy`, or `I like it` are responses to that organization. Both must remain traceable to the evidence they actually use.
 
 ## Evidence boundaries
 
@@ -150,7 +158,11 @@ voice leading / counterpoint
 cadence / phrase
 ↓
 motivic and formal relations
+↓
+listener model of the piece as a song
 ```
+
+A listener-level song model may organize the same lower evidence into foreground and accompaniment, melody and bass roles, repeated sections, arrivals, departures, builds, returns, transitions, tension and release, or other musically meaningful relations. These are not free-form prose labels. They must be supported by the audible and structural evidence appropriate to the claim.
 
 Alternative readings may coexist over unchanged lower evidence. Analytical systems such as Western functional harmony are used only where their assumptions fit.
 
@@ -243,15 +255,15 @@ Important mechanisms should also be challenged by real corpus controls, negative
 
 ## Working rules
 
-1. Source-domain first.
-2. Preserve authored, driver, device, sample, acoustic, and perceptual clocks separately.
-3. Keep exact, derived, inferred, and external claims distinct.
+1. Source-domain first, beginning at exact encoded data when it is available.
+2. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model clocks or alignments separately where the distinction exists.
+3. Keep exact, derived, inferred, perceptual, listener-model, and external claims distinct.
 4. Do not infer a commercial toolchain from output similarity alone.
 5. Do not call a physical channel a persistent musical part without evidence.
-6. Do not jump from nominal frequency to note spelling, harmony, style, or authorship.
+6. Do not jump from nominal frequency to note spelling, harmony, style, authorship, or listener understanding.
 7. Mature repositories and literature are observatories, not automatic dependencies.
 8. Corrections outrank narrative coherence.
 9. Accuracy/reference behavior remains available beneath every enhancement.
-10. Every meaningful higher claim should retain a path back to its strongest evidence.
+10. Every meaningful higher claim should retain a path back to its strongest evidence, from listener-level song understanding down to exact machine or encoded state when that route exists.
 
-> **Understand the music by following the transformations that actually produced it.**
+> **Understand the music by following the transformations from encoded object to heard song.**
