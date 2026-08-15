@@ -23,10 +23,10 @@ int main() {
 
     r = qsound_recompose_reference_channel(1000000000, 0);
     CHECK(r.status == qsound_recomposition_status::exact);
-    CHECK(r.output == std::numeric_limits<std::int16_t>::max());
+    CHECK(r.output == 32767);
     r = qsound_recompose_reference_channel(-1000000000, 0);
     CHECK(r.status == qsound_recomposition_status::exact);
-    CHECK(r.output == std::numeric_limits<std::int16_t>::min());
+    CHECK(r.output == -32767);
 
     r = qsound_recompose_reference_channel(std::numeric_limits<std::int32_t>::max(), 0);
     CHECK(r.status == qsound_recomposition_status::historical_int32_overflow_domain);
