@@ -62,6 +62,12 @@ jobs:
             tests/vgm/qsound_consumer_source_storage_test.cpp -o /tmp/qsound_consumer_source_storage_test
           /tmp/qsound_consumer_source_storage_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_spatial_routing_segments_test.cpp -o /tmp/qsound_spatial_routing_segments_test
+          /tmp/qsound_spatial_routing_segments_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/qsound_spatial_source_bus_test.cpp -o /tmp/qsound_spatial_source_bus_test
+          /tmp/qsound_spatial_source_bus_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
             tests/vgm/qsound_echo_input_recomposition_test.cpp -o /tmp/qsound_echo_input_recomposition_test
           /tmp/qsound_echo_input_recomposition_test
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
