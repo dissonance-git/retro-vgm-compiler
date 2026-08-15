@@ -50,6 +50,17 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         yamaha_nominal_pitch_test
         tone_generator_nominal_pitch_test
         source_stem_mixer_test
+        spatial_source_test
+        spatial_source_timed_evidence_test
+        realtime_spatial_scene_dsp_test
+        realtime_musical_spatial_observer_test
+        realtime_musical_role_hypothesis_test
+        realtime_musical_role_tracker_test
+        realtime_musical_spatial_frontend_test
+        realtime_auditory_state_evidence_test
+        omniphony_source_transport_test
+        omniphony_realtime_client_test
+        realtime_musical_omniphony_pipeline_test
         musical_execution_graph_test
         transformation_identity_test
         voice_separation_hypothesis_test
@@ -110,6 +121,17 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(yamaha_nominal_pitch_test tests/vgm/yamaha_nominal_pitch_test.cpp)
     add_executable(tone_generator_nominal_pitch_test tests/vgm/tone_generator_nominal_pitch_test.cpp)
     add_executable(source_stem_mixer_test tests/vgm/source_stem_mixer_test.cpp)
+    add_executable(spatial_source_test tests/model/spatial_source_test.cpp)
+    add_executable(spatial_source_timed_evidence_test tests/model/spatial_source_timed_evidence_test.cpp)
+    add_executable(realtime_spatial_scene_dsp_test tests/vgm/realtime_spatial_scene_dsp_test.cpp)
+    add_executable(realtime_musical_spatial_observer_test tests/vgm/realtime_musical_spatial_observer_test.cpp)
+    add_executable(realtime_musical_role_hypothesis_test tests/vgm/realtime_musical_role_hypothesis_test.cpp)
+    add_executable(realtime_musical_role_tracker_test tests/vgm/realtime_musical_role_tracker_test.cpp)
+    add_executable(realtime_musical_spatial_frontend_test tests/vgm/realtime_musical_spatial_frontend_test.cpp)
+    add_executable(realtime_auditory_state_evidence_test tests/vgm/realtime_auditory_state_evidence_test.cpp)
+    add_executable(omniphony_source_transport_test tests/vgm/omniphony_source_transport_test.cpp)
+    add_executable(omniphony_realtime_client_test tests/vgm/omniphony_realtime_client_test.cpp)
+    add_executable(realtime_musical_omniphony_pipeline_test tests/vgm/realtime_musical_omniphony_pipeline_test.cpp)
     add_executable(musical_execution_graph_test tests/model/musical_execution_graph_test.cpp)
     add_executable(transformation_identity_test tests/model/transformation_identity_test.cpp)
     add_executable(voice_separation_hypothesis_test tests/model/voice_separation_hypothesis_test.cpp)
@@ -198,6 +220,17 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME yamaha_nominal_pitch COMMAND yamaha_nominal_pitch_test)
     add_test(NAME tone_generator_nominal_pitch COMMAND tone_generator_nominal_pitch_test)
     add_test(NAME source_stem_mixer COMMAND source_stem_mixer_test)
+    add_test(NAME spatial_source COMMAND spatial_source_test)
+    add_test(NAME spatial_source_timed_evidence COMMAND spatial_source_timed_evidence_test)
+    add_test(NAME realtime_spatial_scene_dsp COMMAND realtime_spatial_scene_dsp_test)
+    add_test(NAME realtime_musical_spatial_observer COMMAND realtime_musical_spatial_observer_test)
+    add_test(NAME realtime_musical_role_hypothesis COMMAND realtime_musical_role_hypothesis_test)
+    add_test(NAME realtime_musical_role_tracker COMMAND realtime_musical_role_tracker_test)
+    add_test(NAME realtime_musical_spatial_frontend COMMAND realtime_musical_spatial_frontend_test)
+    add_test(NAME realtime_auditory_state_evidence COMMAND realtime_auditory_state_evidence_test)
+    add_test(NAME omniphony_source_transport COMMAND omniphony_source_transport_test)
+    add_test(NAME omniphony_realtime_client COMMAND omniphony_realtime_client_test)
+    add_test(NAME realtime_musical_omniphony_pipeline COMMAND realtime_musical_omniphony_pipeline_test)
     add_test(NAME musical_execution_graph COMMAND musical_execution_graph_test)
     add_test(NAME transformation_identity COMMAND transformation_identity_test)
     add_test(NAME voice_separation_hypothesis COMMAND voice_separation_hypothesis_test)
