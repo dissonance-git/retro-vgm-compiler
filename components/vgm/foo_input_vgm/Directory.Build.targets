@@ -8,6 +8,7 @@
   -->
   <ItemGroup>
     <ClCompile Include="src\input_vgm_shadow.cpp" />
+    <ClCompile Include="src\input_vgm_qsound_consumer.cpp" />
     <ClCompile Include="..\enhancement\genesis_state.cpp" />
     <ClCompile Include="..\enhancement\sn76489_enhanced.cpp" />
     <ClCompile Include="..\enhancement\sn76489_advance.cpp" />
@@ -29,6 +30,7 @@
     <ClInclude Include="..\enhancement\qsound_native_source_window.h" />
     <ClInclude Include="..\enhancement\qsound_native_linear_projection.h" />
     <ClInclude Include="..\enhancement\qsound_consumer_source_block.h" />
+    <ClInclude Include="..\enhancement\qsound_consumer_source_storage.h" />
     <ClInclude Include="..\enhancement\qsound_echo_input_recomposition.h" />
     <ClInclude Include="..\enhancement\qsound_echo_state.h" />
     <ClInclude Include="..\enhancement\qsound_reference_recomposition.h" />
