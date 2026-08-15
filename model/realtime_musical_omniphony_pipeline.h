@@ -41,9 +41,10 @@ public:
         omniphony_source_processor_handle* processor,
         omniphony_source_abi_version_fn abi_major,
         omniphony_source_abi_version_fn abi_minor,
+        omniphony_source_reset_fn reset,
         omniphony_source_process_events_f32_fn process_events) noexcept
     {
-        return client_.bind(processor, abi_major, abi_minor, process_events);
+        return client_.bind(processor, abi_major, abi_minor, reset, process_events);
     }
 
     void unbind_renderer() noexcept {
@@ -54,9 +55,14 @@ public:
         return client_.bound();
     }
 
-    void reset() noexcept {
+    // Track changes, seeks and decoder restarts must clear both halves of the
+    // causal state machine. Resetting only GMI would leave old Omniphony pose /
+    // source-identity history alive; resetting only Omniphony would leave old
+    // musical memory steering a fresh timeline.
+    bool reset() noexcept {
         frontend_.reset();
         handoff_.reset();
+        return client_.reset_renderer();
     }
 
     realtime_musical_omniphony_result process_block(
