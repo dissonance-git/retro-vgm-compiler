@@ -10,7 +10,7 @@ using namespace gameaudio::vgm;
 namespace {
 
 void add_source(qsound_native_source_capture& capture, std::uint64_t sample, std::uint32_t rate = 24038) {
-    std::array<std::int16_t, qsound_source_count> source{};
+    std::array<std::int16_t, qsound_native_source_count> source{};
     capture.observe(0, rate, sample, source.data(), source.size());
 }
 
@@ -54,7 +54,7 @@ int main() {
     qsound_native_mix_frame unavailable;
     unavailable.native_sample = 102;
     unavailable.accounting_valid = false;
-    std::array<std::int16_t, qsound_source_count> source_frame{};
+    std::array<std::int16_t, qsound_native_source_count> source_frame{};
     source.observe(0, 24038, 102, source_frame.data(), source_frame.size());
     mix.observe(0, 24038, &unavailable);
     CHECK(qsound_compare_native_captures(source, mix) == qsound_native_coherence::coherent);
