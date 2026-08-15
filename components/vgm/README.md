@@ -42,11 +42,17 @@ The current format-level core includes:
 
 - version-aware VGM clock semantics;
 - dual-chip and selected variant flags;
-- VGM 1.70 distinct second-instance clocks;
+- VGM 1.70 distinct second-instance clocks and extra-header volume metadata;
+- EOF and GD3 structural validation;
+- classified data-block families;
 - Yamaha register-write transport for `0x51-0x5F` and `0xA1-0xAF`;
 - explicit exclusion of `0xA0`, which remains AY8910;
 - generic DAC Stream Control decoding for `0x90-0x95`;
+- strict reserved-field and 256-opcode-width controls;
+- the complete currently defined VGM 1.72 beta Mikey delta under the project shorthand **VGM 1.72d**: Mikey clock, `0x40` register writes and Mikey PCM data blocks;
 - spec-driven corpus timing and loop validation in `tools/vgm_corpus_audit.py`.
+
+`1.72d` is a project label, not an upstream VGM version claim. It maps to the currently defined upstream 1.72 beta surface so provenance remains explicit.
 
 These are transport/format facts, not a universal chip state model.
 
@@ -91,6 +97,40 @@ device transition
 
 A physical channel is an execution coordinate, not a permanent musical identity.
 
+## QSound spatial source state
+
+QSound is the first VGM family in this project where the historical device itself provides a rich source-spatial grammar before final stereo collapse.
+
+Independent mature implementations agree on the important topology:
+
+```text
+16 PCM voices + 3 ADPCM voices
+        ↓
+per-source pan state
+        ↓
+per-source dry L/R + wet L/R coefficients
+        ↓
+shared echo / FIR / delay / output stages
+        ↓
+final historical stereo
+```
+
+The project now preserves a QSound-specific four-way source route rather than reducing the device to one pan scalar. For the decoded pan regions:
+
+- `0x110..0x130` is the 33-position QSound spatial table with distinct direct/dry and filtered/wet coefficients;
+- `0x140..0x160` is the recovered dry-only linear-pan table;
+- unknown/gap pan words remain raw and undecoded rather than inheriting libvgm's defensive clamp as source truth.
+
+PCM channels also preserve the signed `0xBA..0xC9` per-channel contribution to the shared echo input. That value is distinct from the per-source wet routing table and is not collapsed into it.
+
+The modified foobar VGM path now observes VGM `0xC4` writes in realtime and maintains a fail-closed sample-timed QSound source-control shadow. Source-facing pan and PCM echo-contribution writes are admitted; global echo feedback, FIR selection, output delays and output component volumes remain renderer state.
+
+This is currently **control/evidence state, not audible QSound source substitution**. libvgm remains the historical QSound renderer and therefore the listening/reference control.
+
+The next QSound audio milestone is to expose the 19 synthesized source outputs before the QSound dry/wet pan tables, preserve the shared environmental path separately, and feed those causal lanes to Omniphony. QSound is a historical spatial baseline and calibration family, not a ceiling on the modern binaural presentation.
+
+No QSound pan value is promoted to authored 3-D coordinates. Device-authored routing constrains presentation; Omniphony owns the final headphone scene.
+
 ## Enhanced source engines
 
 Project-owned source-domain work currently includes:
@@ -99,7 +139,8 @@ Project-owned source-domain work currently includes:
 - `ym2612_dac_enhanced` for classic YM2612 DAC playback;
 - `ym2612_pcm_stream` for the current YM2612 sink of VGM source-bank streams;
 - exact YM2612 register timeline capture and an isolated six-channel FM backend contract;
-- explicit authored stereo routing and high-precision source summation primitives.
+- explicit authored stereo routing and high-precision source summation primitives;
+- QSound 19-source spatial-control evidence with four-way dry/wet routing and PCM echo contribution preserved before source-audio tapping.
 
 The VGM `0x90-0x95` stream transport itself is now decoded generically so future chip-specific PCM/ADPCM sinks do not each invent private format semantics.
 
@@ -155,6 +196,8 @@ The generic VGM corpus audit currently validates:
 
 Additional YM2203/YM2608/YM2151/YM2413/YM3812/YMF262 sets should be admitted through the same structural path before they are allowed to pressure-test chip-specific state or higher musical inference.
 
+QSound now needs its own small real-control set. High-value tracks should exercise the normal spatial pan table, the linear-pan region where it is actually used, moving pan, PCM echo contribution and quiet/centered controls. Derived evidence may be stored; copyrighted game data must not be added to the repository.
+
 More files are useful only when they add independent information.
 
 ## Historical constraint evidence
@@ -174,7 +217,7 @@ Examples include composers describing manual sound-data entry and low-level prog
 
 This evidence controls enhancement permission; it does not become a platform-wide rule.
 
-See `../../research/cases/historical-constraint-friction-counterfactual-rendering.md`.
+See `../../research/historical-constraint-friction-counterfactual-rendering.md`.
 
 ## Musical-analysis relationship
 
