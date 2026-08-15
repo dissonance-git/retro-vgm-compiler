@@ -12,6 +12,8 @@ int main() {
     qsound_native_mix_frame frame;
     frame.native_sample = 500;
     frame.accounting_valid = true;
+    frame.pcm_echo_contribution[0] = 123;
+    frame.pcm_echo_contribution[15] = -456;
     frame.echo_input = 123456;
     frame.echo_output = -321;
     frame.wet_post_delay = {{1000, -2000}};
@@ -29,6 +31,8 @@ int main() {
     CHECK(capture.native_sample_rate() == 24038u);
     CHECK(capture.first_native_sample() == 500u);
     CHECK(capture.frames()[0].accounting_valid);
+    CHECK(capture.frames()[0].pcm_echo_contribution[0] == 123);
+    CHECK(capture.frames()[0].pcm_echo_contribution[15] == -456);
     CHECK(capture.frames()[0].echo_input == 123456);
     CHECK(capture.frames()[0].echo_output == -321);
     CHECK(capture.frames()[0].wet_post_delay[0] == 1000);
@@ -43,6 +47,7 @@ int main() {
     // was unavailable on that tick.
     frame.native_sample = 501;
     frame.accounting_valid = false;
+    frame.pcm_echo_contribution.fill(0);
     frame.echo_input = 0;
     frame.echo_output = 0;
     frame.wet_post_delay = {{0, 0}};
@@ -52,14 +57,18 @@ int main() {
     CHECK(capture.valid());
     CHECK(capture.count() == 2u);
     CHECK(!capture.frames()[1].accounting_valid);
+    CHECK(capture.frames()[1].pcm_echo_contribution[0] == 0);
+    CHECK(capture.frames()[1].pcm_echo_contribution[15] == 0);
 
     frame.native_sample = 502;
     frame.accounting_valid = true;
+    frame.pcm_echo_contribution[0] = -11;
     frame.echo_output = 77;
     capture.observe(0, 24038, &frame);
     CHECK(capture.valid());
     CHECK(capture.count() == 3u);
     CHECK(capture.frames()[2].accounting_valid);
+    CHECK(capture.frames()[2].pcm_echo_contribution[0] == -11);
     CHECK(capture.frames()[2].echo_output == 77);
 
     // One coherent native timeline is mandatory. Never repair a gap/reorder.
