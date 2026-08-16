@@ -5,6 +5,7 @@
 #include "../../model/persistent_part_trajectory.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -94,6 +95,10 @@ inline spc_label_blind_corpus_features extract_spc_label_blind_corpus_features(
 
     if (runtime_source.empty())
         throw std::invalid_argument("SPC label-blind corpus extraction requires runtime provenance");
+    if (!std::isfinite(policy.max_gap_seconds) || policy.max_gap_seconds < 0.0 ||
+        !std::isfinite(policy.max_pitch_interval_octaves) ||
+        policy.max_pitch_interval_octaves < 0.0)
+        throw std::invalid_argument("SPC label-blind continuity policy must be finite and nonnegative");
 
     spc_label_blind_corpus_features result;
     const auto episodes = graph.nodes_of_kind(node_kind::voice_instance);
@@ -151,8 +156,7 @@ inline spc_label_blind_corpus_features extract_spc_label_blind_corpus_features(
                 }
             } catch (const std::invalid_argument&) {
                 // Lack of positive continuity evidence is a normal corpus outcome.
-                // Other invalid inputs are prevented by the eligibility partition
-                // above and the public policy validation in infer_spc_persistent_part.
+                // Structural and policy validity are checked before this point.
             }
 
             ++result.rejected_transition_count;
