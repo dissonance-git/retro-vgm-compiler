@@ -78,23 +78,23 @@ class OotAudioTableTests(unittest.TestCase):
                 (0x00, 4, 2, 0, 0, 0, 0),
                 (0x04, 3, 0, 0, 0, 0, 0),
                 (0x07, 0, 2, 0, 0, 0, 0),
-                (0x20, 4, 2, 0, 0, 0, 0),
+                (0x40, 4, 2, 0, 0, 0, 0),
             ]
         )
-        rom = bytearray(0x60)
+        rom = bytearray(0xB0)
         rom[: len(table_bytes)] = table_bytes
-        rom[0x40:0x44] = b"SEQ0"
-        rom[0x44:0x47] = b"RAM"
+        rom[0x80:0x84] = b"SEQ0"
+        rom[0x84:0x87] = b"RAM"
         table = parse_oot_audio_table(bytes(rom), 0)
         assessments = assess_oot_sequence_entries(
             bytes(rom),
             table,
-            sequence_data_base=0x40,
+            sequence_data_base=0x80,
         )
 
         self.assertTrue(assessments[0].accepted)
         self.assertEqual(assessments[0].candidate.data, b"SEQ0")
-        self.assertEqual(assessments[0].candidate.data_start, 0x40)
+        self.assertEqual(assessments[0].candidate.data_start, 0x80)
         self.assertEqual(assessments[1].classification, "non-cart-entry")
         self.assertEqual(assessments[2].classification, "zero-size-entry")
         self.assertEqual(assessments[3].classification, "rejected-sequence-span")
