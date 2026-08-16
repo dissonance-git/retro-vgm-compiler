@@ -7,14 +7,16 @@ track-attribution labels during blind stages.
 
 Current executable lanes:
   * inventory: report testbed coverage and lane eligibility.
-  * vgm-baseline: run the existing label-blind Genesis VGM trajectory/
-    realization audit over Sonic 3 plus eligible cross-soundtrack controls.
+  * vgm-baseline: run the label-blind Genesis VGM trajectory/realization audit.
+  * vgm-motif-probe: run an exploratory physical-channel local motif audit that
+    remains explicitly below persistent-part and phrase truth.
   * rom-forensics: run derived-only ROM provenance analysis in a deliberately
     separate forensic mode that must not leak into musical blind attribution.
 
-Future lanes (persistent parts, SMPS oracle, SPC musical relations, phrase/form,
-composer grammar) should join this entry point rather than creating parallel
-testbed metadata.
+The shared C++ model now contains persistent-part, motif, cross-architecture
+interval, phrase-boundary, and creator-grammar primitives. Those lanes become
+real-corpus executable here only when the corresponding execution adapters can
+feed the corpus end to end. Do not advertise model availability as a corpus run.
 """
 
 from __future__ import annotations
@@ -105,6 +107,34 @@ def _spc_eligible(item: dict[str, Any]) -> bool:
     return _source_family(item) == "SPC"
 
 
+def _ordered_genesis_vgm_sets(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    eligible = [
+        item for item in _selected_sets(manifest)
+        if _blind_genesis_vgm_eligible(item)
+    ]
+    target = [item for item in eligible if item.get("corpus_id") == TARGET_CORPUS_ID]
+    if len(target) != 1:
+        raise ValueError("Sonic 3 target is not uniquely eligible for Genesis VGM audit")
+    controls = sorted(
+        (item for item in eligible if item.get("corpus_id") != TARGET_CORPUS_ID),
+        key=lambda item: str(item.get("corpus_id")),
+    )
+    return target + controls
+
+
+def _corpus_paths(sets: list[dict[str, Any]]) -> list[Path]:
+    paths: list[Path] = []
+    for item in sets:
+        relative = item.get("path")
+        if not isinstance(relative, str):
+            raise ValueError(f"missing corpus path for {item.get('corpus_id')!r}")
+        path = ROOT / relative
+        if not path.is_dir():
+            raise FileNotFoundError(path)
+        paths.append(path)
+    return paths
+
+
 def _public_set_record(item: dict[str, Any]) -> dict[str, Any]:
     """Return only non-attribution routing data safe for blind-stage output."""
 
@@ -118,7 +148,7 @@ def _public_set_record(item: dict[str, Any]) -> dict[str, Any]:
         "set_sha256": item.get("set_sha256"),
         "role": "target" if item.get("corpus_id") == TARGET_CORPUS_ID else "control",
         "blind_genesis_vgm_eligible": _blind_genesis_vgm_eligible(item),
-        "spc_future_lane_eligible": _spc_eligible(item),
+        "spc_lane_eligible": _spc_eligible(item),
     }
 
 
@@ -152,20 +182,20 @@ def build_inventory(manifest_path: Path = MANIFEST_PATH) -> dict[str, Any]:
         "blind_genesis_vgm_set_count": sum(
             bool(item["blind_genesis_vgm_eligible"]) for item in public
         ),
-        "spc_future_lane_set_count": sum(
-            bool(item["spc_future_lane_eligible"]) for item in public
-        ),
+        "spc_lane_set_count": sum(bool(item["spc_lane_eligible"]) for item in public),
         "target": target[0],
         "controls": controls,
         "capability_lanes": {
             "blind_vgm_trajectory_realization": "executable",
+            "blind_vgm_physical_channel_motif_probe": "executable_exploratory",
             "rom_forensics": "executable_separate_from_musical_blind_mode",
-            "persistent_musical_parts": "in_progress",
-            "smps_hidden_oracle": "planned",
-            "spc_creator_facing_relations": "planned",
-            "phrase_motif_harmony_form": "planned",
-            "cross_soundtrack_composer_grammar": "gated_on_deeper_musical_model",
-            "blind_composer_attribution": "gated_on_confound_controls",
+            "persistent_musical_parts": "implemented_shared_model_pending_real_corpus_execution",
+            "cross_architecture_motif_profiles": "implemented_shared_model_pending_real_corpus_execution",
+            "spc_creator_facing_relations": "implemented_part_motif_phrase_adapters_pending_real_corpus_execution",
+            "phrase_motif_harmony_form": "motif_and_phrase_implemented_harmony_form_pending",
+            "smps_hidden_oracle": "planned_real_corpus_supervision_lane",
+            "cross_soundtrack_composer_grammar": "implemented_evidence_kernel_pending_real_observations",
+            "blind_composer_attribution": "gated_on_frozen_blind_outputs_and_confound_controls",
         },
     }
 
@@ -175,28 +205,8 @@ def run_vgm_baseline(
     neighbor_count: int = 5,
 ) -> dict[str, Any]:
     manifest = _load_json(manifest_path)
-    selected = _selected_sets(manifest)
-    eligible = [item for item in selected if _blind_genesis_vgm_eligible(item)]
-
-    target = [item for item in eligible if item.get("corpus_id") == TARGET_CORPUS_ID]
-    if len(target) != 1:
-        raise ValueError("Sonic 3 target is not uniquely eligible for Genesis VGM audit")
-
-    controls = sorted(
-        (item for item in eligible if item.get("corpus_id") != TARGET_CORPUS_ID),
-        key=lambda item: str(item.get("corpus_id")),
-    )
-    ordered = target + controls
-
-    corpus_paths: list[Path] = []
-    for item in ordered:
-        relative = item.get("path")
-        if not isinstance(relative, str):
-            raise ValueError(f"missing corpus path for {item.get('corpus_id')!r}")
-        path = ROOT / relative
-        if not path.is_dir():
-            raise FileNotFoundError(path)
-        corpus_paths.append(path)
+    ordered = _ordered_genesis_vgm_sets(manifest)
+    corpus_paths = _corpus_paths(ordered)
 
     audit = _load_tool("cross_soundtrack_vgm_audit", "cross_soundtrack_vgm_audit.py")
     result = audit.audit_soundtracks(
@@ -211,6 +221,38 @@ def run_vgm_baseline(
     result["label_firewall"] = (
         "No curated Sonic 3 attribution labels or external target_control_people "
         "are read by this stage. Unblind only after this JSON is frozen."
+    )
+    return result
+
+
+def run_vgm_motif_probe(
+    manifest_path: Path = MANIFEST_PATH,
+    *,
+    neighbor_count: int = 5,
+    window_events: int = 4,
+) -> dict[str, Any]:
+    manifest = _load_json(manifest_path)
+    ordered = _ordered_genesis_vgm_sets(manifest)
+    corpus_paths = _corpus_paths(ordered)
+
+    probe = _load_tool("vgm_motif_probe", "vgm_motif_probe.py")
+    result = probe.audit_soundtracks(
+        corpus_paths,
+        window_events=window_events,
+        neighbor_count=neighbor_count,
+        cross_soundtrack_only=True,
+    )
+    result["testbed"] = "sonic3-primary-integration-testbed"
+    result["stage"] = "blind-vgm-physical-channel-motif-probe"
+    result["target_corpus_id"] = TARGET_CORPUS_ID
+    result["eligible_corpus_ids"] = [str(item.get("corpus_id")) for item in ordered]
+    result["label_firewall"] = (
+        "No curated Sonic 3 attribution labels or external target_control_people are read. "
+        "Freeze this output before unblinding."
+    )
+    result["model_firewall"] = (
+        "This probe is below persistent-part recovery. A high motif-probe similarity may "
+        "motivate deeper analysis but is not composer evidence."
     )
     return result
 
@@ -285,6 +327,11 @@ def main() -> int:
     vgm_parser.add_argument("--json", type=Path)
     vgm_parser.add_argument("--neighbors", type=int, default=5)
 
+    motif_parser = subparsers.add_parser("vgm-motif-probe")
+    motif_parser.add_argument("--json", type=Path)
+    motif_parser.add_argument("--neighbors", type=int, default=5)
+    motif_parser.add_argument("--window-events", type=int, default=4)
+
     rom_parser = subparsers.add_parser("rom-forensics")
     rom_parser.add_argument("rom", type=Path)
     rom_parser.add_argument("--compare", type=Path)
@@ -308,6 +355,21 @@ def main() -> int:
             parser.error("--neighbors must be >= 0")
         _write_result(
             run_vgm_baseline(args.manifest, neighbor_count=args.neighbors),
+            args.json,
+        )
+        return 0
+
+    if args.command == "vgm-motif-probe":
+        if args.neighbors < 0:
+            parser.error("--neighbors must be >= 0")
+        if args.window_events < 3:
+            parser.error("--window-events must be >= 3")
+        _write_result(
+            run_vgm_motif_probe(
+                args.manifest,
+                neighbor_count=args.neighbors,
+                window_events=args.window_events,
+            ),
             args.json,
         )
         return 0
