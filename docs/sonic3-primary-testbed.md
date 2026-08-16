@@ -2,7 +2,8 @@
 
 Status: active primary integration testbed  
 Target corpus: `tests/corpus/sonic-3-knuckles`  
-Research control: `research/sonic3-composer-programmer-attribution.md`
+Research control: `research/sonic3-composer-programmer-attribution.md`  
+ROM forensics: `research/sonic3-rom-forensic-attribution.md`
 
 ## Purpose
 
@@ -38,6 +39,7 @@ curated but revisable attribution hypotheses
 prototype and final versions
 SMPS sequence source / disassembly
 Z80 sound-driver source and research notes
+raw ROM / binary layout and provenance residue
 YM2612 / PSG / DAC execution
 58 committed VGM/VGZ target fixtures
 same-driver / different-soundtrack controls
@@ -47,7 +49,52 @@ cross-architecture SPC controls
 later ports / arrangements where lineage is defensible
 ```
 
-This makes it possible to ask whether an inference survives deliberate changes in representation, realization, soundtrack, platform, collaborator, driver, patch library, and historical label.
+This makes it possible to ask whether an inference survives deliberate changes in representation, realization, soundtrack, platform, collaborator, driver, patch library, binary organization, and historical label.
+
+## Orthogonal ROM-forensics lane
+
+The testbed also asks a separate historical/provenance question:
+
+> Did the shipped or prototype ROM preserve anything about who created, imported, converted, or grouped the music?
+
+Some games retain literal filenames, source paths, author initials, tool strings, or other development residue. Even when symbolic names are stripped, binary organization can preserve weaker traces of the production process.
+
+For Sonic 3/S&K, investigate:
+
+```text
+literal strings / names / initials
+source-path or filename residue
+tool/export signatures
+music pointer-table order
+physical storage order
+Z80 bank boundaries
+alignment and padding
+shared local voice/envelope/sample resources
+prototype/final orphaned or duplicated data
+exact/near-exact regions shared with other games
+```
+
+A crucial control is already established: visible names such as `AIZ1.asm`, `HCZ2.asm`, `mus_AIZ1`, and the song filenames in `smps-rips` are reconstruction/archive labels unless byte-level evidence proves that the original ROM contained them. Initial searches of the major reconstructed Sonic 3/S&K sources found no obvious literal candidate-composer names. This is not yet proof of absence.
+
+ROM forensics must run in two modes:
+
+```text
+MUSICAL BLIND MODE
+exclude filenames, tags, disassembly labels, textual ROM residue,
+known IDs that leak cue identity, and attribution metadata
+
+FORENSIC MODE
+allow strings, paths, tool signatures, pointer topology,
+bank placement, region identity, and other binary provenance evidence
+```
+
+A filename that directly names a creator can be excellent historical evidence while being a catastrophic shortcut for a musical-understanding benchmark. Therefore forensic evidence is frozen separately and used as independent validation after musical outputs are frozen.
+
+The more subtle question is especially interesting if literal names are absent:
+
+> **Does the topology of the ROM preserve the topology of the production process?**
+
+See `research/sonic3-rom-forensic-attribution.md`.
 
 ## Testbed law
 
@@ -309,7 +356,8 @@ Available now:
 - YM2612/PSG/DAC state;
 - immutable corpus hashes;
 - prototype/final inventory;
-- external soundtrack control inventory.
+- external soundtrack control inventory;
+- reconstructed numbered music-table and raw SMPS-rip references for binary forensics.
 
 ### L1: physical performance evidence
 
@@ -394,6 +442,7 @@ confound interventions
 work-family grouping
 soundtrack grouping
 platform / driver grouping
+ROM-forensic mode and allowed leakage surface
 evidence provenance
 predictions / neighbors / correspondences
 supporting evidence
@@ -408,15 +457,17 @@ Do not overwrite earlier contradictory runs. Improvements should be comparable o
 ## Immediate build order
 
 1. Make the testbed inventory and blind VGM baseline runnable from one entry point.
-2. Integrate trajectory-level persistent musical parts into the VGM analysis path.
-3. Add SMPS-source oracle comparisons for secure source/realization pairs.
-4. Build phrase/motif/rhythm features on persistent parts, not physical channels.
-5. Add harmonic/voice-leading/form relations.
-6. Add an SPC composer-facing extractor that reaches the same earned musical relation space without pretending SPC is MIDI.
-7. Freeze cross-soundtrack outputs before revealing routing/attribution metadata.
-8. Run confound interventions and matched driver controls, especially Sonic 3/S&K versus Sonic 3D Blast.
-9. Only then attempt serious blind composer attribution.
-10. Feed every discovered failure back into the general project architecture and re-run the same testbed.
+2. Implement the ROM-forensics audit: strings, pointer/storage order, banks, regions, exact cross-build matches, and leakage controls.
+3. Integrate trajectory-level persistent musical parts into the VGM analysis path.
+4. Add SMPS-source oracle comparisons for secure source/realization pairs.
+5. Build phrase/motif/rhythm features on persistent parts, not physical channels.
+6. Add harmonic/voice-leading/form relations.
+7. Add an SPC composer-facing extractor that reaches the same earned musical relation space without pretending SPC is MIDI.
+8. Freeze cross-soundtrack outputs before revealing routing/attribution metadata.
+9. Run confound interventions and matched driver controls, especially Sonic 3/S&K versus Sonic 3D Blast.
+10. Freeze the musical result before admitting ROM-forensic provenance evidence.
+11. Only then attempt serious blind composer attribution and historical evidence fusion.
+12. Feed every discovered failure back into the general project architecture and re-run the same testbed.
 
 ## Success condition
 
