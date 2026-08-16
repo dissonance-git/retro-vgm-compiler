@@ -46,6 +46,44 @@ The listener musical model is distinct from listener response. `that is the retu
 
 See `docs/holistic-musical-understanding.md` for the top-level evaluation target.
 
+## Composer-level understanding and symbolic sequence evidence
+
+The strongest evaluation target is not successful decoding or MIDI export. It is whether the system understands the composition.
+
+`MIDI-like` information means symbolic note and sequence information broadly, not the MIDI file format alone. Useful composer-facing evidence may come from MIDI, MML, trackers, SMPS, GEMS, N-SPC, SSEQ, validated native driver bytecode, decoded sequence hex, score-like source, source code/data tables, or reconstructed note/performance events inferred upward from execution.
+
+```text
+symbolic note / sequence evidence
+        ↕
+driver execution
+        ↕
+chip / DSP / sample evidence
+        ↕
+rendered and heard organization
+        ↓
+composer-level musical model
+```
+
+Each representation is a different sensor. They should cross-check and teach one another when a real alignment exists. Explicit sequence tracks can teach the system what logical musical continuity looks like after hardware allocation. VGM/SPC execution can reveal synthesis, articulation, allocation, sample, and runtime details missing from score-like data. External MIDI or notation transcriptions can provide useful anchors while remaining explicitly external evidence.
+
+But cross-format learning must not flatten the sources into pseudo-MIDI:
+
+```text
+MIDI track
+!= MML voice
+!= tracker channel
+!= driver logical track
+!= physical chip channel
+!= physical voice episode
+!= persistent musical part
+```
+
+A correspondence may be strong without becoming an equivalence. Source-native objects stay intact; common musical abstractions are added only where the evidence earns them.
+
+> **Everything should help everything else understand the music, while each representation keeps what makes it uniquely informative.**
+
+See `docs/composer-level-understanding.md` and `docs/music-representation-systems.md`.
+
 ## Evidence boundaries
 
 The project deliberately keeps identities and analytical levels separate.
@@ -90,7 +128,7 @@ Current work spans materially different representations and architectures, inclu
 - NSF and other executable-rip formats;
 - PSF1, GSF, USF, 2SF, and NCSF executable-object families;
 - native music drivers and sequence formats;
-- MML and tracker source;
+- MIDI, MML, tracker source, and other symbolic music representations;
 - ROM-derived samples, patches, sequences, and control data;
 - rendered audio and documentary evidence.
 
@@ -184,7 +222,7 @@ The aspirational standard is composer-grade structural understanding without inv
 
 Descriptions such as `it opens up here`, `the bass starts pushing harder`, or `the phrase keeps delaying the return to tonic` are useful when they summarize integrated evidence rather than one-feature phrase rules.
 
-See `docs/human-musical-discourse.md` and `docs/holistic-musical-understanding.md`.
+See `docs/human-musical-discourse.md`, `docs/composer-level-understanding.md`, and `docs/holistic-musical-understanding.md`.
 
 ## Source-native enhanced rendering
 
@@ -243,6 +281,7 @@ Start with:
 
 - `AGENTS.md`
 - `docs/holistic-musical-understanding.md`
+- `docs/composer-level-understanding.md`
 - `docs/musical-execution-model.md`
 - `docs/musical-inference-evidence.md`
 - `docs/musical-understanding-dependencies.md`
@@ -269,15 +308,18 @@ Important mechanisms should also be challenged by real corpus controls, negative
 ## Working rules
 
 1. Holistic musical understanding is the primary objective; descend into lower layers when doing so materially improves that understanding.
-2. Source-domain first when a lower-level question is actually needed, beginning at exact encoded data when available.
-3. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model clocks or alignments separately where the distinction exists.
-4. Keep exact, derived, inferred, perceptual, listener-model, and external claims distinct.
-5. Do not infer a commercial toolchain from output similarity alone.
-6. Do not call a physical channel a persistent musical part without evidence.
-7. Do not jump from nominal frequency directly to note spelling, harmony, style, authorship, or listener understanding.
-8. Mature repositories and literature are observatories, not automatic dependencies.
-9. Corrections outrank narrative coherence.
-10. Accuracy/reference behavior remains available beneath every enhancement.
-11. Traceability is supporting infrastructure: preserve it where useful, but never confuse a perfect lower-level explanation with a complete understanding of the music.
+2. Composer-level structural understanding is the strongest evaluation surface; decoding, reconstruction, transcription, and export are means rather than endpoints.
+3. Recover symbolic note/sequence information whenever the source supports it, whether MIDI, MML, tracker data, native driver commands, decoded bytecode, or another representation.
+4. Let source families cross-supervise one another through explicit evidence-bearing correspondences, but never collapse native semantics into a lowest-common-denominator pseudo-MIDI.
+5. Source-domain first when a lower-level question is actually needed, beginning at exact encoded data when available.
+6. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model clocks or alignments separately where the distinction exists.
+7. Keep exact, derived, inferred, perceptual, listener-model, and external claims distinct.
+8. Do not infer a commercial toolchain from output similarity alone.
+9. Do not call a physical channel a persistent musical part without evidence.
+10. Do not jump from nominal frequency directly to note spelling, harmony, style, authorship, or listener understanding.
+11. Mature repositories and literature are observatories, not automatic dependencies.
+12. Corrections outrank narrative coherence.
+13. Accuracy/reference behavior remains available beneath every enhancement.
+14. Traceability is supporting infrastructure: preserve it where useful, but never confuse a perfect lower-level explanation with a complete understanding of the music.
 
-> **Understand the soundtrack as a musical whole; use every lower layer that helps you get there.**
+> **Understand the soundtrack as a musical whole; use every representation that helps, and preserve the distinctions that make each one informative.**
