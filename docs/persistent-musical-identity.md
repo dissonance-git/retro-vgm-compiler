@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the current Game Music Interpreter frontier for recovering persistent musical voices/parts from executable game-music evidence.
+This document records the current Retro VGM Compiler frontier for recovering persistent musical voices/parts from executable game-music evidence.
 
 The problem exists because implementation resources are not musical identities:
 
@@ -45,9 +45,9 @@ This is not a universal scalar weighting. Evidence can conflict, be unavailable,
 
 ## Part identity versus auditory-stream identity
 
-Some symbolic voice-separation literature defines a musical voice in perceptual terms, close to an auditory stream. That is useful research but is not identical to Game Music Interpreter's `part` object.
+Some symbolic voice-separation literature defines a musical voice in perceptual terms, close to an auditory stream. That is useful research but is not identical to Retro VGM Compiler's `part` object.
 
-Game Music Interpreter already has separate semantic layers and node kinds for:
+Retro VGM Compiler already has separate semantic layers and node kinds for:
 
 - musical-performance `part`;
 - synthesis `voice_instance`;
@@ -119,7 +119,7 @@ Useful lesson:
 
 > Persistent grouping is a separate analysis over events, not a property of the hardware channel that produced them.
 
-Its cubic implementation and score-centric feature set make it a research/reference algorithm rather than a realtime Game Music Interpreter dependency.
+Its cubic implementation and score-centric feature set make it a research/reference algorithm rather than a realtime Retro VGM Compiler dependency.
 
 ### Voice separation as link prediction
 
@@ -127,7 +127,7 @@ Karystinaios, Foscarin, and Widmer model symbolic voice separation as a multi-tr
 
 The accompanying `manoskary/vocsep_ijcai2023` implementation uses Partitura note structures and a family of note, pitch, metrical, density, harmonic, and voice-leading descriptors.
 
-Useful lesson for Game Music Interpreter:
+Useful lesson for Retro VGM Compiler:
 
 ```text
 performance event
@@ -137,7 +137,7 @@ performance event
 trajectory / persistent-part hypothesis
 ```
 
-The important transfer is the **relation-first** formulation. Game Music Interpreter does not need to import the graph neural network or its training stack to benefit from that decomposition.
+The important transfer is the **relation-first** formulation. Retro VGM Compiler does not need to import the graph neural network or its training stack to benefit from that decomposition.
 
 ### Other symbolic voice-separation work
 
@@ -156,9 +156,9 @@ These approaches reinforce three durable constraints:
 2. longer temporal/contextual fragments can be stronger than one adjacent-note comparison;
 3. competing assignments are normal and should not be erased prematurely.
 
-## Why Game Music Interpreter can do better than score-only separation
+## Why Retro VGM Compiler can do better than score-only separation
 
-Generic symbolic systems usually begin with note-like events because that is the highest layer they possess. Game Music Interpreter can often retain deeper causal evidence.
+Generic symbolic systems usually begin with note-like events because that is the highest layer they possess. Retro VGM Compiler can often retain deeper causal evidence.
 
 Examples:
 

@@ -4,7 +4,7 @@
 
 This document records durable representation lessons from mature music-production, sequencing, transcription, symbolic-analysis, computer-assisted-composition and perception systems.
 
-These projects are research inputs, not runtime dependencies. The objective is to identify what information must remain explicit so Game Music Interpreter can reason across composition, executable performance, synthesis, routing, audio, perception and whole-song structure without collapsing them into one representation.
+These projects are research inputs, not runtime dependencies. The objective is to identify what information must remain explicit so Retro VGM Compiler can reason across composition, executable performance, synthesis, routing, audio, perception and whole-song structure without collapsing them into one representation.
 
 The current question is stronger than “what common data model should we use?”
 
@@ -43,7 +43,7 @@ human musical discourse
 → how listeners, critics, creators, producers and engineers naturally verbalize what they hear, intend, evaluate or would change
 ```
 
-No single system supplies the Game Music Interpreter ontology. A concept earns common-model status only when it solves a real cross-source problem without destroying source-specific evidence.
+No single system supplies the Retro VGM Compiler ontology. A concept earns common-model status only when it solves a real cross-source problem without destroying source-specific evidence.
 
 ## Broad replay systems: common interfaces do not imply common semantic depth
 
@@ -60,7 +60,7 @@ source-dependent capability
 
 A broad frontend may integrate many engines while retaining substantial engine-specific state. A compact replay API may be useful even when some backends cannot expose richer semantics. Richer sources such as trackers should not be forced down to the weakest backend simply to make every adapter look alike.
 
-Therefore Game Music Interpreter treats feature/capability availability as evidence:
+Therefore Retro VGM Compiler treats feature/capability availability as evidence:
 
 ```text
 not exposed
@@ -248,7 +248,7 @@ static musical program
 
 A pattern can be executable state. Loops, branches, variables, mutations and player/game input can change future musical behavior without a pre-expanded event list.
 
-This directly supports Game Music Interpreter's separation of program points/control-flow structure from execution traces.
+This directly supports Retro VGM Compiler's separation of program points/control-flow structure from execution traces.
 
 ## Time is plural
 
@@ -262,7 +262,7 @@ Therefore time-domain mappings are evidence objects, not hidden convenience conv
 
 Music tracking, voice separation, harmonic analysis, listener models and source/version work all demonstrate cases where several interpretations can fit unchanged lower evidence.
 
-Game Music Interpreter therefore prefers:
+Retro VGM Compiler therefore prefers:
 
 ```text
 lower evidence

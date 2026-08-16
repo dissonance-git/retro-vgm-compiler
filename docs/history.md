@@ -1,6 +1,6 @@
 # Technical lineage
 
-Game Music Interpreter carries forward several implementation ideas that were pressure-tested in earlier game-audio experiments and later refined under stricter evidence rules.
+Retro VGM Compiler carries forward several implementation ideas that were pressure-tested in earlier game-audio experiments and later refined under stricter evidence rules.
 
 This document records useful technical lineage that still informs the current architecture.
 

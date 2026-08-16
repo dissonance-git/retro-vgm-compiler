@@ -5,11 +5,11 @@ Primary goal: use Sonic 3 & Knuckles as a hard real-world test of composer-level
 
 Related:
 
-- `research/composer-grammar-attribution.md`
-- `research/sonic3-vgm-gun-hazard-spc.md`
-- `research/sonic-smps-pitch-recovery.md`
-- `research/musicological-authorship-attribution.md`
-- `research/retro-composition-programming-listening.md`
+- `research/music/composer-grammar-attribution.md`
+- `cross-representation-controls.md`
+- `smps-pitch-recovery.md`
+- `research/music/musicological-authorship-attribution.md`
+- `research/music/retro-composition-programming-listening.md`
 - `docs/composer-level-understanding.md`
 
 ## Research archive
@@ -184,7 +184,7 @@ They can reveal:
 - which note, bass, PSG, voice, modulation, and channel-layout decisions survived;
 - whether later versions descend from an earlier symbolic source rather than the final Mega Drive realization.
 
-The interpreter must support:
+Retro VGM Compiler must support:
 
 ```text
 same work identity
@@ -225,7 +225,7 @@ The saved Development/Music page presents Sonic 3's `Continue` and `Stage Clear 
 
 Music Ramble post #339 (2026-08-08) explicitly revisits that interpretation and argues that the Sonic 3D Blast credit gap may have been interpreted incorrectly, while pointing to implementation details considered more Nagao-like.
 
-For Game Music Interpreter this is not yet a historical verdict. It is a regression shape:
+For Retro VGM Compiler this is not yet a historical verdict. It is a regression shape:
 
 ```text
 inherited metadata / old interpretation

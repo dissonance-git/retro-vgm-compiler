@@ -8,13 +8,14 @@ For substantive work, use this bounded entry path:
 current main HEAD
 → README.md
 → AGENTS.md at the same HEAD
+→ docs/retro-vgm-compiler-roadmap.md
 → recent commits
 → task-relevant source family / research frontier
 → exact target code, test, or document
 ```
 
-1. Resolve `dissonance-git/game-music-interpreter` and record current `main`.
-2. Read `README.md` and this file from the same commit.
+1. Resolve the Retro VGM Compiler repository and record current `main`.
+2. Read `README.md`, this file, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
 3. Inspect recent commits before choosing the smallest relevant work area.
 4. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
 5. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
@@ -26,11 +27,11 @@ Direct user correction outranks project prose.
 
 ## Project scope
 
-Game Music Interpreter exists primarily to build holistic musical understanding of digital game soundtracks. Executable understanding, source recovery, device/chip modeling, perceptual organization, provenance, and source-native rendering are supporting capabilities that make that musical understanding deeper, more accurate, more specific, and more defensible.
+Retro VGM Compiler exists primarily to build holistic musical understanding of digital game soundtracks. Executable understanding, source recovery, device/chip modeling, perceptual organization, provenance, and source-native rendering are supporting capabilities that make that musical understanding deeper, more accurate, more specific, and more defensible.
 
-The ideal system should be able to discuss a game's score with the integrated understanding of a strong critic, composer/musician, producer, and musicologist: composition, arrangement, harmony, rhythm, melody, form, timbre, sound design, dramatic/game function, thematic relations, soundtrack-scale identity, stylistic lineage, and meaningful exceptions. It should seem to have internalized the musical logic of the score from the inside without inventing undocumented creator intent.
+The ideal system should be able to discuss a game's soundtrack with the integrated understanding of a strong critic, composer/musician, producer, and musicologist: composition, arrangement, harmony, rhythm, melody, form, timbre, sound design, dramatic/game function, thematic relations, soundtrack-scale identity, stylistic lineage, and meaningful exceptions. It should seem to have internalized the musical logic of the soundtrack from the inside without inventing undocumented creator intent.
 
-See `docs/holistic-soundtrack-understanding.md`.
+See `docs/holistic-soundtrack-understanding.md` and `docs/retro-vgm-compiler-roadmap.md`.
 
 It may own:
 
@@ -78,7 +79,7 @@ A technically exact result that does not improve the musical model may still be 
 Helix
   shared research execution, evidence discipline, project continuity
 
-Game Music Interpreter
+Retro VGM Compiler
   game-music source, driver, device, performance, analysis, rendering
 
 libaural
@@ -299,7 +300,7 @@ Do not call CI green unless the runner actually executed successfully. A blocked
 
 The project already has substantial lower infrastructure: device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, source-native rendering experiments, and a broad cross-architecture corpus.
 
-The next high-information frontier is to make those capabilities converge upward into holistic soundtrack models rather than continuing to expand the lower stack indefinitely.
+The current implementation roadmap is maintained in `docs/retro-vgm-compiler-roadmap.md`. The next high-information frontier is to make those capabilities converge upward into holistic soundtrack models rather than continuing to expand the lower stack indefinitely.
 
 Priority order:
 

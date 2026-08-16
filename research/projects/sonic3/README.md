@@ -1,6 +1,6 @@
 # Sonic 3 research project
 
-Sonic 3 & Knuckles is an integrative research testbed for Game Music Interpreter.
+Sonic 3 & Knuckles is an integrative research testbed for Retro VGM Compiler.
 
 The project asks one broad question:
 

@@ -14,7 +14,7 @@ chip-specific pitch / gate / timing reconstruction
 MIDI approximation
 ```
 
-Game Music Interpreter is trying to solve a larger problem:
+Retro VGM Compiler is trying to solve a larger problem:
 
 ```text
 native source / execution
@@ -45,7 +45,7 @@ Useful lessons include:
    Paul Jensen's early work explicitly derived real-frequency formulae from chip clock and F-number state rather than relying on coarse hand transposition.
 
 2. **A register-frequency estimate is not always the musical fundamental.**
-   Later maintainer discussion notes that FM operator multipliers and modulation can make two identical nominal frequency settings sound at different effective octaves. This is exactly why Game Music Interpreter keeps device-native pitch, nominal device frequency, programmed pitch, performed pitch and heard pitch as separate claims.
+   Later maintainer discussion notes that FM operator multipliers and modulation can make two identical nominal frequency settings sound at different effective octaves. This is exactly why Retro VGM Compiler keeps device-native pitch, nominal device frequency, programmed pitch, performed pitch and heard pitch as separate claims.
 
 3. **PCM/DAC percussion is structurally hostile to naive MIDI conversion.**
    A VGM can contain streamed sample writes rather than authored drum-note events. Turning individual DAC writes into MIDI events can create dense garbage-note clouds. Recovering the underlying percussion event requires source/sample segmentation or higher musical evidence.
@@ -66,7 +66,7 @@ These are all compatible with the current project's evidence-first model.
 
 > What MIDI notes can reproduce this captured chip activity usefully?
 
-Game Music Interpreter asks:
+Retro VGM Compiler asks:
 
 > What musical object best explains this source, what evidence supports that interpretation, what survives representation change, and which information would be lost by projecting it into MIDI?
 
@@ -141,7 +141,7 @@ For each supported chip/work:
 ```text
 VGM
  ├─> vgm2mid output
- └─> Game Music Interpreter symbolic projection
+ └─> Retro VGM Compiler symbolic projection
 ```
 
 Compare:
@@ -156,7 +156,7 @@ Compare:
 - instrument changes;
 - controller/modulation behavior.
 
-Disagreement is not automatically a Game Music Interpreter failure. It becomes an experiment:
+Disagreement is not automatically a Retro VGM Compiler failure. It becomes an experiment:
 
 ```text
 which system is closer to the authored/native semantics,
@@ -185,7 +185,7 @@ Use existing tools as observatories and controls:
 
 Extract generalizable chip knowledge and failure cases without importing their representational assumptions wholesale.
 
-### Phase 2: Game Music Interpreter becomes the richer semantic engine
+### Phase 2: Retro VGM Compiler becomes the richer semantic engine
 
 Recover:
 
@@ -206,7 +206,7 @@ while preserving provenance and uncertainty.
 Adapters can then improve existing workflows:
 
 ```text
-Game Music Interpreter
+Retro VGM Compiler
         ├─> richer MIDI export
         ├─> tracker reconstruction
         ├─> annotated VGM playback

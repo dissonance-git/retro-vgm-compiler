@@ -2,7 +2,7 @@
 
 ## Completed runtime boundary
 
-Game Music Interpreter can hand a source-aware musical scene to Omniphony without a whole-track prepass or cached soundtrack automation.
+Retro VGM Compiler can hand a source-aware musical scene to Omniphony without a whole-track prepass or cached soundtrack automation.
 
 The canonical runtime entry point is now:
 
@@ -80,7 +80,7 @@ Never feed `handoff.projected_view()` into `complete_block()`. The canonical pip
 
 ## Timed events
 
-GMI source evidence supports exact intra-block events:
+Retro VGM Compiler source evidence supports exact intra-block events:
 
 ```text
 frame_offset + lane_index + new evidence
@@ -92,7 +92,7 @@ Therefore a change at frame 137 remains a change at frame 137. It does not need 
 
 ## Transport
 
-`model/omniphony_source_transport.h` is the allocation-free GMI-side ABI mirror.
+`model/omniphony_source_transport.h` is the allocation-free compiler-side ABI mirror.
 
 It:
 
@@ -107,7 +107,7 @@ It:
 
 The C++ transport and Rust `repr(C)` records pin the ABI 0.3 binary layout from both sides. Field-order or size drift must fail tests rather than silently reinterpret musical evidence across the DLL boundary.
 
-GMI retains exact source provenance internally. Omniphony ABI 0.3 has one 64-bit runtime source token, so the transport derives a renderer-local episode token from GMI `source_id + generation`. That token is presentation identity only and must never be used as a GMI provenance key.
+Retro VGM Compiler retains exact source provenance internally. Omniphony ABI 0.3 has one 64-bit runtime source token, so the transport derives a renderer-local episode token from compiler `source_id + generation`. That token is presentation identity only and must never be used as a compiler provenance key.
 
 ## Identity continuity
 
@@ -132,8 +132,8 @@ A track change, seek or decoder restart resets the complete causal timeline, not
 `realtime_musical_omniphony_pipeline::reset()` clears:
 
 ```text
-GMI acoustic observer state
-GMI musical-role / time memory
+compiler acoustic observer state
+compiler musical-role / time memory
 pending projected handoff state
 Omniphony binaural/spatial runtime state
 Omniphony source-presentation identity state
@@ -145,7 +145,7 @@ The reset function is part of the bound source ABI client. This prevents a fresh
 
 There is one audible spatial-motion owner in the canonical path: Omniphony.
 
-GMI supplies causal musical/perceptual target evidence. Omniphony maps that evidence into presentation geometry and performs the actual sample-domain/ramped binaural rendering. This avoids stacking two independent spatial smoothers and keeps the existing Omniphony perceptual field as the renderer baseline.
+Retro VGM Compiler supplies causal musical/perceptual target evidence. Omniphony maps that evidence into presentation geometry and performs the actual sample-domain/ramped binaural rendering. This avoids stacking two independent spatial smoothers and keeps the existing Omniphony perceptual field as the renderer baseline.
 
 `model/realtime_spatial_scene_dsp.h` remains useful as an executable reference for causal control trajectories, smoothing laws and tests, but it is not inserted as a second audible motion stage in front of Omniphony.
 
@@ -168,7 +168,7 @@ The active artificial-hearing research reference is `dissonance-git/deepSTRF`; r
 DeepSTRF remains a research teacher, not a playback dependency:
 
 ```text
-GMI source-authoritative fixtures
+Retro VGM Compiler source-authoritative fixtures
 → deepSTRF auditory obligations / adversarial experiments
 → compress the mechanism
 → only causal bounded survivors enter this realtime path

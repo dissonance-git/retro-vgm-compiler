@@ -1,6 +1,6 @@
 # OpenMusic libraries
 
-OpenMusic and its library ecosystem are research observatories for Game Music Interpreter. They are not runtime dependencies and do not define the project ontology. Detailed repository and literature notes live in `research/cases/openmusic-libraries.md`.
+OpenMusic and its library ecosystem are research observatories for Retro VGM Compiler. They are not runtime dependencies and do not define the project ontology. Detailed repository and literature notes live in `research/cases/openmusic-libraries.md`.
 
 ## Durable transfer
 
@@ -39,7 +39,7 @@ Spatial and orchestration tools reinforce another boundary: source identity and 
 
 ## Current role
 
-The OpenMusic pass now supports the upper musical-analysis and reconstruction layers rather than defining the immediate frontier. Game Music Interpreter already has executable regressions for competing persistent-part hypotheses, source-relative feature availability, theory and perceptual alternatives, listener-response context, musicological identity, timbre versus instrument identity, role-relative attribution, and programmed expression versus higher interpretation.
+The OpenMusic pass now supports the upper musical-analysis and reconstruction layers rather than defining the immediate frontier. Retro VGM Compiler already has executable regressions for competing persistent-part hypotheses, source-relative feature availability, theory and perceptual alternatives, listener-response context, musicological identity, timbre versus instrument identity, role-relative attribution, and programmed expression versus higher interpretation.
 
 The common model therefore stays small and project-owned. New shared primitives are added only when materially different source families force the same distinction.
 

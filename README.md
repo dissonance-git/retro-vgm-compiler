@@ -1,12 +1,14 @@
-# Game Music Interpreter
+# Retro VGM Compiler
 
 Executable understanding, musical analysis, source-native rendering, perceptual organization, and human-readable reasoning for digital game music.
 
 ## Objective
 
-Game Music Interpreter follows the transformations that actually produce and are heard as game music instead of flattening every source into MIDI, stems, final PCM, or a detached analytical summary.
+Retro VGM Compiler follows the transformations that actually produce and are heard as game music instead of flattening every source into MIDI, stems, final PCM, or a detached analytical summary.
 
 **The primary objective is holistic musical understanding.** Exact decoding, execution tracing, synthesis reconstruction, source isolation, and provenance are supporting machinery. They matter because they can improve, constrain, explain, or validate the musical model.
+
+The compiler architecture and current/future roadmap live in `docs/retro-vgm-compiler-roadmap.md`.
 
 The strongest composer-facing benchmark is deliberately difficult:
 
@@ -366,7 +368,7 @@ See `docs/source-native-enhanced-rendering.md`.
 ## Relationship to other projects
 
 - **Helix** supplies shared research execution, provenance discipline, and project continuity.
-- **Game Music Interpreter** owns game-music source, driver, device, performance, analysis, and source-native rendering semantics.
+- **Retro VGM Compiler** owns game-music source, driver, device, performance, analysis, and source-native rendering semantics.
 - **libaural** is the general artificial-hearing research layer.
 - **Omniphony** is the general headphone spatial renderer.
 
@@ -388,6 +390,7 @@ Research is indexed by program in `research/README.md`; new investigations shoul
 Start with:
 
 - `AGENTS.md`
+- `docs/retro-vgm-compiler-roadmap.md`
 - `docs/holistic-musical-understanding.md`
 - `docs/composer-level-understanding.md`
 - `research/README.md`

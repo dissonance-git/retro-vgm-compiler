@@ -2,7 +2,7 @@
 
 ## North star
 
-Game Music Interpreter exists to understand game music as music.
+Retro VGM Compiler exists to understand game music as music.
 
 The primary success condition is not recovering more bytes, registers, channels, stems, notes, chords, or metadata in isolation. Those are supporting representations. The primary success condition is that the system can build a coherent, revisable model of a game's soundtrack at the level a strong critic, composer, musician, producer, and musicologist would recognize as genuine understanding.
 
