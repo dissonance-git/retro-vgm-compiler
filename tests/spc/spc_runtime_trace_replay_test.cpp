@@ -54,7 +54,14 @@ spc_runtime_capture_record sample_phase(
 
 spc_runtime_trace make_trace() {
     spc_runtime_trace trace;
-    trace.ram_writes.push_back({1, 0x2001, {0x55}});
+    spc_runtime_trace_ram_write write;
+    write.serial = 1;
+    write.tick = 2000;
+    write.tick_rate = 32000;
+    write.origin = spc_runtime_ram_write_origin::controlled_fixture;
+    write.address = 0x2001;
+    write.bytes = {0x55};
+    trace.ram_writes.push_back(std::move(write));
 
     spc_runtime_trace_window window;
     window.records.push_back(key_on(0, 0, 0, 0x1000));
@@ -69,7 +76,6 @@ spc_runtime_trace make_trace() {
 spc_snapshot make_snapshot() {
     spc_snapshot snapshot;
     snapshot.source_size = spc_min_file_size;
-    // One complete BRR block at 0x2000. The second byte will be rewritten later.
     snapshot.ram[0x2000] = 0x01;
     return snapshot;
 }
@@ -80,26 +86,14 @@ int main() {
     {
         auto snapshot = make_snapshot();
         musical_execution_graph graph;
-        const auto snapshot_graph = materialize_spc_snapshot(
-            graph,
-            snapshot,
-            "synthetic-spc");
+        const auto snapshot_graph = materialize_spc_snapshot(graph, snapshot, "synthetic-spc");
         auto runtime = begin_spc_runtime_voice_trace(
-            graph,
-            snapshot_graph,
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            graph, snapshot_graph, "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
         auto samples = begin_spc_runtime_sample_graph(
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
 
         const auto trace = make_trace();
-        const auto replayed = replay_spc_runtime_trace(
-            graph,
-            runtime,
-            samples,
-            snapshot,
-            trace);
+        const auto replayed = replay_spc_runtime_trace(graph, runtime, samples, snapshot, trace);
 
         assert(replayed.windows_replayed == 1);
         assert(replayed.ram_writes_applied == 1);
@@ -118,22 +112,13 @@ int main() {
     }
 
     {
-        // An event claiming unseen RAM-write time must fail closed instead of
-        // materializing a sample from whatever bytes happen to be available.
         auto snapshot = make_snapshot();
         musical_execution_graph graph;
-        const auto snapshot_graph = materialize_spc_snapshot(
-            graph,
-            snapshot,
-            "synthetic-spc");
+        const auto snapshot_graph = materialize_spc_snapshot(graph, snapshot, "synthetic-spc");
         auto runtime = begin_spc_runtime_voice_trace(
-            graph,
-            snapshot_graph,
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            graph, snapshot_graph, "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
         auto samples = begin_spc_runtime_sample_graph(
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
 
         auto trace = make_trace();
         trace.windows.front().records.back().ram_write_serial = 2;
@@ -147,21 +132,13 @@ int main() {
     }
 
     {
-        // Corrupt capture ordering is not converted into a synthetic timeline.
         auto snapshot = make_snapshot();
         musical_execution_graph graph;
-        const auto snapshot_graph = materialize_spc_snapshot(
-            graph,
-            snapshot,
-            "synthetic-spc");
+        const auto snapshot_graph = materialize_spc_snapshot(graph, snapshot, "synthetic-spc");
         auto runtime = begin_spc_runtime_voice_trace(
-            graph,
-            snapshot_graph,
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            graph, snapshot_graph, "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
         auto samples = begin_spc_runtime_sample_graph(
-            "synthetic-runtime",
-            to_flags(provenance_flag::runtime_capture));
+            "synthetic-runtime", to_flags(provenance_flag::runtime_capture));
 
         auto trace = make_trace();
         trace.windows.front().records[2].trace_index = 1;
