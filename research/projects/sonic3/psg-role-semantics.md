@@ -73,6 +73,79 @@ The VGM specification establishes the source-level clock and command contract us
 - PSG writes via command `0x50`
 - https://vgmrips.net/wiki/VGM_Specification
 
+## 2.1. Maeda melodic-PSG compositional fingerprint hypothesis
+
+Project hypothesis, not ground truth:
+
+> Tatsuyuki Maeda's tendency to deploy the PSG as a genuine melodic voice is a candidate **compositional fingerprint**, not merely an arrangement/programming fingerprint.
+
+The project therefore must not make this invalid inference:
+
+```text
+PSG is a hardware/orchestration choice
+        ↓
+therefore PSG melodic use can only support arranger/programmer attribution
+```
+
+The causal question is finer-grained.
+
+```text
+CHOICE OF MUSICAL MATERIAL / ROLE
+"give this independent melodic line to PSG"
+        ↓
+may belong to composer grammar
+
+EXACT REALIZATION
+PSG envelope • channel • command idiom • delay amount
+SMPS control • optimization • implementation detail
+        ↓
+may belong to arranger/programmer grammar
+```
+
+The same observed passage may support both hypotheses, but only through separately role-scoped evidence. `composer_grammar_dimension::arrangement_orchestration` is therefore allowed to carry `role_scope = composer` when independent evidence supports the composer controlling that recurring musical choice. The dimension name does not force the historical role.
+
+### Sonic 3D Blast control
+
+The committed control corpus already contains 24 Genesis VGM fixtures for *Sonic 3D Blast*. It is therefore a natural cross-soundtrack test for the hypothesis that Maeda-associated music uses PSG melodically at a substantially higher rate than most Sonic 3 material.
+
+The current user-observed hypothesis is:
+
+```text
+Sonic 3D Blast
+→ frequent melodic PSG deployment in Maeda-associated material
+
+Sonic 3 & Knuckles
+→ melodic PSG appears much sparser
+→ user specifically recalls an unused Staff Roll theme as a conspicuous case
+```
+
+Do **not** encode either statement as the answer. Test them.
+
+`tools/sonic3_mixed_harmonic_probe.py` now emits a creator-blind PSG deployment signature per track and a weighted soundtrack summary containing:
+
+- PSG pitched channel-equivalent density;
+- PSG share of resolved pitched voice time;
+- same-pitch FM/PSG shadow-candidate fraction;
+- noncoincident PSG pitched fraction;
+- PSG noise activity ratio;
+- mixed FM+PSG overlap ratio.
+
+The experiment order is:
+
+```text
+VGM execution only
+→ freeze PSG deployment signatures
+→ persistent-part / melodic-role inference
+→ freeze again
+→ join historical role evidence
+→ compare Maeda-associated independent works
+→ only then evaluate composer grammar
+```
+
+A high raw PSG-use ratio is not enough. The stronger composer-level feature is **persistent melodic PSG deployment**, ideally surviving across multiple independently attributed works and not explainable by driver/toolchain context alone.
+
+This is particularly valuable because *Sonic 3D Blast* is also a driver-confound control: its driver is closely related to late Sonic 3 & Knuckles technology. If melodic PSG deployment differs strongly while the toolchain remains similar, that weakens a pure-driver explanation.
+
 ## 3. Bass prior in mixed YM2612 + PSG arrangements
 
 For the Sonic / Genesis mixed-chip lane, use this conservative prior:
@@ -169,7 +242,8 @@ It records separately:
 - same-pitch FM/PSG doubling candidates;
 - noncoincident PSG pitched activity;
 - intervals where PSG is physically lowest but not bass-eligible under the mixed-context prior;
-- PSG noise active time, control writes, attenuation writes, and observed onsets.
+- PSG noise active time, control writes, attenuation writes, and observed onsets;
+- creator-blind per-track and per-soundtrack PSG deployment signatures.
 
 Pitch-class duration is counted by **presence**, not number of hardware sources, so an FM+PSG unison does not double the tonal weight of that pitch class.
 
@@ -214,6 +288,15 @@ PSG contributes E while FM supplies C and G
 
 but structural chord, key, function, cadence, and creator grammar still require the existing persistent-part / phrase / structural-harmony gates.
 
+Likewise:
+
+```text
+high noncoincident PSG pitch ratio
+!= melodic PSG composer fingerprint yet
+```
+
+The ratio must first survive persistent-part and role inference, then cross-soundtrack/confound testing.
+
 ## 8. Sonic 3 hidden-teacher tests
 
 The strongest next tests are source-hidden comparisons against SMPS:
@@ -240,6 +323,16 @@ The strongest next tests are source-hidden comparisons against SMPS:
 3. infer percussion pulse / accent / texture behavior from VGM writes;
 4. only attempt hi-hat-like naming after temporal evidence is validated.
 
+### Maeda melodic-PSG cross-soundtrack test
+
+1. freeze blind PSG deployment summaries for Sonic 3, Sonic 3D Blast, and other eligible Genesis controls;
+2. use source-hidden persistent-part recovery to separate PSG melody from doubling, accompaniment, ornament, and noise;
+3. freeze those role-aware observations;
+4. join independently documented composer-role evidence only after extraction;
+5. ask whether melodic PSG deployment recurs across Maeda-associated works;
+6. run the Sonic 3D Blast near-shared-driver confound;
+7. only then admit the recurring orchestration behavior as composer-scoped grammar.
+
 ## 9. Research law
 
 ```text
@@ -248,8 +341,17 @@ PSG NOISE IS NOISE/PERCUSSION EVIDENCE.
 NEITHER IS MUSICAL ROLE BY ITSELF.
 ```
 
-And for Genesis mixed-chip bass inference:
+For Genesis mixed-chip bass inference:
 
 ```text
 LOWEST HARDWARE FREQUENCY != BASS FUNCTION.
+```
+
+And for creator attribution:
+
+```text
+ORCHESTRATION DIMENSION != ARRANGER ROLE.
+
+A recurring orchestration choice can be composer grammar
+when independent evidence says the composer controls that choice.
 ```
