@@ -213,19 +213,32 @@ set_tests_properties(
 
 list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_label_blind_corpus_features_test
+    part_motif_attribution_bridge_test
 )
 
 add_executable(
     spc_label_blind_corpus_features_test
     tests/spc/spc_label_blind_corpus_features_test.cpp
 )
+add_executable(
+    part_motif_attribution_bridge_test
+    tests/model/part_motif_attribution_bridge_test.cpp
+)
 
 target_include_directories(
     spc_label_blind_corpus_features_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    part_motif_attribution_bridge_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_test(
     NAME spc_label_blind_corpus_features
     COMMAND spc_label_blind_corpus_features_test
+)
+add_test(
+    NAME part_motif_attribution_bridge
+    COMMAND part_motif_attribution_bridge_test
 )
