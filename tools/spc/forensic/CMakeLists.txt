@@ -13,11 +13,27 @@ get_filename_component(
     ABSOLUTE
 )
 
+execute_process(
+    COMMAND git -C ${RETRO_VGM_COMPILER_ROOT} rev-parse HEAD
+    RESULT_VARIABLE RETRO_VGM_COMPILER_GIT_RESULT
+    OUTPUT_VARIABLE RETRO_VGM_COMPILER_FORENSIC_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT RETRO_VGM_COMPILER_GIT_RESULT EQUAL 0 OR
+   RETRO_VGM_COMPILER_FORENSIC_COMMIT STREQUAL "")
+    set(RETRO_VGM_COMPILER_FORENSIC_COMMIT "unknown")
+endif()
+
 set(
     SNES_SPC_FORENSIC_COMMIT
     "ec8ee2bbe30451614c1d02a83f7af1c97d497d45"
     CACHE STRING
     "Pinned snes_spc commit used by the SPC forensic runtime"
+)
+set(
+    SNES_SPC_FORENSIC_PATCH_CONTRACT
+    "retro-vgm-compiler:snes-spc-runtime-hooks-v1"
 )
 
 if(NOT SNES_SPC_FORENSIC_COMMIT STREQUAL
@@ -85,32 +101,40 @@ else()
     target_compile_options(gameaudio_snes_spc_forensic PRIVATE -Wall -Wextra)
 endif()
 
+function(gameaudio_configure_forensic_first_party target)
+    target_include_directories(${target} PRIVATE ${RETRO_VGM_COMPILER_ROOT})
+    target_link_libraries(${target} PRIVATE gameaudio_snes_spc_forensic)
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(
+            ${target}
+            PRIVATE
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Werror
+        )
+    endif()
+endfunction()
+
 add_executable(
     snes_spc_forensic_bridge_test
     ${RETRO_VGM_COMPILER_ROOT}/tests/spc/snes_spc_forensic_bridge_test.cpp
 )
-target_include_directories(
-    snes_spc_forensic_bridge_test
-    PRIVATE
-        ${RETRO_VGM_COMPILER_ROOT}
-)
-target_link_libraries(
-    snes_spc_forensic_bridge_test
-    PRIVATE
-        gameaudio_snes_spc_forensic
-)
-target_compile_features(snes_spc_forensic_bridge_test PRIVATE cxx_std_17)
-if(MSVC)
-    target_compile_options(snes_spc_forensic_bridge_test PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(
-        snes_spc_forensic_bridge_test
-        PRIVATE
-            -Wall
-            -Wextra
-            -Wpedantic
-            -Werror
-    )
-endif()
-
+gameaudio_configure_forensic_first_party(snes_spc_forensic_bridge_test)
 add_test(NAME snes_spc_forensic_bridge COMMAND snes_spc_forensic_bridge_test)
+
+add_executable(
+    spc_forensic_features
+    ${CMAKE_CURRENT_LIST_DIR}/spc_forensic_features.cpp
+)
+gameaudio_configure_forensic_first_party(spc_forensic_features)
+target_compile_definitions(
+    spc_forensic_features
+    PRIVATE
+        RETRO_VGM_COMPILER_FORENSIC_COMMIT="${RETRO_VGM_COMPILER_FORENSIC_COMMIT}"
+        SNES_SPC_FORENSIC_COMMIT="${SNES_SPC_FORENSIC_COMMIT}"
+        SNES_SPC_FORENSIC_PATCH_CONTRACT="${SNES_SPC_FORENSIC_PATCH_CONTRACT}"
+)
