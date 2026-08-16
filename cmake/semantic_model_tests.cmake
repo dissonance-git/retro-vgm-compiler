@@ -214,6 +214,7 @@ set_tests_properties(
 list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_label_blind_corpus_features_test
     part_motif_attribution_bridge_test
+    spc_runtime_trace_replay_test
 )
 
 add_executable(
@@ -224,6 +225,10 @@ add_executable(
     part_motif_attribution_bridge_test
     tests/model/part_motif_attribution_bridge_test.cpp
 )
+add_executable(
+    spc_runtime_trace_replay_test
+    tests/spc/spc_runtime_trace_replay_test.cpp
+)
 
 target_include_directories(
     spc_label_blind_corpus_features_test
@@ -231,6 +236,10 @@ target_include_directories(
 )
 target_include_directories(
     part_motif_attribution_bridge_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_runtime_trace_replay_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -241,4 +250,8 @@ add_test(
 add_test(
     NAME part_motif_attribution_bridge
     COMMAND part_motif_attribution_bridge_test
+)
+add_test(
+    NAME spc_runtime_trace_replay
+    COMMAND spc_runtime_trace_replay_test
 )
