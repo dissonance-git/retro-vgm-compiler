@@ -26,6 +26,7 @@ struct spc_label_blind_corpus_features {
     std::size_t candidate_transition_count = 0;
     std::size_t strong_transition_count = 0;
     std::size_t rejected_transition_count = 0;
+    std::size_t continuity_barrier_count = 0;
     std::size_t emitted_part_count = 0;
     std::vector<vgmtooling::model::part_motif_profile> part_profiles;
 };
@@ -48,6 +49,25 @@ inline const std::uint64_t* spc_episode_physical_voice(
     const vgmtooling::model::node& episode) noexcept {
     const auto* item = find_spc_performance_attribute(episode, "physical_voice");
     return item == nullptr ? nullptr : std::get_if<std::uint64_t>(&item->value);
+}
+
+inline bool spc_episode_allows_part_successor(
+    const vgmtooling::model::node& episode) noexcept {
+    const auto* complete_item = find_spc_performance_attribute(
+        episode,
+        "termination_boundary_complete");
+    const auto* complete = complete_item == nullptr
+        ? nullptr : std::get_if<bool>(&complete_item->value);
+    if (complete != nullptr && !*complete)
+        return false;
+
+    const auto* reason_item = find_spc_performance_attribute(
+        episode,
+        "termination_reason");
+    const auto* reason = reason_item == nullptr
+        ? nullptr : std::get_if<std::string>(&reason_item->value);
+    return reason == nullptr ||
+        (*reason != "semantic_continuation_lost" && *reason != "execution_reset");
 }
 
 inline void emit_spc_label_blind_trajectory(
@@ -81,9 +101,10 @@ inline void emit_spc_label_blind_trajectory(
 //
 // Episodes are partitioned by physical S-DSP voice AND exact local device-time
 // basis, sorted by onset, and only adjacent episodes are considered. This avoids
-// inventing cross-slot handoffs or cross-loop continuity. A future wider search
-// may add those hypotheses explicitly, but this pass intentionally prefers false
-// negatives over false musical identity.
+// inventing cross-slot handoffs or cross-loop continuity. Explicit runtime loss
+// and reset boundaries are hard barriers: later similarity cannot erase an
+// observation gap. A future wider search may add cross-slot hypotheses explicitly,
+// but this pass intentionally prefers false negatives over false musical identity.
 //
 // `runtime_source` is provenance for the inference itself, not a catalog label.
 // It should identify the runtime capture/trace source without encoding authorship.
@@ -139,8 +160,14 @@ inline spc_label_blind_corpus_features extract_spc_label_blind_corpus_features(
 
         std::vector<persistent_part_hypothesis> trajectory_links;
         for (std::size_t index = 1; index < ids.size(); ++index) {
-            ++result.candidate_transition_count;
+            const node* previous = graph.find_node(ids[index - 1]);
+            if (previous != nullptr && !detail::spc_episode_allows_part_successor(*previous)) {
+                ++result.continuity_barrier_count;
+                detail::emit_spc_label_blind_trajectory(graph, trajectory_links, result);
+                continue;
+            }
 
+            ++result.candidate_transition_count;
             try {
                 auto hypothesis = infer_spc_persistent_part(
                     graph,
