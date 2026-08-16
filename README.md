@@ -112,7 +112,7 @@ leave-one-career-period-out
 
 The strongest evidence often appears where both axes agree: a creator-specific musical relation is recovered consistently through several representations and also recurs across unrelated soundtracks.
 
-See `docs/composer-level-understanding.md`, `docs/holistic-musical-understanding.md`, and `research/composer-grammar-attribution.md`.
+See `docs/composer-level-understanding.md`, `docs/holistic-musical-understanding.md`, and `research/music/composer-grammar-attribution.md`.
 
 ## Composer grammar is multi-view
 
@@ -285,7 +285,7 @@ performed device trajectory
 
 They do not prove that an unrelated commercial soundtrack used the same toolchain. Historical linkage must be established independently.
 
-See `research/game-music-driver-observatories.md`.
+See `research/validation/game-music-driver-observatories.md`.
 
 ## Musical understanding
 
@@ -345,7 +345,7 @@ arranger/programmer B probable
   realization grammar: strong support
 ```
 
-See `research/composer-grammar-attribution.md` and `research/musicological-authorship-attribution.md`.
+See `research/music/composer-grammar-attribution.md` and `research/music/musicological-authorship-attribution.md`.
 
 ## Human musical discourse
 
@@ -378,17 +378,20 @@ Chip-specific machinery stays here unless it becomes genuinely general.
 model/          shared provenance-aware primitives
 components/     source- and device-specific execution/analysis
 tests/          executable regressions and real-music corpus
-research/       bounded mechanism and evidence investigations
+research/       program-organized mechanism and evidence investigations
 docs/           durable architecture and analysis rules
 tools/          corpus and source-specific audit utilities
 ```
+
+Research is indexed by program in `research/README.md`; new investigations should extend an existing trunk before creating another peer-level file.
 
 Start with:
 
 - `AGENTS.md`
 - `docs/holistic-musical-understanding.md`
 - `docs/composer-level-understanding.md`
-- `research/composer-grammar-attribution.md`
+- `research/README.md`
+- `research/music/composer-grammar-attribution.md`
 - `docs/musical-execution-model.md`
 - `docs/musical-inference-evidence.md`
 - `docs/music-representation-systems.md`
