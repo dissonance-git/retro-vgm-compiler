@@ -1,0 +1,69 @@
+name: spc-forensic
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Controlled execution seconds per SPC fixture
+        required: true
+        default: "5"
+
+permissions:
+  contents: read
+
+jobs:
+  instrumented-spc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patcher integrity regression
+        run: python3 -B -m unittest discover -s tests/spc -p 'test_snes_spc_runtime_patcher.py'
+
+      - name: Configure isolated forensic runtime
+        run: cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build instrumented accurate SPC runtime
+        run: cmake --build build-spc-forensic --parallel 2
+
+      - name: Phase-accurate DSP bridge regression
+        run: ctest --test-dir build-spc-forensic --output-on-failure
+
+      - name: Generate creator-blind SPC feature sidecars
+        env:
+          SECONDS_PER_FIXTURE: ${{ inputs.seconds }}
+        run: |
+          mkdir -p spc-forensic-sidecars
+
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/ancient-magic-spc/01 - Title.spc" \
+            spc-forensic-sidecars/ancient-magic-01.json \
+            "$SECONDS_PER_FIXTURE"
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/ancient-magic-spc/04 - City.spc" \
+            spc-forensic-sidecars/ancient-magic-04.json \
+            "$SECONDS_PER_FIXTURE"
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/ancient-magic-spc/05 - Battle.spc" \
+            spc-forensic-sidecars/ancient-magic-05.json \
+            "$SECONDS_PER_FIXTURE"
+
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/terranigma-spc/01 - Origins.spc" \
+            spc-forensic-sidecars/terranigma-01.json \
+            "$SECONDS_PER_FIXTURE"
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/terranigma-spc/03 - Hometown.spc" \
+            spc-forensic-sidecars/terranigma-03.json \
+            "$SECONDS_PER_FIXTURE"
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/terranigma-spc/06 - Dark Side Field.spc" \
+            spc-forensic-sidecars/terranigma-06.json \
+            "$SECONDS_PER_FIXTURE"
+
+      - name: Upload label-blind feature sidecars
+        uses: actions/upload-artifact@v4
+        with:
+          name: spc-forensic-sidecars
+          path: spc-forensic-sidecars/*.json
+          if-no-files-found: error
