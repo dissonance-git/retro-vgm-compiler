@@ -15,6 +15,11 @@ role:
   merely by being the lowest physical pitch. Persistent-part harmonic ownership
   must earn that role later.
 
+The probe also emits creator-blind PSG deployment summaries. These are surface
+orchestration measurements, not composer labels. They are intended to pressure-
+test cross-soundtrack hypotheses such as whether melodic PSG deployment recurs
+in a creator's independently attributed work.
+
 No composer/artist tags or curated Sonic 3 attribution labels are read.
 """
 
@@ -47,6 +52,10 @@ psg = _load_sibling("genesis_psg_semantics", "genesis_psg_semantics.py")
 
 DEFAULT_PITCH_TOLERANCE_CENTS = fm.DEFAULT_PITCH_TOLERANCE_CENTS
 DEFAULT_PRESENCE_FLOOR_RATIO = fm.DEFAULT_PRESENCE_FLOOR_RATIO
+
+
+def _safe_ratio(numerator: int | float, denominator: int | float) -> float:
+    return float(numerator) / float(denominator) if denominator else 0.0
 
 
 def _mixed_triad_state(projected: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -323,6 +332,25 @@ def audit_bytes(
         if active_pitch_voice_ticks > 0 else 0.0
     )
 
+    psg_deployment_signature = {
+        "psg_tone_channel_equivalent_density": _safe_ratio(
+            resolved_psg_tone_voice_ticks, total_samples),
+        "fm_channel_equivalent_density": _safe_ratio(
+            resolved_fm_voice_ticks, total_samples),
+        "psg_share_of_resolved_pitched_voice_time": _safe_ratio(
+            resolved_psg_tone_voice_ticks, resolved_pitch_voice_ticks),
+        "psg_same_pitch_fm_shadow_fraction": _safe_ratio(
+            psg_same_pitch_doubling_candidate_voice_ticks,
+            resolved_psg_tone_voice_ticks,
+        ),
+        "psg_noncoincident_pitched_fraction": _safe_ratio(
+            psg_noncoincident_pitch_voice_ticks,
+            resolved_psg_tone_voice_ticks,
+        ),
+        "psg_noise_activity_ratio": _safe_ratio(psg_noise_active_ticks, total_samples),
+        "mixed_fm_psg_overlap_ratio": _safe_ratio(mixed_pitch_ticks, total_samples),
+    }
+
     tonal_candidates = fm._tonal_candidates(
         dict(pitch_class_duration),
         dict(root_duration),
@@ -376,6 +404,7 @@ def audit_bytes(
             "psg_only": psg_only_pitch_ticks,
             "mixed_fm_psg": mixed_pitch_ticks,
         },
+        "psg_surface_deployment_signature": psg_deployment_signature,
         "psg_role_evidence": {
             "same_pitch_fm_doubling_candidate_voice_ticks":
                 psg_same_pitch_doubling_candidate_voice_ticks,
@@ -431,6 +460,7 @@ def audit_bytes(
             "tonicization_or_modulation": "blocked",
             "psg_part_role": "candidate_only",
             "psg_noise_percussion_identity": "candidate_only",
+            "psg_creator_grammar": "blocked_until_persistent_part_role_and_cross_soundtrack_grounding",
             "blocked_by": [
                 "physical_channel_is_not_persistent_musical_part",
                 "fm_psg_pitch_coincidence_is_not_yet_doubling_identity",
@@ -444,9 +474,12 @@ def audit_bytes(
         "claim_boundary": (
             "This lane observes both YM2612 and SN76489 pitched execution. PSG tone may be "
             "an independent musical line, a doubling/shadow, accompaniment, or ornament; chip "
-            "identity alone does not decide the role. PSG noise is excluded from harmonic pitch "
-            "and contributes only percussion/texture evidence until timing/source context earns "
-            "a more specific role. Key, function, cadence, modulation, and creator identity remain unearned."
+            "identity alone does not decide the role. PSG deployment ratios are creator-blind "
+            "surface measurements that may motivate a composer-grammar test only after persistent "
+            "part/role grounding and independent soundtrack evidence. PSG noise is excluded from "
+            "harmonic pitch and contributes only percussion/texture evidence until timing/source "
+            "context earns a more specific role. Key, function, cadence, modulation, and creator "
+            "identity remain unearned."
         ),
     }
 
@@ -502,6 +535,58 @@ def _neighbors(
     return result
 
 
+def _soundtrack_psg_surface_summary(tracks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
+    for track in tracks:
+        grouped[str(track["soundtrack_id"])].append(track)
+
+    result: dict[str, dict[str, Any]] = {}
+    for soundtrack_id, items in sorted(grouped.items()):
+        total_duration = sum(int(item["duration_ticks"]) for item in items)
+        resolved_psg = sum(int(item["resolved_psg_tone_pitch_voice_ticks"]) for item in items)
+        resolved_fm = sum(int(item["resolved_fm_performed_pitch_voice_ticks"]) for item in items)
+        doubling = sum(
+            int(item["psg_role_evidence"]["same_pitch_fm_doubling_candidate_voice_ticks"])
+            for item in items
+        )
+        noncoincident = sum(
+            int(item["psg_role_evidence"]["noncoincident_pitched_voice_ticks"])
+            for item in items
+        )
+        noise_ticks = sum(int(item["psg_noise_surface"]["active_ticks"]) for item in items)
+        mixed_ticks = sum(int(item["surface_device_mix_ticks"]["mixed_fm_psg"]) for item in items)
+        pitched_total = resolved_psg + resolved_fm
+
+        result[soundtrack_id] = {
+            "track_count": len(items),
+            "tracks_with_psg_tone": sum(
+                int(item["resolved_psg_tone_pitch_voice_ticks"] > 0) for item in items),
+            "tracks_with_psg_noncoincident_pitch": sum(
+                int(item["psg_role_evidence"]["noncoincident_pitched_voice_ticks"] > 0)
+                for item in items),
+            "tracks_with_psg_fm_shadow_candidate": sum(
+                int(item["psg_role_evidence"]["same_pitch_fm_doubling_candidate_voice_ticks"] > 0)
+                for item in items),
+            "tracks_with_psg_noise": sum(
+                int(item["psg_noise_surface"]["active_ticks"] > 0) for item in items),
+            "weighted_surface_signature": {
+                "psg_tone_channel_equivalent_density": _safe_ratio(resolved_psg, total_duration),
+                "fm_channel_equivalent_density": _safe_ratio(resolved_fm, total_duration),
+                "psg_share_of_resolved_pitched_voice_time": _safe_ratio(psg, pitched_total)
+                if (psg := resolved_psg) else 0.0,
+                "psg_same_pitch_fm_shadow_fraction": _safe_ratio(doubling, resolved_psg),
+                "psg_noncoincident_pitched_fraction": _safe_ratio(noncoincident, resolved_psg),
+                "psg_noise_activity_ratio": _safe_ratio(noise_ticks, total_duration),
+                "mixed_fm_psg_overlap_ratio": _safe_ratio(mixed_ticks, total_duration),
+            },
+            "interpretation_boundary": (
+                "Noncoincident PSG pitch is not yet melodic-part truth, and same-pitch overlap is not yet doubling truth. "
+                "These soundtrack-level ratios remain blind surface evidence until persistent-part and role inference."
+            ),
+        }
+    return result
+
+
 def audit_soundtracks(
     corpora: list[Path],
     *,
@@ -551,10 +636,10 @@ def audit_soundtracks(
         ),
         "claim_boundary": (
             "Nearest harmonic neighbors compare mixed-chip surface harmonic signatures only. "
-            "PSG role ambiguity and FM/PSG doubling remain explicit; these are candidates for "
-            "deeper persistent-part/phrase analysis, not composer evidence."
+            "PSG deployment summaries remain creator-blind and cannot establish a composer or arranger role without later role-scoped evidence."
         ),
         "tracks": tracks,
+        "soundtrack_psg_surface_summary": _soundtrack_psg_surface_summary(tracks),
         "top_surface_harmonic_neighbors": _neighbors(
             tracks,
             max(0, neighbor_count),
@@ -619,9 +704,9 @@ def _synthetic_mixed_vgm(*, with_noise: bool = True) -> bytes:
         for channel in range(3):
             ym(0x28, 0xF0 | channel)
 
-        # PSG0 shadows FM0 at the same pitch. PSG1 supplies an independent upper
-        # chord tone only on alternating chords. These two uses intentionally
-        # exercise doubling and independent pitched-role ambiguity together.
+        # PSG0 shadows FM0 at the same pitch. PSG1 supplies another pitched
+        # source on alternating chords. Whether that second source is a true
+        # independent part remains deliberately unresolved at this surface stage.
         period0 = _midi_to_psg_period(notes[0], psg_clock_hz)
         psg_write(0x80 | (period0 & 0x0F))
         psg_write((period0 >> 4) & 0x3F)
@@ -673,6 +758,7 @@ def _synthetic_self_test() -> dict[str, Any]:
         raise AssertionError("mixed surface probe illegally promoted a key class")
     return {
         "top_candidate": mixed["top_surface_tonal_candidates"][0],
+        "psg_deployment_signature": mixed["psg_surface_deployment_signature"],
         "psg_role_evidence": mixed["psg_role_evidence"],
         "psg_noise_surface": mixed["psg_noise_surface"],
         "promotion_status": mixed["shared_model_promotion"],
