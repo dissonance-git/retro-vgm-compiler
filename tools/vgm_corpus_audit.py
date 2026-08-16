@@ -295,12 +295,16 @@ def parse_gd3(raw: bytes, eof_abs: int) -> tuple[dict[str, object] | None, list[
         errors.append("GD3 UTF-16 payload size is odd")
 
     fields: list[str] = []
+    extra_null_padding = 0
     if payload:
         try:
             text = payload.decode("utf-16-le")
             fields = text.split("\x00")
             if fields and fields[-1] == "":
                 fields.pop()
+            if len(fields) > 11 and all(field == "" for field in fields[11:]):
+                extra_null_padding = len(fields) - 11
+                fields = fields[:11]
             if len(fields) != 11:
                 errors.append(f"GD3 field count is {len(fields)}, expected 11")
         except UnicodeDecodeError:
@@ -310,6 +314,7 @@ def parse_gd3(raw: bytes, eof_abs: int) -> tuple[dict[str, object] | None, list[
     return {
         "offset": gd3_abs, "version_raw": gd3_version,
         "payload_size": payload_size, "field_count": len(fields),
+        "extra_null_padding_fields": extra_null_padding if payload else 0,
     }, errors
 
 
@@ -503,6 +508,10 @@ def audit(path: pathlib.Path) -> dict[str, object]:
     gd3, gd3_errors = parse_gd3(raw, min(eof_abs, len(raw)))
     header_errors.extend(extra_errors)
     header_errors.extend(gd3_errors)
+    if gd3 and gd3.get("extra_null_padding_fields"):
+        header_warnings.append(
+            f"GD3 has {gd3['extra_null_padding_fields']} surplus empty field terminator(s)"
+        )
 
     if start < stream_end:
         scan = scan_commands(raw, version, start, stream_end, loop_abs)

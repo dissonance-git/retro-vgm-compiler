@@ -3,6 +3,118 @@
   "set_sha256_rule": "sha256(path + NUL + file_sha256 + NUL + decimal_size + LF, for files sorted case-insensitively by full path)",
   "sets": [
     {
+      "corpus_id": "aa-harimanada-vgz",
+      "path": "tests/corpus/aa-harimanada-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 22,
+      "sidecar_count": 0,
+      "canonical_file_count": 22,
+      "sha256_inventory": "tests/corpus/aa-harimanada-vgz.sha256",
+      "git_tree_sha1": "3b5005ecb6ef452ed0f1c78d5dfc06de08af2d8e",
+      "set_sha256": "0a5158bef0a98626c396397d76b657fd2b970aab220027ad61a05ecca2878747",
+      "work": "Aa Harimanada",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 22
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 22,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "america-oudan-ultra-quiz-spc",
+      "path": "tests/corpus/america-oudan-ultra-quiz-spc",
+      "delivery": "direct-files",
+      "fixture_count": 18,
+      "sidecar_count": 0,
+      "canonical_file_count": 18,
+      "sha256_inventory": "tests/corpus/america-oudan-ultra-quiz-spc.sha256",
+      "git_tree_sha1": "aa64f7f3d7ad20bdc638ac006e830d8f925befef",
+      "set_sha256": "ff51bcbd0f7503fcc1daa7b9d0a34bc688f21094d069beac040ca1000c108c65",
+      "work": "America Oudan Ultra Quiz",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 18,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "ancient-magic-spc",
+      "path": "tests/corpus/ancient-magic-spc",
+      "delivery": "direct-files",
+      "fixture_count": 19,
+      "sidecar_count": 0,
+      "canonical_file_count": 19,
+      "sha256_inventory": "tests/corpus/ancient-magic-spc.sha256",
+      "git_tree_sha1": "a9d597c6f5eb53f9f1315cb095b03d1bdf0c6dd7",
+      "set_sha256": "e20dd61f9e76813059a773a84c4d44c985c29dab33ab4c4fea24d195016ae5e3",
+      "work": "Ancient Magic",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 19,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masanori Hikichi",
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "antarctic-adventure-ay8910",
       "path": "tests/corpus/antarctic-adventure-ay8910",
       "delivery": "direct-files",
@@ -46,6 +158,82 @@
       "sha256_inventory": "tests/corpus/antarctic-adventure-ay8910.sha256",
       "git_tree_sha1": "4358a50266310a5fbcd0727f0fcd2b1dd5e12cf1",
       "set_sha256": "279bbf06a2a089305b2d074542fe1fc53fdacfba97d20486e144cf1ea4c1bab9"
+    },
+    {
+      "corpus_id": "battle-golfer-yui-vgz",
+      "path": "tests/corpus/battle-golfer-yui-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 18,
+      "sidecar_count": 0,
+      "canonical_file_count": 18,
+      "sha256_inventory": "tests/corpus/battle-golfer-yui-vgz.sha256",
+      "git_tree_sha1": "e5545eac3114a90b3adbddfb942f253ab1c13e88",
+      "set_sha256": "51b62e1b11c358296c680f1c4da58e236bcdb9522a0683926ef3920381b2bab8",
+      "work": "Battle Golfer Yui",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 18
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 18,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "battle-master-spc",
+      "path": "tests/corpus/battle-master-spc",
+      "delivery": "direct-files",
+      "fixture_count": 22,
+      "sidecar_count": 0,
+      "canonical_file_count": 22,
+      "sha256_inventory": "tests/corpus/battle-master-spc.sha256",
+      "git_tree_sha1": "66f6ff1463cff1c651f69ae4bf4fcfc6e8520734",
+      "set_sha256": "33042f244b6ba2ed6c0cb321f8cb75bf44caf8f9c95dcb05cfe49212fcc3314d",
+      "work": "Battle Master",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 22,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masanori Hikichi"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
     },
     {
       "corpus_id": "bucket-relay-champ-ymf262",
@@ -298,6 +486,125 @@
       "set_sha256": "4af4a6f00b95516382592e974a00705d28ab0b1015a5ed46769716193c1efd47"
     },
     {
+      "corpus_id": "dr-robotniks-mean-bean-machine-vgz",
+      "path": "tests/corpus/dr-robotniks-mean-bean-machine-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 15,
+      "sidecar_count": 0,
+      "canonical_file_count": 15,
+      "sha256_inventory": "tests/corpus/dr-robotniks-mean-bean-machine-vgz.sha256",
+      "git_tree_sha1": "f02d538d283d355b0c83b813fe4fe91bd94b652f",
+      "set_sha256": "9836141f71b7abb1107f6c04d328ba839e965ad3735f7d5f90d99edab3b303a0",
+      "work": "Dr. Robotnik's Mean Bean Machine",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 15
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 15,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "dumbo-pico-vgz",
+      "path": "tests/corpus/dumbo-pico-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 5,
+      "sidecar_count": 0,
+      "canonical_file_count": 5,
+      "sha256_inventory": "tests/corpus/dumbo-pico-vgz.sha256",
+      "git_tree_sha1": "6b702173daee29dfa9326f8667b2097c150e53c4",
+      "set_sha256": "0eefad02a615de9e347aab5e087d8841b3b84385cdfe34ce70078cc2b08c09ba",
+      "work": "Dumbo",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3546894
+      },
+      "observed_vgm_versions": {
+        "0x150": 5
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 5,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tatsuyuki Maeda"
+        ],
+        "tagged_platforms": [
+          "Pico"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "ecology-magic-ym2608",
+      "path": "tests/corpus/ecology-magic-ym2608",
+      "delivery": "direct-files",
+      "fixture_count": 7,
+      "sidecar_count": 0,
+      "canonical_file_count": 7,
+      "sha256_inventory": "tests/corpus/ecology-magic-ym2608.sha256",
+      "git_tree_sha1": "bd635c90559ae48d6863b112f0284be208571477",
+      "set_sha256": "5cc96da17b92bd72c3b09fc79017b23525f611aed56eef89b94b8b8efb3650fa",
+      "work": "Ecology Magic",
+      "source_family": "VGZ",
+      "device_families": [
+        "YM2608"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2608": 7987200
+      },
+      "observed_vgm_versions": {
+        "0x170": 7
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 7,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "PC-9801"
+        ],
+        "tagged_sound_chips": [
+          "YM2608"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "front-mission-gun-hazard",
       "path": "tests/corpus/front-mission-gun-hazard",
       "delivery": "direct-files",
@@ -367,6 +674,208 @@
       "set_sha256": "63e17f2c817c5ae3e7262213efdac17e6967138a3c24b9a83af04961efc868fd"
     },
     {
+      "corpus_id": "gg-doraemon-game-gear-vgm",
+      "path": "tests/corpus/gg-doraemon-game-gear-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 7,
+      "sidecar_count": 0,
+      "canonical_file_count": 7,
+      "sha256_inventory": "tests/corpus/gg-doraemon-game-gear-vgm.sha256",
+      "git_tree_sha1": "bd718801c106aff4c65e02a8ad67d540946455cb",
+      "set_sha256": "5474c9e910c1bcf2c8f262174ec80c507f9d87ac584dd4eb7ecf9946dbdc7819",
+      "work": "GG Doraemon: Nora no Suke no Yabou",
+      "source_family": "VGM",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579540
+      },
+      "observed_vgm_versions": {
+        "0x110": 7
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 7,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Game Gear"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "ghox-ym2151",
+      "path": "tests/corpus/ghox-ym2151",
+      "delivery": "direct-files",
+      "fixture_count": 8,
+      "sidecar_count": 0,
+      "canonical_file_count": 8,
+      "sha256_inventory": "tests/corpus/ghox-ym2151.sha256",
+      "git_tree_sha1": "aabb76cbe358a5611f4de9444cfb7936c22120b6",
+      "set_sha256": "2a9281f5b9f14fcf4b487830e558b66158a26014bf3f5576aca30d358fe7173a",
+      "work": "Ghox",
+      "source_family": "VGZ",
+      "device_families": [
+        "YM2151"
+      ],
+      "observed_device_clocks_hz": {
+        "YM2151": 3375000
+      },
+      "observed_vgm_versions": {
+        "0x151": 8
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 8,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Arcade"
+        ],
+        "tagged_sound_chips": [
+          "YM2151"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "golden-axe-iii-genesis-vgz",
+      "path": "tests/corpus/golden-axe-iii-genesis-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 21,
+      "sidecar_count": 0,
+      "canonical_file_count": 21,
+      "sha256_inventory": "tests/corpus/golden-axe-iii-genesis-vgz.sha256",
+      "git_tree_sha1": "99c9f890cf8d0b741e652295007f6b802cb21cfa",
+      "set_sha256": "b25ed0e102ced6101e910b44a12d234ed4f20aa57a653cfe61407a14d6eb7d3c",
+      "work": "Golden Axe III",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 21
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 21,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tatsuyuki Maeda",
+          "Tomonori Sawada"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "j-league-pro-striker-2-vgz",
+      "path": "tests/corpus/j-league-pro-striker-2-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 6,
+      "sidecar_count": 0,
+      "canonical_file_count": 6,
+      "sha256_inventory": "tests/corpus/j-league-pro-striker-2-vgz.sha256",
+      "git_tree_sha1": "404c0c85e9a4104959d2e98c3216cc6e9588b026",
+      "set_sha256": "0cb4ed37407b142c30648e619c49d76e7c7f834854ab2497f289d9befa9f1272",
+      "work": "J.League Pro Striker 2",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 6
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 6,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tatsuyuki Maeda"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "j-league-pro-striker-vgz",
+      "path": "tests/corpus/j-league-pro-striker-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 4,
+      "sidecar_count": 0,
+      "canonical_file_count": 4,
+      "sha256_inventory": "tests/corpus/j-league-pro-striker-vgz.sha256",
+      "git_tree_sha1": "039ab1d7b5a8770d62ae8421ec3201c3c9f34a85",
+      "set_sha256": "2f58d21f3c52af344e27d29fc9215942c9371131a0d54a071b9131e186bb388b",
+      "work": "J.League Pro Striker",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 4
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 4,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tomonori Sawada"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "jyangokushi-qsound",
       "path": "tests/corpus/jyangokushi-qsound",
       "delivery": "direct-files",
@@ -416,6 +925,114 @@
       "sha256_inventory": "tests/corpus/jyangokushi-qsound.sha256",
       "git_tree_sha1": "b8532b7e278090afd9644c73837a4ca71623448e",
       "set_sha256": "ce6a24d440ca9f47ce19d4acb12315cbf22ac291cdfc8985805019a3bc321ce4"
+    },
+    {
+      "corpus_id": "kakinoki-shougi-spc",
+      "path": "tests/corpus/kakinoki-shougi-spc",
+      "delivery": "direct-files",
+      "fixture_count": 5,
+      "sidecar_count": 0,
+      "canonical_file_count": 5,
+      "sha256_inventory": "tests/corpus/kakinoki-shougi-spc.sha256",
+      "git_tree_sha1": "7ebbc16b2cd57b67c4c1c94cf953c9bc7080fa8a",
+      "set_sha256": "9860f283c45ca9a8571a2ce8d80b3b56958a6369c882882d0cd57c9656af1f01",
+      "work": "Kakinoki Shougi",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 5,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "kangofu-san-pico-vgz",
+      "path": "tests/corpus/kangofu-san-pico-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 15,
+      "sidecar_count": 0,
+      "canonical_file_count": 15,
+      "sha256_inventory": "tests/corpus/kangofu-san-pico-vgz.sha256",
+      "git_tree_sha1": "f6ec3b8592cb065662c7dad75622f7883b6516ee",
+      "set_sha256": "149ebdcbddcdf78b2265d144ad9a7235bc4b7954688ac6b985823c52c7f3d741",
+      "work": "Kangofu-san Pico",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545
+      },
+      "observed_vgm_versions": {
+        "0x150": 15
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 15,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru"
+        ],
+        "tagged_platforms": [
+          "Pico"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "kuni-chan-game-tengoku-part-2-sgc",
+      "path": "tests/corpus/kuni-chan-game-tengoku-part-2-sgc",
+      "delivery": "direct-files",
+      "fixture_count": 1,
+      "sidecar_count": 16,
+      "canonical_file_count": 17,
+      "sha256_inventory": "tests/corpus/kuni-chan-game-tengoku-part-2-sgc.sha256",
+      "git_tree_sha1": "5526500b925d8513178d2f88f5907e577cb43e10",
+      "set_sha256": "0e235da21ec7d363936ac0763803cee82da4665f475277d09f499767552f9c1d",
+      "work": "Kuni-chan no Game Tengoku Part 2",
+      "source_family": "SGC",
+      "device_families": [
+        "Sega 8-bit executable-rip runtime not yet executed"
+      ],
+      "source_page": "https://www.zophar.net/music/sega-game-gear-sgc/kuni-chan-no-game-tengoku-part-2",
+      "source_url": "https://fi.zophar.net/soundfiles/sega-game-gear-sgc/kuni-chan-no-game-tengoku-part-2/Kuni-chan%20no%20Game%20Tengoku%20Part%202%20%28EMU%29.zophar.zip",
+      "source_archive_sha256": "7888ec75b912741dd7e6600c93bcc05d12ed57ce98e2d2e0d5041bed4b8c2f7e",
+      "user_requested_control_people": [
+        "Tatsuyuki Maeda"
+      ],
+      "structural_validation": {
+        "valid_container": true,
+        "signature": "SGC\\x1A",
+        "version": 1,
+        "playlist_route_count": 16,
+        "validation_scope": "container signature/version and retained extended-M3U routes only; runtime and playback not executed"
+      },
+      "source_archive_retained": false,
+      "playlist_sidecars_preserved": true,
+      "selection_reason": "direct user-requested cross-game attribution-control candidate",
+      "control_status": "candidate only; user association does not establish composition, arrangement, programming, or authorship",
+      "attribution_boundary": "downloaded executable-rip bytes are not byte-identical to the local rendered files carrying foobar external tags"
     },
     {
       "corpus_id": "magical-drop-okim6295",
@@ -601,6 +1218,39 @@
       "sha256_inventory": "tests/corpus/motocross-maniacs-game-boy.sha256",
       "git_tree_sha1": "d340898784389113d16cc4156ebf8b2eb274f131",
       "set_sha256": "ccd9fc51d14c1e9cbbd30b6f6229739af70f022c71da7d380cce8160a529c342"
+    },
+    {
+      "corpus_id": "ninku-kss-game-gear",
+      "path": "tests/corpus/ninku-kss-game-gear",
+      "delivery": "direct-files",
+      "fixture_count": 1,
+      "sidecar_count": 37,
+      "canonical_file_count": 38,
+      "sha256_inventory": "tests/corpus/ninku-kss-game-gear.sha256",
+      "git_tree_sha1": "a15aaf23fc10996b5597c7c49627f847018fff50",
+      "set_sha256": "524da0311fc35ecbd3ac064642e9cd350f70e72270ae182819bc50dbe7eb4d8d",
+      "work": "Ninku",
+      "source_family": "KSS",
+      "device_families": [
+        "KSS executable-rip runtime not yet executed"
+      ],
+      "source_page": "https://www.zophar.net/music/sega-game-gear-sgc/ninku",
+      "source_url": "https://fi.zophar.net/soundfiles/sega-game-gear-sgc/ninku/Ninku%20%28EMU%29.zophar.zip",
+      "source_archive_sha256": "9605ae0e6db2ac6ecdde7b7825ea7490e6394f3f8b3eda07807083e2f94c3a76",
+      "user_requested_control_people": [
+        "Tatsuyuki Maeda"
+      ],
+      "structural_validation": {
+        "valid_container": true,
+        "signature": "KSCC",
+        "playlist_route_count": 37,
+        "validation_scope": "container signature and retained extended-M3U routes only; runtime and playback not executed"
+      },
+      "source_archive_retained": false,
+      "playlist_sidecars_preserved": true,
+      "selection_reason": "direct user-requested cross-game attribution-control candidate",
+      "control_status": "candidate only; user association does not establish composition, arrangement, programming, or authorship",
+      "attribution_boundary": "downloaded executable-rip bytes are not byte-identical to the local rendered files carrying foobar external tags"
     },
     {
       "corpus_id": "ocarina-of-time-usf-nintendo-64",
@@ -869,6 +1519,129 @@
       "set_sha256": "4994ee9bc7ef952b994fcd8f597281ea8f8b6480662ea4ba6e55f5a5172cd25c"
     },
     {
+      "corpus_id": "sanrio-puroland-pico-vgz",
+      "path": "tests/corpus/sanrio-puroland-pico-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 6,
+      "sidecar_count": 0,
+      "canonical_file_count": 6,
+      "sha256_inventory": "tests/corpus/sanrio-puroland-pico-vgz.sha256",
+      "git_tree_sha1": "15bf22b9c5c3b774ce076e704c8cb56aeb624739",
+      "set_sha256": "9fc0b91a5580495db1c678001ccd58f9181fd7b4a061fadcff4cb2f2a1cd901c",
+      "work": "Sanrio Puroland",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3546894
+      },
+      "observed_vgm_versions": {
+        "0x150": 6
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 6,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tatsuyuki Maeda"
+        ],
+        "tagged_platforms": [
+          "Pico"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "segasonic-bros-vgz",
+      "path": "tests/corpus/segasonic-bros-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 10,
+      "sidecar_count": 0,
+      "canonical_file_count": 10,
+      "sha256_inventory": "tests/corpus/segasonic-bros-vgz.sha256",
+      "git_tree_sha1": "0cfdb9214b36d20bff94efefccf828b9cceac434",
+      "set_sha256": "9223f8918627973234b4038838af7be2e0a73e838f9f0e66b4680870b39279cb",
+      "work": "SegaSonic Bros.",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612",
+        "uPD7759"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453,
+        "uPD7759": 640000
+      },
+      "observed_vgm_versions": {
+        "0x161": 10
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 10,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru"
+        ],
+        "tagged_platforms": [
+          "Arcade"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "shinobi-iii-vgz",
+      "path": "tests/corpus/shinobi-iii-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 19,
+      "sidecar_count": 0,
+      "canonical_file_count": 19,
+      "sha256_inventory": "tests/corpus/shinobi-iii-vgz.sha256",
+      "git_tree_sha1": "685fe0c4ad5e87a62cd9a5c3e15e19eec621fc34",
+      "set_sha256": "f10cb09d07d918d8c611e02dce95afc190b11a5660eaa4e09d56016ca936df02",
+      "work": "Shinobi III",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x151": 19
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 19,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "sonic-3-knuckles",
       "path": "tests/corpus/sonic-3-knuckles",
       "delivery": "direct-files",
@@ -890,6 +1663,245 @@
         "0x150": 57,
         "0x110": 1
       }
+    },
+    {
+      "corpus_id": "sonic-3d-blast-genesis-vgm",
+      "path": "tests/corpus/sonic-3d-blast-genesis-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 24,
+      "sidecar_count": 0,
+      "canonical_file_count": 24,
+      "sha256_inventory": "tests/corpus/sonic-3d-blast-genesis-vgm.sha256",
+      "git_tree_sha1": "2d5040baae69f295f86da23bbd16ae327bf99e12",
+      "set_sha256": "3b3fa8de43230629bf6dbc366d1e512a5bc8671bff8d3a1230e1397230d4468d",
+      "work": "Sonic 3D Blast",
+      "source_family": "VGM",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 24
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 24,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru",
+          "Tatsuyuki Maeda"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "sonic-chaos-vgm",
+      "path": "tests/corpus/sonic-chaos-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 20,
+      "sidecar_count": 0,
+      "canonical_file_count": 20,
+      "sha256_inventory": "tests/corpus/sonic-chaos-vgm.sha256",
+      "git_tree_sha1": "b129e03f96dd162b36eec361e8539a1ce5e4de74",
+      "set_sha256": "b83428b8df724fad949cdb3a544d89c871686dfc0e0ad76fd79adf7398cf17af",
+      "work": "Sonic Chaos",
+      "source_family": "VGM",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579540
+      },
+      "observed_vgm_versions": {
+        "0x101": 20
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 20,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Master System"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "sonic-drift-2-vgm",
+      "path": "tests/corpus/sonic-drift-2-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 17,
+      "sidecar_count": 0,
+      "canonical_file_count": 17,
+      "sha256_inventory": "tests/corpus/sonic-drift-2-vgm.sha256",
+      "git_tree_sha1": "2c811797ce7f5bc3dcb0e025af49a2895d5b721f",
+      "set_sha256": "07bdd0dff6c4218934b75047de0d685cfc570ffaae56e0b15118b0f4c1d3d4e5",
+      "work": "Sonic Drift 2",
+      "source_family": "VGM/VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579540
+      },
+      "observed_vgm_versions": {
+        "0x101": 17
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 17,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Game Gear"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "sonic-drift-vgz",
+      "path": "tests/corpus/sonic-drift-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 10,
+      "sidecar_count": 0,
+      "canonical_file_count": 10,
+      "sha256_inventory": "tests/corpus/sonic-drift-vgz.sha256",
+      "git_tree_sha1": "7c6410dafb66a1e079e9cd120135adf142eee861",
+      "set_sha256": "13f6cf23e9ee8751e8315eb111a4d09f1d92c7e4a38e05e76b91c6b9025797e2",
+      "work": "Sonic Drift",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579540
+      },
+      "observed_vgm_versions": {
+        "0x101": 10
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 10,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Game Gear"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "sonic-eraser-vgz",
+      "path": "tests/corpus/sonic-eraser-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 2,
+      "sidecar_count": 0,
+      "canonical_file_count": 2,
+      "sha256_inventory": "tests/corpus/sonic-eraser-vgz.sha256",
+      "git_tree_sha1": "059d33e634b2a34352321ed21c42704b711221e3",
+      "set_sha256": "e82d403f51b0367dd576e911f8f7075c33ca393087c925daed58c41d6ccc0f8d",
+      "work": "Sonic Eraser",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 2
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 2,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "sonic-the-hedgehog-2-genesis-vgz",
+      "path": "tests/corpus/sonic-the-hedgehog-2-genesis-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 24,
+      "sidecar_count": 0,
+      "canonical_file_count": 24,
+      "sha256_inventory": "tests/corpus/sonic-the-hedgehog-2-genesis-vgz.sha256",
+      "git_tree_sha1": "62f09955d6528e1fe95c4418dce6d4294e651da4",
+      "set_sha256": "2fe9a0c7e7ef8dfd6ef3d396679ad00abc4d616e97415e1d95512b26c7386e84",
+      "work": "Sonic the Hedgehog 2 (Mega Drive)",
+      "source_family": "VGM/VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 24
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 24,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
     },
     {
       "corpus_id": "star-parodier-huc6280",
@@ -1023,6 +2035,121 @@
       "set_sha256": "54bc8089c0d19456125f20e902e398ef2906122e3c828973131e26a4d195ae6a"
     },
     {
+      "corpus_id": "stellar-assault-vgz",
+      "path": "tests/corpus/stellar-assault-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 10,
+      "sidecar_count": 0,
+      "canonical_file_count": 10,
+      "sha256_inventory": "tests/corpus/stellar-assault-vgz.sha256",
+      "git_tree_sha1": "cc2a0d433094d3ce0153e4b2820502a988994204",
+      "set_sha256": "feff68d2619a7631a9a65edfcfbedbc8b7b324a1a3ec9d7141649c646295694c",
+      "work": "Stellar Assault",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3546895,
+        "YM2612": 7600489
+      },
+      "observed_vgm_versions": {
+        "0x150": 10
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 10,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru"
+        ],
+        "tagged_platforms": [
+          "32X"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "super-black-bass-spc",
+      "path": "tests/corpus/super-black-bass-spc",
+      "delivery": "direct-files",
+      "fixture_count": 4,
+      "sidecar_count": 0,
+      "canonical_file_count": 4,
+      "sha256_inventory": "tests/corpus/super-black-bass-spc.sha256",
+      "git_tree_sha1": "4b2b20379758e778c119dddaeced0f9b86d0c07a",
+      "set_sha256": "c06135aff7c7ea1b18e29d1a1164a040308a260ab5276b324242242f23586939",
+      "work": "Super Black Bass",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 4,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "super-columns-vgm",
+      "path": "tests/corpus/super-columns-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 12,
+      "sidecar_count": 0,
+      "canonical_file_count": 12,
+      "sha256_inventory": "tests/corpus/super-columns-vgm.sha256",
+      "git_tree_sha1": "4274d30cc04bf49e10c68e7e89a42016cdaf2e2a",
+      "set_sha256": "355c7257c2703a02a090dabba33de82a72044da105654de1c7f361834f08976a",
+      "work": "Super Columns",
+      "source_family": "VGM",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579540
+      },
+      "observed_vgm_versions": {
+        "0x101": 12
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 12,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Tatsuyuki Maeda"
+        ],
+        "tagged_platforms": [
+          "Game Gear"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "super-world-court-c140",
       "path": "tests/corpus/super-world-court-c140",
       "delivery": "direct-files",
@@ -1128,6 +2255,42 @@
       "sha256_inventory": "tests/corpus/super-world-stadium-95-c352.sha256",
       "git_tree_sha1": "d3fe48e7486fe849bed5e1ee0d00a72f90e3b329",
       "set_sha256": "17573708d313b477d5c283bdd5e61208bd48d3293632aa5ce1db3516dcd3a697"
+    },
+    {
+      "corpus_id": "terranigma-spc",
+      "path": "tests/corpus/terranigma-spc",
+      "delivery": "direct-files",
+      "fixture_count": 47,
+      "sidecar_count": 0,
+      "canonical_file_count": 47,
+      "sha256_inventory": "tests/corpus/terranigma-spc.sha256",
+      "git_tree_sha1": "274cec0cd803d7468d1cd36f3734f706710dbe6a",
+      "set_sha256": "b621da0359c271c9fc3eb1d967122725a5902664d77ed3e601f9bf155190896a",
+      "work": "Terranigma",
+      "source_family": "SPC",
+      "device_families": [
+        "SPC700",
+        "S-DSP"
+      ],
+      "observed_spc_signature": "SNES-SPC700 Sound File Data v0.30",
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 47,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masanori Hikichi",
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "Super NES"
+        ],
+        "tagged_sound_chips": [
+          "SPC700"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
     },
     {
       "corpus_id": "tetris-s16-ym2151",
@@ -1276,6 +2439,120 @@
       "set_sha256": "f46637dc73b7c8e9274c1ecc6ef61f21759e49adf86e68a3ca24a2a22cddf6e7"
     },
     {
+      "corpus_id": "toki-vgm",
+      "path": "tests/corpus/toki-vgm",
+      "delivery": "direct-files",
+      "fixture_count": 6,
+      "sidecar_count": 0,
+      "canonical_file_count": 6,
+      "sha256_inventory": "tests/corpus/toki-vgm.sha256",
+      "git_tree_sha1": "95e299f8f6ebff7a7f40a1b910c20bacf232e887",
+      "set_sha256": "0b5305668d9926480552ef89513aabfe8b5fd7079034485d0eadeb2fd0daf90e",
+      "work": "Toki",
+      "source_family": "VGM",
+      "device_families": [
+        "SN76489",
+        "YM2612"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545,
+        "YM2612": 7670453
+      },
+      "observed_vgm_versions": {
+        "0x150": 6
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 6,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masayuki Nagao"
+        ],
+        "tagged_platforms": [
+          "Mega Drive"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
+      "corpus_id": "torarete-tamaruka-sgc",
+      "path": "tests/corpus/torarete-tamaruka-sgc",
+      "delivery": "direct-files",
+      "fixture_count": 1,
+      "sidecar_count": 17,
+      "canonical_file_count": 18,
+      "sha256_inventory": "tests/corpus/torarete-tamaruka-sgc.sha256",
+      "git_tree_sha1": "6e464ee9c3487a48fa5d923880d9e0772dcb7084",
+      "set_sha256": "5a63274d48ff60b181c5c8033e44dc4682a985643fc47d8a285bb76bd02ef820",
+      "work": "Torarete Tamaruka!?",
+      "source_family": "SGC",
+      "device_families": [
+        "Sega 8-bit executable-rip runtime not yet executed"
+      ],
+      "source_page": "https://www.zophar.net/music/sega-game-gear-sgc/torarete-tamaruka",
+      "source_url": "https://fi.zophar.net/soundfiles/sega-game-gear-sgc/torarete-tamaruka/Torarete%20Tamaruka%21%20%28EMU%29.zophar.zip",
+      "source_archive_sha256": "fb80e49607f5a868c94b416374333beda8821cd3c15c92153b7bc50b2d575408",
+      "user_requested_control_people": [
+        "Masayuki Nagao"
+      ],
+      "structural_validation": {
+        "valid_container": true,
+        "signature": "SGC\\x1A",
+        "version": 1,
+        "playlist_route_count": 17,
+        "validation_scope": "container signature/version and retained extended-M3U routes only; runtime and playback not executed"
+      },
+      "source_archive_retained": false,
+      "playlist_sidecars_preserved": true,
+      "selection_reason": "direct user-requested cross-game attribution-control candidate",
+      "control_status": "candidate only; user association does not establish composition, arrangement, programming, or authorship",
+      "attribution_boundary": "downloaded executable-rip bytes are not byte-identical to the local rendered files carrying foobar external tags"
+    },
+    {
+      "corpus_id": "toy-story-2-pico-vgz",
+      "path": "tests/corpus/toy-story-2-pico-vgz",
+      "delivery": "direct-files",
+      "fixture_count": 17,
+      "sidecar_count": 0,
+      "canonical_file_count": 17,
+      "sha256_inventory": "tests/corpus/toy-story-2-pico-vgz.sha256",
+      "git_tree_sha1": "67259e8a62eb75277a8c5e5e49fea1ae86f1dfd3",
+      "set_sha256": "24227e279fb9ead9edd933fd709204c9f18d35d906fc3e0c303458618dd86cf5",
+      "work": "Toy Story 2: Woody Sousaku Daisakusen!!",
+      "source_family": "VGZ",
+      "device_families": [
+        "SN76489"
+      ],
+      "observed_device_clocks_hz": {
+        "SN76489": 3579545
+      },
+      "observed_vgm_versions": {
+        "0x150": 17
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 17,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Masaru Setsumaru"
+        ],
+        "tagged_platforms": [
+          "Pico"
+        ],
+        "tagged_sound_chips": [
+          "SN76489"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
+    },
+    {
       "corpus_id": "truxton-ym3812",
       "path": "tests/corpus/truxton-ym3812",
       "delivery": "direct-files",
@@ -1374,6 +2651,45 @@
       "sha256_inventory": "tests/corpus/wanderers-from-super-scheme-ym2608.sha256",
       "git_tree_sha1": "defacd06f5a6155c3809aa22117b9d12f7495f78",
       "set_sha256": "57a639d9e34f927ab6457a4f46d3b5484c1e65a7a3bad2a8e0b6e16d7637230a"
+    },
+    {
+      "corpus_id": "wizardry-iii-iv-huc6280",
+      "path": "tests/corpus/wizardry-iii-iv-huc6280",
+      "delivery": "direct-files",
+      "fixture_count": 11,
+      "sidecar_count": 0,
+      "canonical_file_count": 11,
+      "sha256_inventory": "tests/corpus/wizardry-iii-iv-huc6280.sha256",
+      "git_tree_sha1": "964234dd424b5a6906f13f6d9dfee9076be3a914",
+      "set_sha256": "8d7cdb13f7f8af5086d485c55172b5bec036c242d2a7a89373b27a49bb850904",
+      "work": "Wizardry III + IV",
+      "source_family": "VGZ",
+      "device_families": [
+        "HuC6280"
+      ],
+      "observed_device_clocks_hz": {
+        "HuC6280": 3579545
+      },
+      "observed_vgm_versions": {
+        "0x161": 11
+      },
+      "external_tag_join": {
+        "path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+        "matching_fixture_count": 11,
+        "authority": "foobar2000 external-tags.db ingested by Helix",
+        "target_control_people": [
+          "Miyoko Takaoka"
+        ],
+        "tagged_platforms": [
+          "PC Engine"
+        ],
+        "tagged_sound_chips": [
+          "HuC6280"
+        ],
+        "attribution_limit": "artist display metadata only; not role-scoped authorship evidence"
+      },
+      "selection_reason": "cross-soundtrack/cross-platform Sonic 3 attribution-control candidate; complete set retains same-toolchain negative controls",
+      "control_status": "candidate only until each person, role, track/version, source, confidence, and supervision boundary is independently documented"
     }
   ]
 }

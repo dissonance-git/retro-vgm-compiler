@@ -110,6 +110,63 @@ class VgmCorpusAuditTest(unittest.TestCase):
         self.assertFalse(report["valid"])
         self.assertTrue(any("EOF offset" in error for error in report["errors"]))
 
+    def test_gd3_surplus_null_padding_is_visible_but_not_a_field(self) -> None:
+        raw = bytearray(0x40)
+        raw[0:4] = b"Vgm "
+        write_u32(raw, 0x08, 0x150)
+        write_u32(raw, 0x34, 0x0C)
+        raw.extend(bytes([0x66]))
+
+        gd3_offset = len(raw)
+        fields = ["track", "", "game", "", "system", "", "author", "", "1994", "ripper", "notes"]
+        payload = ("\x00".join(fields) + "\x00\x00\x00").encode("utf-16-le")
+        raw.extend(b"Gd3 " + struct.pack("<II", 0x100, len(payload)) + payload)
+        write_u32(raw, 0x14, gd3_offset - 0x14)
+        write_u32(raw, 0x04, len(raw) - 4)
+
+        report = AUDIT.audit(make_file(raw, "padded-gd3.vgm"))
+
+        self.assertTrue(report["valid"], report["errors"])
+        self.assertEqual(report["gd3"]["field_count"], 11)
+        self.assertEqual(report["gd3"]["extra_null_padding_fields"], 2)
+        self.assertTrue(any("surplus empty field terminator" in warning for warning in report["warnings"]))
+
+    def test_gd3_surplus_nonempty_field_remains_invalid(self) -> None:
+        raw = bytearray(0x40)
+        raw[0:4] = b"Vgm "
+        write_u32(raw, 0x08, 0x150)
+        write_u32(raw, 0x34, 0x0C)
+        raw.extend(bytes([0x66]))
+
+        gd3_offset = len(raw)
+        payload = ("\x00".join([""] * 11 + ["unexpected"]) + "\x00").encode("utf-16-le")
+        raw.extend(b"Gd3 " + struct.pack("<II", 0x100, len(payload)) + payload)
+        write_u32(raw, 0x14, gd3_offset - 0x14)
+        write_u32(raw, 0x04, len(raw) - 4)
+
+        report = AUDIT.audit(make_file(raw, "extra-field-gd3.vgm"))
+
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("GD3 field count" in error for error in report["errors"]))
+
+    def test_invalid_gd3_utf16_is_reported_without_crashing(self) -> None:
+        raw = bytearray(0x40)
+        raw[0:4] = b"Vgm "
+        write_u32(raw, 0x08, 0x150)
+        write_u32(raw, 0x34, 0x0C)
+        raw.extend(bytes([0x66]))
+
+        gd3_offset = len(raw)
+        payload = b"\x00\xD8"
+        raw.extend(b"Gd3 " + struct.pack("<II", 0x100, len(payload)) + payload)
+        write_u32(raw, 0x14, gd3_offset - 0x14)
+        write_u32(raw, 0x04, len(raw) - 4)
+
+        report = AUDIT.audit(make_file(raw, "invalid-utf16-gd3.vgm"))
+
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("invalid GD3 UTF-16LE" in error for error in report["errors"]))
+
     def test_unknown_rom_block_is_skipped_but_visible(self) -> None:
         raw = bytearray(0x100)
         raw[0:4] = b"Vgm "

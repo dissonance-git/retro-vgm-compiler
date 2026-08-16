@@ -29,6 +29,13 @@ They are not classified as VGM register logs. `tools/nsf_corpus_audit.py`
 performs only container-level admission checks; it does not execute the rip or
 validate playback.
 
+KSS and SGC are admitted as distinct executable-rip source families. Extended
+M3U files are retained as canonical subsong-routing sidecars: they are hashed
+and included in the Git tree identity but are not counted as runnable fixtures.
+`tools/z80_rip_corpus_audit.py` checks observed container signatures and exact
+playlist targets/selectors only. It does not execute the rip or validate
+playback, timing, device behavior, or attribution.
+
 PSF1, GSF, USF, 2SF, and NCSF share an xSF envelope but not an execution model. The
 common audit validates exact bytes, versions, outer compressed-program CRCs,
 tags, dependency closure, deterministic overlay order, and byte provenance.
@@ -52,7 +59,7 @@ python tools/corpus_import.py --archive soundtrack.zip --id <id>
 
 An archive is a delivery container, not a mandatory duplicate of a direct-file corpus. If the runnable files are the canonical supplied objects, the repository does not need to retain a ZIP as well.
 
-## Current committed pressure surface
+## Earlier committed pressure surface (through 2026-08-13)
 
 | Corpus ID | Work | Source family | Declared device families | Fixtures |
 | --- | --- | --- | --- | ---: |
@@ -86,7 +93,7 @@ An archive is a delivery container, not a mandatory duplicate of a direct-file c
 | `truxton-ym3812` | Truxton | VGZ | YM3812 | 7 |
 | `wanderers-from-super-scheme-ym2608` | Wanderers from Super Scheme | VGZ | YM2608 | 4 |
 
-Total: 29 sets and 585 immutable real-music fixtures. The 2026-08-13
+The earlier surface contains 29 sets and 585 immutable real-music fixtures. The 2026-08-13
 heterogeneous expansion added 22 sets and 108 fixtures. `manifest.json` records
 the exact header clocks, VGM versions, command bytes, loop checks, whole-set
 SHA-256 values, and Git tree identities for the new VGM/VGZ controls.
@@ -104,6 +111,79 @@ the exact SDAT bytes in the already admitted Mario Kart DS 2SF effective ROM.
 That paired control asserts byte identity only for the bounded SDAT range; it
 does not assert container, selection-state, runtime, driver-state, or audio
 equivalence.
+
+## 2026-08-15 Sonic 3 cross-soundtrack controls
+
+The following 34 complete sets add 434 runnable objects. The 31 locally sourced
+sets contribute 316 VGM/VGZ and 115 SPC files. Three explicitly authorized
+downloads contribute one KSS or SGC executable-rip object each plus 70 retained
+extended-M3U subsong routes.
+
+| Corpus ID | Work | Family | External-tag target route | Runnable fixtures |
+| --- | --- | --- | --- | ---: |
+| `aa-harimanada-vgz` | Aa Harimanada | VGZ | Masayuki Nagao | 22 |
+| `america-oudan-ultra-quiz-spc` | America Oudan Ultra Quiz | SPC | Miyoko Takaoka | 18 |
+| `ancient-magic-spc` | Ancient Magic | SPC | Miyoko Takaoka; Masanori Hikichi | 19 |
+| `battle-golfer-yui-vgz` | Battle Golfer Yui | VGZ | Masayuki Nagao | 18 |
+| `battle-master-spc` | Battle Master | SPC | Masanori Hikichi | 22 |
+| `dr-robotniks-mean-bean-machine-vgz` | Dr. Robotnik's Mean Bean Machine | VGZ | Masayuki Nagao | 15 |
+| `dumbo-pico-vgz` | Dumbo | VGZ | Tatsuyuki Maeda | 5 |
+| `ecology-magic-ym2608` | Ecology Magic | VGZ | Miyoko Takaoka | 7 |
+| `gg-doraemon-game-gear-vgm` | GG Doraemon: Nora no Suke no Yabou | VGM | Masayuki Nagao | 7 |
+| `ghox-ym2151` | Ghox | VGZ | Miyoko Takaoka | 8 |
+| `golden-axe-iii-genesis-vgz` | Golden Axe III | VGZ | Tatsuyuki Maeda; Tomonori Sawada | 21 |
+| `j-league-pro-striker-vgz` | J.League Pro Striker | VGZ | Tomonori Sawada | 4 |
+| `j-league-pro-striker-2-vgz` | J.League Pro Striker 2 | VGZ | Tatsuyuki Maeda | 6 |
+| `kakinoki-shougi-spc` | Kakinoki Shougi | SPC | Miyoko Takaoka | 5 |
+| `kangofu-san-pico-vgz` | Kangofu-san Pico | VGZ | Masaru Setsumaru | 15 |
+| `kuni-chan-game-tengoku-part-2-sgc` | Kuni-chan no Game Tengoku Part 2 | SGC | Tatsuyuki Maeda (user-requested candidate) | 1 |
+| `ninku-kss-game-gear` | Ninku | KSS | Tatsuyuki Maeda (user-requested candidate) | 1 |
+| `sanrio-puroland-pico-vgz` | Sanrio Puroland | VGZ | Tatsuyuki Maeda | 6 |
+| `segasonic-bros-vgz` | SegaSonic Bros. | VGZ | Masaru Setsumaru | 10 |
+| `shinobi-iii-vgz` | Shinobi III | VGZ | Masayuki Nagao | 19 |
+| `sonic-3d-blast-genesis-vgm` | Sonic 3D Blast | VGM | Tatsuyuki Maeda; Masaru Setsumaru | 24 |
+| `sonic-chaos-vgm` | Sonic Chaos | VGM | Masayuki Nagao | 20 |
+| `sonic-drift-vgz` | Sonic Drift | VGZ | Masayuki Nagao | 10 |
+| `sonic-drift-2-vgm` | Sonic Drift 2 | VGM/VGZ | Masayuki Nagao | 17 |
+| `sonic-eraser-vgz` | Sonic Eraser | VGZ | Masaru Setsumaru | 2 |
+| `sonic-the-hedgehog-2-genesis-vgz` | Sonic the Hedgehog 2 (Mega Drive) | VGM/VGZ | matched different-person control | 24 |
+| `stellar-assault-vgz` | Stellar Assault | VGZ | Masaru Setsumaru | 10 |
+| `super-black-bass-spc` | Super Black Bass | SPC | Miyoko Takaoka | 4 |
+| `super-columns-vgm` | Super Columns | VGM | Tatsuyuki Maeda | 12 |
+| `terranigma-spc` | Terranigma | SPC | Miyoko Takaoka; Masanori Hikichi | 47 |
+| `toki-vgm` | Toki | VGM | Masayuki Nagao | 6 |
+| `torarete-tamaruka-sgc` | Torarete Tamaruka!? | SGC | Masayuki Nagao (user-requested candidate) | 1 |
+| `toy-story-2-pico-vgz` | Toy Story 2: Woody Sousaku Daisakusen!! | VGZ | Masaru Setsumaru | 17 |
+| `wizardry-iii-iv-huc6280` | Wizardry III + IV | VGZ | Miyoko Takaoka | 11 |
+
+The corpus now contains 63 sets, 1,019 runnable fixtures, and 70 playlist
+sidecars: 1,089 canonical hashed files in total.
+
+The complete-set policy is deliberate. It retains other externally tagged
+artists in mixed soundtracks such as Golden Axe III, Sonic 3D Blast, Ancient
+Magic, Terranigma, and SegaSonic Bros. as same-toolchain or same-soundtrack
+negative controls. It does not cherry-pick only the cues carrying a target name.
+
+`sonic3-attribution-control-external-tags.jsonl` contains 431 exact fixture-hash
+joins to Helix `FOOBAR-TAG-*` records. The artist values come only from the
+user's foobar external tags ingested by Helix; GD3 and SPC internal artist tags
+are not used. These values route candidate controls but do not establish a
+composition, arrangement, sequence-programming, driver, patch-design, or
+authorship role.
+
+Ninku, Kuni-chan no Game Tengoku Part 2, and Torarete Tamaruka!? were absent as
+local executable-rip sets and were downloaded with explicit user authorization.
+Their source ZIPs were hashed but not retained:
+
+| Work | Source page | ZIP SHA-256 | Retained object/routes |
+| --- | --- | --- | --- |
+| Ninku | `https://www.zophar.net/music/sega-game-gear-sgc/ninku` | `9605ae0e6db2ac6ecdde7b7825ea7490e6394f3f8b3eda07807083e2f94c3a76` | 1 KSS / 37 M3U |
+| Kuni-chan no Game Tengoku Part 2 | `https://www.zophar.net/music/sega-game-gear-sgc/kuni-chan-no-game-tengoku-part-2` | `7888ec75b912741dd7e6600c93bcc05d12ed57ce98e2d2e0d5041bed4b8c2f7e` | 1 SGC / 16 M3U |
+| Torarete Tamaruka!? | `https://www.zophar.net/music/sega-game-gear-sgc/torarete-tamaruka` | `fb80e49607f5a868c94b416374333beda8821cd3c15c92153b7bc50b2d575408` | 1 SGC / 17 M3U |
+
+The executable-rip bytes are not claimed byte-identical to the user's local
+rendered files. Their user-requested person associations remain candidate
+selection context, not role-scoped attribution evidence.
 
 ## 2026-08-13 selection boundaries
 

@@ -406,6 +406,45 @@ same composer + different soundtrack + different synthesis architecture
 
 SPC controls are especially useful because they can force Genesis-specific synthesis fingerprints to disappear while deeper musical relations either survive or fail.
 
+#### Committed control surface (2026-08-15)
+
+The corpus now includes 34 complete external soundtracks selected around
+Tatsuyuki Maeda, Tomonori Sawada, Masayuki Nagao, Masaru Setsumaru, Miyoko
+Takaoka, and Masanori Hikichi. It contains 316 VGM/VGZ files, 115 SPC snapshots,
+and three KSS/SGC executable-rip containers with 70 retained subsong routes.
+
+The selection is useful because it crosses several confound boundaries rather
+than supplying one same-platform positive cluster:
+
+```text
+Maeda / Sawada
+  Genesis mixed-person sets: Golden Axe III, Sonic 3D Blast
+  Game Gear / Pico sets: J.League Pro Striker 1/2, Dumbo, Sanrio Puroland,
+                         Super Columns, Ninku, Kuni-chan
+
+Nagao / Setsumaru
+  Game Gear and Genesis controls plus Pico work
+  same-company and same-platform different-person sets retained intact
+
+Takaoka / Hikichi
+  SPC cross-architecture controls: America Oudan Ultra Quiz, Ancient Magic,
+                                   Battle Master, Kakinoki Shougi,
+                                   Super Black Bass, Terranigma
+  additional VGM/VGZ controls: Ecology Magic, Ghox, Wizardry III + IV
+```
+
+Every locally sourced fixture is hash-joined to the user's foobar external tag
+as ingested by Helix. GD3 and SPC internal artist fields are not used. The join
+is artist metadata for routing, not a known-control credit: each cue remains
+forbidden from supervising a composition or realization coordinate until the
+specific person/role/track/version claim has an independent documentary source.
+
+Complete mixed-person sets are retained to make negative controls possible.
+For example, Golden Axe III and Sonic 3D Blast can test whether a feature follows
+one externally tagged person or stays with the same soundtrack/toolchain. The
+new SPC sets test the different-platform condition, where Genesis implementation
+details should disappear even if a deeper composition-facing relation survives.
+
 ### Test 6: leave-one-soundtrack-out creator grammar
 
 Once a candidate has material from several soundtracks:
@@ -490,11 +529,12 @@ Never compress this to one `artist = X` field.
 
 ## Immediate next step
 
-1. Run the first blind VGM realization/trajectory audit over the committed Sonic 3 corpus.
+1. Run `tools/vgm_creator_feature_audit.py` over the committed Sonic 3 corpus.
 2. Treat its output as a **within-soundtrack baseline**, not a composer model.
-3. Keep disputed cue labels out of extraction and tuning.
-4. Add the same-creator VGM/SPC controls from other soundtracks unchanged when they arrive.
-5. Re-run the same feature extraction before tuning weights or adding creator-specific rules.
-6. Promote only relations that survive independent works, role checks, and ideally cross-soundtrack validation into `composer_grammar_evidence`.
+3. Keep disputed cue labels and the external-tag join out of extraction and tuning.
+4. Run the unchanged extractor across the committed VGM/VGZ controls with `tools/cross_soundtrack_vgm_audit.py`.
+5. Unblind the external-tag join only after the feature and neighbor outputs are frozen.
+6. Ask whether each relation follows a person, soundtrack, toolchain, platform, or collaborator; treat the SPC controls as a separate cross-architecture analysis until an equivalent extractor exists.
+7. Promote only relations that survive independent works, role checks, and ideally cross-soundtrack validation into `composer_grammar_evidence`.
 
 > **Sonic 3 is the question. Other soundtracks by the same creators are the controls that tell us whether we have learned the people or merely the game.**

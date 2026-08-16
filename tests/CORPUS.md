@@ -32,7 +32,7 @@ The canonical supplied object depends on the delivery form:
 ```text
 direct runnable files
         ↓ preserve each byte-for-byte
-canonical VGM / VGZ / SPC / NSF / NSFe / PSF1 / GSF / USF / 2SF / NCSF fixtures
+canonical VGM / VGZ / SPC / NSF / NSFe / KSS / SGC / PSF1 / GSF / USF / 2SF / NCSF fixtures
 
 archive supplied as a canonical object
         ↓ preserve archive byte-for-byte when retained
@@ -98,7 +98,7 @@ This rule is intentionally narrow. Other embedded fields may be inspected accord
 
 Game Music Interpreter owns:
 
-- the immutable VGM/VGZ/SPC/NSF/NSFe/PSF1/GSF/USF/2SF/NCSF fixture bytes;
+- the immutable VGM/VGZ/SPC/NSF/NSFe/KSS/SGC/PSF1/GSF/USF/2SF/NCSF fixture bytes and required playlist sidecars;
 - hashes and source-family inventory;
 - execution/synthesis/performance analysis of those fixtures;
 - corpus-specific regression expectations that belong to game-music machinery.
@@ -153,7 +153,7 @@ Each committed corpus set should have a manifest recording at least:
 - original supplied filename or archive name when applicable;
 - SHA-256 of every canonical runnable file;
 - deterministic whole-set digest and/or Git tree identity when available;
-- source family (`VGM`, `VGZ`, `SPC`, `NSF`, `NSFe`, `PSF1`, `USF`, or `2SF`);
+- source family (`VGM`, `VGZ`, `SPC`, `NSF`, `NSFe`, `KSS`, `SGC`, `PSF1`, `USF`, or `2SF`);
 - game/work identifier when known;
 - track/cue identifier when known;
 - chip/device family when determinable from the source;
@@ -221,6 +221,14 @@ The strongest current project rule is:
 
 > Start from the exact track/version object and the authorial layer in dispute. Technical resemblance may strengthen an arrangement/implementation hypothesis without silently becoming composer attribution.
 
+The 2026-08-15 cross-soundtrack controls bind each locally sourced fixture hash
+to its exact Helix `FOOBAR-TAG-*` record in
+`tests/corpus/sonic3-attribution-control-external-tags.jsonl`. This compact join
+uses the user's foobar external tags and does not read or promote GD3/ID666
+artist text. It supplies curated artist identity for corpus routing only. A row
+still cannot supervise composition, arrangement, programming, or authorship
+until a role-specific documentary source establishes that coordinate.
+
 ## Analysis rules
 
 Corpus files should pressure-test real behavior without becoming golden answers for unsupported higher-level claims.
@@ -245,6 +253,13 @@ For NSF/NSFe:
 - cheap admission checks may establish container identity, chunk/header structure, and declared subsong count;
 - valid container structure does not establish correct playback;
 - embedded text fields are artifact metadata and do not independently establish attribution.
+
+For KSS/SGC:
+
+- the retained container carries executable program/data rather than a VGM register timeline;
+- extended-M3U files are canonical subsong-routing sidecars and are hashed separately from the runnable-object count;
+- the admission audit checks observed signatures and exact playlist targets/selectors only;
+- valid container and playlist structure does not establish execution, playback, timing, device behavior, or attribution.
 
 For PSF1/USF/2SF:
 

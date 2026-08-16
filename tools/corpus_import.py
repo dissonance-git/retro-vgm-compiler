@@ -14,12 +14,14 @@ from pathlib import Path, PurePosixPath
 
 ALLOWED_SUFFIXES = {
     ".vgm", ".vgz", ".spc", ".nsf", ".nsfe",
+    ".kss", ".sgc",
     ".psf", ".minipsf", ".psflib", ".psf1", ".minipsf1", ".psf1lib",
     ".usf", ".miniusf", ".usflib",
     ".2sf", ".mini2sf", ".2sflib",
     ".gsf", ".minigsf", ".gsflib",
     ".ncsf", ".minincsf", ".ncsflib",
 }
+SIDECAR_SUFFIXES = {".m3u"}
 MANIFEST_VERSION = 2
 
 
@@ -78,10 +80,24 @@ def runnable_files(directory: Path) -> list[Path]:
     )
 
 
+def sidecar_files(directory: Path) -> list[Path]:
+    return sorted(
+        (p for p in directory.rglob("*") if p.is_file() and p.suffix.lower() in SIDECAR_SUFFIXES),
+        key=lambda p: p.relative_to(directory).as_posix().casefold(),
+    )
+
+
+def canonical_files(directory: Path) -> list[Path]:
+    return sorted(
+        runnable_files(directory) + sidecar_files(directory),
+        key=lambda p: p.relative_to(directory).as_posix().casefold(),
+    )
+
+
 def inventory_text(directory: Path) -> str:
     return "".join(
         f"{sha256_file(path)}  {path.relative_to(directory).as_posix()}\n"
-        for path in runnable_files(directory)
+        for path in canonical_files(directory)
     )
 
 
@@ -127,6 +143,7 @@ def update_direct_record(repo_root: Path, corpus_id: str) -> Path:
     record = records.get(corpus_id, {"corpus_id": corpus_id})
     corpus_dir = repo_root / record.get("path", f"tests/corpus/{corpus_id}")
     files = runnable_files(corpus_dir)
+    sidecars = sidecar_files(corpus_dir)
     if not files:
         raise ValueError(f"no runnable fixtures found: {corpus_dir}")
 
@@ -139,7 +156,9 @@ def update_direct_record(repo_root: Path, corpus_id: str) -> Path:
         {
             "path": corpus_dir.relative_to(repo_root).as_posix(),
             "delivery": "direct-files",
-            "fixture_count": len(items),
+            "fixture_count": len(files),
+            "sidecar_count": len(sidecars),
+            "canonical_file_count": len(items),
             "sha256_inventory": inventory_rel,
             "git_tree_sha1": git_tree_sha(corpus_dir),
         }
@@ -171,7 +190,7 @@ def extract_archive(archive: Path, repo_root: Path, corpus_id: str) -> None:
             member = safe_member_path(info.filename)
             if member_is_symlink(info):
                 raise ValueError(f"refusing symlink ZIP member: {info.filename!r}")
-            if member.suffix.lower() not in ALLOWED_SUFFIXES:
+            if member.suffix.lower() not in ALLOWED_SUFFIXES | SIDECAR_SUFFIXES:
                 continue
             target = extracted_dir.joinpath(*member.parts)
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -188,7 +207,9 @@ def verify_manifest(repo_root: Path) -> int:
         return 2
     manifest = load_manifest(manifest_path)
     failures = 0
-    verified = 0
+    verified_files = 0
+    verified_runnables = 0
+    verified_sidecars = 0
 
     for record in manifest["sets"]:
         corpus_dir = repo_root / record["path"]
@@ -206,11 +227,25 @@ def verify_manifest(repo_root: Path) -> int:
             continue
 
         names = [name for name, _ in items]
-        actual_names = [p.relative_to(corpus_dir).as_posix() for p in runnable_files(corpus_dir)]
-        if names != actual_names or len(items) != record["fixture_count"]:
+        actual_runnable = runnable_files(corpus_dir)
+        actual_sidecars = sidecar_files(corpus_dir)
+        actual_names = [p.relative_to(corpus_dir).as_posix() for p in canonical_files(corpus_dir)]
+        expected_sidecars = record.get("sidecar_count", 0)
+        expected_canonical = record.get(
+            "canonical_file_count", record["fixture_count"] + expected_sidecars
+        )
+        if (
+            names != actual_names
+            or len(actual_runnable) != record["fixture_count"]
+            or len(actual_sidecars) != expected_sidecars
+            or len(items) != expected_canonical
+        ):
             print(f"inventory membership mismatch: {record['corpus_id']}", file=sys.stderr)
             failures += 1
             continue
+
+        verified_runnables += len(actual_runnable)
+        verified_sidecars += len(actual_sidecars)
 
         for name, expected_hash in items:
             path = corpus_dir / name
@@ -218,7 +253,7 @@ def verify_manifest(repo_root: Path) -> int:
                 print(f"hash mismatch: {record['path']}/{name}", file=sys.stderr)
                 failures += 1
             else:
-                verified += 1
+                verified_files += 1
 
         if set_sha256(record, items, corpus_dir) != record["set_sha256"]:
             print(f"set digest mismatch: {record['corpus_id']}", file=sys.stderr)
@@ -228,7 +263,11 @@ def verify_manifest(repo_root: Path) -> int:
             failures += 1
 
     if failures == 0:
-        print(f"verified {len(manifest['sets'])} corpus set(s), {verified} fixture(s)")
+        print(
+            f"verified {len(manifest['sets'])} corpus set(s), "
+            f"{verified_runnables} runnable fixture(s), {verified_sidecars} sidecar(s), "
+            f"{verified_files} canonical file(s)"
+        )
     return 1 if failures else 0
 
 
