@@ -3,7 +3,9 @@
 #include "bass_harmony_interaction.h"
 #include "cadential_arrival_hypothesis.h"
 #include "composer_grammar_evidence.h"
+#include "counterpoint_motion_profile.h"
 #include "harmonic_rhythm_profile.h"
+#include "imitative_part_relation.h"
 #include "section_relation_hypothesis.h"
 #include "voice_leading_hypothesis.h"
 
@@ -127,6 +129,42 @@ inline blind_structural_grammar_observation voice_leading_as_grammar_observation
         role_scope,
         voices.confidence,
         "voice-leading relation; persistent-part correspondence outranks minimum-motion inference");
+}
+
+inline blind_structural_grammar_observation counterpoint_motion_as_grammar_observation(
+    const structural_grammar_context& context,
+    const counterpoint_motion_profile& profile,
+    creative_attribution_role role_scope) {
+    const std::string signature =
+        "counterpoint_motion:similar=" + std::to_string(profile.similar_motion_count) +
+        ";contrary=" + std::to_string(profile.contrary_motion_count) +
+        ";oblique=" + std::to_string(profile.oblique_motion_count) +
+        ";stationary=" + std::to_string(profile.stationary_motion_count) +
+        ";vertical_interval=" +
+        std::string{profile.vertical_intervals_comparable ? "available" : "unresolved"};
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::counterpoint_voice_leading,
+        role_scope,
+        profile.confidence,
+        "synchronized persistent-part motion relation; absolute vertical intervals remain optional evidence");
+}
+
+inline blind_structural_grammar_observation imitation_as_grammar_observation(
+    const structural_grammar_context& context,
+    const imitative_part_relation_hypothesis& imitation,
+    creative_attribution_role role_scope) {
+    const std::string signature =
+        std::string{"imitation:"} + to_string(imitation.kind) +
+        ";lag=" + quantized_nonnegative_token(imitation.normalized_onset_lag);
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::counterpoint_voice_leading,
+        role_scope,
+        imitation.confidence,
+        "motif-grounded cross-part imitation/call-response relation with tempo-normalized entry lag");
 }
 
 inline blind_structural_grammar_observation bass_harmony_as_grammar_observation(
