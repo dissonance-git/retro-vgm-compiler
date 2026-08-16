@@ -1,5 +1,6 @@
 #pragma once
 
+#include "genesis_analysis_features.h"
 #include "genesis_part_evidence.h"
 #include "ym2612_episode_pitch_analysis.h"
 #include "../../../model/part_motif_discovery.h"
@@ -105,17 +106,24 @@ make_genesis_performed_part_gesture_observation(
     const auto* family = family_item == nullptr
         ? nullptr
         : std::get_if<std::string>(&family_item->value);
-
-    // Version one intentionally upgrades only all-YM2612 part profiles. A part
-    // that crosses synthesis families falls back as a whole to the established
-    // source-relative representation instead of mixing pitch bases.
-    if (family == nullptr || *family != "YM2612")
+    if (family == nullptr)
         return std::nullopt;
 
-    const auto features = extract_ym2612_episode_pitch_features(
-        graph,
-        episode_id,
-        clocks);
+    analysis_feature_set features;
+    if (*family == "YM2612") {
+        features = extract_ym2612_episode_pitch_features(
+            graph,
+            episode_id,
+            clocks);
+    } else if (*family == "SN76489") {
+        features = extract_genesis_performance_analysis_features(
+            graph,
+            onset->id,
+            &clocks);
+    } else {
+        return std::nullopt;
+    }
+
     const analysis_feature* performed = features.find("performed_pitch_frequency_hz");
     if (performed == nullptr ||
         performed->availability != feature_availability::present) {
@@ -123,11 +131,11 @@ make_genesis_performed_part_gesture_observation(
     }
     if (!performed->value.has_value() || !performed->status.has_value() ||
         !performed->confidence.has_value()) {
-        throw std::logic_error("present YM2612 performed-pitch feature lacks evidence fields");
+        throw std::logic_error("present Genesis performed-pitch feature lacks evidence fields");
     }
     const auto* frequency = std::get_if<double>(&*performed->value);
     if (frequency == nullptr || !std::isfinite(*frequency) || *frequency <= 0.0)
-        throw std::logic_error("present YM2612 performed-pitch feature lacks a valid frequency");
+        throw std::logic_error("present Genesis performed-pitch feature lacks a valid frequency");
 
     return part_gesture_observation{
         onset->id,
@@ -178,10 +186,13 @@ collect_genesis_part_gestures(
     return observations;
 }
 
-// Prefer absolute performed FM pitch only when every physical episode grouped
-// into this part can support that same coordinate basis. Otherwise return the
-// complete native-relative projection. This makes fallback a part-level choice,
-// never an event-by-event mixture of incompatible pitch semantics.
+// Prefer one absolute performed-frequency basis only when every physical episode
+// grouped into this already-grounded persistent part can support it. YM2612 and
+// SN76489 tone episodes may therefore coexist in one performed profile once part
+// continuity has independently been earned. If any episode cannot support the
+// common coordinate, fall back wholesale to the native-relative projection.
+// This keeps fallback a part-level choice and never mixes incompatible pitch
+// semantics event by event.
 inline std::vector<vgmtooling::model::part_gesture_observation>
 collect_genesis_part_gestures(
     const vgmtooling::model::musical_execution_graph& graph,
