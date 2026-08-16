@@ -12,6 +12,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     structural_composer_grammar_bridge_test
     role_scoped_orchestration_grammar_test
     realization_role_deployment_test
+    cross_realization_part_correspondence_test
     genesis_psg_analysis_features_test
 )
 
@@ -38,6 +39,10 @@ add_executable(
 add_executable(
     realization_role_deployment_test
     tests/model/realization_role_deployment_test.cpp
+)
+add_executable(
+    cross_realization_part_correspondence_test
+    tests/model/cross_realization_part_correspondence_test.cpp
 )
 add_executable(
     genesis_psg_analysis_features_test
@@ -69,6 +74,10 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
+    cross_realization_part_correspondence_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
     genesis_psg_analysis_features_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -96,6 +105,10 @@ add_test(
 add_test(
     NAME realization_role_deployment
     COMMAND realization_role_deployment_test
+)
+add_test(
+    NAME cross_realization_part_correspondence
+    COMMAND cross_realization_part_correspondence_test
 )
 add_test(
     NAME genesis_psg_analysis_features
