@@ -140,18 +140,31 @@ inline part_role_evidence automatic_role_signal_evidence(
     };
 }
 
+// Automatic proposal strength follows the two strongest positive supports.
+// Weaker corroborative context remains in the evidence bundle for provenance,
+// domain-independence checks, and conflict analysis, but cannot dilute a claim
+// simply because it was included. The downstream role kernel still applies all
+// epistemic ceilings to the complete bundle.
 inline double role_evidence_mean(const std::vector<part_role_evidence>& evidence) {
-    if (evidence.empty())
-        return 0.0;
-    double total = 0.0;
+    double strongest = 0.0;
+    double second = 0.0;
     std::size_t support_count = 0;
     for (const auto& item : evidence) {
         if (item.polarity != part_role_evidence_polarity::supports)
             continue;
-        total += item.confidence;
         ++support_count;
+        if (item.confidence >= strongest) {
+            second = strongest;
+            strongest = item.confidence;
+        } else if (item.confidence > second) {
+            second = item.confidence;
+        }
     }
-    return support_count == 0 ? 0.0 : total / static_cast<double>(support_count);
+    if (support_count == 0)
+        return 0.0;
+    if (support_count == 1)
+        return strongest;
+    return 0.5 * (strongest + second);
 }
 
 inline void append_auto_role_candidate(
