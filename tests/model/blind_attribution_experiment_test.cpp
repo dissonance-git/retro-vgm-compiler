@@ -139,10 +139,13 @@ int main() {
         composer_grammar_dimension::rhythm, 0.49));
 
     const auto confounded_result = run_blind_attribution_experiment(confounded);
-    assert(confounded_result.ranked_candidates.front().candidate == "same-driver-only");
-    assert(confounded_result.ranked_candidates.front().score > 0.90);
-    assert(!confounded_result.ranked_candidates.front().survives_query_implementation_exclusion);
-    assert(!confounded_result.ranked_candidates.front().admissible);
+    const auto& confounded_winner = confounded_result.ranked_candidates.front();
+    assert(confounded_winner.candidate == "same-driver-only");
+    assert(confounded_winner.score > 0.90);
+    assert(!confounded_winner.survives_query_implementation_exclusion);
+    assert(confounded_winner.grammar.strong_confound_failure);
+    assert(confounded_winner.grammar.confidence <= composer_grammar_failed_confound_ceiling);
+    assert(!confounded_winner.admissible);
     assert(!confounded_result.decisive);
 
     return 0;
