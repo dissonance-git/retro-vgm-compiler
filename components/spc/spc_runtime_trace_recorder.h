@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -16,6 +17,8 @@ public:
         capture_.reset_trace();
         ram_generation_ = spc_ram_generation_tracker{};
         trace_ = spc_runtime_trace{};
+        observation_tick_rate_ = 0;
+        last_observation_tick_.reset();
     }
 
     std::uint64_t ram_write_serial() const noexcept {
@@ -30,6 +33,10 @@ public:
         return trace_;
     }
 
+    std::uint64_t observation_tick_rate() const noexcept {
+        return observation_tick_rate_;
+    }
+
     std::uint64_t observe_apuram_write(
         spc_runtime_ram_write_origin origin,
         std::int64_t tick,
@@ -37,12 +44,11 @@ public:
         std::uint16_t address,
         const std::uint8_t* bytes,
         std::size_t byte_count) override {
+        validate_observation_time(tick, tick_rate);
         if (bytes == nullptr)
             throw std::invalid_argument("SPC runtime RAM observation requires bytes");
         if (byte_count == 0 || byte_count > spc_runtime_ram_size)
             throw std::invalid_argument("SPC runtime RAM observation size must be in [1, 65536]");
-        if (tick_rate == 0)
-            throw std::invalid_argument("SPC runtime RAM observation requires a non-zero tick rate");
 
         spc_runtime_trace_ram_write write;
         write.serial = ram_generation_.write_serial() + 1u;
@@ -54,6 +60,7 @@ public:
 
         trace_.ram_writes.push_back(std::move(write));
         ram_generation_.mark_write(address, byte_count);
+        commit_observation_time(tick, tick_rate);
         return ram_generation_.write_serial();
     }
 
@@ -80,10 +87,10 @@ public:
     }
 
     void observe_voice_event(spc_runtime_capture_record record) override {
-        if (record.tick_rate == 0)
-            throw std::invalid_argument("SPC runtime voice observation requires a non-zero tick rate");
+        validate_observation_time(record.tick, record.tick_rate);
         record.ram_write_serial = ram_generation_.write_serial();
         capture_.observe(record);
+        commit_observation_time(record.tick, record.tick_rate);
     }
 
     bool flush_window() {
@@ -112,9 +119,26 @@ public:
     }
 
 private:
+    void validate_observation_time(std::int64_t tick, std::uint64_t tick_rate) const {
+        if (tick_rate == 0)
+            throw std::invalid_argument("SPC runtime observation requires a non-zero tick rate");
+        if (observation_tick_rate_ != 0 && tick_rate != observation_tick_rate_)
+            throw std::invalid_argument("SPC runtime trace cannot mix device clock rates");
+        if (last_observation_tick_.has_value() && tick < *last_observation_tick_)
+            throw std::invalid_argument("SPC runtime observations must be time-monotonic");
+    }
+
+    void commit_observation_time(std::int64_t tick, std::uint64_t tick_rate) noexcept {
+        if (observation_tick_rate_ == 0)
+            observation_tick_rate_ = tick_rate;
+        last_observation_tick_ = tick;
+    }
+
     spc_runtime_capture capture_{};
     spc_ram_generation_tracker ram_generation_{};
     spc_runtime_trace trace_{};
+    std::uint64_t observation_tick_rate_ = 0;
+    std::optional<std::int64_t> last_observation_tick_{};
 };
 
 } // namespace gameaudio::spc
