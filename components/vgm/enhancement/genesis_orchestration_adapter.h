@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gameaudio::vgm {
@@ -21,8 +22,9 @@ inline bool genesis_orchestration_span_overlap(
     using namespace vgmtooling::model;
     if (!first.end.has_value() || !second.end.has_value())
         return false;
-    if (!part_role_same_time_basis(first.start, second.start) ||
-        !part_role_same_time_basis(*first.end, *second.end)) {
+    if (!part_role_same_time_basis(first.start, *first.end) ||
+        !part_role_same_time_basis(second.start, *second.end) ||
+        !part_role_same_time_basis(first.start, second.start)) {
         return false;
     }
     return first.start.tick < second.end->tick && second.start.tick < first.end->tick;
