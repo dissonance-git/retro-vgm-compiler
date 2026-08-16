@@ -10,13 +10,15 @@ Current executable lanes:
   * vgm-baseline: run the label-blind Genesis VGM trajectory/realization audit.
   * vgm-motif-probe: run an exploratory physical-channel local motif audit that
     remains explicitly below persistent-part and phrase truth.
+  * vgm-harmonic-probe: run an operator-aware surface-harmony pressure test that
+    exposes triads/root motion/tonal rankings while preserving promotion gates.
   * rom-forensics: run derived-only ROM provenance analysis in a deliberately
     separate forensic mode that must not leak into musical blind attribution.
 
-The shared C++ model now contains persistent-part, motif, cross-architecture
-interval, phrase-boundary, and creator-grammar primitives. Those lanes become
-real-corpus executable here only when the corresponding execution adapters can
-feed the corpus end to end. Do not advertise model availability as a corpus run.
+The shared C++ model contains the stronger persistent-part, motif, harmony,
+phrase, tonal-region, function, cadence, and creator-grammar primitives. An
+executable exploratory lane must never be advertised as having crossed a shared
+model gate that its real-corpus evidence has not earned.
 """
 
 from __future__ import annotations
@@ -188,11 +190,12 @@ def build_inventory(manifest_path: Path = MANIFEST_PATH) -> dict[str, Any]:
         "capability_lanes": {
             "blind_vgm_trajectory_realization": "executable",
             "blind_vgm_physical_channel_motif_probe": "executable_exploratory",
+            "blind_vgm_surface_harmony_probe": "executable_exploratory_with_shared_model_promotion_gates",
             "rom_forensics": "executable_separate_from_musical_blind_mode",
             "persistent_musical_parts": "implemented_shared_model_pending_real_corpus_execution",
             "cross_architecture_motif_profiles": "implemented_shared_model_pending_real_corpus_execution",
             "spc_creator_facing_relations": "implemented_part_motif_phrase_adapters_pending_real_corpus_execution",
-            "phrase_motif_harmony_form": "motif_and_phrase_implemented_harmony_form_pending",
+            "phrase_motif_harmony_form": "surface_harmony_executable; persistent_part_phrase_grounded_harmony_form_pending",
             "smps_hidden_oracle": "planned_real_corpus_supervision_lane",
             "cross_soundtrack_composer_grammar": "implemented_evidence_kernel_pending_real_observations",
             "blind_composer_attribution": "gated_on_frozen_blind_outputs_and_confound_controls",
@@ -253,6 +256,42 @@ def run_vgm_motif_probe(
     result["model_firewall"] = (
         "This probe is below persistent-part recovery. A high motif-probe similarity may "
         "motivate deeper analysis but is not composer evidence."
+    )
+    return result
+
+
+def run_vgm_harmonic_probe(
+    manifest_path: Path = MANIFEST_PATH,
+    *,
+    neighbor_count: int = 5,
+    pitch_tolerance_cents: float = 35.0,
+    presence_floor_ratio: float = 0.01,
+) -> dict[str, Any]:
+    manifest = _load_json(manifest_path)
+    ordered = _ordered_genesis_vgm_sets(manifest)
+    corpus_paths = _corpus_paths(ordered)
+
+    probe = _load_tool("sonic3_harmonic_probe", "sonic3_harmonic_probe.py")
+    result = probe.audit_soundtracks(
+        corpus_paths,
+        neighbor_count=neighbor_count,
+        cross_soundtrack_only=True,
+        pitch_tolerance_cents=pitch_tolerance_cents,
+        presence_floor_ratio=presence_floor_ratio,
+    )
+    result["testbed"] = "sonic3-primary-integration-testbed"
+    result["stage"] = "blind-vgm-surface-harmony-pressure-test"
+    result["target_corpus_id"] = TARGET_CORPUS_ID
+    result["eligible_corpus_ids"] = [str(item.get("corpus_id")) for item in ordered]
+    result["label_firewall"] = (
+        "No curated Sonic 3 attribution labels or external target_control_people are read. "
+        "Freeze this output before any attribution unblind."
+    )
+    result["model_firewall"] = (
+        "Surface performed-pitch/triad evidence may rank harmonic candidates, but the shared "
+        "model still requires persistent musical parts, structural pitch collections, "
+        "cross-origin tonal-center support, voice leading, and phrase arrival before key, "
+        "function, cadence, tonicization, or modulation may be promoted."
     )
     return result
 
@@ -332,6 +371,12 @@ def main() -> int:
     motif_parser.add_argument("--neighbors", type=int, default=5)
     motif_parser.add_argument("--window-events", type=int, default=4)
 
+    harmonic_parser = subparsers.add_parser("vgm-harmonic-probe")
+    harmonic_parser.add_argument("--json", type=Path)
+    harmonic_parser.add_argument("--neighbors", type=int, default=5)
+    harmonic_parser.add_argument("--pitch-tolerance-cents", type=float, default=35.0)
+    harmonic_parser.add_argument("--presence-floor-ratio", type=float, default=0.01)
+
     rom_parser = subparsers.add_parser("rom-forensics")
     rom_parser.add_argument("rom", type=Path)
     rom_parser.add_argument("--compare", type=Path)
@@ -369,6 +414,24 @@ def main() -> int:
                 args.manifest,
                 neighbor_count=args.neighbors,
                 window_events=args.window_events,
+            ),
+            args.json,
+        )
+        return 0
+
+    if args.command == "vgm-harmonic-probe":
+        if args.neighbors < 0:
+            parser.error("--neighbors must be >= 0")
+        if args.pitch_tolerance_cents <= 0.0:
+            parser.error("--pitch-tolerance-cents must be > 0")
+        if not 0.0 < args.presence_floor_ratio < 1.0:
+            parser.error("--presence-floor-ratio must lie in (0, 1)")
+        _write_result(
+            run_vgm_harmonic_probe(
+                args.manifest,
+                neighbor_count=args.neighbors,
+                pitch_tolerance_cents=args.pitch_tolerance_cents,
+                presence_floor_ratio=args.presence_floor_ratio,
             ),
             args.json,
         )
