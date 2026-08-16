@@ -210,3 +210,22 @@ set_tests_properties(
     cube_evidence_worlds_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    spc_label_blind_corpus_features_test
+)
+
+add_executable(
+    spc_label_blind_corpus_features_test
+    tests/spc/spc_label_blind_corpus_features_test.cpp
+)
+
+target_include_directories(
+    spc_label_blind_corpus_features_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME spc_label_blind_corpus_features
+    COMMAND spc_label_blind_corpus_features_test
+)
