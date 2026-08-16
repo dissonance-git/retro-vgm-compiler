@@ -52,6 +52,7 @@ struct orchestration_transition_hypothesis {
     node_id second_part_id = 0;
     musical_part_role first_role = musical_part_role::unresolved;
     musical_part_role second_role = musical_part_role::unresolved;
+    time_coordinate transition_time{};
     bool persistent_part_preserved = false;
     bool role_preserved = false;
     bool realization_comparable = false;
@@ -156,6 +157,7 @@ inline orchestration_transition_hypothesis infer_orchestration_transition(
     result.second_part_id = second.part_id;
     result.first_role = first.role;
     result.second_role = second.role;
+    result.transition_time = second.active.start;
     result.persistent_part_preserved = first.part_id == second.part_id;
     result.role_preserved = first.role == second.role;
     result.confidence = std::min(first.confidence, second.confidence);
