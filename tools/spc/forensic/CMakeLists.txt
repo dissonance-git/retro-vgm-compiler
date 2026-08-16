@@ -67,6 +67,11 @@ target_compile_definitions(gameaudio_snes_spc_forensic
     PRIVATE
         HAVE_STDINT_H=1
         SPC_LESS_ACCURATE=0
+        # Force the accurate DSP to catch up at SPC700 memory-access
+        # boundaries. Playback normally permits lazy DSP catch-up, but a
+        # forensic APURAM trace needs host callback order to preserve hardware
+        # causal order between CPU writes and DSP/echo phases.
+        SPC_MORE_ACCURACY=1
 )
 
 target_compile_features(gameaudio_snes_spc_forensic PUBLIC cxx_std_17)
