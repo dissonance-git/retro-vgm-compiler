@@ -93,6 +93,8 @@ collect_genesis_part_gestures(
             return static_cast<int>(first.onset.domain) < static_cast<int>(second.onset.domain);
         if (first.onset.tick_rate != second.onset.tick_rate)
             return first.onset.tick_rate < second.onset.tick_rate;
+        if (first.onset.loop_iteration != second.onset.loop_iteration)
+            return first.onset.loop_iteration < second.onset.loop_iteration;
         return first.onset.tick < second.onset.tick;
     });
     return observations;
