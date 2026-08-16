@@ -93,6 +93,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         genesis_performance_adapter_test
         genesis_pitch_control_adapter_test
         ym2612_performed_pitch_motion_test
+        genesis_performed_part_motif_test
         spc_snapshot_test
         spc_brr_sample_test
         spc_runtime_voice_adapter_test
@@ -165,6 +166,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(genesis_performance_adapter_test tests/vgm/genesis_performance_adapter_test.cpp)
     add_executable(genesis_pitch_control_adapter_test tests/vgm/genesis_pitch_control_adapter_test.cpp)
     add_executable(ym2612_performed_pitch_motion_test tests/vgm/ym2612_performed_pitch_motion_test.cpp)
+    add_executable(genesis_performed_part_motif_test tests/vgm/genesis_performed_part_motif_test.cpp)
     add_executable(spc_snapshot_test tests/spc/spc_snapshot_test.cpp)
     add_executable(spc_brr_sample_test tests/spc/spc_brr_sample_test.cpp)
     add_executable(spc_runtime_voice_adapter_test tests/spc/spc_runtime_voice_adapter_test.cpp)
@@ -267,6 +269,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME genesis_performance_adapter COMMAND genesis_performance_adapter_test)
     add_test(NAME genesis_pitch_control_adapter COMMAND genesis_pitch_control_adapter_test)
     add_test(NAME ym2612_performed_pitch_motion COMMAND ym2612_performed_pitch_motion_test)
+    add_test(NAME genesis_performed_part_motif COMMAND genesis_performed_part_motif_test)
     add_test(NAME spc_snapshot COMMAND spc_snapshot_test)
     add_test(NAME spc_brr_sample COMMAND spc_brr_sample_test)
     add_test(NAME spc_runtime_voice_adapter COMMAND spc_runtime_voice_adapter_test)
