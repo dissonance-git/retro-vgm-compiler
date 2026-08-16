@@ -96,6 +96,7 @@ constexpr double tonal_region_return_candidate_ceiling = 0.82;
 constexpr double tonal_region_strong_conflict_ceiling = 0.49;
 constexpr double tonal_region_strong_counterevidence_threshold = 0.70;
 constexpr double tonal_region_min_grounded_center_confidence = 0.69;
+constexpr double tonal_region_required_evidence_threshold = 0.60;
 
 inline const char* to_string(tonal_region_topology topology) noexcept {
     switch (topology) {
@@ -172,7 +173,6 @@ inline tonal_region_topology infer_tonal_region_topology(
         throw std::invalid_argument("tonal-region relation requires finite valid regions");
     if (!compatible_tonal_region_time_basis(source, target))
         throw std::invalid_argument("tonal-region relation requires one compatible time basis");
-
     if (source.end->tick <= target.start.tick)
         return tonal_region_topology::sequential;
     if (time_span_contains_span(source, target))
@@ -188,13 +188,15 @@ inline std::string tonal_region_dependency_key(const tonal_region_relation_evide
     return std::string{"origin:"} + to_string(evidence.origin);
 }
 
-inline bool has_relation_evidence_kind(
+inline double strongest_relation_evidence_confidence(
     const std::vector<tonal_region_relation_evidence>& evidence,
-    tonal_region_relation_evidence_kind kind,
-    double minimum_confidence = 0.0) noexcept {
-    return std::any_of(evidence.begin(), evidence.end(), [&](const auto& item) {
-        return item.supports_relation && item.kind == kind && item.confidence >= minimum_confidence;
-    });
+    tonal_region_relation_evidence_kind kind) noexcept {
+    double strongest = 0.0;
+    for (const auto& item : evidence) {
+        if (item.supports_relation && item.kind == kind)
+            strongest = std::max(strongest, item.confidence);
+    }
+    return strongest;
 }
 
 inline tonal_region_relation_hypothesis infer_tonal_region_relation(
@@ -206,9 +208,8 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
     double center_equivalence_tolerance_octaves = tonal_region_center_equivalence_tolerance_octaves) {
     if (!std::isfinite(center_equivalence_tolerance_octaves) ||
         center_equivalence_tolerance_octaves <= 0.0 ||
-        center_equivalence_tolerance_octaves >= 0.5) {
+        center_equivalence_tolerance_octaves >= 0.5)
         throw std::invalid_argument("tonal-region center equivalence tolerance is invalid");
-    }
 
     tonal_region_relation_hypothesis result;
     result.topology = infer_tonal_region_topology(source_center.region, target_center.region);
@@ -217,11 +218,11 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
     result.source_center_octave_class = normalize_octave_class(source_center.center_octave_class);
     result.target_center_octave_class = normalize_octave_class(target_center.center_octave_class);
     result.center_distance_octaves = circular_octave_class_distance(
-        result.source_center_octave_class,
-        result.target_center_octave_class);
+        result.source_center_octave_class, result.target_center_octave_class);
     result.centers_equivalent = result.center_distance_octaves <= center_equivalence_tolerance_octaves;
     result.target_center_cross_origin_grounded = target_center.cross_origin_grounded;
 
+    double target_key_confidence = 0.0;
     if (target_key.has_value()) {
         const auto& key = *target_key;
         if (!time_span_contains_span(target_center.region, key.region))
@@ -229,19 +230,19 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
         if (key.key_class_resolved &&
             circular_octave_class_distance(
                 key.center_octave_class,
-                target_center.center_octave_class) > center_equivalence_tolerance_octaves) {
+                target_center.center_octave_class) > center_equivalence_tolerance_octaves)
             throw std::invalid_argument("resolved target key class disagrees with target tonal center");
-        }
         result.target_key_class_resolved = key.key_class_resolved;
+        if (key.key_class_resolved)
+            target_key_confidence = key.confidence;
     }
 
     result.return_reference_supplied = return_reference.has_value();
     if (return_reference.has_value()) {
         if (!finite_valid_tonal_region(return_reference->region) ||
             !compatible_tonal_region_time_basis(return_reference->region, source_center.region) ||
-            return_reference->region.end->tick > source_center.region.start.tick) {
+            return_reference->region.end->tick > source_center.region.start.tick)
             throw std::invalid_argument("return reference must be an earlier compatible tonal region");
-        }
         result.target_matches_return_reference =
             circular_octave_class_distance(
                 target_center.center_octave_class,
@@ -261,7 +262,7 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
         }
         result.supporting_evidence.push_back(item);
         const std::string dependency = tonal_region_dependency_key(item);
-        auto found = best_support_by_dependency.find(dependency);
+        const auto found = best_support_by_dependency.find(dependency);
         if (found == best_support_by_dependency.end() || item.confidence > found->second) {
             best_support_by_dependency[dependency] = item.confidence;
             origin_by_dependency[dependency] = item.origin;
@@ -279,37 +280,33 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
     result.independent_support_origins = independent_origins.size();
     result.independent_support_ceiling = independent_strengths.empty()
         ? 0.0
-        : independent_strengths.size() == 1
-            ? independent_strengths[0]
-            : independent_strengths[1];
+        : independent_strengths.size() == 1 ? independent_strengths[0] : independent_strengths[1];
 
     const double base_confidence = std::min(source_center.confidence, target_center.confidence);
     const bool target_grounded = target_center.cross_origin_grounded &&
         target_center.confidence >= tonal_region_min_grounded_center_confidence;
-    const bool phrase_partition = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::phrase_partition,
-        0.60);
-    const bool structural_arrival = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::structural_arrival,
-        0.60);
-    const bool persistence = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::center_persistence,
-        0.60);
-    const bool structural_collection = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::structural_pitch_collection,
-        0.60) || result.target_key_class_resolved;
-    const bool return_reentry = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::return_reentry,
-        0.60);
-    const bool form_recurrence = has_relation_evidence_kind(
-        result.supporting_evidence,
-        tonal_region_relation_evidence_kind::form_recurrence,
-        0.60);
+    const double phrase_partition_confidence = strongest_relation_evidence_confidence(
+        result.supporting_evidence, tonal_region_relation_evidence_kind::phrase_partition);
+    const double arrival_confidence = strongest_relation_evidence_confidence(
+        result.supporting_evidence, tonal_region_relation_evidence_kind::structural_arrival);
+    const double persistence_confidence = strongest_relation_evidence_confidence(
+        result.supporting_evidence, tonal_region_relation_evidence_kind::center_persistence);
+    const double structural_collection_confidence = std::max(
+        strongest_relation_evidence_confidence(
+            result.supporting_evidence,
+            tonal_region_relation_evidence_kind::structural_pitch_collection),
+        target_key_confidence);
+    const double return_reentry_confidence = strongest_relation_evidence_confidence(
+        result.supporting_evidence, tonal_region_relation_evidence_kind::return_reentry);
+    const double form_recurrence_confidence = strongest_relation_evidence_confidence(
+        result.supporting_evidence, tonal_region_relation_evidence_kind::form_recurrence);
+
+    const bool phrase_partition = phrase_partition_confidence >= tonal_region_required_evidence_threshold;
+    const bool structural_arrival = arrival_confidence >= tonal_region_required_evidence_threshold;
+    const bool persistence = persistence_confidence >= tonal_region_required_evidence_threshold;
+    const bool structural_collection = structural_collection_confidence >= tonal_region_required_evidence_threshold;
+    const bool return_reentry = return_reentry_confidence >= tonal_region_required_evidence_threshold;
+    const bool form_recurrence = form_recurrence_confidence >= tonal_region_required_evidence_threshold;
 
     if (result.centers_equivalent) {
         result.kind = tonal_region_relation_kind::retained_center;
@@ -319,63 +316,46 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
         result.confidence = std::min(base_confidence, tonal_region_contrast_ceiling);
 
         if (result.topology == tonal_region_topology::target_nested_in_source &&
-            target_grounded &&
-            result.independent_support_groups >= 2 &&
-            result.independent_support_origins >= 2 &&
-            structural_arrival &&
+            target_grounded && result.independent_support_groups >= 2 &&
+            result.independent_support_origins >= 2 && structural_arrival &&
             (structural_collection || persistence)) {
+            const double stabilization_confidence = std::max(
+                structural_collection_confidence,
+                persistence_confidence);
             result.kind = tonal_region_relation_kind::tonicization_candidate;
             result.confidence = std::min(
-                {base_confidence,
-                 result.independent_support_ceiling,
+                {base_confidence, result.independent_support_ceiling,
+                 arrival_confidence, stabilization_confidence,
                  tonal_region_tonicization_candidate_ceiling});
         }
 
         if (result.topology == tonal_region_topology::sequential &&
-            target_grounded &&
-            result.independent_support_groups >= 3 &&
-            result.independent_support_origins >= 2 &&
-            phrase_partition &&
-            structural_arrival &&
-            persistence &&
-            structural_collection) {
+            target_grounded && result.independent_support_groups >= 3 &&
+            result.independent_support_origins >= 2 && phrase_partition &&
+            structural_arrival && persistence && structural_collection) {
             result.kind = tonal_region_relation_kind::modulation_candidate;
-            const double third_support = independent_strengths.size() >= 3
-                ? independent_strengths[2]
-                : 0.0;
             result.confidence = std::min(
-                {base_confidence,
-                 result.independent_support_ceiling,
-                 third_support,
+                {base_confidence, result.independent_support_ceiling,
+                 phrase_partition_confidence, arrival_confidence,
+                 persistence_confidence, structural_collection_confidence,
                  tonal_region_modulation_candidate_ceiling});
         }
 
         if (result.topology == tonal_region_topology::sequential &&
-            result.return_reference_supplied &&
-            result.target_matches_return_reference &&
-            target_grounded &&
-            return_reentry &&
-            form_recurrence &&
-            structural_arrival &&
-            result.independent_support_groups >= 3 &&
-            result.independent_support_origins >= 2) {
+            result.return_reference_supplied && result.target_matches_return_reference &&
+            target_grounded && return_reentry && form_recurrence && structural_arrival &&
+            result.independent_support_groups >= 3 && result.independent_support_origins >= 2) {
             result.kind = tonal_region_relation_kind::return_candidate;
-            const double third_support = independent_strengths.size() >= 3
-                ? independent_strengths[2]
-                : 0.0;
             result.confidence = std::min(
-                {base_confidence,
-                 result.independent_support_ceiling,
-                 third_support,
-                 tonal_region_return_candidate_ceiling});
+                {base_confidence, result.independent_support_ceiling,
+                 return_reentry_confidence, form_recurrence_confidence,
+                 arrival_confidence, tonal_region_return_candidate_ceiling});
         }
     }
 
     if (result.strong_counterevidence)
         result.confidence = std::min(result.confidence, tonal_region_strong_conflict_ceiling);
 
-    // Candidate relation labels remain hypotheses. This layer does not establish
-    // functional modulation, tonicization, pivot function or Roman numerals.
     result.modulation_established = false;
     result.tonicization_established = false;
     return result;
@@ -399,62 +379,24 @@ inline node_id add_tonal_region_relation_hypothesis(
             ? *hypothesis.source_region.end
             : *hypothesis.target_region.end;
     relation.active = time_span{hypothesis.source_region.start, relation_end};
-    relation.attributes.push_back({
-        "identity_scope",
-        std::string{"tonal_region_relation_hypothesis"},
-        evidence_status::hypothesis,
-        hypothesis.confidence,
-        "",
-    });
-    relation.attributes.push_back({
-        "relation_kind",
-        std::string{to_string(hypothesis.kind)},
-        evidence_status::hypothesis,
-        hypothesis.confidence,
-        "",
-    });
-    relation.attributes.push_back({
-        "topology",
-        std::string{to_string(hypothesis.topology)},
-        evidence_status::derived,
-        1.0,
-        "",
-    });
-    relation.attributes.push_back({
-        "center_distance_octaves",
-        hypothesis.center_distance_octaves,
-        evidence_status::derived,
-        1.0,
-        "octaves modulo 1",
-    });
-    relation.attributes.push_back({
-        "target_key_class_resolved",
-        hypothesis.target_key_class_resolved,
-        evidence_status::derived,
-        1.0,
-        "",
-    });
-    relation.attributes.push_back({
-        "modulation_established",
-        false,
-        evidence_status::derived,
-        1.0,
-        "",
-    });
-    relation.attributes.push_back({
-        "tonicization_established",
-        false,
-        evidence_status::derived,
-        1.0,
-        "",
-    });
-    relation.provenance.push_back({
-        evidence_status::hypothesis,
-        hypothesis.confidence,
-        "hierarchical tonal-region evidence",
-        std::nullopt,
-        "relation among grounded tonal-center regions; candidate labels do not by themselves establish functional modulation, tonicization, pivot function, or Roman-numeral analysis",
-    });
+    relation.attributes.push_back({"identity_scope",
+        std::string{"tonal_region_relation_hypothesis"}, evidence_status::hypothesis,
+        hypothesis.confidence, ""});
+    relation.attributes.push_back({"relation_kind", std::string{to_string(hypothesis.kind)},
+        evidence_status::hypothesis, hypothesis.confidence, ""});
+    relation.attributes.push_back({"topology", std::string{to_string(hypothesis.topology)},
+        evidence_status::derived, 1.0, ""});
+    relation.attributes.push_back({"center_distance_octaves", hypothesis.center_distance_octaves,
+        evidence_status::derived, 1.0, "octaves modulo 1"});
+    relation.attributes.push_back({"target_key_class_resolved", hypothesis.target_key_class_resolved,
+        evidence_status::derived, 1.0, ""});
+    relation.attributes.push_back({"modulation_established", false,
+        evidence_status::derived, 1.0, ""});
+    relation.attributes.push_back({"tonicization_established", false,
+        evidence_status::derived, 1.0, ""});
+    relation.provenance.push_back({evidence_status::hypothesis, hypothesis.confidence,
+        "hierarchical tonal-region evidence", std::nullopt,
+        "relation among grounded tonal-center regions; candidate labels do not by themselves establish functional modulation, tonicization, pivot function, or Roman-numeral analysis"});
     const node_id relation_id = graph.add_node(std::move(relation));
 
     for (const auto& item : hypothesis.supporting_evidence) {
@@ -464,13 +406,8 @@ inline node_id add_tonal_region_relation_hypothesis(
         support.kind = edge_kind::derived_from;
         support.from = item.source_node;
         support.to = relation_id;
-        support.attributes.push_back({
-            "support_role",
-            std::string{to_string(item.kind)},
-            item.status,
-            item.confidence,
-            item.source,
-        });
+        support.attributes.push_back({"support_role", std::string{to_string(item.kind)},
+            item.status, item.confidence, item.source});
         graph.add_edge(std::move(support));
     }
     return relation_id;
