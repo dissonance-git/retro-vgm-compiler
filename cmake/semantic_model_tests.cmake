@@ -147,3 +147,22 @@ set_tests_properties(
     sonic3_mixed_harmonic_probe_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    blind_attribution_experiment_test
+)
+
+add_executable(
+    blind_attribution_experiment_test
+    tests/model/blind_attribution_experiment_test.cpp
+)
+
+target_include_directories(
+    blind_attribution_experiment_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME blind_attribution_experiment
+    COMMAND blind_attribution_experiment_test
+)
