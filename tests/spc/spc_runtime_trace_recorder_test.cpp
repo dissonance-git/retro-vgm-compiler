@@ -1,0 +1,125 @@
+#include "components/spc/spc_runtime_trace_recorder.h"
+
+#include <cassert>
+#include <cstdint>
+#include <stdexcept>
+#include <utility>
+
+using namespace gameaudio::spc;
+
+namespace {
+
+spc_runtime_capture_record event(
+    std::int64_t tick,
+    std::uint8_t voice = 0) {
+    spc_runtime_capture_record record;
+    record.kind = spc_voice_runtime_event_kind::key_on_accepted;
+    record.fields =
+        spc_runtime_capture_field::voice |
+        spc_runtime_capture_field::source_index |
+        spc_runtime_capture_field::pitch_rate;
+    record.tick = tick;
+    record.tick_rate = 1024000;
+    record.voice = voice;
+    record.source_index = 3;
+    record.pitch_rate = 0x1000;
+    // These are deliberately poisoned. The recorder must own both clocks.
+    record.trace_index = 999999;
+    record.ram_write_serial = 999999;
+    return record;
+}
+
+} // namespace
+
+int main() {
+    {
+        spc_runtime_trace_recorder recorder;
+        recorder.observe_voice_event(event(10));
+        assert(recorder.ram_write_serial() == 0);
+        assert(recorder.next_trace_index() == 1);
+
+        assert(recorder.observe_apuram_write_byte(0x2000, 0x11) == 1);
+        recorder.observe_voice_event(event(20));
+
+        assert(recorder.observe_apuram_write_le16(0xFFFF, 0x4433) == 2);
+        recorder.observe_voice_event(event(30));
+        assert(recorder.flush_window());
+
+        const auto& trace = recorder.trace();
+        assert(trace.ram_writes.size() == 2);
+        assert(trace.ram_writes[0].serial == 1);
+        assert(trace.ram_writes[0].address == 0x2000);
+        assert(trace.ram_writes[0].bytes.size() == 1);
+        assert(trace.ram_writes[0].bytes[0] == 0x11);
+        assert(trace.ram_writes[1].serial == 2);
+        assert(trace.ram_writes[1].address == 0xFFFF);
+        assert(trace.ram_writes[1].bytes.size() == 2);
+        assert(trace.ram_writes[1].bytes[0] == 0x33);
+        assert(trace.ram_writes[1].bytes[1] == 0x44);
+
+        assert(trace.windows.size() == 1);
+        assert(trace.windows[0].records.size() == 3);
+        assert(trace.windows[0].records[0].trace_index == 0);
+        assert(trace.windows[0].records[1].trace_index == 1);
+        assert(trace.windows[0].records[2].trace_index == 2);
+        assert(trace.windows[0].records[0].ram_write_serial == 0);
+        assert(trace.windows[0].records[1].ram_write_serial == 1);
+        assert(trace.windows[0].records[2].ram_write_serial == 2);
+        assert(trace.windows[0].next_trace_index == 3);
+        assert(!trace.windows[0].overflowed);
+        assert(trace.windows[0].dropped == 0);
+
+        // Empty drains do not create synthetic evidence windows.
+        assert(!recorder.flush_window());
+        assert(recorder.trace().windows.size() == 1);
+
+        auto completed = recorder.finish();
+        assert(completed.ram_writes.size() == 2);
+        assert(completed.windows.size() == 1);
+        assert(recorder.ram_write_serial() == 0);
+        assert(recorder.next_trace_index() == 0);
+        assert(recorder.trace().ram_writes.empty());
+        assert(recorder.trace().windows.empty());
+    }
+
+    {
+        spc_runtime_trace_recorder recorder;
+        for (std::size_t index = 0;
+             index < spc_runtime_capture::capacity + 2;
+             ++index) {
+            recorder.observe_voice_event(event(static_cast<std::int64_t>(index)));
+        }
+        assert(recorder.flush_window());
+
+        const auto& window = recorder.trace().windows.front();
+        assert(window.records.size() == spc_runtime_capture::capacity);
+        assert(window.overflowed);
+        assert(window.dropped == 2);
+        assert(window.first_dropped.has_value());
+        assert(window.first_dropped->trace_index == spc_runtime_capture::capacity);
+        assert(window.next_trace_index == spc_runtime_capture::capacity + 2);
+
+        // Trace identity must continue across a drain, not restart at zero.
+        recorder.observe_voice_event(event(20000));
+        assert(recorder.flush_window());
+        assert(recorder.trace().windows.size() == 2);
+        assert(recorder.trace().windows[1].records.size() == 1);
+        assert(recorder.trace().windows[1].records[0].trace_index ==
+               spc_runtime_capture::capacity + 2);
+    }
+
+    {
+        spc_runtime_trace_recorder recorder;
+        auto invalid = event(0);
+        invalid.tick_rate = 0;
+        bool threw = false;
+        try {
+            recorder.observe_voice_event(invalid);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+    }
+
+    return 0;
+}
