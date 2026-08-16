@@ -5,14 +5,16 @@ The runner discovers the Sonic 3 target and predeclared attribution-control
 soundtracks from the corpus manifest without reading creator names or curated
 track-attribution labels during blind stages.
 
-Current executable lane:
+Current executable lanes:
   * inventory: report testbed coverage and lane eligibility.
   * vgm-baseline: run the existing label-blind Genesis VGM trajectory/
     realization audit over Sonic 3 plus eligible cross-soundtrack controls.
+  * rom-forensics: run derived-only ROM provenance analysis in a deliberately
+    separate forensic mode that must not leak into musical blind attribution.
 
-Future lanes (persistent parts, SMPS oracle, ROM forensics, SPC musical
-relations, composer grammar) should join this entry point rather than creating
-parallel testbed metadata.
+Future lanes (persistent parts, SMPS oracle, SPC musical relations, phrase/form,
+composer grammar) should join this entry point rather than creating parallel
+testbed metadata.
 """
 
 from __future__ import annotations
@@ -38,6 +40,17 @@ def _load_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"expected object in {path}")
     return data
+
+
+def _load_tool(module_name: str, file_name: str):
+    path = Path(__file__).with_name(file_name)
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def _manifest_sets(manifest: dict[str, Any]) -> list[dict[str, Any]]:
@@ -146,26 +159,15 @@ def build_inventory(manifest_path: Path = MANIFEST_PATH) -> dict[str, Any]:
         "controls": controls,
         "capability_lanes": {
             "blind_vgm_trajectory_realization": "executable",
+            "rom_forensics": "executable_separate_from_musical_blind_mode",
             "persistent_musical_parts": "in_progress",
             "smps_hidden_oracle": "planned",
-            "rom_forensics": "planned_separate_from_musical_blind_mode",
             "spc_creator_facing_relations": "planned",
             "phrase_motif_harmony_form": "planned",
             "cross_soundtrack_composer_grammar": "gated_on_deeper_musical_model",
             "blind_composer_attribution": "gated_on_confound_controls",
         },
     }
-
-
-def _load_cross_soundtrack_audit():
-    path = Path(__file__).with_name("cross_soundtrack_vgm_audit.py")
-    spec = importlib.util.spec_from_file_location("cross_soundtrack_vgm_audit", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
 
 
 def run_vgm_baseline(
@@ -180,8 +182,6 @@ def run_vgm_baseline(
     if len(target) != 1:
         raise ValueError("Sonic 3 target is not uniquely eligible for Genesis VGM audit")
 
-    # Target first makes the experiment contract obvious. Control order is
-    # deterministic and contains no creator labels.
     controls = sorted(
         (item for item in eligible if item.get("corpus_id") != TARGET_CORPUS_ID),
         key=lambda item: str(item.get("corpus_id")),
@@ -198,7 +198,7 @@ def run_vgm_baseline(
             raise FileNotFoundError(path)
         corpus_paths.append(path)
 
-    audit = _load_cross_soundtrack_audit()
+    audit = _load_tool("cross_soundtrack_vgm_audit", "cross_soundtrack_vgm_audit.py")
     result = audit.audit_soundtracks(
         corpus_paths,
         neighbor_count=neighbor_count,
@@ -212,6 +212,51 @@ def run_vgm_baseline(
         "No curated Sonic 3 attribution labels or external target_control_people "
         "are read by this stage. Unblind only after this JSON is frozen."
     )
+    return result
+
+
+def run_rom_forensics(
+    rom: Path,
+    *,
+    compare: Path | None = None,
+    needles: list[str] | None = None,
+    needle_file: Path | None = None,
+    min_string: int = 5,
+    min_padding: int = 32,
+    min_equal_run: int = 64,
+    block_size: int = 4096,
+    max_items: int = 2000,
+) -> dict[str, Any]:
+    forensic = _load_tool("sonic3_rom_forensics", "sonic3_rom_forensics.py")
+    needle_values = forensic._read_needles(needles or [], needle_file)
+    left = rom.read_bytes()
+    result: dict[str, Any] = {
+        "testbed": "sonic3-primary-integration-testbed",
+        "stage": "rom-forensics",
+        "mode": "forensic-only",
+        "musical_blind_firewall": (
+            "This stage may expose provenance shortcuts. Freeze musical-blind "
+            "outputs before admitting any result from this object."
+        ),
+        "scan": forensic.scan_bytes(
+            left,
+            source_name=str(rom),
+            needles=needle_values,
+            min_string=min_string,
+            min_padding=min_padding,
+            max_items=max_items,
+        ),
+    }
+    if compare is not None:
+        right = compare.read_bytes()
+        result["comparison_source"] = str(compare)
+        result["comparison"] = forensic.compare_bytes(
+            left,
+            right,
+            min_equal_run=min_equal_run,
+            block_size=block_size,
+            max_items=max_items,
+        )
     return result
 
 
@@ -240,6 +285,18 @@ def main() -> int:
     vgm_parser.add_argument("--json", type=Path)
     vgm_parser.add_argument("--neighbors", type=int, default=5)
 
+    rom_parser = subparsers.add_parser("rom-forensics")
+    rom_parser.add_argument("rom", type=Path)
+    rom_parser.add_argument("--compare", type=Path)
+    rom_parser.add_argument("--json", type=Path)
+    rom_parser.add_argument("--needle", action="append", default=[])
+    rom_parser.add_argument("--needle-file", type=Path)
+    rom_parser.add_argument("--min-string", type=int, default=5)
+    rom_parser.add_argument("--min-padding", type=int, default=32)
+    rom_parser.add_argument("--min-equal-run", type=int, default=64)
+    rom_parser.add_argument("--block-size", type=int, default=4096)
+    rom_parser.add_argument("--max-items", type=int, default=2000)
+
     args = parser.parse_args()
 
     if args.command == "inventory":
@@ -251,6 +308,25 @@ def main() -> int:
             parser.error("--neighbors must be >= 0")
         _write_result(
             run_vgm_baseline(args.manifest, neighbor_count=args.neighbors),
+            args.json,
+        )
+        return 0
+
+    if args.command == "rom-forensics":
+        if args.max_items < 0:
+            parser.error("--max-items must be >= 0")
+        _write_result(
+            run_rom_forensics(
+                args.rom,
+                compare=args.compare,
+                needles=args.needle,
+                needle_file=args.needle_file,
+                min_string=args.min_string,
+                min_padding=args.min_padding,
+                min_equal_run=args.min_equal_run,
+                block_size=args.block_size,
+                max_items=args.max_items,
+            ),
             args.json,
         )
         return 0
