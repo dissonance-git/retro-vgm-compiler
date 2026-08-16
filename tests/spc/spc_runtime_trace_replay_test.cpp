@@ -53,12 +53,7 @@ spc_runtime_capture_record sample_phase(
 }
 
 spc_runtime_trace make_trace() {
-    spc_snapshot snapshot;
-    snapshot.source_size = spc_min_file_size;
-    // One complete BRR block at 0x2000. The second byte will be rewritten later.
-    snapshot.ram[0x2000] = 0x01;
-
-    auto trace = begin_spc_runtime_trace_from_snapshot(snapshot);
+    spc_runtime_trace trace;
     trace.ram_writes.push_back({1, 0x2001, {0x55}});
 
     spc_runtime_trace_window window;
@@ -74,6 +69,7 @@ spc_runtime_trace make_trace() {
 spc_snapshot make_snapshot() {
     spc_snapshot snapshot;
     snapshot.source_size = spc_min_file_size;
+    // One complete BRR block at 0x2000. The second byte will be rewritten later.
     snapshot.ram[0x2000] = 0x01;
     return snapshot;
 }
@@ -102,6 +98,7 @@ int main() {
             graph,
             runtime,
             samples,
+            snapshot,
             trace);
 
         assert(replayed.windows_replayed == 1);
@@ -142,7 +139,35 @@ int main() {
         trace.windows.front().records.back().ram_write_serial = 2;
         bool threw = false;
         try {
-            (void)replay_spc_runtime_trace(graph, runtime, samples, trace);
+            (void)replay_spc_runtime_trace(graph, runtime, samples, snapshot, trace);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+    }
+
+    {
+        // Corrupt capture ordering is not converted into a synthetic timeline.
+        auto snapshot = make_snapshot();
+        musical_execution_graph graph;
+        const auto snapshot_graph = materialize_spc_snapshot(
+            graph,
+            snapshot,
+            "synthetic-spc");
+        auto runtime = begin_spc_runtime_voice_trace(
+            graph,
+            snapshot_graph,
+            "synthetic-runtime",
+            to_flags(provenance_flag::runtime_capture));
+        auto samples = begin_spc_runtime_sample_graph(
+            "synthetic-runtime",
+            to_flags(provenance_flag::runtime_capture));
+
+        auto trace = make_trace();
+        trace.windows.front().records[2].trace_index = 1;
+        bool threw = false;
+        try {
+            (void)replay_spc_runtime_trace(graph, runtime, samples, snapshot, trace);
         } catch (const std::invalid_argument&) {
             threw = true;
         }
