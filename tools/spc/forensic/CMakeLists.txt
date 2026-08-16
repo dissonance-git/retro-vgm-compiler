@@ -38,7 +38,7 @@ FetchContent_Declare(
     UPDATE_DISCONNECTED TRUE
     PATCH_COMMAND
         ${Python3_EXECUTABLE}
-        ${RETRO_VGM_COMPILER_ROOT}/tools/spc/patch_snes_spc_runtime.py
+        ${RETRO_VGM_COMPILER_ROOT}/tools/spc/patch_snes_spc_runtime_strict.py
         <SOURCE_DIR>
 )
 
