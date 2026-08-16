@@ -43,7 +43,7 @@ inline const char* to_string(phrase_relation_kind kind) noexcept {
 
 inline const attribute* phrase_region_scope_attribute(const node& value) noexcept {
     for (const auto& item : value.attributes) {
-        if (item.name == "identity_scope")
+        if (item.key == "identity_scope")
             return &item;
     }
     return nullptr;
