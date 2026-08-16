@@ -16,7 +16,9 @@ The project deliberately couples several evidence layers while preserving their 
 - [`rom-forensics.md`](rom-forensics.md) studies ROM-level implementation evidence and how it constrains attribution without turning implementation into composition evidence.
 - [`smps-pitch-recovery.md`](smps-pitch-recovery.md) studies inverse recovery of source-side SMPS pitch trajectories from downstream YM2612 execution.
 - [`cross-representation-controls.md`](cross-representation-controls.md) provides paired VGM/SPC and cross-representation controls for separating composition, arrangement, implementation, and format effects.
-- [`curated-attribution-hypotheses.json`](curated-attribution-hypotheses.json) is the machine-readable hypothesis surface used by the project tooling.
+- [`attribution-control-admissions.jsonl`](attribution-control-admissions.jsonl) is the role-specific, exact-fixture supervision boundary. Locator metadata cannot become a composer control without an independent admission here.
+- [`cube-calibration-policy.json`](cube-calibration-policy.json) defines the Ancient Magic / Terranigma Takaoka-versus-Hikichi calibration experiment, including joint-composition, disputed-mapping, weak-recollection, and third-party holdouts.
+- [`curated-attribution-hypotheses.json`](curated-attribution-hypotheses.json) is the machine-readable hypothesis surface used by the project tooling; it is revisable evaluation context rather than attribution ground truth.
 
 ## Shared project model
 
