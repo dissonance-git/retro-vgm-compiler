@@ -18,7 +18,9 @@ part_gesture_observation gesture(
     double pitch,
     const char* basis = "synthetic-pitch",
     std::int64_t loop_iteration = 0,
-    const char* interval_semantics = "log2_frequency_ratio_octaves") {
+    const char* interval_semantics = "log2_frequency_ratio_octaves",
+    evidence_status status = evidence_status::derived,
+    double confidence = 1.0) {
     return {
         node,
         part,
@@ -26,6 +28,8 @@ part_gesture_observation gesture(
         pitch,
         basis,
         interval_semantics,
+        status,
+        confidence,
     };
 }
 
@@ -63,9 +67,34 @@ int main() {
     assert(close_enough(invariant.rhythm_similarity, 1.0));
     assert(close_enough(*invariant.contour_similarity, 1.0));
     assert(close_enough(invariant.combined_similarity, 1.0));
+    assert(close_enough(invariant.evidence_confidence, 1.0));
     assert(close_enough(invariant.identity_confidence, 1.0));
     assert(invariant.transposition_invariant);
     assert(invariant.tempo_scale_invariant);
+
+    // Perfect structural correspondence cannot strengthen uncertain upstream
+    // evidence. This is important for FM missing-fundamental and other
+    // performed-pitch hypotheses whose geometry may be exact conditional on a
+    // confidence-capped interpretation.
+    const auto uncertain_transformed = make_part_motif_profile({
+        gesture(15, part_b, 0, 1.00, "synthetic-pitch", 0,
+            "log2_frequency_ratio_octaves", evidence_status::hypothesis, 0.68),
+        gesture(16, part_b, 200, 1.0 + 2.0 / 12.0, "synthetic-pitch", 0,
+            "log2_frequency_ratio_octaves", evidence_status::hypothesis, 0.68),
+        gesture(17, part_b, 400, 1.0 + 4.0 / 12.0, "synthetic-pitch", 0,
+            "log2_frequency_ratio_octaves", evidence_status::hypothesis, 0.68),
+        gesture(18, part_b, 800, 1.0 + 1.0 / 12.0, "synthetic-pitch", 0,
+            "log2_frequency_ratio_octaves", evidence_status::hypothesis, 0.68),
+    });
+    const auto uncertain_match = compare_part_motif_profiles(
+        original,
+        uncertain_transformed);
+    assert(uncertain_match.pitch_comparable);
+    assert(close_enough(uncertain_match.combined_similarity, 1.0));
+    assert(close_enough(uncertain_match.evidence_confidence, 0.68));
+    assert(close_enough(uncertain_match.identity_confidence, 0.68));
+    assert(uncertain_transformed.status == evidence_status::hypothesis);
+    assert(close_enough(uncertain_transformed.evidence_confidence, 0.68));
 
     const auto different = make_part_motif_profile({
         gesture(21, 300, 0, 0.00),
