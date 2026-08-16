@@ -1,10 +1,13 @@
 #include "../../components/vgm/enhancement/ym2612_performed_pitch_motion.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 using namespace vgmtooling::model;
 using namespace gameaudio::vgm;
@@ -188,6 +191,43 @@ void add_static_snapshot(musical_execution_graph& graph, node_id episode_id) {
         std::uint64_t{20});
 }
 
+node_id add_strong_part(
+    musical_execution_graph& graph,
+    node_id episode_id,
+    double confidence = 0.93) {
+    node part;
+    part.kind = node_kind::part;
+    part.layer = semantic_layer::musical_performance;
+    part.flow = flow_kind::stream;
+    part.label = "persistent musical part";
+    part.active = time_span{at(10), at(100)};
+    part.attributes.push_back({
+        "identity_scope",
+        std::string{"persistent_musical_part"},
+        evidence_status::hypothesis,
+        confidence,
+        "",
+    });
+    const node_id part_id = graph.add_node(std::move(part));
+
+    edge membership;
+    membership.kind = edge_kind::groups_into;
+    membership.from = episode_id;
+    membership.to = part_id;
+    graph.add_edge(std::move(membership));
+    return part_id;
+}
+
+node_id add_fixed_source(musical_execution_graph& graph) {
+    node source;
+    source.kind = node_kind::musical_event;
+    source.layer = semantic_layer::musical_performance;
+    source.flow = flow_kind::event;
+    source.label = "fixed performed pitch source";
+    source.active = time_span{at(10), at(100)};
+    return graph.add_node(std::move(source));
+}
+
 struct fixture {
     musical_execution_graph graph;
     node_id episode_id = 0;
@@ -213,6 +253,10 @@ fixture make_glide_fixture() {
 
     add_static_snapshot(result.graph, result.episode_id);
     return result;
+}
+
+bool contains_part(const harmonic_verticality& value, node_id part_id) {
+    return std::find(value.part_ids.begin(), value.part_ids.end(), part_id) != value.part_ids.end();
 }
 
 } // namespace
@@ -247,6 +291,59 @@ int main() {
         assert(motion->physical_episode_id == fixture.episode_id);
         assert(motion->net_motion_semitones > 4.0);
         assert(motion->direction_changes == 0);
+
+        // Absolute pitch alone is not admitted to harmony. The same performed
+        // trajectory becomes musical only after the physical episode has one
+        // strong persistent-part identity.
+        assert(ym2612_performed_pitch_part_trajectory(
+            fixture.graph,
+            fixture.parameter_id,
+            clocks,
+            "ym2612-part-pitch-test").empty());
+
+        const node_id moving_part = add_strong_part(fixture.graph, fixture.episode_id);
+        const auto trajectory = ym2612_performed_pitch_part_trajectory(
+            fixture.graph,
+            fixture.parameter_id,
+            clocks,
+            "ym2612-part-pitch-test");
+        assert(trajectory.size() == 4);
+        assert(trajectory[0].part_id == moving_part);
+        assert(trajectory[1].part_id == moving_part);
+        assert(trajectory[2].part_id == moving_part);
+        assert(trajectory[3].part_id == moving_part);
+        assert(trajectory[0].active.start.tick == 10);
+        assert(trajectory[0].active.end.has_value() && trajectory[0].active.end->tick == 20);
+        assert(trajectory[1].active.end.has_value() && trajectory[1].active.end->tick == 30);
+        assert(trajectory[2].active.end.has_value() && trajectory[2].active.end->tick == 40);
+        assert(trajectory[3].active.end.has_value() && trajectory[3].active.end->tick == 100);
+        assert(trajectory[0].confidence == projection.confidence);
+        assert(trajectory[3].frequency_hz > trajectory[0].frequency_hz);
+
+        const node_id fixed_part = add_strong_part(fixture.graph, add_episode(fixture.graph));
+        const node_id fixed_source = add_fixed_source(fixture.graph);
+        absolute_musical_pitch_observation fixed;
+        fixed.source_node = fixed_source;
+        fixed.part_id = fixed_part;
+        fixed.active = time_span{at(10), at(100)};
+        fixed.frequency_hz = trajectory[0].frequency_hz * 0.75;
+        fixed.role = musical_pitch_role::performed;
+        fixed.status = evidence_status::hypothesis;
+        fixed.confidence = 0.90;
+        fixed.source = "fixed-part-test";
+
+        std::vector<absolute_musical_pitch_observation> harmony_input = trajectory;
+        harmony_input.push_back(fixed);
+        const auto early = make_harmonic_verticality(at(15), harmony_input);
+        const auto later = make_harmonic_verticality(at(35), harmony_input);
+        assert(early.part_ids.size() == 2);
+        assert(later.part_ids.size() == 2);
+        assert(contains_part(early, moving_part));
+        assert(contains_part(later, moving_part));
+        assert(contains_part(early, fixed_part));
+        assert(contains_part(later, fixed_part));
+        assert(later.intervals_above_lowest_octaves.back() >
+               early.intervals_above_lowest_octaves.back());
     }
 
     {
@@ -265,6 +362,7 @@ int main() {
 
     {
         auto fixture = make_glide_fixture();
+        const node_id moving_part = add_strong_part(fixture.graph, fixture.episode_id);
 
         // A target-channel algorithm write changes carrier topology. The
         // performed-pitch trajectory must stop before that transition rather
@@ -285,6 +383,42 @@ int main() {
         assert(projection.invalidating_time->tick == 25);
         assert(projection.samples.size() == 2);
         assert(projection.samples.back().time.tick == 20);
+
+        const auto trajectory = ym2612_performed_pitch_part_trajectory(
+            fixture.graph,
+            fixture.parameter_id,
+            clocks,
+            "ym2612-truncated-part-pitch-test");
+        assert(trajectory.size() == 2);
+        assert(trajectory[0].part_id == moving_part);
+        assert(trajectory[1].part_id == moving_part);
+        assert(trajectory[0].active.end.has_value() && trajectory[0].active.end->tick == 20);
+        assert(trajectory[1].active.end.has_value() && trajectory[1].active.end->tick == 25);
+
+        const node_id fixed_part = add_strong_part(fixture.graph, add_episode(fixture.graph));
+        const node_id fixed_source = add_fixed_source(fixture.graph);
+        absolute_musical_pitch_observation fixed;
+        fixed.source_node = fixed_source;
+        fixed.part_id = fixed_part;
+        fixed.active = time_span{at(10), at(100)};
+        fixed.frequency_hz = trajectory[0].frequency_hz * 0.75;
+        fixed.role = musical_pitch_role::performed;
+        fixed.status = evidence_status::hypothesis;
+        fixed.confidence = 0.90;
+        fixed.source = "fixed-part-test";
+
+        std::vector<absolute_musical_pitch_observation> harmony_input = trajectory;
+        harmony_input.push_back(fixed);
+        const auto before_invalidation = make_harmonic_verticality(at(24), harmony_input);
+        assert(before_invalidation.part_ids.size() == 2);
+
+        bool rejected_after_invalidation = false;
+        try {
+            (void)make_harmonic_verticality(at(26), harmony_input);
+        } catch (const std::invalid_argument&) {
+            rejected_after_invalidation = true;
+        }
+        assert(rejected_after_invalidation);
     }
 
     {
