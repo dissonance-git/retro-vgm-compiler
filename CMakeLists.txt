@@ -213,6 +213,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(pitch_class_collection_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(tonal_region_relation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+    include(cmake/semantic_model_tests.cmake)
+
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
         target_compile_features(${test_target} PRIVATE cxx_std_17)
