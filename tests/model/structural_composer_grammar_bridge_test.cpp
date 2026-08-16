@@ -68,6 +68,34 @@ int main() {
     CHECK(voice_obs.observation.dimension ==
         composer_grammar_dimension::counterpoint_voice_leading);
 
+    counterpoint_motion_profile counterpoint;
+    counterpoint.similar_motion_count = 0;
+    counterpoint.contrary_motion_count = 2;
+    counterpoint.oblique_motion_count = 1;
+    counterpoint.stationary_motion_count = 0;
+    counterpoint.vertical_intervals_comparable = false;
+    counterpoint.confidence = 0.85;
+    const auto counterpoint_obs = counterpoint_motion_as_grammar_observation(
+        context("soundtrack-a", "work-counterpoint", "blind-vgm-counterpoint"),
+        counterpoint,
+        creative_attribution_role::composer);
+    CHECK(counterpoint_obs.rule_key.find("contrary=2") != std::string::npos);
+    CHECK(counterpoint_obs.rule_key.find("vertical_interval=unresolved") != std::string::npos);
+    CHECK(counterpoint_obs.observation.dimension ==
+        composer_grammar_dimension::counterpoint_voice_leading);
+
+    imitative_part_relation_hypothesis imitation;
+    imitation.kind = imitative_part_relation_kind::imitation;
+    imitation.normalized_onset_lag = 1.5;
+    imitation.confidence = 0.90;
+    const auto imitation_obs = imitation_as_grammar_observation(
+        context("soundtrack-a", "work-imitation", "blind-vgm-imitation"),
+        imitation,
+        creative_attribution_role::composer);
+    CHECK(imitation_obs.rule_key == "imitation:imitation;lag=1.50");
+    CHECK(imitation_obs.observation.dimension ==
+        composer_grammar_dimension::counterpoint_voice_leading);
+
     // A creator-facing rule is formed only after two already-extracted blind
     // observations recur across independent soundtracks. The blind bridge itself
     // carries soundtrack/work provenance but no candidate composer identity.
