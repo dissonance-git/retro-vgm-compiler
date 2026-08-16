@@ -58,6 +58,7 @@ make_spc_part_gesture_observation(
         pitch_event->active->start,
         std::log2(static_cast<double>(*pitch)),
         std::move(pitch_basis),
+        "log2_frequency_ratio_octaves",
     };
 }
 
