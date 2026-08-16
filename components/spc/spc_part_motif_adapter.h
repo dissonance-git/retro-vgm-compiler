@@ -1,6 +1,7 @@
 #pragma once
 
 #include "spc_part_evidence.h"
+#include "../../model/part_motif_discovery.h"
 #include "../../model/part_motif_profile.h"
 
 #include <algorithm>
@@ -102,6 +103,16 @@ make_spc_part_motif_profile(
     if (observations.size() < 3)
         return std::nullopt;
     return vgmtooling::model::make_part_motif_profile(observations);
+}
+
+inline std::vector<vgmtooling::model::repeated_part_motif_hypothesis>
+discover_spc_part_motifs(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const vgmtooling::model::part_motif_discovery_policy& policy = {}) {
+    return vgmtooling::model::discover_repeated_part_motifs(
+        collect_spc_part_gestures(graph, part_id),
+        policy);
 }
 
 } // namespace gameaudio::spc
