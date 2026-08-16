@@ -164,8 +164,9 @@ inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analy
             event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
     }
 
+    std::optional<double> nominal_frequency;
     if (pitch_clocks != nullptr) {
-        const auto nominal_frequency = derive_genesis_nominal_pitch_frequency_hz(*event, *pitch_clocks);
+        nominal_frequency = derive_genesis_nominal_pitch_frequency_hz(*event, *pitch_clocks);
         if (nominal_frequency.has_value()) {
             analysis_feature feature = present_feature(
                 "device_nominal_pitch_frequency_hz",
@@ -253,12 +254,38 @@ inline vgmtooling::model::analysis_feature_set extract_genesis_performance_analy
         feature_availability::unknown,
         "a bounded Genesis physical episode does not establish persistent musical-part identity",
         event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
-    features.add(unresolved_feature(
-        "performed_pitch_frequency_hz",
-        semantic_layer::musical_performance,
-        feature_availability::unknown,
-        "a nominal device frequency may be available, but performed/heard pitch remains a separate claim; FM operator ratios, detune/modulation, acoustic realization, and perceptual evidence may matter",
-        event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
+
+    if (*family == "SN76489" && nominal_frequency.has_value()) {
+        analysis_feature performed = present_feature(
+            "performed_pitch_frequency_hz",
+            semantic_layer::musical_performance,
+            attribute_value{*nominal_frequency},
+            evidence_status::derived,
+            1.0,
+            "Hz");
+        performed.support_nodes.push_back(event_id);
+        performed.provenance = event->provenance;
+        performed.provenance.push_back({
+            evidence_status::derived,
+            1.0,
+            pitch_clocks != nullptr && !pitch_clocks->source.empty()
+                ? pitch_clocks->source
+                : "genesis-sn76489-tone-analysis",
+            std::nullopt,
+            "ordinary SN76489 tone activity is a direct square-wave oscillator: the source-relative tone period and clock establish its performed fundamental frequency; persistent-part identity, musical role, and heard/perceptual interpretation remain separate claims",
+        });
+        features.add(std::move(performed));
+    } else {
+        features.add(unresolved_feature(
+            "performed_pitch_frequency_hz",
+            semantic_layer::musical_performance,
+            feature_availability::unknown,
+            *family == "YM2612"
+                ? "YM2612 performed pitch requires operator-network analysis beyond nominal FNUM/BLOCK frequency"
+                : "performed pitch remains unresolved for this Genesis event/device state",
+            event->provenance.empty() ? "genesis-analysis" : event->provenance[0].source));
+    }
+
     features.add(unresolved_feature(
         "original_driver_track",
         semantic_layer::driver_execution,
