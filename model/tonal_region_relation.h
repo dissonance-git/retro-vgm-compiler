@@ -226,11 +226,22 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
         const auto& key = *target_key;
         if (!time_span_contains_span(target_center.region, key.region))
             throw std::invalid_argument("target key-class region must lie inside target tonal-center region");
+        if (key.key_class_resolved &&
+            circular_octave_class_distance(
+                key.center_octave_class,
+                target_center.center_octave_class) > center_equivalence_tolerance_octaves) {
+            throw std::invalid_argument("resolved target key class disagrees with target tonal center");
+        }
         result.target_key_class_resolved = key.key_class_resolved;
     }
 
     result.return_reference_supplied = return_reference.has_value();
     if (return_reference.has_value()) {
+        if (!finite_valid_tonal_region(return_reference->region) ||
+            !compatible_tonal_region_time_basis(return_reference->region, source_center.region) ||
+            return_reference->region.end->tick > source_center.region.start.tick) {
+            throw std::invalid_argument("return reference must be an earlier compatible tonal region");
+        }
         result.target_matches_return_reference =
             circular_octave_class_distance(
                 target_center.center_octave_class,
