@@ -10,6 +10,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 STRICT = ROOT / "tools" / "spc" / "patch_snes_spc_runtime_strict.py"
 FORENSIC = ROOT / "tools" / "spc" / "patch_snes_spc_forensic.py"
+FORENSIC_CMAKE = ROOT / "tools" / "spc" / "forensic" / "CMakeLists.txt"
 
 
 def load_module(name: str, path: pathlib.Path):
@@ -128,6 +129,19 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
                     forensic.ORDERING_NEW,
                     "forensic ordering fixture",
                 )
+
+    def test_forensic_cmake_uses_only_deterministic_ordering_mode(self) -> None:
+        cmake = FORENSIC_CMAKE.read_text(encoding="utf-8")
+
+        self.assertIn("tools/spc/patch_snes_spc_forensic.py", cmake)
+        self.assertIn("SPC_LESS_ACCURATE=0", cmake)
+        self.assertIn("SPC_MORE_ACCURACY=0", cmake)
+        self.assertIn("RETRO_VGM_SPC_FORENSIC_ORDERING=1", cmake)
+        self.assertNotIn("SPC_MORE_ACCURACY=1", cmake)
+        self.assertIn(
+            "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1",
+            cmake,
+        )
 
 
 if __name__ == "__main__":
