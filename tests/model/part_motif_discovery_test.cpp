@@ -15,13 +15,15 @@ part_gesture_observation gesture(
     node_id part,
     std::int64_t tick,
     std::optional<double> pitch,
-    const char* basis = "synthetic") {
+    const char* basis = "synthetic",
+    const char* interval_semantics = "log2_frequency_ratio_octaves") {
     return {
         node,
         part,
         {time_domain::source, tick, 0, 0},
         pitch,
         basis,
+        interval_semantics,
     };
 }
 
@@ -36,15 +38,16 @@ std::vector<part_gesture_observation> repeated_fixture(bool include_pitch = true
     const std::optional<double> q2 = include_pitch ? std::optional<double>{1.0 + 4.0 / 12.0} : std::nullopt;
     const std::optional<double> q3 = include_pitch ? std::optional<double>{1.0 + 1.0 / 12.0} : std::nullopt;
     const char* basis = include_pitch ? "synthetic" : "";
+    const char* semantics = include_pitch ? "log2_frequency_ratio_octaves" : "";
     return {
-        gesture(1, part, 0, p0, basis),
-        gesture(2, part, 100, p1, basis),
-        gesture(3, part, 200, p2, basis),
-        gesture(4, part, 400, p3, basis),
-        gesture(5, part, 1000, q0, basis),
-        gesture(6, part, 1200, q1, basis),
-        gesture(7, part, 1400, q2, basis),
-        gesture(8, part, 1800, q3, basis),
+        gesture(1, part, 0, p0, basis, semantics),
+        gesture(2, part, 100, p1, basis, semantics),
+        gesture(3, part, 200, p2, basis, semantics),
+        gesture(4, part, 400, p3, basis, semantics),
+        gesture(5, part, 1000, q0, basis, semantics),
+        gesture(6, part, 1200, q1, basis, semantics),
+        gesture(7, part, 1400, q2, basis, semantics),
+        gesture(8, part, 1800, q3, basis, semantics),
     };
 }
 
