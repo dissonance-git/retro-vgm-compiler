@@ -99,7 +99,7 @@ class OotAudioTableTests(unittest.TestCase):
         self.assertEqual(assessments[2].classification, "zero-size-entry")
         self.assertEqual(assessments[3].classification, "rejected-sequence-span")
 
-    def test_usf_sparse_zero_fill_never_becomes_fake_sequence_data(self):
+    def test_usf_sparse_zero_fill_and_shadowed_patches_never_become_fake_evidence(self):
         table = make_table(
             [
                 (0x00, 4, 2, 0, 0, 0, 0),
@@ -117,6 +117,14 @@ class OotAudioTableTests(unittest.TestCase):
                 source_offset=0x100,
                 target_start=0,
                 target_end=len(table),
+                stage_index=0,
+                role="n64-rom",
+            ),
+            ByteContribution(
+                source_id="oot.usflib",
+                source_offset=0x180,
+                target_start=0x40,
+                target_end=0x44,
                 stage_index=0,
                 role="n64-rom",
             ),
