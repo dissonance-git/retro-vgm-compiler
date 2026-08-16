@@ -42,6 +42,9 @@ pitch_class_collection_profile collection(std::initializer_list<std::int64_t> pi
     pitch_class_collection_profile profile;
     profile.region = time_span{at(100), at(900)};
     profile.tuning = tuning();
+    profile.pitch_role = musical_pitch_role::performed;
+    profile.scope = pitch_class_collection_scope::structural_hypothesis;
+    profile.projection_coverage = 1.0;
     profile.confidence = 0.92;
     profile.source = "test structural pitch-class collection";
     for (std::int64_t pitch_class : pitch_classes)
@@ -53,10 +56,7 @@ pitch_class_collection_profile collection(std::initializer_list<std::int64_t> pi
 int main() {
     const auto white_notes = collection({0, 2, 4, 5, 7, 9, 11});
 
-    // Full white-note collection under a grounded C center resolves Ionian.
-    const auto c_ionian = infer_tonal_key_class_hypothesis(
-        grounded_center(0),
-        white_notes);
+    const auto c_ionian = infer_tonal_key_class_hypothesis(grounded_center(0), white_notes);
     CHECK(c_ionian.key_class_resolved);
     CHECK(c_ionian.mode.has_value());
     CHECK(*c_ionian.mode == diatonic_mode::ionian);
@@ -68,36 +68,24 @@ int main() {
     CHECK(!c_ionian.tonal_function_named);
     CHECK(c_ionian.alternatives.size() == 7);
 
-    // The identical pitch collection under a grounded D center resolves Dorian,
-    // proving that collection identity is not silently treated as key identity.
-    const auto d_dorian = infer_tonal_key_class_hypothesis(
-        grounded_center(2),
-        white_notes);
+    const auto d_dorian = infer_tonal_key_class_hypothesis(grounded_center(2), white_notes);
     CHECK(d_dorian.key_class_resolved);
     CHECK(d_dorian.mode.has_value());
     CHECK(*d_dorian.mode == diatonic_mode::dorian);
     CHECK(d_dorian.center_pitch_class == 2);
 
-    // A tonic triad is far too sparse to name a mode or key class.
     const auto c_triad = infer_tonal_key_class_hypothesis(
-        grounded_center(0),
-        collection({0, 4, 7}));
+        grounded_center(0), collection({0, 4, 7}));
     CHECK(!c_triad.key_class_resolved);
     CHECK(!c_triad.mode.has_value());
     CHECK(c_triad.distinct_pitch_classes == 3);
 
-    // C D E F G A is compatible with both Ionian and Mixolydian because the
-    // diagnostic seventh is absent. Six pitch classes alone are not enough if
-    // the actual alternatives remain tied.
     const auto missing_seventh = infer_tonal_key_class_hypothesis(
-        grounded_center(0),
-        collection({0, 2, 4, 5, 7, 9}));
+        grounded_center(0), collection({0, 2, 4, 5, 7, 9}));
     CHECK(!missing_seventh.key_class_resolved);
     CHECK(!missing_seventh.mode.has_value());
     CHECK(close_enough(missing_seventh.separation, 0.0));
 
-    // Perfect scale content cannot rescue a center that was never independently
-    // grounded in the first place.
     auto weak_center = grounded_center(0, tonal_center_single_support_ceiling);
     weak_center.cross_origin_grounded = false;
     weak_center.independent_support_groups = 1;
@@ -106,8 +94,25 @@ int main() {
     CHECK(!weak.key_class_resolved);
     CHECK(!weak.mode.has_value());
 
-    // A local collection must actually live inside the tonal-center region. A
-    // stale or unrelated region is not allowed to borrow the center label.
+    // Even a perfect seven-note surface collection remains a surface
+    // observation until figuration/structural analysis promotes it.
+    auto surface_only = white_notes;
+    surface_only.scope = pitch_class_collection_scope::surface_performance;
+    surface_only.source = "raw performed pitch surface";
+    const auto surface_key = infer_tonal_key_class_hypothesis(
+        grounded_center(0), surface_only);
+    CHECK(!surface_key.key_class_resolved);
+    CHECK(!surface_key.mode.has_value());
+    CHECK(surface_key.alternatives.front().mode == diatonic_mode::ionian);
+
+    // If too much of the supplied material lies outside the tuning projection,
+    // a structural label alone is not enough to recover a strong key claim.
+    auto low_projection = white_notes;
+    low_projection.projection_coverage = 0.70;
+    const auto low_projection_key = infer_tonal_key_class_hypothesis(
+        grounded_center(0), low_projection);
+    CHECK(!low_projection_key.key_class_resolved);
+
     bool outside_region_rejected = false;
     try {
         auto outside = white_notes;
