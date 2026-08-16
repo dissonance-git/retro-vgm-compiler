@@ -52,6 +52,8 @@ inline tonal_region_relation_evidence make_phrase_partition_region_evidence(
         throw std::invalid_argument("phrase-partition region evidence requires a dependency group");
     if (alignment_tolerance_ticks < 0)
         throw std::invalid_argument("phrase-partition alignment tolerance must be nonnegative");
+    if (!boundary.cross_part_grounded && !boundary.authored_grounded)
+        throw std::invalid_argument("tonal-region partition requires cross-part or authored phrase grounding");
     if (infer_tonal_region_topology(source_center.region, target_center.region) !=
         tonal_region_topology::sequential) {
         throw std::invalid_argument("phrase-partition evidence requires sequential tonal regions");
