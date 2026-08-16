@@ -10,8 +10,8 @@ Current executable lanes:
   * vgm-baseline: run the label-blind Genesis VGM trajectory/realization audit.
   * vgm-motif-probe: run an exploratory physical-channel local motif audit that
     remains explicitly below persistent-part and phrase truth.
-  * vgm-harmonic-probe: run an operator-aware surface-harmony pressure test that
-    exposes triads/root motion/tonal rankings while preserving promotion gates.
+  * vgm-harmonic-probe: run a mixed YM2612+SN76489 surface-harmony pressure test
+    that preserves PSG tone/noise role ambiguity and shared-model promotion gates.
   * rom-forensics: run derived-only ROM provenance analysis in a deliberately
     separate forensic mode that must not leak into musical blind attribution.
 
@@ -190,12 +190,12 @@ def build_inventory(manifest_path: Path = MANIFEST_PATH) -> dict[str, Any]:
         "capability_lanes": {
             "blind_vgm_trajectory_realization": "executable",
             "blind_vgm_physical_channel_motif_probe": "executable_exploratory",
-            "blind_vgm_surface_harmony_probe": "executable_exploratory_with_shared_model_promotion_gates",
+            "blind_vgm_surface_harmony_probe": "executable_exploratory_mixed_ym2612_sn76489_with_shared_model_promotion_gates",
             "rom_forensics": "executable_separate_from_musical_blind_mode",
             "persistent_musical_parts": "implemented_shared_model_pending_real_corpus_execution",
             "cross_architecture_motif_profiles": "implemented_shared_model_pending_real_corpus_execution",
             "spc_creator_facing_relations": "implemented_part_motif_phrase_adapters_pending_real_corpus_execution",
-            "phrase_motif_harmony_form": "surface_harmony_executable; persistent_part_phrase_grounded_harmony_form_pending",
+            "phrase_motif_harmony_form": "mixed_surface_harmony_executable; persistent_part_phrase_grounded_harmony_form_pending",
             "smps_hidden_oracle": "planned_real_corpus_supervision_lane",
             "cross_soundtrack_composer_grammar": "implemented_evidence_kernel_pending_real_observations",
             "blind_composer_attribution": "gated_on_frozen_blind_outputs_and_confound_controls",
@@ -271,7 +271,7 @@ def run_vgm_harmonic_probe(
     ordered = _ordered_genesis_vgm_sets(manifest)
     corpus_paths = _corpus_paths(ordered)
 
-    probe = _load_tool("sonic3_harmonic_probe", "sonic3_harmonic_probe.py")
+    probe = _load_tool("sonic3_mixed_harmonic_probe", "sonic3_mixed_harmonic_probe.py")
     result = probe.audit_soundtracks(
         corpus_paths,
         neighbor_count=neighbor_count,
@@ -280,7 +280,7 @@ def run_vgm_harmonic_probe(
         presence_floor_ratio=presence_floor_ratio,
     )
     result["testbed"] = "sonic3-primary-integration-testbed"
-    result["stage"] = "blind-vgm-surface-harmony-pressure-test"
+    result["stage"] = "blind-vgm-mixed-surface-harmony-pressure-test"
     result["target_corpus_id"] = TARGET_CORPUS_ID
     result["eligible_corpus_ids"] = [str(item.get("corpus_id")) for item in ordered]
     result["label_firewall"] = (
@@ -288,10 +288,11 @@ def run_vgm_harmonic_probe(
         "Freeze this output before any attribution unblind."
     )
     result["model_firewall"] = (
-        "Surface performed-pitch/triad evidence may rank harmonic candidates, but the shared "
-        "model still requires persistent musical parts, structural pitch collections, "
-        "cross-origin tonal-center support, voice leading, and phrase arrival before key, "
-        "function, cadence, tonicization, or modulation may be promoted."
+        "Mixed YM2612+SN76489 surface pitch may rank harmonic candidates, but PSG tone can "
+        "be an independent part or an FM doubling/shadow and PSG noise can be percussion or "
+        "texture. The shared model still requires persistent musical parts, structural pitch "
+        "collections, cross-origin tonal-center support, voice leading, role grounding, and "
+        "phrase arrival before key, function, cadence, tonicization, or modulation may be promoted."
     )
     return result
 
