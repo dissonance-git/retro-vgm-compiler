@@ -1,6 +1,7 @@
 #pragma once
 
 #include "spc_runtime_capture_adapter.h"
+#include "spc_runtime_trace.h"
 #include "spc_snapshot.h"
 
 #include <array>
@@ -8,31 +9,8 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
-#include <vector>
 
 namespace gameaudio::spc {
-
-// Offline trace contract for deterministic SPC corpus analysis. The exact SPC
-// fixture remains the one initial-state authority. A trace stores only facts
-// observed after that snapshot: source APURAM writes and DSP capture windows.
-struct spc_runtime_trace_ram_write {
-    std::uint64_t serial = 0;
-    std::uint16_t address = 0;
-    std::vector<std::uint8_t> bytes;
-};
-
-struct spc_runtime_trace_window {
-    std::vector<spc_runtime_capture_record> records;
-    bool overflowed = false;
-    std::uint64_t dropped = 0;
-    std::optional<spc_runtime_capture_record> first_dropped{};
-    std::uint64_t next_trace_index = 0;
-};
-
-struct spc_runtime_trace {
-    std::vector<spc_runtime_trace_ram_write> ram_writes;
-    std::vector<spc_runtime_trace_window> windows;
-};
 
 struct spc_runtime_trace_replay_result {
     std::size_t windows_replayed = 0;
