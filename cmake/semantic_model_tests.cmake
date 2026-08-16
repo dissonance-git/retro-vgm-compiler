@@ -73,3 +73,25 @@ set_tests_properties(
     sonic3_harmonic_probe_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_test(
+    NAME genesis_psg_semantics_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_genesis_psg_semantics.py
+)
+set_tests_properties(
+    genesis_psg_semantics_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME sonic3_mixed_harmonic_probe_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_sonic3_mixed_harmonic_probe.py
+)
+set_tests_properties(
+    sonic3_mixed_harmonic_probe_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
