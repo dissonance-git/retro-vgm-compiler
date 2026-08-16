@@ -71,9 +71,9 @@ inline blind_structural_grammar_observation make_blind_structural_observation(
     return result;
 }
 
-inline std::string quantized_ratio_token(double value) {
-    if (!std::isfinite(value) || value <= 0.0)
-        throw std::invalid_argument("grammar ratio token requires a finite positive value");
+inline std::string quantized_nonnegative_token(double value) {
+    if (!std::isfinite(value) || value < 0.0)
+        throw std::invalid_argument("grammar numeric token requires a finite nonnegative value");
     const double quantized = std::round(value * 4.0) / 4.0;
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(2) << quantized;
@@ -91,7 +91,7 @@ inline blind_structural_grammar_observation harmonic_rhythm_as_grammar_observati
     for (std::size_t index = 0; index < profile.normalized_change_gaps.size(); ++index) {
         if (index != 0)
             signature += ",";
-        signature += quantized_ratio_token(profile.normalized_change_gaps[index]);
+        signature += quantized_nonnegative_token(profile.normalized_change_gaps[index]);
     }
     return make_blind_structural_observation(
         context,
@@ -116,7 +116,7 @@ inline blind_structural_grammar_observation voice_leading_as_grammar_observation
         "voice_leading:stationary=" + std::to_string(voices.stationary_voices) +
         ";up=" + std::to_string(voices.upward_voices) +
         ";down=" + std::to_string(voices.downward_voices) +
-        ";motion_per_voice=" + quantized_ratio_token(std::max(0.25, motion_per_voice)) +
+        ";motion_per_voice=" + quantized_nonnegative_token(motion_per_voice) +
         ";identity_grounded=" +
         std::string{voices.all_correspondence_identity_grounded ? "true" : "false"};
 
@@ -171,7 +171,7 @@ inline blind_structural_grammar_observation section_relation_as_grammar_observat
         relation.second_phrase_coverage);
     const std::string signature =
         std::string{"section_relation:"} + to_string(relation.kind) +
-        ";coverage=" + quantized_ratio_token(std::max(0.25, coverage));
+        ";coverage=" + quantized_nonnegative_token(coverage);
     return make_blind_structural_observation(
         context,
         signature,
