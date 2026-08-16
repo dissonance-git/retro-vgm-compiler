@@ -49,3 +49,14 @@ add_test(
     NAME diatonic_chord_degree_hypothesis
     COMMAND diatonic_chord_degree_hypothesis_test
 )
+
+add_test(
+    NAME sonic3_harmonic_probe_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_sonic3_harmonic_probe.py
+)
+set_tests_properties(
+    sonic3_harmonic_probe_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
