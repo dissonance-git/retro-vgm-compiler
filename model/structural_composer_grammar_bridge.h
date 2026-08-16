@@ -7,6 +7,7 @@
 #include "harmonic_rhythm_profile.h"
 #include "imitative_part_relation.h"
 #include "orchestration_transition_hypothesis.h"
+#include "section_orchestration_marker.h"
 #include "section_relation_hypothesis.h"
 #include "voice_leading_hypothesis.h"
 
@@ -256,6 +257,32 @@ inline blind_structural_grammar_observation orchestration_transition_as_grammar_
         role_scope,
         transition.confidence,
         "time-local role/realization/register transition; source-native timbre identities remain representation-scoped and creator identity is not available during extraction");
+}
+
+inline blind_structural_grammar_observation section_orchestration_as_grammar_observation(
+    const structural_grammar_context& context,
+    const section_orchestration_marker_hypothesis& marker,
+    creative_attribution_role role_scope) {
+    if (marker.qualifying_transition_count == 0 || marker.confidence <= 0.0)
+        throw std::invalid_argument("empty section-orchestration marker cannot become creator-grammar evidence");
+
+    const std::string signature =
+        "section_orchestration:transitions=" + std::to_string(marker.qualifying_transition_count) +
+        ";parts=" + std::to_string(marker.independent_part_count) +
+        ";role_changes=" + std::to_string(marker.role_change_count) +
+        ";role_transfers=" + std::to_string(marker.role_transfer_count) +
+        ";timbre_changes=" + std::to_string(marker.timbre_change_count) +
+        ";register_changes=" + std::to_string(marker.register_change_count) +
+        ";density_changes=" + std::to_string(marker.density_change_count) +
+        ";multi_part=" + std::string{marker.multi_part_grounded ? "true" : "false"};
+
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::arrangement_orchestration,
+        role_scope,
+        marker.confidence,
+        "orchestration changes converge on an independently established form boundary; the orchestration reinforces form but does not create the boundary");
 }
 
 } // namespace vgmtooling::model
