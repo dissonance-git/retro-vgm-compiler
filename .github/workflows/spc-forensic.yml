@@ -35,6 +35,9 @@ jobs:
         run: |
           mkdir -p spc-forensic-sidecars
 
+          # Selection is downstream calibration planning only. Creator labels
+          # never enter spc_forensic_features or the emitted musical geometry.
+          # Ancient Magic: 01/10 route to Hikichi; 04 routes to Takaoka.
           build-spc-forensic/spc_forensic_features \
             "tests/corpus/ancient-magic-spc/01 - Title.spc" \
             spc-forensic-sidecars/ancient-magic-01.json \
@@ -44,14 +47,11 @@ jobs:
             spc-forensic-sidecars/ancient-magic-04.json \
             "$SECONDS_PER_FIXTURE"
           build-spc-forensic/spc_forensic_features \
-            "tests/corpus/ancient-magic-spc/05 - Battle.spc" \
-            spc-forensic-sidecars/ancient-magic-05.json \
+            "tests/corpus/ancient-magic-spc/10 - Boss Battle.spc" \
+            spc-forensic-sidecars/ancient-magic-10.json \
             "$SECONDS_PER_FIXTURE"
 
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/terranigma-spc/01 - Origins.spc" \
-            spc-forensic-sidecars/terranigma-01.json \
-            "$SECONDS_PER_FIXTURE"
+          # Terranigma: 03/06 route to Takaoka; 08 routes to Hikichi.
           build-spc-forensic/spc_forensic_features \
             "tests/corpus/terranigma-spc/03 - Hometown.spc" \
             spc-forensic-sidecars/terranigma-03.json \
@@ -59,6 +59,10 @@ jobs:
           build-spc-forensic/spc_forensic_features \
             "tests/corpus/terranigma-spc/06 - Dark Side Field.spc" \
             spc-forensic-sidecars/terranigma-06.json \
+            "$SECONDS_PER_FIXTURE"
+          build-spc-forensic/spc_forensic_features \
+            "tests/corpus/terranigma-spc/08 - Into the Door.spc" \
+            spc-forensic-sidecars/terranigma-08.json \
             "$SECONDS_PER_FIXTURE"
 
       - name: Upload label-blind feature sidecars
