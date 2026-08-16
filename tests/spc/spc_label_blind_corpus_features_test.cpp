@@ -71,7 +71,9 @@ void add_key_on(
     graph.add_edge(std::move(reference));
 }
 
-musical_execution_graph make_runtime_graph(bool poison_with_metadata) {
+musical_execution_graph make_runtime_graph(
+    bool poison_with_metadata,
+    bool insert_continuity_barrier = false) {
     musical_execution_graph graph;
     const node_id sample = add_sample(graph);
 
@@ -81,6 +83,25 @@ musical_execution_graph make_runtime_graph(bool poison_with_metadata) {
     add_key_on(graph, first, sample, 0, 0, 0x1000);
     add_key_on(graph, second, sample, 3520, 0, 0x1200);
     add_key_on(graph, third, sample, 6720, 0, 0x0f00);
+
+    if (insert_continuity_barrier) {
+        node* episode = graph.find_node(second);
+        assert(episode != nullptr);
+        episode->attributes.push_back({
+            "termination_reason",
+            std::string{"semantic_continuation_lost"},
+            evidence_status::derived,
+            1.0,
+            "",
+        });
+        episode->attributes.push_back({
+            "termination_boundary_complete",
+            false,
+            evidence_status::derived,
+            1.0,
+            "",
+        });
+    }
 
     // A cross-slot handoff can be musically real, but this conservative corpus
     // pass must not invent it. These isolated episodes share the sample yet are
@@ -159,6 +180,7 @@ int main() {
     assert(clean.candidate_transition_count == 2);
     assert(clean.strong_transition_count == 2);
     assert(clean.rejected_transition_count == 0);
+    assert(clean.continuity_barrier_count == 0);
     assert(clean.emitted_part_count == 1);
     assert(clean.part_profiles.size() == 1);
     assert(clean.part_profiles.front().source_nodes.size() == 3);
@@ -178,9 +200,21 @@ int main() {
     assert(poisoned.candidate_transition_count == clean.candidate_transition_count);
     assert(poisoned.strong_transition_count == clean.strong_transition_count);
     assert(poisoned.rejected_transition_count == clean.rejected_transition_count);
+    assert(poisoned.continuity_barrier_count == clean.continuity_barrier_count);
     assert(poisoned.emitted_part_count == clean.emitted_part_count);
     assert(poisoned.part_profiles.size() == clean.part_profiles.size());
     assert(same_geometry(poisoned.part_profiles.front(), clean.part_profiles.front()));
+
+    auto broken_graph = make_runtime_graph(false, true);
+    const auto broken = extract_spc_label_blind_corpus_features(
+        broken_graph,
+        "synthetic-runtime-trace",
+        policy);
+    assert(broken.continuity_barrier_count == 1);
+    assert(broken.candidate_transition_count == 1);
+    assert(broken.strong_transition_count == 1);
+    assert(broken.emitted_part_count == 0);
+    assert(broken.part_profiles.empty());
 
     return 0;
 }
