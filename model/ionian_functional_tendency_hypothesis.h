@@ -5,6 +5,7 @@
 #include "diatonic_chord_degree_hypothesis.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -66,6 +67,10 @@ inline bool same_function_transition_time(
            first.tick_rate == second.tick_rate &&
            first.loop_iteration == second.loop_iteration &&
            first.tick == second.tick;
+}
+
+inline bool valid_function_confidence(double value) noexcept {
+    return std::isfinite(value) && value >= 0.0 && value <= 1.0;
 }
 
 inline bool ionian_predominant_degree(std::uint8_t degree) noexcept {
@@ -130,6 +135,8 @@ inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
 
     if (voices.has_value()) {
         const auto& value = *voices;
+        if (!valid_function_confidence(value.confidence))
+            throw std::invalid_argument("functional-tendency voice confidence must lie in [0, 1]");
         if (!same_function_transition_time(value.first_time, transition.first_time) ||
             !same_function_transition_time(value.second_time, transition.second_time)) {
             throw std::invalid_argument("functional-tendency voice leading must describe the same harmonic transition");
@@ -146,6 +153,8 @@ inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
         if (!voices.has_value())
             throw std::invalid_argument("bass functional evidence requires its voice-leading witness");
         const auto& value = *bass;
+        if (!valid_function_confidence(value.confidence))
+            throw std::invalid_argument("functional-tendency bass confidence must lie in [0, 1]");
         if (!same_function_transition_time(value.first_time, transition.first_time) ||
             !same_function_transition_time(value.second_time, transition.second_time)) {
             throw std::invalid_argument("functional-tendency bass evidence must describe the same harmonic transition");
@@ -159,6 +168,8 @@ inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
 
     if (arrival.has_value()) {
         const auto& value = *arrival;
+        if (!valid_function_confidence(value.confidence))
+            throw std::invalid_argument("functional-tendency arrival confidence must lie in [0, 1]");
         if (!same_function_transition_time(value.arrival_time, transition.second_time) ||
             value.root_motion_semitones != transition.directed_root_motion_semitones ||
             value.root_interval_class != transition.root_interval_class ||
@@ -167,13 +178,24 @@ inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
         }
         if (value.voice_leading_grounded && !voices.has_value())
             throw std::invalid_argument("voice-grounded arrival requires the corresponding voice-leading witness");
+
+        double arrival_ceiling = phrase_harmony_arrival_ceiling;
+        if (value.voice_leading_grounded) {
+            arrival_ceiling = voices->all_correspondence_identity_grounded
+                ? identity_grounded_arrival_ceiling
+                : inferred_voice_arrival_ceiling;
+        }
+        const double effective_arrival_confidence = std::min(
+            value.confidence,
+            arrival_ceiling);
+
         result.phrase_arrival_supplied = true;
         result.phrase_arrival_cross_part_grounded = value.cross_part_phrase_grounded;
-        evidence_confidence = std::min(evidence_confidence, value.confidence);
+        evidence_confidence = std::min(evidence_confidence, effective_arrival_confidence);
         if (value.cross_part_phrase_grounded) {
             confidence_ceiling = std::max(
                 confidence_ceiling,
-                ionian_function_phrase_arrival_ceiling);
+                std::min(ionian_function_phrase_arrival_ceiling, arrival_ceiling));
         }
     }
 
