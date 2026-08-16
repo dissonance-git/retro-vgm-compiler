@@ -1,7 +1,7 @@
 #pragma once
 
 #include "spc_ram_generation.h"
-#include "spc_runtime_trace.h"
+#include "spc_runtime_instrumentation_sink.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -10,12 +10,7 @@
 
 namespace gameaudio::spc {
 
-// Helix-owned sink for instrumented SPC execution. This recorder is intended for
-// offline forensic/corpus runs, so RAM-write byte copies may allocate. The vendor
-// core should remain a thin sensor and pass exact post-mutation APURAM bytes plus
-// exact device events into this object. No catalog or attribution metadata enters
-// this layer.
-class spc_runtime_trace_recorder {
+class spc_runtime_trace_recorder final : public spc_runtime_instrumentation_sink {
 public:
     void reset() {
         capture_.reset_trace();
@@ -35,17 +30,13 @@ public:
         return trace_;
     }
 
-    // Record one source mutation boundary. `bytes` must contain the exact APURAM
-    // values visible *after* that mutation. Address arithmetic wraps at 16 bits,
-    // matching SPC700 APURAM. A bulk overlay/copy should be one call so it receives
-    // one generation serial; two independent hardware writes should be two calls.
     std::uint64_t observe_apuram_write(
         spc_runtime_ram_write_origin origin,
         std::int64_t tick,
         std::uint64_t tick_rate,
         std::uint16_t address,
         const std::uint8_t* bytes,
-        std::size_t byte_count) {
+        std::size_t byte_count) override {
         if (bytes == nullptr)
             throw std::invalid_argument("SPC runtime RAM observation requires bytes");
         if (byte_count == 0 || byte_count > spc_runtime_ram_size)
@@ -61,8 +52,6 @@ public:
         write.address = address;
         write.bytes.assign(bytes, bytes + byte_count);
 
-        // Publish the owned bytes before advancing the generation clock. If the
-        // allocation above fails, the recorder remains at the previous serial.
         trace_.ram_writes.push_back(std::move(write));
         ram_generation_.mark_write(address, byte_count);
         return ram_generation_.write_serial();
@@ -90,19 +79,13 @@ public:
         return observe_apuram_write(origin, tick, tick_rate, address, bytes, 2);
     }
 
-    // The caller supplies device facts only. RAM generation is stamped here so a
-    // vendor hook cannot accidentally report an event against an arbitrary memory
-    // version. `spc_runtime_capture` owns the monotonically increasing trace index.
-    void observe_voice_event(spc_runtime_capture_record record) {
+    void observe_voice_event(spc_runtime_capture_record record) override {
         if (record.tick_rate == 0)
             throw std::invalid_argument("SPC runtime voice observation requires a non-zero tick rate");
         record.ram_write_serial = ram_generation_.write_serial();
         capture_.observe(record);
     }
 
-    // Drain the fixed-capacity DSP window into durable offline trace storage.
-    // Overflow details are copied verbatim and later become a hard continuity
-    // barrier. Empty, non-overflowed windows carry no information and are skipped.
     bool flush_window() {
         if (capture_.count() == 0 && !capture_.overflowed()) {
             capture_.begin_window();
@@ -110,9 +93,7 @@ public:
         }
 
         spc_runtime_trace_window window;
-        window.records.assign(
-            capture_.records(),
-            capture_.records() + capture_.count());
+        window.records.assign(capture_.records(), capture_.records() + capture_.count());
         window.overflowed = capture_.overflowed();
         window.dropped = capture_.dropped();
         if (const auto* first = capture_.first_dropped_record())
