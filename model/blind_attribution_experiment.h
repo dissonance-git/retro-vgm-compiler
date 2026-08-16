@@ -348,30 +348,37 @@ inline blind_attribution_result run_blind_attribution_experiment(
             candidate_result.survives_query_implementation_exclusion = true;
         }
 
+        // Intervention confidence means confidence that the holdout was actually
+        // performed and interpreted, not the similarity score that remained.
+        // These interventions are deterministic over the supplied match set, so
+        // a failed holdout must remain a high-confidence confound failure.
         std::vector<composer_grammar_intervention> interventions;
         interventions.push_back({
             composer_confound_kind::soundtrack_local_context,
             candidate_result.survives_leave_one_soundtrack_out,
-            candidate_result.leave_one_soundtrack_out_floor,
+            1.0,
             "blind-attribution:leave-one-soundtrack-out",
-            "candidate must remain supported after each soundtrack family is removed",
+            "candidate must remain supported after each soundtrack family is removed; floor=" +
+                std::to_string(candidate_result.leave_one_soundtrack_out_floor),
         });
         if (candidate_result.platform_exclusion_applicable) {
             interventions.push_back({
                 composer_confound_kind::platform,
                 candidate_result.survives_query_platform_exclusion,
-                candidate_result.query_platform_exclusion_score,
+                1.0,
                 "blind-attribution:query-platform-exclusion",
-                "controls sharing the query platform were removed",
+                "controls sharing the query platform were removed; score=" +
+                    std::to_string(candidate_result.query_platform_exclusion_score),
             });
         }
         if (candidate_result.implementation_exclusion_applicable) {
             interventions.push_back({
                 composer_confound_kind::arranger_programmer,
                 candidate_result.survives_query_implementation_exclusion,
-                candidate_result.query_implementation_exclusion_score,
+                1.0,
                 "blind-attribution:query-implementation-exclusion",
-                "controls sharing the query implementation/driver family were removed",
+                "controls sharing the query implementation/driver family were removed; score=" +
+                    std::to_string(candidate_result.query_implementation_exclusion_score),
             });
         }
 
