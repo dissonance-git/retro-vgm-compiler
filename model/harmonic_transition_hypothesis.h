@@ -78,7 +78,7 @@ inline bool is_tertian_triad_node(const node& value) noexcept {
     if (value.kind != node_kind::pattern || value.layer != semantic_layer::musical_structure)
         return false;
     for (const auto& item : value.attributes) {
-        if (item.name != "identity_scope")
+        if (item.key != "identity_scope")
             continue;
         const auto* text = std::get_if<std::string>(&item.value);
         return text != nullptr && *text == "tertian_triad_hypothesis";
