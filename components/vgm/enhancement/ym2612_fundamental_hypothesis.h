@@ -34,20 +34,10 @@ struct ym2612_fundamental_hypothesis {
     std::vector<ym2612_operator_pitch_component> operators;
     std::vector<double> distinct_carrier_ratios;
     std::vector<double> distinct_operator_ratios;
-
-    // Static spectral periodicity under ordinary shared-FNUM OPN synthesis.
-    // OPN MULT values are integer or 0.5x, so with detune/PM absent the common
-    // repeat rate is the greatest common divisor of all participating ratios
-    // expressed in half-units. This is not automatically perceived pitch.
     std::optional<double> network_periodicity_ratio{};
     std::optional<double> network_periodicity_frequency_hz{};
     bool periodicity_has_direct_carrier = false;
-
-    // Promoted only when the static synthesis evidence is strong enough to make
-    // one bounded performed-pitch hypothesis. Heard/perceptual pitch remains a
-    // separate layer.
     std::optional<double> performed_pitch_frequency_hz{};
-
     bool carrier_ratios_unanimous = false;
     bool detune_present = false;
     bool phase_modulation_active = false;
@@ -176,11 +166,11 @@ inline ym2612_fundamental_hypothesis infer_ym2612_fundamental_hypothesis(
         result.distinct_carrier_ratios.push_back(static_cast<double>(value) / 2.0);
     result.carrier_ratios_unanimous = result.distinct_carrier_ratios.size() == 1;
 
-    // The exact half-unit GCD is only promoted for the fully keyed static case.
-    // A key-off operator can still be in envelope release, and this state model
-    // does not yet track operator envelope amplitude. Partial key masks therefore
-    // cannot safely define the currently audible operator lattice.
-    if (result.all_operators_keyed) {
+    // The half-unit GCD is an exact static multiplier-lattice claim only when
+    // every operator is keyed and no detune or LFO phase modulation perturbs
+    // those rational phase relationships. Raw operator ratios are still kept
+    // above when this stronger periodicity claim is unavailable.
+    if (result.all_operators_keyed && !result.detune_present && !result.phase_modulation_active) {
         std::uint8_t gcd_half_units = 0;
         for (std::uint8_t value : operator_half_units)
             gcd_half_units = std::gcd(gcd_half_units, value);
@@ -212,10 +202,7 @@ inline ym2612_fundamental_hypothesis infer_ym2612_fundamental_hypothesis(
             result.confidence,
             ym2612_missing_fundamental_pitch_ceiling);
 
-    if (result.network_periodicity_frequency_hz.has_value() &&
-        !result.detune_present &&
-        !result.phase_modulation_active &&
-        result.all_operators_keyed) {
+    if (result.network_periodicity_frequency_hz.has_value() && result.all_operators_keyed) {
         result.performed_pitch_frequency_hz = *result.network_periodicity_frequency_hz;
         result.performed_pitch_ambiguous = false;
         if (result.periodicity_has_direct_carrier) {
