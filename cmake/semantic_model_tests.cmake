@@ -199,3 +199,14 @@ set_tests_properties(
     cube_calibration_admissions_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_test(
+    NAME cube_evidence_worlds_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/model
+        -p test_cube_evidence_worlds.py
+)
+set_tests_properties(
+    cube_evidence_worlds_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
