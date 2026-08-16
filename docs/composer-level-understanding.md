@@ -2,32 +2,169 @@
 
 ## North star
 
-Game Music Interpreter is ultimately trying to understand a game soundtrack the way a strong composer can understand another composer's music.
+Game Music Interpreter is ultimately trying to understand a game song deeply enough to reason about it the way a strong composer can reason about another composer's work.
 
-That means recovering more than playable audio, chip state, note names, MIDI, chords, or isolated features. The system should build an integrated model of how a piece is constructed, how its parts cooperate, how musical ideas transform across time, why important moments work, and how each cue participates in the grammar of the larger score.
+The strongest practical benchmark for that depth is **blind composer attribution among historically plausible candidates**.
 
-The target is structural understanding without invented creator intent.
+If a game credits several composers but does not identify the composer of every cue, the system should eventually be able to study the known works, recover each composer's recurring musical grammar, analyze an unknown cue, and say which composer is best supported **because of how the music is constructed**.
+
+That does not make attribution the definition of understanding. It makes attribution an unusually demanding exam for understanding.
 
 ```text
-exact source / execution evidence
+native source truth
         +
-symbolic note and sequence evidence
+symbolic note / sequence evidence
+        +
+execution and synthesis evidence
         +
 heard musical organization
-        +
-cross-track and documentary context
         ↓
-composer-level model of the music
+persistent parts
+        ↓
+melody • bass • harmony • rhythm
+        ↓
+phrase • motif • cadence • counterpoint • form
+        ↓
+recurring compositional rules and transformations
+        ↓
+composer grammar
+        ↓
+blind attribution among plausible credited composers
+        ↓
+explanation + uncertainty + counterevidence
 ```
 
-A successful answer should increasingly be able to say not merely `these notes occur`, but things such as:
+A correct composer label without a musically defensible explanation is not enough. It may indicate shortcut learning, metadata leakage, patch-library recognition, driver recognition, or memorization of a related cue.
 
-- this is the returning melodic idea, transformed rather than simply repeated;
-- the bass is changing the harmonic meaning of otherwise similar upper material;
-- this inner line is functioning as counterpoint rather than filler;
-- the arrangement creates a structural arrival by widening register, changing density, and reassigning timbral roles;
-- the phrase delays an expected resolution and uses that delay to connect two sections;
-- this cue inherits a soundtrack-wide harmonic, rhythmic, thematic, or orchestration habit while deliberately breaking another one.
+The intended causal direction is:
+
+```text
+understand the song
+→ understand the composer's grammar
+→ attribution becomes possible
+```
+
+not:
+
+```text
+predict a composer label
+→ call whatever predicted it "understanding"
+```
+
+## What composer-level understanding means
+
+The system should increasingly understand relations such as:
+
+- which melodic material is structural and which is ornament or figuration;
+- how a melody develops through repetition, mutation, sequence, fragmentation, extension, or reharmonization;
+- how the bass changes harmonic meaning, phrase direction, and tension;
+- how inner voices and countermelodies behave independently of foreground melody;
+- which rhythmic cells organize the groove and how they are varied;
+- where phrases begin, extend, answer one another, evade closure, or return;
+- how cadences are prepared, delayed, weakened, redirected, or intensified;
+- how formal sections relate rather than merely where they start and stop;
+- how a composer preserves identity while changing register, harmony, rhythm, texture, or orchestration;
+- which choices recur across unrelated works strongly enough to form a compositional grammar.
+
+The goal is not a bag of features. It is a model of **how musical decisions constrain and transform one another over time**.
+
+For example, the system should eventually be able to distinguish:
+
+```text
+uses syncopation
+```
+
+from:
+
+```text
+repeatedly delays the same phrase-internal melodic arrival across different harmonic contexts,
+then releases the displacement at the sectional return
+```
+
+The second is much closer to a compositional rule.
+
+## Composer grammar
+
+A composer grammar is a probabilistic, evidence-bearing model of recurring musical decisions across securely attributed, independent works.
+
+It may contain several interacting subgrammars.
+
+### Melodic grammar
+
+- interval-transition tendencies;
+- contour archetypes;
+- leap and recovery behavior;
+- scale-degree behavior relative to harmony;
+- sequence construction;
+- phrase-peak placement;
+- repetition versus mutation of cells;
+- approach and departure behavior around structural tones.
+
+### Bass and harmonic grammar
+
+- root and non-root bass motion;
+- pedal behavior;
+- chromatic approaches;
+- harmonic rhythm;
+- chord-function transitions;
+- modal mixture and altered-degree behavior;
+- bass counterpoint against repeated upper material;
+- relation between harmonic change and phrase structure.
+
+### Rhythmic grammar
+
+- onset placement relative to meter;
+- syncopation strategy;
+- characteristic rhythmic cells;
+- anticipation and delay;
+- note-duration relationships;
+- density curves;
+- rhythmic dialogue between parts.
+
+### Phrase and formal grammar
+
+- phrase-length distributions;
+- antecedent/consequent behavior;
+- asymmetry and extension;
+- cadence placement;
+- transition construction;
+- loop-boundary behavior;
+- return versus development strategy;
+- section proportion and preparation.
+
+### Motif-development grammar
+
+- literal repetition;
+- transposition;
+- rhythmic transformation;
+- truncation and extension;
+- fragmentation;
+- sequencing;
+- reharmonization;
+- bass substitution under retained upper material;
+- recurrence at different formal levels.
+
+### Counterpoint and voice-leading grammar
+
+- motion relationships between parts;
+- imitation;
+- inner-voice activity;
+- dissonance preparation and resolution;
+- common-tone treatment;
+- voice crossing;
+- structural doubling versus independent motion.
+
+### Tension and release grammar
+
+- cadential shapes;
+- delayed resolution;
+- dominant or pedal prolongation;
+- phrase-end register behavior;
+- density accumulation and withdrawal;
+- suspension and appoggiatura behavior;
+- how returns resolve, redirect, or withhold tension.
+
+These subgrammars should remain interpretable enough that an attribution can eventually be explained in musical language.
 
 ## Symbolic music is broader than MIDI
 
@@ -46,9 +183,11 @@ Potential symbolic sources include:
 - reconstructed note/performance events inferred from execution when no authored sequence survives;
 - external transcriptions used as explicitly external evidence.
 
-The phrase `recover the MIDI` is therefore too narrow for the project goal. The real task is:
+The phrase `recover the MIDI` is therefore too narrow.
 
-> recover as much of the latent musical program and score-like structure as the evidence supports, without pretending that every source originally contained MIDI or any other universal notation.
+The real task is:
+
+> recover as much of the latent musical program and score-like structure as the evidence supports, then use it to understand the composition.
 
 ## Cooperative representations law
 
@@ -68,11 +207,13 @@ VGM / SPC / executable-rip evidence
 rendered audio / auditory organization
         ↓
 shared musical interpretation
+        ↓
+composer grammar
 ```
 
 Information should flow in both directions where evidence permits.
 
-A symbolic sequence can teach the system what known logical parts, notes, articulations and transformations look like after driver allocation and chip execution. Low-level execution can teach the system where a symbolic representation is incomplete, quantized, mistranscribed, or blind to synthesis and allocation behavior. Audio and perceptual evidence can pressure-test whether an exact implementation distinction is actually heard as a musical distinction.
+A symbolic sequence can teach the system what known logical parts, notes, articulations and transformations look like after driver allocation and chip execution. Low-level execution can teach the system where a symbolic representation is incomplete, quantized, mistranscribed, or blind to synthesis and allocation behavior.
 
 The system should exploit these correspondences for cross-supervision, calibration, testing and inference.
 
@@ -116,115 +257,165 @@ MIDI note
 
 A correspondence can be strong without becoming an equivalence.
 
-The common model should therefore express relations such as `realizes`, `derived_from`, `corresponds_to`, `groups_into`, `same_identity_as`, transformation hypotheses, time mappings and confidence-bearing alignments while leaving native objects intact.
-
 > Everything may teach everything else, but nothing is allowed to erase what makes a representation uniquely informative.
 
-## Forward and inverse understanding should meet
+## Composition and realization must stay separate
 
-The project has two complementary directions.
-
-### Forward
-
-When authored or sequence semantics are available:
+Game music often distributes creative work across several people.
 
 ```text
-note / instrument / effect / logical track
-+ prior state
-+ control flow
-+ driver timing
-        ↓
-physical execution
-        ↓
-heard result
+composition
+!= arrangement
+!= sequence / sound-data programming
+!= driver / engine programming
+!= patch / sample design
+!= final rendering
 ```
 
-This teaches exact causal relationships between compositional instructions and realization.
+This is essential for composer attribution.
 
-### Inverse
+A YM2612 patch family, modulation idiom, PSG deployment pattern, BRR bank habit, driver macro, or channel-allocation strategy may identify an arranger or programmer while saying little about who wrote the underlying composition.
 
-When only execution or audio survives:
-
-```text
-register / DSP / sample / voice behavior
-        ↓
-performance-event hypotheses
-        ↓
-persistent musical parts
-        ↓
-pitch / rhythm / articulation / instrumentation
-        ↓
-phrase / harmony / motif / form
-        ↓
-composer-level interpretation
-```
-
-The inverse model should use lessons learned from forward-observable formats without asserting that the hidden historical source was the same format or toolchain.
-
-For example, a known SMPS or SSEQ track can teach what stable logical-part identity looks like under allocation changes. That lesson may improve VGM or SPC part recovery. It does not prove that a VGM or SPC came from SMPS or SSEQ.
-
-## Cross-format teaching examples
-
-### MIDI and native sequence data
-
-MIDI or validated sequence data can provide relatively explicit note boundaries, duration, part order, tempo, controller state, instrument changes and phrase-scale organization. These are useful supervisory signals for learning how musical structure appears downstream.
-
-### VGM
-
-VGM can provide exact or near-exact device-command timing, register trajectories, patch state, DAC behavior and physical voice activity. It can reveal performance details and synthesis decisions that a score-like transcription may flatten.
-
-A Genesis VGM may support continuity through a stable YM2612 patch fingerprint, timing, relative pitch motion and articulation even when physical-channel identity changes.
-
-### SPC
-
-SPC runtime analysis can expose S-DSP voice lifecycle, source indices, event-time BRR sample versions, pitch rates, envelopes and RAM generations. These can support persistent-part and articulation inference even when no original sequence language is known.
-
-When the same proven sample continues across voice reassignment, compatible timing and relative pitch can support the hypothesis that a musical part persisted despite hardware migration.
-
-### Driver and tracker sources
-
-SMPS, GEMS, N-SPC, trackers, MML and similar sources can expose logical tracks, loops, macros, effects, allocation rules and explicit authored structure. They are especially valuable bridges between compositional decisions and hardware execution.
-
-## The latent musical model
-
-The shared musical model should accumulate only abstractions that genuinely survive comparison across source families.
-
-Useful targets include:
+Composer-facing evidence should prioritize musical relations that can survive changes in realization:
 
 ```text
-musical events
-    pitch relations • onset • duration • articulation • dynamics
-
-persistent parts
-    melody • bass • countermelody • accompaniment • percussion • texture
-
-phrase structure
-    cells • motifs • repetition • variation • call/response • cadence
-
-harmonic organization
-    simultaneity • voice leading • harmonic rhythm • tonal/modal function
-
-arrangement
-    register • voicing • density • orchestration • doubling • role migration
-
+melody
+bass / harmonic motion
+rhythm
+phrase
+motif transformation
+counterpoint / voice leading
+cadential behavior
 form
-    section • transition • buildup • return • interruption • release
-
-soundtrack relationships
-    thematic transformation • cue families • shared grammar • exceptions
-
-ludic function
-    state signaling • traversal/place identity • tension management
-    continuity • narrative framing • player-action coupling
 ```
 
-These are not simply fields to fill. They are hypotheses and structures whose support may come from several representations at once.
+Realization-facing evidence remains valuable, but it must travel on a different attribution axis.
 
-## Composer questions are the evaluation surface
+A strong result can legitimately be:
 
-The project should increasingly be tested with questions a composer would ask of another piece:
+```text
+composition grammar resembles composer A
+arrangement / programming grammar resembles programmer B
+shared patch bank is team-level evidence
+```
 
-- What is the governing musical idea here?
+## Cross-platform survival is a powerful test
+
+The strongest composer signals should survive at least some changes in:
+
+- platform;
+- synthesis architecture;
+- patch/sample vocabulary;
+- arranger/programmer;
+- tempo;
+- transposition;
+- port or remake realization.
+
+This is why same-composer controls across VGM, SPC, MIDI, MML, tracker, PSF-family and other source types are valuable.
+
+If a phrase-construction or motif-transformation habit follows the composer from Genesis FM to SNES sample playback while the sound-programming fingerprints disappear, that is unusually useful evidence that the habit belongs to the composition layer.
+
+## Attribution is the capstone benchmark
+
+For a game credited to several composers, a serious benchmark should proceed as follows.
+
+### 1. Freeze the candidate set
+
+Use historically plausible credited composers and preserve role evidence separately.
+
+### 2. Keep disputed cues completely held out
+
+Do not tune features or weights on the unknown cue.
+
+### 3. Group related works together
+
+Prototypes, final versions, ports, arrangements, reprises, act variants, jingles derived from themes, and other members of one work family must not leak across train and test.
+
+### 4. Build composer grammars from independent known works
+
+One famous lick does not define a composer. Recurrent relations across unrelated work families do.
+
+### 5. Use matched decoys
+
+Prefer controls that defeat shortcuts:
+
+```text
+same driver + different composer
+same patch bank + different composer
+same arranger + different composer
+same composer + different arranger
+same composer + different platform
+similar cue function + different composer
+```
+
+### 6. Intervene on confounders
+
+Rerun attribution after masking or normalizing suspected shortcuts:
+
+```text
+without timbre
+without patch/sample identity
+without platform features
+without arranger/programmer features
+transposition-normalized
+tempo-normalized
+without same-work relatives
+```
+
+A composer hypothesis that collapses only when patch identity is removed was probably using patch identity.
+
+### 7. Require an explanation bundle
+
+A result should look more like:
+
+```text
+candidate: composer B
+
+melodic grammar
+  strong support
+  recurring ascending-cell mutation followed by downward recovery
+
+bass / harmony
+  medium support
+  non-root bass movement under repeated upper phrase resembles independent controls
+
+phrase / form
+  strong support
+  characteristic phrase extension before loop return
+
+motif development
+  strong support
+  fragment → sequence → reharmonized return pattern
+
+counterevidence
+  cadence behavior is atypical
+
+confound checks
+  result survives patch masking, transposition normalization and platform holdout
+
+realization axis
+  arranger/programmer evidence instead resembles candidate C
+```
+
+The prose should be generated from the evidence, not invented after the name is chosen.
+
+### 8. Allow abstention
+
+Even when a game has a finite credited list, the system should retain states such as:
+
+```text
+composer A probable
+composer B plausible
+A/B collaborative or shared-source possibility
+none of the known profiles fit strongly
+insufficient recovered musical structure
+```
+
+## Composer questions are the intermediate evaluation surface
+
+Before attribution is credible, the system should answer questions a composer would ask of the piece:
+
+- What is the governing musical idea?
 - Which material is structural and which is figuration?
 - What does the bass do to the harmony and phrase direction?
 - Which voices are independent, doubled, decorative, or contrapuntal?
@@ -232,15 +423,12 @@ The project should increasingly be tested with questions a composer would ask of
 - How is repetition made non-redundant?
 - What changes when a section returns?
 - Which transformations preserve identity and which create a new idea?
-- What is the orchestration doing beyond assigning instruments to notes?
 - How does register participate in form?
 - Which rhythmic cells organize the groove?
-- How do articulation and synthesis change the perceived role of identical pitch material?
-- Which habits recur across the soundtrack strongly enough to constitute an internal compositional grammar?
-- Which cue deliberately violates that grammar, and what does the contrast accomplish?
-- Given the established grammar, which continuations or variations are plausible and which would feel foreign?
+- Which habits recur across independent works strongly enough to constitute a composer grammar?
+- Which expected habits are conspicuously absent?
 
-A system that cannot answer these questions has not reached the goal merely because it can decode the source perfectly.
+A system that cannot answer these questions has not earned a composer attribution simply because a classifier emits one.
 
 ## Counterfactual understanding
 
@@ -253,36 +441,18 @@ change bass motion
 → harmonic function / voice-leading pressure may change
 
 remove countermelody
-→ texture and phrase dialogue may collapse
+→ phrase dialogue or texture may collapse
 
 preserve notes but change register/orchestration
-→ formal weight or foreground hierarchy may change
-
-change articulation while keeping pitch
-→ groove, emphasis or perceived role may change
+→ formal weight may change while composition identity partly survives
 
 replace a transformed motif with a literal repeat
 → developmental relationship may weaken
 ```
 
-These are analysis hypotheses, not licenses to invent historical intent. Their value is that they test whether the model has learned relationships among musical decisions rather than memorized labels.
-
-## Implementation implications
-
-1. Preserve source-native objects and semantics before normalization.
-2. Recover symbolic note/sequence information whenever available, regardless of whether it is MIDI, MML, tracker data, native bytecode or another form.
-3. Treat reconstructed score-like data as an evidence-bearing projection, not canonical truth.
-4. Align representations explicitly in time rather than forcing them onto one clock.
-5. Allow one musical part to migrate across physical resources.
-6. Allow one source object to realize several audible gestures and several source objects to cooperate in one musical role.
-7. Use stronger authored/driver identity to supervise weaker execution-only heuristics when the relationship is independently established.
-8. Use execution evidence to detect where symbolic simplifications lose meaningful behavior.
-9. Learn cross-format regularities only after preserving source-specific exceptions and counterexamples.
-10. Evaluate progress by improvement in musical interpretation, not by parser count or decoded-state volume.
+These are analysis hypotheses, not claims about undocumented creator intent.
 
 ## Evidence discipline
-
-Deep interpretation must remain traceable.
 
 Keep separate:
 
@@ -294,21 +464,36 @@ DERIVED
 validated transformations of exact evidence
 
 INFERRED
-parts, note identities, harmony, phrase, motif, role, form, style
+parts, note identities, harmony, phrase, motif, role, form, composer grammar
 
 EXTERNAL
-transcriptions, interviews, scores, documentation, scholarship
+transcriptions, interviews, scores, credits, scholarship
 ```
 
-A MIDI transcription can be extraordinarily useful while still being external evidence. A driver track can be exact without proving how a listener groups it. A VGM register trace can be exact without revealing the original authored note spelling.
+Confidence should rise when independent representations and independent works converge and fall when they disagree.
 
-Confidence should rise when independent representations converge and fall when they disagree.
+Disagreement is often the most useful result.
 
-Disagreement is not noise to be normalized away. It is often the most informative result.
+## Evaluation ladder
+
+```text
+L0  source parsing
+L1  note / sequence / performance recovery
+L2  persistent musical parts
+L3  melody / bass / rhythm / harmony
+L4  phrase / motif / counterpoint / cadence / form
+L5  interpretable compositional rules
+L6  composer grammar from independent known works
+L7  blind attribution among matched plausible composers
+L8  attribution survives confound interventions and platform changes
+L9  explanation is musically persuasive and traceable to evidence
+```
+
+A high L7 score without L3-L6 understanding is suspicious, not impressive.
 
 ## Completion criterion
 
-The project is not finished with a source family when it can merely parse or replay it.
+The project is not finished with a source family when it can merely parse, replay, or export it.
 
 For a mature source family, the desired path is:
 
@@ -317,12 +502,14 @@ native truth
 → sequence / performance semantics where recoverable
 → persistent musical identity
 → pitch / rhythm / articulation / instrumentation
-→ composition and arrangement
-→ phrase / harmony / motif / form
-→ soundtrack relationships and game function
+→ melody / bass / harmony / counterpoint
+→ phrase / cadence / motif / form
+→ reusable compositional rules
+→ composer grammar
+→ blind composer-attribution stress tests
 → natural composer-level explanation
 ```
 
 Different formats will expose different rungs directly. The common system should use those differences as leverage.
 
-> **The destination is not MIDI. The destination is understanding the composition. Symbolic sequence data is one of the strongest bridges available, and every source family should help the others cross it without losing its own identity.**
+> **The destination is not MIDI, note extraction, or a composer label. The destination is understanding the composition deeply enough that a defensible composer attribution can emerge from the musical grammar itself.**
