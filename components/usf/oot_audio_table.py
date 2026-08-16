@@ -109,7 +109,7 @@ def _span_is_observed(
     if start == end:
         return True
     cursor = start
-    for range_start, range_end in observed_ranges:
+    for range_start, range_end in sorted(observed_ranges):
         if range_end <= cursor:
             continue
         if range_start > cursor:
@@ -120,16 +120,52 @@ def _span_is_observed(
     return False
 
 
-def _provenance_for_span(
+def _subtract_interval(
+    intervals: list[tuple[int, int]],
+    cover_start: int,
+    cover_end: int,
+) -> list[tuple[int, int]]:
+    result: list[tuple[int, int]] = []
+    for start, end in intervals:
+        if cover_end <= start or cover_start >= end:
+            result.append((start, end))
+            continue
+        if start < cover_start:
+            result.append((start, min(end, cover_start)))
+        if cover_end < end:
+            result.append((max(start, cover_end), end))
+    return result
+
+
+def _effective_provenance_for_span(
     contributions: tuple[ByteContribution, ...],
     start: int,
     end: int,
 ) -> tuple[ByteContribution, ...]:
-    return tuple(
-        item
-        for item in contributions
-        if item.role == "n64-rom" and item.target_start < end and item.target_end > start
+    """Return only contributions that still supply final bytes in the span.
+
+    OverlayBuffer records every write.  Walking writes in reverse stage order
+    and subtracting covered intervals prevents fully shadowed library patches
+    from being reported as effective sequence provenance.
+    """
+
+    if start >= end:
+        return ()
+    uncovered = [(start, end)]
+    selected: list[ByteContribution] = []
+    ordered = sorted(
+        (item for item in contributions if item.role == "n64-rom"),
+        key=lambda item: item.stage_index,
+        reverse=True,
     )
+    for item in ordered:
+        if not any(item.target_start < right and item.target_end > left for left, right in uncovered):
+            continue
+        selected.append(item)
+        uncovered = _subtract_interval(uncovered, item.target_start, item.target_end)
+        if not uncovered:
+            break
+    return tuple(reversed(selected))
 
 
 def parse_oot_audio_table(
@@ -274,7 +310,7 @@ def assess_oot_sequence_entries(
             data_end=end,
             data=rom[start:end],
             table_entry=entry,
-            provenance=_provenance_for_span(contributions, start, end),
+            provenance=_effective_provenance_for_span(contributions, start, end),
         )
         assessments.append(
             OotSequenceEntryAssessment(
