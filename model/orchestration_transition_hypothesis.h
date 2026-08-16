@@ -67,6 +67,7 @@ struct orchestration_transition_hypothesis {
 };
 
 constexpr double ungrounded_cross_part_orchestration_ceiling = 0.49;
+constexpr double incomparable_realization_orchestration_ceiling = 0.64;
 constexpr double orchestration_material_transfer_threshold = 0.75;
 
 inline const char* to_string(orchestration_transition_kind kind) noexcept {
@@ -162,8 +163,11 @@ inline orchestration_transition_hypothesis infer_orchestration_transition(
     result.role_preserved = first.role == second.role;
     result.confidence = std::min(first.confidence, second.confidence);
 
-    if (first.realization.has_value() && second.realization.has_value() &&
-        first.realization->basis == second.realization->basis) {
+    const bool both_have_realization =
+        first.realization.has_value() && second.realization.has_value();
+    const bool realization_basis_conflict = both_have_realization &&
+        first.realization->basis != second.realization->basis;
+    if (both_have_realization && !realization_basis_conflict) {
         result.realization_comparable = true;
         result.timbre_changed = first.realization->identity != second.realization->identity;
     }
@@ -211,6 +215,11 @@ inline orchestration_transition_hypothesis infer_orchestration_transition(
         result.kind = orchestration_transition_kind::timbral_recoloring;
     } else if (register_changed) {
         result.kind = orchestration_transition_kind::registral_revoicing;
+    } else if (realization_basis_conflict) {
+        result.kind = orchestration_transition_kind::unresolved;
+        result.confidence = std::min(
+            result.confidence,
+            incomparable_realization_orchestration_ceiling);
     } else {
         result.kind = orchestration_transition_kind::stable_assignment;
     }
