@@ -113,6 +113,8 @@ int main() {
     assert(one_work_many_views.multi_dimension_grounded);
     assert(!one_work_many_views.cross_work_grounded);
     assert(!one_work_many_views.cross_soundtrack_grounded);
+    assert(one_work_many_views.grounding_support_observations == 3);
+    assert(close_enough(one_work_many_views.independent_support_ceiling, 0.95));
     assert(close_enough(one_work_many_views.confidence, composer_grammar_single_work_ceiling));
 
     // Control 2: several independent works inside one soundtrack can establish
@@ -155,13 +157,15 @@ int main() {
 
     assert(one_soundtrack_many_works.cross_work_grounded);
     assert(!one_soundtrack_many_works.cross_soundtrack_grounded);
+    assert(close_enough(one_soundtrack_many_works.independent_support_ceiling, 0.89));
     assert(close_enough(
         one_soundtrack_many_works.confidence,
         composer_grammar_single_soundtrack_ceiling));
 
     // Control 3: the same relational habit recurring in independent works on
-    // different soundtracks, through different representations, can retain a
-    // strong confidence proposal.
+    // different soundtracks, through different representations, can retain
+    // strong confidence, but not more confidence than the independent evidence
+    // that establishes recurrence.
     const auto cross_soundtrack_rule = make_composer_grammar_rule(
         "composer-A",
         creative_attribution_role::composer,
@@ -222,7 +226,9 @@ int main() {
     assert(cross_soundtrack_rule.cross_representation_grounded);
     assert(cross_soundtrack_rule.multi_dimension_grounded);
     assert(cross_soundtrack_rule.intervention_grounded);
-    assert(close_enough(cross_soundtrack_rule.confidence, 0.92));
+    assert(cross_soundtrack_rule.grounding_support_observations == 3);
+    assert(close_enough(cross_soundtrack_rule.independent_support_ceiling, 0.89));
+    assert(close_enough(cross_soundtrack_rule.confidence, 0.89));
 
     // Control 4: evidence from several soundtracks still cannot be promoted to
     // composer evidence if its historical role is actually arrangement/programming.
@@ -253,6 +259,7 @@ int main() {
         });
 
     assert(wrong_role.supporting_observations == 0);
+    assert(wrong_role.grounding_support_observations == 0);
     assert(close_enough(wrong_role.confidence, composer_grammar_no_role_support_ceiling));
 
     // Control 5: a rule that fails a strong confound intervention must be
@@ -341,7 +348,7 @@ int main() {
     const auto grammar_evidence = as_creator_grammar_evidence(cross_soundtrack_rule);
     assert(grammar_evidence.kind == creative_attribution_evidence_kind::creator_grammar);
     assert(grammar_evidence.role_scope == creative_attribution_role::composer);
-    assert(close_enough(grammar_evidence.confidence, 0.92));
+    assert(close_enough(grammar_evidence.confidence, 0.89));
 
     const auto attribution = make_creative_attribution_hypothesis(
         "composer-A",
@@ -362,6 +369,43 @@ int main() {
 
     assert(attribution.cross_domain_grounded);
     assert(close_enough(attribution.confidence, 0.90));
+
+    // Control 8: two weak observations do not become strong merely because
+    // they happen to come from different soundtrack labels. This is the guard
+    // that prevents rhythm-only motif echoes from becoming composer grammar.
+    const auto weak_cross_soundtrack = make_composer_grammar_rule(
+        "composer-E",
+        creative_attribution_role::composer,
+        "rhythm-only-motif-echo",
+        0.95,
+        {
+            support(
+                "soundtrack-1",
+                "work-1",
+                composer_representation_kind::synthesis_runtime,
+                composer_grammar_dimension::motif_development,
+                creative_attribution_role::composer,
+                0.55,
+                "rhythm-only-1",
+                "timing profile matches but pitch identity is unavailable"),
+            support(
+                "soundtrack-2",
+                "work-2",
+                composer_representation_kind::synthesis_runtime,
+                composer_grammar_dimension::motif_development,
+                creative_attribution_role::composer,
+                0.55,
+                "rhythm-only-2",
+                "timing profile matches but pitch identity is unavailable"),
+        });
+
+    assert(weak_cross_soundtrack.supporting_observations == 2);
+    assert(weak_cross_soundtrack.grounding_support_observations == 0);
+    assert(!weak_cross_soundtrack.cross_work_grounded);
+    assert(!weak_cross_soundtrack.cross_soundtrack_grounded);
+    assert(close_enough(
+        weak_cross_soundtrack.confidence,
+        composer_grammar_weak_support_ceiling));
 
     return 0;
 }
