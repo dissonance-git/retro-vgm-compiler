@@ -1,514 +1,430 @@
-# Composer-grammar attribution
+# Cross-representation, cross-soundtrack composer attribution
 
 Status: active research and benchmark design  
-Purpose: make composer attribution a downstream test of genuine song understanding, especially for games whose soundtrack credits name several composers without track-level assignments.
+Purpose: make composer attribution a downstream test of genuine musical understanding, especially for games whose soundtrack credits name several composers without track-level assignments.
 
 Related:
 
 - `docs/composer-level-understanding.md`
+- `docs/holistic-musical-understanding.md`
 - `research/musicological-authorship-attribution.md`
 - `research/sonic3-composer-programmer-attribution.md`
-- `research/harmonic-formal-analysis.md`
-- `research/perceptual-grouping-hierarchy.md`
-- `research/human-musical-discourse.md`
 
 ## Target
 
-The important target is not:
+The target is not an opaque style classifier, and it is not a score-only or MIDI-only fingerprint.
+
+The system should learn a composer by studying **many representations of many independent works across multiple soundtracks** whenever the evidence permits.
 
 ```text
-input cue
-→ opaque style classifier
-→ composer label
+REPRESENTATION AXIS
+MIDI / MML / tracker / native sequence / VGM / SPC / PSF / audio
+
+WORK AXIS
+independent cues and work families
+
+SOUNDTRACK AXIS
+different games / soundtracks / projects / platforms / years
+
+ROLE AXIS
+composition / arrangement / programming / patch-sample design / realization
 ```
 
-It is:
+The composer model should reason across all four axes without collapsing them.
 
 ```text
-native / symbolic / execution evidence
+many representations
+of many independent works
+across several soundtracks
         ↓
-persistent parts and note-level organization
+deep musical models
         ↓
-melody • bass • harmony • rhythm • counterpoint
+recurring creator-specific relations
         ↓
-phrase • motif • cadence • form • transformation
+cross-soundtrack composer grammar
         ↓
-composer-level explanation of how the cue is built
+held-out cue attribution
         ↓
-comparison with the established compositional grammars
-of the historically plausible credited composers
-        ↓
-role-scoped attribution hypothesis + explanation + uncertainty
+explanation + counterevidence + uncertainty
 ```
 
-Composer attribution is therefore a **capstone benchmark for musical understanding**.
+## Why different soundtracks matter
 
-A correct name without a musically defensible explanation is not sufficient evidence that the system understood the song.
+A single soundtrack is a dangerous environment for attribution because it contains shared local causes:
 
-## Why multi-composer game soundtracks are unusually strong tests
+- one driver or engine;
+- one patch/sample library;
+- one platform;
+- one sound team;
+- one director;
+- one production period;
+- one genre/function vocabulary;
+- recurring themes and derivative cues;
+- shared arrangers or programmers.
 
-A game that credits several composers but does not assign every cue gives us a constrained historical candidate set without giving away the answer.
+A model trained only within that soundtrack can appear to identify composers while actually identifying local production conditions.
 
-That is close to the closed-set musicological attribution problem:
+Therefore the preferred composer profile should contain controls from other soundtracks whenever available.
 
 ```text
-known soundtrack
-known development context
-known finite contributor set
-partially known track assignments
-unknown assignments for held-out cues
+composer A
+├── soundtrack 1
+│   ├── independent work family 1
+│   └── independent work family 2
+├── soundtrack 2
+│   ├── independent work family 3
+│   └── independent work family 4
+└── soundtrack 3
+    └── independent work family 5
 ```
 
-But game music makes the problem harder because several creative layers can belong to different people:
+The central question becomes:
+
+> What remains recognizably this composer when the soundtrack around them changes?
+
+## Two independent generalization axes
+
+### Same work across representations
+
+A single cue may be observable as:
 
 ```text
-composer
-arranger / sequence programmer
-sound programmer
-patch / sample designer
-driver / toolchain author
+MIDI / MML / tracker / native sequence
+↕
+VGM / SPC / executable state
+↕
+patches / samples / device behavior
+↕
+rendered audio
+↕
+external transcription
 ```
 
-The system must therefore be able to reach a result such as:
+These views can teach one another what the musical object is while preserving source-native distinctions.
+
+### Same composer across soundtracks
+
+The composer may appear in:
 
 ```text
-composition grammar → strongly resembles composer A
-realization grammar → strongly resembles programmer B
-patch vocabulary → shared team/library evidence
-historical metadata → compatible with A/B team context
+game A on Genesis
+game B on SNES
+game C on PlayStation
+game D using MIDI/streamed audio
 ```
 
-without averaging those observations into a single anonymous `style` score.
+The useful question is which habits survive those changes, which transform, and which vanish because they belonged to a particular collaborator, toolchain, or platform.
 
-## Composer grammar rather than surface fingerprint
-
-The desired object is a **composer grammar**: a probabilistic, evidence-bearing model of recurring decisions and relationships in securely attributed works.
-
-It should describe not merely what elements occur, but how the composer tends to use them.
-
-### Melodic grammar
-
-Potential coordinates:
-
-- interval-transition tendencies;
-- contour archetypes and contour transformations;
-- characteristic leaps and recovery behavior;
-- scale-degree behavior relative to harmony;
-- approach and departure patterns around structural tones;
-- sequence construction;
-- repetition versus mutation of melodic cells;
-- phrase peak placement;
-- register-relative contour rather than absolute register alone.
-
-### Bass and harmonic-motion grammar
-
-Potential coordinates:
-
-- root motion and non-root bass behavior;
-- pedal use;
-- chromatic approach patterns;
-- bass counterpoint against melody;
-- harmonic rhythm;
-- prolongation versus rapid functional movement;
-- characteristic turnarounds;
-- modal mixture / altered-degree behavior;
-- chord-function transitions;
-- relation between bass motion and phrase boundaries.
-
-### Rhythmic grammar
-
-Potential coordinates:
-
-- onset distributions relative to meter;
-- syncopation strategy;
-- recurring rhythmic cells;
-- phrase-level density curves;
-- anticipation/delay habits;
-- note-duration relationships;
-- groove-preserving variations;
-- rhythmic call/response between parts.
-
-### Phrase and formal grammar
-
-Potential coordinates:
-
-- phrase-length distributions;
-- antecedent/consequent relations;
-- asymmetry and extension habits;
-- cadence timing;
-- introduction and pickup behavior;
-- transition construction;
-- loop-boundary management;
-- return versus development strategy;
-- section proportion;
-- how new material is prepared and how old material re-enters.
-
-### Motif-development grammar
-
-Potential coordinates:
-
-- literal repetition rate;
-- interval-preserving transposition;
-- rhythmic transformation;
-- truncation / extension;
-- fragmentation;
-- sequencing;
-- reharmonization;
-- bass substitution under retained upper material;
-- call/response transformation;
-- recurrence at different formal levels.
-
-### Counterpoint and voice-leading grammar
-
-Potential coordinates:
-
-- independence of concurrent parts;
-- parallel versus contrary motion;
-- imitation;
-- inner-voice activity;
-- dissonance preparation/resolution behavior;
-- voice crossings;
-- doubling behavior when compositionally structural rather than merely orchestrational;
-- treatment of sustained/common tones across harmonic change.
-
-### Cadence, tension and release grammar
-
-Potential coordinates:
-
-- preferred cadential shapes;
-- degree of closure at loop boundaries;
-- delayed resolutions;
-- dominant or pedal prolongations;
-- phrase-end register behavior;
-- density withdrawal or accumulation around cadences;
-- melodic suspension / appoggiatura behavior;
-- whether formal return resolves, redirects, or intentionally withholds tension.
-
-These dimensions are deliberately relational. `uses minor seventh chords` is weaker than `tends to place a particular harmonic move under a repeated melodic contour at phrase extension points`.
-
-## Literature pass
-
-### Simonetta 2025 systematic survey
-
-Federico Simonetta, **Style-Based Composer Identification and Attribution of Symbolic Music Scores: A Systematic Survey**, TISMIR 8(1), 2025, DOI `10.5334/tismir.240`.
-
-The survey covers 58 peer-reviewed studies and makes several points directly relevant here:
-
-1. composer-classification accuracy is not automatically reliable authorship attribution;
-2. candidate corpora should be as comparable as possible to the questioned work;
-3. encoding, editorial, performance and representation choices can become confounders;
-4. fine-grained attribution must distinguish individual compositional style from broader period/genre/school cues;
-5. balanced accuracy / MCC and rigorous cross-validation are preferable to a single lucky accuracy result;
-6. disputed work must remain fully held out from model construction;
-7. multiple meticulous studies and musicological convergence are stronger than one high model score.
-
-For game music, translate `period/editorial/performance` confounds into:
+The strongest evidence sits where both axes agree:
 
 ```text
-driver family
-shared patch bank
-platform / chip
-arranger / programmer
-sound library
-port / remake
-prototype / final lineage
-same-work or derivative-cue leakage
+same creator-specific relation
+observed through several representations
+and recurring across unrelated soundtracks
 ```
 
-### Rodríguez-Algarra, Sturm and Dixon 2019
+## Composer grammar is multi-view
 
-**Characterising Confounding Effects in Music Classification Experiments through Interventions**, TISMIR 2(1), 2019, DOI `10.5334/tismir.24`.
+No representation is privileged.
 
-The important idea is experimental intervention: deliberately regulate or remove a suspected confounder and observe how the result changes.
+### Structural / symbolic view
 
-For composer attribution, run paired conditions such as:
+- melody;
+- bass and harmonic motion;
+- rhythm;
+- phrase;
+- motif transformation;
+- counterpoint;
+- cadence;
+- form;
+- loop and recurrence strategy.
+
+### Arrangement / orchestration view
+
+- register;
+- density;
+- doubling;
+- role assignment;
+- countermelody strategy;
+- textural contrast;
+- orchestration of returns and transitions.
+
+### Timbre / synthesis view
+
+- patch/sample choices where creator-controlled;
+- envelope and articulation behavior;
+- modulation habits;
+- timbral contrast;
+- synthesis changes tied to form;
+- relationships between timbre and musical role.
+
+### Performance / execution view
+
+- expressive pitch behavior;
+- attack/release behavior;
+- dynamic contour;
+- groove microtiming where recoverable;
+- articulation patterns;
+- use of silence and negative space;
+- implementation choices that shape phrase perception.
+
+### Soundtrack-level view
+
+- thematic reuse;
+- cue-family transformations;
+- recurring solutions to location/character/state functions;
+- harmonic/timbral pairings;
+- formal strategies repeated across unrelated cues;
+- how one soundtrack differs from another while retaining deeper creator-specific behavior.
+
+The grammar should model relationships among these views rather than concatenate separate feature lists.
+
+Example:
 
 ```text
-full evidence
-vs patch identity masked
-vs instrumentation normalized
-vs transposition normalized
-vs tempo normalized
-vs arranger/programmer features excluded
-vs same-work/version relatives removed
-vs platform-specific features excluded
+retained melodic cell
++ changed bass motion
++ widened register
++ brighter timbral assignment
++ delayed cadence
+→ characteristic return strategy
 ```
 
-If attribution collapses only when patch identity is removed, the model may have learned the sound programmer or shared library rather than the composer.
+If that strategy appears in several unrelated works across several soundtracks, it becomes much stronger evidence than a single patch or chord statistic.
 
-### Kempfert and Wong
+## Role scope, not modality censorship
 
-**Where Does Haydn End and Mozart Begin? Composer Classification of String Quartets**.
-
-This work is useful because it uses interpretable, musicologically motivated global features, including form-related features, to distinguish historically close composers rather than radically different style periods.
-
-The transferable lesson is to build features from actual musicological hypotheses about how composers organize pieces, not merely whichever statistics are easiest to extract.
-
-### Yu, Varshney, Garnett and Kumar
-
-**Learning Interpretable Musical Compositional Rules and Traces**.
-
-MUS-ROVER asks whether a machine can behave like a music theorist and learns interpretable compositional rules from symbolic music using pattern models.
-
-This supports the present project's move from flat fingerprints toward learned rules and traces such as:
+Game music often distributes creative work across several people:
 
 ```text
-when melodic condition X appears
-composer often answers with transformation Y
-under harmonic / metric context Z
+composition
+!= arrangement
+!= sequence / sound-data programming
+!= driver / engine programming
+!= patch / sample design
+!= final realization
 ```
 
-A rule can become an explanation rather than just a weight in a classifier.
+All representations may contribute to composer attribution, but each contribution must carry role provenance.
 
-### Foscarin et al.
+A timbral, arrangement, patch, articulation, or control habit may support composer attribution when historical evidence shows the composer authored or reliably controlled that layer.
 
-**Concept-Based Techniques for "Musicologist-friendly" Explanations in a Deep Music Classifier**.
+The same feature should be downgraded or reassigned when it is more plausibly inherited from a programmer, arranger, shared library, platform, or driver.
 
-This work is useful as an evaluation precedent: explanations should rise from low-level model features to musical concepts that a human analyst can inspect.
-
-For Game Music Interpreter, an attribution claim should therefore expose concepts such as `phrase extension`, `bass counterpoint`, `motivic fragmentation`, `cadential delay`, or `metric displacement`, not only latent-vector dimensions.
-
-## GitHub pass
-
-### DDMAL/jSymbolic2
-
-jSymbolic provides a broad, modular symbolic feature framework for MIR and computational musicology. Its architecture treats extracted musical properties as named feature definitions with dependencies rather than an anonymous vector.
-
-Use it as:
+So the law is:
 
 ```text
-feature taxonomy observatory
-+ encoding-bias warning
-+ independent comparison extractor
+all modalities may contribute
++
+role provenance determines what the contribution means
 ```
 
-Do not copy its feature set wholesale. Game Music Interpreter has source-native evidence and can preserve relationships that generic MIDI/MEI extractors cannot.
-
-### DIDONEproject/musif
-
-musif is a musicological symbolic feature library designed to be extended with custom features. The associated research reports improved classification when complementary feature families are combined.
-
-This supports a modular grammar where melody, harmony, rhythm, form, counterpoint and other families can be evaluated independently before evidence is combined.
-
-### DIDONEproject/music_symbolic_features
-
-This repository contains reproducible benchmarks comparing symbolic feature extractors on composer/style corpora.
-
-Use it as an external methodology control for:
-
-- feature-family ablation;
-- extractor disagreement;
-- balanced evaluation;
-- reproduction of known symbolic-composer benchmarks.
-
-The goal is not to make Game Music Interpreter dependent on these tools. They are independent witnesses against which our native representation can be pressure-tested.
-
-## Attribution protocol for a multi-composer game
-
-Suppose a game credits composers A, B, C and D, with some track-level assignments known and some unknown.
-
-### 1. Freeze historical candidate set
-
-Create:
+not:
 
 ```text
-candidate composer
-role actually documented
+only note/score features count
+```
+
+## Cross-soundtrack composer model
+
+A composer should not be reduced to one centroid.
+
+Style can evolve with:
+
+- career period;
+- new collaborators;
+- platform and tooling;
+- genre and dramatic function;
+- project direction;
+- musical influences;
+- deliberate experimentation.
+
+The model should distinguish:
+
+```text
+stable long-range habits
+period-specific habits
+soundtrack-local habits
+collaborator-dependent habits
+platform-dependent habits
+one-off experiments
+```
+
+A composer grammar is therefore a structured region with trajectories, not a frozen fingerprint.
+
+## Validation protocol
+
+For a soundtrack credited to composers A, B, C and D:
+
+### 1. Freeze the historical candidate set
+
+Preserve:
+
+```text
+candidate
+historically documented role
 securely attributed works
 uncertain works
 excluded works
 source/provenance
 ```
 
-Do not let disputed cues enter any candidate profile.
+### 2. Group by work family
 
-### 2. Group by work family before splitting
-
-Reprises, act variants, jingles derived from themes, prototypes, ports, remixes and alternate arrangements of one musical work belong to the same split group.
+Prototypes, ports, reprises, remixes, act variants, jingles derived from a theme, and alternate arrangements of one musical work stay in one split group.
 
 ```text
 same work family
-→ never appear on both sides of train/test
+→ never on both train and test sides
 ```
 
-Otherwise the model can identify a song rather than a composer.
+### 3. Prefer cross-soundtrack controls
 
-### 3. Build separate composition and realization views
+For every candidate, gather secure works from other soundtracks where possible.
 
-For each securely attributed cue, extract at least:
+Desired validation modes:
 
 ```text
-COMPOSITION VIEW
-melody
-bass / harmonic motion
-rhythm
-phrase / form
-motif transformation
-counterpoint / voice leading
-cadential behavior
-
-REALIZATION VIEW
-patch/sample vocabulary
-instrument assignments
-channel allocation
-modulation macros
-articulation implementation
-panning / hardware controls
-driver/toolchain idioms
+leave-one-work-family-out
+leave-one-soundtrack-out
+leave-one-platform-out
+leave-one-arranger-out
+leave-one-career-period-out
 ```
 
-Only the composition view may directly support composer-style attribution.
+### 4. Build multi-view grammars
 
-The realization view may explain arrangement/programming authorship and may be used as a confound-control variable.
-
-### 4. Learn candidate grammars from multiple works
-
-A proposed characteristic should not become a composer habit because it occurs in one famous track.
-
-Require recurrence across independent work families.
-
-Prefer rules such as:
+Do not restrict composer evidence to symbolic notation. Keep separate evidence families for:
 
 ```text
-motif X transformation strategy occurs across several unrelated works
+structure
+arrangement
+synthesis/timbre
+performance/execution
+soundtrack-level relationships
 ```
 
-over:
+Each family carries role provenance and confidence.
 
-```text
-track X contains this exact lick
-```
-
-### 5. Test cross-realization survival
-
-The strongest composer features should survive some changes in:
-
-- instrumentation;
-- FM/PCM/sample vocabulary;
-- platform;
-- arranger/programmer;
-- tempo;
-- transposition;
-- port/remake realization.
-
-This is where additional SPC/VGM sets by the same composer become especially valuable.
-
-If a feature follows the composer from Genesis VGM to SNES SPC while patch and driver features necessarily change, that is unusually useful evidence that the feature belongs to the composition layer.
-
-### 6. Matched-decoy testing
-
-For every held-out unknown cue, choose controls designed to defeat cheap shortcuts.
+### 5. Use matched decoys
 
 Examples:
 
 ```text
 same driver + different composer
-same patch bank + different composer
+same patch/sample bank + different composer
 same arranger + different composer
 same composer + different arranger
 same composer + different platform
-similar genre/function + different composer
+same composer + different soundtrack
+similar game function + different composer
 ```
 
-The system should still recover the right composer-level similarity when trivial realization cues are tied or removed.
+### 6. Intervene on confounders
 
-### 7. Confound interventions
-
-Rerun the attribution under masked conditions.
-
-A robust composition attribution should remain reasonably stable when non-compositional coordinates are removed.
-
-Record sensitivity per candidate:
+Rerun attribution under masks/normalizations such as:
 
 ```text
-full score
-composition-only score
 without timbre
 without patch/sample identity
-without platform features
-without tempo
+without platform-specific features
+without arranger/programmer features
+without soundtrack-local features
 transposition-normalized
-without version relatives
+tempo-normalized
+without related versions
 ```
 
-The deltas are evidence about what the system was actually using.
+The change in result is evidence about what the system was actually using.
 
-### 8. Require an explanation bundle
+### 7. Require an explanation bundle
 
-A candidate score should be accompanied by a structured explanation such as:
+A result should resemble:
 
 ```text
 candidate: composer B
 
-melodic grammar
-  strong support
-  recurring ascending-cell mutation followed by downward recovery
+cross-soundtrack support
+  phrase-extension rule recurs in soundtrack 1 and soundtrack 3
+  bass-against-repeated-melody strategy recurs across two platforms
+  motif transformation survives a different arranger
 
-bass / harmony
-  medium support
-  characteristic non-root bass motion under repeated upper phrase
+current cue
+  strong phrase/form match
+  strong melodic-development match
+  medium arrangement/timbre match
+  cadence behavior is atypical
 
-phrase / form
-  strong support
-  recurring 4+4 phrase extended by two bars before loop return
-
-motif development
-  strong support
-  fragment → sequence → reharmonized return pattern seen in held-out controls
-
-counterevidence
-  cadence behavior is atypical for composer B
+representation convergence
+  native sequence and VGM agree on part/motif structure
+  audio supports the inferred foreground/background grouping
 
 confound checks
-  result survives patch masking, transposition normalization and platform holdout
+  survives patch masking
+  survives leave-one-soundtrack-out validation
+  survives transposition normalization
 
 role boundary
-  realization fingerprint instead resembles programmer C
+  implementation subgrammar instead resembles programmer C
 ```
 
-The natural-language explanation should be derivable from these evidence objects rather than invented after the label is chosen.
+The explanation should be generated from evidence, not invented after the winning label is selected.
 
-### 9. Abstain when grammar evidence does not converge
+### 8. Allow abstention
 
 Possible outputs include:
 
 ```text
 composer A probable
 composer B plausible
-A/B collaborative or shared-source possibility
-none of known profiles fit strongly
+A/B collaboration or shared-source possibility
+none of the known profiles fit strongly
 insufficient recovered musical structure
 ```
 
-Even when the game's credited list makes a finite set historically likely, the implementation should retain an abstention path.
+## Same-composer controls from other soundtracks
 
-## Strongest future control: same composer across different machines
+Additional VGM, SPC, PSF-family, tracker, MIDI, MML, or other sets by the same composers are among the most valuable future controls.
 
-The planned extra SPC and VGM sets by the same artists are extremely important.
-
-They let us search for invariants at several depths:
+They let us ask whether a proposed habit travels with the person or stays behind with the soundtrack.
 
 ```text
-surface timbre
-likely changes heavily
+feature follows composer across soundtracks
+→ stronger creator evidence
 
-arrangement / programming habits
-may persist partly, especially with same programmer
+feature stays with one soundtrack across composers
+→ likely soundtrack/toolchain/team evidence
 
-melodic / rhythmic grammar
-should persist more strongly if genuinely composer-specific
+feature follows one arranger across composers
+→ realization evidence
 
-phrase / motif / harmonic strategy
-should be among the most portable composer signals
+feature survives different representations of one work
+→ stronger evidence that the underlying musical relation was recovered correctly
 ```
 
-The ideal discovery is not `composer X uses patch fingerprint 0x1234`.
+The ideal discovery is not:
+
+```text
+composer X uses patch fingerprint 0x1234
+```
 
 It is closer to:
 
-> Across unrelated games and different hardware, composer X repeatedly constructs foreground phrases with a particular contour/rhythm grammar, moves the bass against repeated upper material in a characteristic way, and transforms motifs at section returns using the same relational strategy.
+> Across unrelated games, different hardware, and different collaborators, composer X repeatedly constructs phrase peaks, bass countermotion, motif transformations, timbral reinforcement, and formal returns using a recognizably related strategy.
 
-That is a claim about musical thought rather than a file format.
+## Literature and GitHub observatories
+
+The current research pass uses:
+
+- Simonetta's 2025 systematic survey of symbolic composer attribution for validation and confound warnings;
+- Rodríguez-Algarra, Sturm and Dixon for intervention-based confound testing;
+- Kempfert/Wong for interpretable musicologically motivated composer features;
+- MUS-ROVER for interpretable compositional rules and traces;
+- Foscarin et al. for musicologist-readable explanation concepts;
+- `DDMAL/jSymbolic2` as a modular feature-taxonomy and encoding-bias observatory;
+- `DIDONEproject/musif` and `music_symbolic_features` as independent symbolic-feature and benchmarking observatories.
+
+These are pressure tests and methodological references, not canonical representations for Game Music Interpreter.
 
 ## Evaluation ladder
 
@@ -516,40 +432,48 @@ That is a claim about musical thought rather than a file format.
 L0  source parsing
 L1  note / sequence / performance recovery
 L2  persistent parts
-L3  melody / bass / rhythm / harmony
-L4  phrase / motif / counterpoint / form
-L5  reusable compositional rules
-L6  composer grammar from independent known works
-L7  blind attribution among matched credited composers
-L8  attribution survives confound interventions and platform changes
-L9  explanation is musically persuasive and traceable to evidence
+L3  melody / bass / rhythm / harmony / timbre / articulation
+L4  phrase / motif / counterpoint / cadence / form / arrangement
+L5  integrated cross-representation song model
+L6  recurring rules across independent works
+L7  cross-soundtrack composer grammar
+L8  blind attribution among matched plausible composers
+L9  attribution survives soundtrack/platform/representation confound tests
+L10 musically persuasive, traceable explanation
 ```
 
-A high L7 score without L3-L6 understanding is suspicious, not impressive.
+A high L8 score without L3-L7 understanding is suspicious, not impressive.
 
 ## Current implementation direction
 
-The role-scoped attribution model in `model/creative_attribution_hypothesis.h` is the outer firewall: realization evidence cannot silently become composer evidence.
+`model/creative_attribution_hypothesis.h` is the outer role firewall.
 
-The next inner layer should represent **composer-grammar evidence** explicitly, preserving:
+The next inner layer should represent cross-representation, cross-soundtrack grammar evidence explicitly, including:
 
+- creator candidate;
+- role scope;
+- representation source;
+- soundtrack identity;
+- work-family identity;
 - musical dimension;
-- independent work-family support;
-- cross-realization / cross-platform survival;
-- supporting and contradicting observations;
-- representation provenance;
-- confound interventions;
-- confidence ceilings when evidence is narrow.
-
-Its output can then feed the `composition_structure` coordinate of the role-scoped attribution model.
+- learned relation/rule;
+- supporting independent works;
+- supporting independent soundtracks;
+- cross-platform survival;
+- contradictory observations;
+- confound-intervention sensitivity;
+- confidence and provenance.
 
 This keeps the architecture causal:
 
 ```text
-understand song
-→ discover recurring composer grammar
-→ validate grammar across independent controls
+understand representations
+→ understand songs
+→ compare independent works
+→ compare independent soundtracks
+→ discover composer grammar
+→ validate grammar
 → attribute held-out cue
 ```
 
-rather than reversing the arrow and teaching the system to call whatever predicts a name `understanding`.
+> **The strongest composer model is not a fingerprint of one soundtrack. It is a structured account of what musical behaviors follow the composer across different works, representations, soundtracks, platforms, and collaborators.**
