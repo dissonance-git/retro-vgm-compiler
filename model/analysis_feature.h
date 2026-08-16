@@ -88,6 +88,17 @@ public:
         features_.push_back(std::move(feature));
     }
 
+    void replace(analysis_feature feature) {
+        validate_analysis_feature(feature);
+        for (auto& existing : features_) {
+            if (existing.name == feature.name) {
+                existing = std::move(feature);
+                return;
+            }
+        }
+        throw std::invalid_argument("analysis feature set cannot replace a missing feature name");
+    }
+
     const analysis_feature* find(const std::string& name) const noexcept {
         for (const auto& feature : features_) {
             if (feature.name == name)
