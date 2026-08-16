@@ -48,6 +48,64 @@ what documentary evidence says the creator intended
 
 The first two can still support deep musical criticism. Documentary intent strengthens a claim when it exists, but lack of an interview should not reduce analysis to surface description.
 
+## Symbolic and sequence evidence is a composer-facing bridge
+
+`MIDI-like` information in this project means symbolic note and sequence information in the broad sense, not the MIDI file format specifically.
+
+Depending on the source family, composer-facing evidence may appear as:
+
+- MIDI notes, tracks, controllers, bends, tempo and meter;
+- MML or another text music language;
+- tracker notes, rows, effects and instrument commands;
+- SMPS, GEMS, N-SPC, SSEQ or another native driver/sequence language;
+- validated sequence bytecode recovered from ROM, RAM, executable data or decoded hex;
+- score-like source, source code or tables that establish note/rest/duration/instrument/loop structure;
+- reconstructed performance events inferred upward from VGM, SPC or other execution evidence;
+- external transcriptions retained explicitly as external evidence.
+
+These representations can expose the musical decisions that sit between composition and final hardware behavior: note succession, rests, phrase timing, logical tracks, instrument changes, loops, articulation, modulation and control flow.
+
+They are therefore some of the strongest bridges toward composer-level understanding. But they are not the destination and they are not automatically interchangeable.
+
+```text
+MIDI track
+!= MML voice
+!= tracker channel
+!= driver logical track
+!= physical chip channel
+!= persistent musical part
+```
+
+The objective is not to turn every source into MIDI. It is to recover as much of the underlying musical program as the evidence supports, then use that evidence to understand composition, arrangement and form.
+
+## Cooperative representation law
+
+Every supported representation should be allowed to teach the others while retaining its own semantics.
+
+```text
+symbolic source / sequence
+        ↕
+driver and allocation behavior
+        ↕
+chip / DSP / sample execution
+        ↕
+rendered audio and auditory organization
+        ↓
+shared musical interpretation
+```
+
+A source with explicit logical tracks and notes can teach the system what persistent musical identity looks like after allocation into hardware resources. VGM or SPC can teach the system where a score-like representation misses synthesis, articulation, sample, allocation or runtime details. Audio can pressure-test whether implementation distinctions actually become meaningful heard distinctions.
+
+This is cross-supervision, not normalization.
+
+A correspondence may be strong without becoming an identity statement. The system should preserve native objects and express mappings, alignments, transformations, support and uncertainty between them.
+
+The governing rule is:
+
+> Everything may help everything else understand the music, but nothing may erase what makes a source uniquely informative.
+
+See `docs/composer-level-understanding.md` and `docs/music-representation-systems.md`.
+
 ## Lower layers are instrumental
 
 Use the lowest layer that materially improves the musical question.
@@ -147,8 +205,14 @@ or:
 
 > Can it identify the chords?
 
+or:
+
+> Can it export plausible MIDI?
+
 The stronger test is:
 
 > After studying this soundtrack, can the system explain what makes it musically itself, how its parts cooperate across time, how individual tracks function within the whole score, what the composer/arranger/producer is doing at important moments, and what a perceptive listener is likely to hear as structurally meaningful?
+
+A further composer-level test is whether the model can answer bounded counterfactual questions: what would change if the bass motion, articulation, register, orchestration, countermelody, phrase continuation or motif transformation were altered while other material stayed fixed?
 
 If the answer is weak, more low-level machinery is justified only when it is likely to improve that answer.
