@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "purpose": "Evidence-safe Miyoko Takaoka versus Masanori Hikichi composer-grammar calibration for the Sonic 3 Cube lineage.",
+  "primary_mixed_composer_corpora": [
+    "ancient-magic-spc",
+    "terranigma-spc"
+  ],
+  "grounding_admissions_path": "research/projects/sonic3/attribution-control-admissions.jsonl",
+  "locator_inventory_path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+  "external_tag_policy": "External artist tags locate candidate controls only. They never establish composition, arrangement, programming, or authorship.",
+  "calibration_strategy": {
+    "within_game_boundary": "Use individually grounded Takaoka and Hikichi cues from the same soundtrack to suppress game, platform, engine, sample-bank, and production-context shortcuts.",
+    "cross_game_boundary": "Require the learned Takaoka/Hikichi distinction to survive between Ancient Magic and Terranigma and later against one-composer-dominant outside corpora.",
+    "sonic3_boundary": "Only after those controls survive may the same composer-facing structural relations be evaluated on Sonic 3 Cube candidates.",
+    "role_firewall": "SPC realization, sample, patch, envelope, and implementation similarity remains non-composer evidence unless separately role-grounded."
+  },
+  "shared_composition_holdouts": [
+    {
+      "fixture_path": "tests/corpus/terranigma-spc/02 - Light and Darkness.spc",
+      "composers": ["Masanori Hikichi", "Miyoko Takaoka"],
+      "source": "Tenchi Souzou Creative Soundtracks KTCR-1344",
+      "reason": "Jointly credited composition; useful shared-style or negative control, not an individual-class training example."
+    },
+    {
+      "fixture_path": "tests/corpus/terranigma-spc/45 - Overcoming Everything.spc",
+      "composers": ["Masanori Hikichi", "Miyoko Takaoka"],
+      "source": "Tenchi Souzou Creative Soundtracks KTCR-1344",
+      "reason": "Jointly credited composition. Existing external tag names Hikichi alone and must not override the commercial soundtrack credit."
+    },
+    {
+      "fixture_path": "tests/corpus/terranigma-spc/47 - The Way Home.spc",
+      "composers": ["Masanori Hikichi", "Miyoko Takaoka"],
+      "source": "Tenchi Souzou Creative Soundtracks KTCR-1344",
+      "reason": "Jointly credited composition. Existing external tag names Hikichi alone and must not override the commercial soundtrack credit."
+    }
+  ],
+  "evaluation_only_clues": [
+    {
+      "fixture_path": "tests/corpus/ancient-magic-spc/01 - Title.spc",
+      "candidate": "Masanori Hikichi",
+      "confidence": 0.55,
+      "source": "Miyoko Takaoka retrospective recollection",
+      "reason": "Takaoka recalled that the OP may have been Hikichi's, but explicitly expressed uncertainty. Do not use as grounding supervision."
+    },
+    {
+      "fixture_path": "tests/corpus/ancient-magic-spc/03 - Menu.spc",
+      "candidate": "Masanori Hikichi",
+      "confidence": 0.55,
+      "source": "Miyoko Takaoka retrospective recollection",
+      "reason": "Takaoka recalled that the menu may have been Hikichi's, but explicitly expressed uncertainty. Do not use as grounding supervision."
+    },
+    {
+      "fixture_path": "tests/corpus/ancient-magic-spc/10 - Boss Battle.spc",
+      "candidate": "Masanori Hikichi",
+      "confidence": 0.55,
+      "source": "Miyoko Takaoka retrospective recollection",
+      "reason": "Takaoka recalled that the boss battle may have been Hikichi's, but explicitly expressed uncertainty. Do not use as grounding supervision."
+    }
+  ],
+  "unmapped_direct_clues": [
+    {
+      "candidate": "Miyoko Takaoka",
+      "description": "sad/sadness cue in Ancient Magic",
+      "source": "Miyoko Takaoka retrospective recollection",
+      "reason": "Direct creator statement exists, but the exact committed SPC fixture has not been identified confidently enough for admission."
+    }
+  ],
+  "third_party_decoys": [
+    {
+      "fixture_path": "tests/corpus/terranigma-spc/42 - Genius's Playground.spc",
+      "candidate": "Yuzo Koshiro",
+      "reason": "Documented non-Takaoka/non-Hikichi Terranigma contribution; useful to test whether a model is learning soundtrack identity instead of creator grammar."
+    }
+  ],
+  "outside_validation_corpora": {
+    "Miyoko Takaoka": [
+      "america-oudan-ultra-quiz-spc",
+      "super-black-bass-spc"
+    ],
+    "Masanori Hikichi": [
+      "battle-master-spc"
+    ]
+  },
+  "special_confound": {
+    "corpus_id": "terranigma-spc",
+    "source": "Terranigma Creative Soundtracks composer liner notes",
+    "description": "Takaoka wrote that Hikichi helped improve the sound quality of her compositions during development. Therefore Hikichi-like realization or timbral traits may occur in Takaoka-composed cues and must not be promoted to composer evidence."
+  }
+}
