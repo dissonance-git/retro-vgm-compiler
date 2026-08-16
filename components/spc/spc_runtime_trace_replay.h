@@ -8,16 +8,13 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
-#include <string>
-#include <utility>
 #include <vector>
 
 namespace gameaudio::spc {
 
-// Offline trace contract for deterministic SPC corpus analysis. DSP observations
-// alone are insufficient: event-time BRR identity also depends on every APURAM
-// mutation after the SPC snapshot. Preserve source-write boundaries and serials
-// so the RAM generation tracker can reconstruct exactly what each event saw.
+// Offline trace contract for deterministic SPC corpus analysis. The exact SPC
+// fixture remains the one initial-state authority. A trace stores only facts
+// observed after that snapshot: source APURAM writes and DSP capture windows.
 struct spc_runtime_trace_ram_write {
     std::uint64_t serial = 0;
     std::uint16_t address = 0;
@@ -33,17 +30,9 @@ struct spc_runtime_trace_window {
 };
 
 struct spc_runtime_trace {
-    std::array<std::uint8_t, spc_runtime_ram_size> initial_ram{};
     std::vector<spc_runtime_trace_ram_write> ram_writes;
     std::vector<spc_runtime_trace_window> windows;
 };
-
-inline spc_runtime_trace begin_spc_runtime_trace_from_snapshot(
-    const spc_snapshot& snapshot) {
-    spc_runtime_trace trace;
-    trace.initial_ram = snapshot.ram;
-    return trace;
-}
 
 struct spc_runtime_trace_replay_result {
     std::size_t windows_replayed = 0;
@@ -96,8 +85,9 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
     vgmtooling::model::musical_execution_graph& graph,
     spc_runtime_voice_graph_handle& runtime,
     spc_runtime_sample_graph_handle& samples,
+    const spc_snapshot& snapshot,
     const spc_runtime_trace& trace) {
-    std::array<std::uint8_t, spc_runtime_ram_size> live_ram = trace.initial_ram;
+    std::array<std::uint8_t, spc_runtime_ram_size> live_ram = snapshot.ram;
     spc_ram_generation_tracker tracker;
     spc_ram_shadow shadow;
     shadow.synchronize(live_ram.data(), tracker);
@@ -105,6 +95,7 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
     spc_runtime_capture_materializer_state materializer_state;
     spc_runtime_trace_replay_result result;
     std::size_t next_write = 0;
+    std::optional<std::uint64_t> last_trace_index{};
 
     const auto synchronize_to_serial = [&](std::uint64_t target_serial) {
         if (target_serial < tracker.write_serial())
@@ -126,12 +117,16 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
 
     for (const auto& window : trace.windows) {
         ++result.windows_replayed;
-        if (window.overflowed && !window.first_dropped.has_value())
-            throw std::invalid_argument("overflowed SPC runtime trace window requires first-dropped boundary");
+        if (window.overflowed && (!window.first_dropped.has_value() || window.dropped == 0))
+            throw std::invalid_argument("overflowed SPC runtime trace window requires dropped-record boundary evidence");
         if (!window.overflowed && (window.dropped != 0 || window.first_dropped.has_value()))
             throw std::invalid_argument("non-overflowed SPC runtime trace window cannot report dropped records");
 
         for (const auto& record : window.records) {
+            if (last_trace_index.has_value() && record.trace_index <= *last_trace_index)
+                throw std::invalid_argument("SPC runtime trace indices must increase monotonically");
+            last_trace_index = record.trace_index;
+
             synchronize_to_serial(record.ram_write_serial);
             const spc_runtime_capture_window_view single{
                 &record,
@@ -152,6 +147,12 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
 
         if (window.overflowed) {
             const auto& dropped = *window.first_dropped;
+            if (last_trace_index.has_value() && dropped.trace_index <= *last_trace_index)
+                throw std::invalid_argument("SPC runtime trace dropped boundary must follow stored records");
+            if (window.next_trace_index != dropped.trace_index + window.dropped)
+                throw std::invalid_argument("SPC runtime trace dropped count does not match next trace index");
+            last_trace_index = window.next_trace_index - 1u;
+
             synchronize_to_serial(dropped.ram_write_serial);
             const spc_runtime_capture_window_view gap{
                 nullptr,
@@ -184,6 +185,8 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
                 empty,
                 {&samples, &shadow});
             detail::accumulate_spc_trace_materialization(materialized, result);
+        } else if (window.next_trace_index != window.records.back().trace_index + 1u) {
+            throw std::invalid_argument("SPC runtime trace window next index does not follow its final stored record");
         }
     }
 
