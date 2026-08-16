@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "purpose": "Evidence-safe Miyoko Takaoka versus Masanori Hikichi composer-grammar calibration for the Sonic 3 Cube lineage.",
   "primary_mixed_composer_corpora": [
     "ancient-magic-spc",
@@ -10,9 +10,10 @@
   "external_tag_policy": "External artist tags locate candidate controls only. They never establish composition, arrangement, programming, or authorship.",
   "calibration_strategy": {
     "within_game_boundary": "Use individually grounded Takaoka and Hikichi cues from the same soundtrack to suppress game, platform, engine, sample-bank, and production-context shortcuts.",
-    "cross_game_boundary": "Require the learned Takaoka/Hikichi distinction to survive between Ancient Magic and Terranigma and later against one-composer-dominant outside corpora.",
+    "cross_game_boundary": "Require creator-facing relations to survive independent soundtrack worlds. Team-level, partial-participation, and implementation-only corpora are evaluation or confound worlds, not automatic composer supervision.",
+    "cross_platform_boundary": "Prefer shared musical abstractions that can survive SPC700, YM2151, YM2608, HuC6280, and Mega Drive realizations. A chip- or driver-specific signature cannot by itself become composer evidence.",
     "sonic3_boundary": "Only after those controls survive may the same composer-facing structural relations be evaluated on Sonic 3 Cube candidates.",
-    "role_firewall": "SPC realization, sample, patch, envelope, and implementation similarity remains non-composer evidence unless separately role-grounded."
+    "role_firewall": "Realization, sample, patch, envelope, driver, programming, and implementation similarity remains non-composer evidence unless separately role-grounded."
   },
   "shared_composition_holdouts": [
     {
@@ -80,13 +81,113 @@
       "reason": "Documented non-Takaoka/non-Hikichi Terranigma contribution; useful to test whether a model is learning soundtrack identity instead of creator grammar."
     }
   ],
-  "outside_validation_corpora": {
-    "Miyoko Takaoka": [
-      "america-oudan-ultra-quiz-spc",
-      "super-black-bass-spc"
+  "evidence_worlds": {
+    "work_level_single_composer_validation": [
+      {
+        "corpus_id": "ghox-ym2151",
+        "candidate": "Miyoko Takaoka",
+        "platform": "Arcade / Toaplan 2",
+        "device_family": "YM2151",
+        "evidence": "Ghox game-level music credit identifies Miyoko Takaoka as the music contributor; VGMRips likewise identifies her as composer.",
+        "usage": "Strong independent work-level validation. Do not auto-create exact-fixture admissions until the game-level credit-to-each-fixture inheritance is explicitly recorded."
+      }
     ],
-    "Masanori Hikichi": [
-      "battle-master-spc"
+    "derivative_inheritance_candidates": [
+      {
+        "corpus_id": "wizardry-iii-iv-huc6280",
+        "candidate": "Miyoko Takaoka",
+        "platform": "PC Engine Super CD-ROM2",
+        "device_family": "HuC6280",
+        "fixture_paths": [
+          "tests/corpus/wizardry-iii-iv-huc6280/01 - Adventurer's Inn.vgz",
+          "tests/corpus/wizardry-iii-iv-huc6280/02 - Boltac's Trading Post.vgz",
+          "tests/corpus/wizardry-iii-iv-huc6280/03 - Temple of Cant.vgz"
+        ],
+        "precursor_work": "Wizardry I・II",
+        "evidence": "Takaoka's own Cube-era works list names Wizardry I・II. The earlier PC Engine Wizardry I・II pack identifies Takaoka as composer and contains these same three named cues; Wizardry III・IV credits both KK CUBE and Hisashi Matsushita and repeats the three cues at its head.",
+        "usage": "High-value same-work/cross-release inheritance hypothesis. Verify event or musical equivalence before promotion; do not use the local artist tags alone as proof."
+      }
+    ],
+    "team_or_partial_participation": [
+      {
+        "corpus_id": "america-oudan-ultra-quiz-spc",
+        "candidate": "Miyoko Takaoka",
+        "evidence": "Game credit is B.G.M. Composer: CUBE; Takaoka's own Cube-era works list names the title.",
+        "usage": "Blind partition / validation world only until exact cue authorship is recovered."
+      },
+      {
+        "corpus_id": "super-black-bass-spc",
+        "candidate": "Miyoko Takaoka",
+        "evidence": "Sound is credited to CUBE and Takaoka's own works list names the title; other contributors are possible.",
+        "usage": "Partial-participation validation, not whole-set Takaoka supervision."
+      },
+      {
+        "corpus_id": "battle-master-spc",
+        "candidate": "Masanori Hikichi",
+        "evidence": "Battle Master has multiple surviving sound contributors including Masanori Hikichi; whole-set local artist tagging is therefore too coarse.",
+        "usage": "Blind partition / validation world, not whole-set Hikichi supervision."
+      },
+      {
+        "corpus_id": "ecology-magic-ym2608",
+        "candidate": "Miyoko Takaoka",
+        "platform": "PC-9801",
+        "device_family": "YM2608",
+        "evidence": "Takaoka's own Cube-era discography names Ecology Magic; the preserved VGMRips set labels her composer but notes that the instruction-manual credits were not available for checking.",
+        "usage": "Promising cross-platform composer-grammar validation, but keep below exact grounding until primary/official cue or work-level credits are found."
+      },
+      {
+        "corpus_id": "kakinoki-shougi-spc",
+        "candidate": "Miyoko Takaoka",
+        "evidence": "Local tags identify Takaoka; CUBE preservation sources list Kakinoki Shogi as an uncredited CUBE work, while Takaoka's own list only says an unspecified shogi game among her Cube-era work.",
+        "usage": "Weak identity-resolution world. Do not equate the unnamed shogi-game recollection with this exact title without additional evidence."
+      }
+    ],
+    "arrangement_or_implementation_only": [
+      {
+        "corpus_id": "dr-robotniks-mean-bean-machine-vgz",
+        "candidate": "Masanori Hikichi",
+        "evidence": "Genesis credits Music and FX to CUBE; other versions directly credit Hiki as sound programmer, while track metadata also names David Javelosa and Masayuki Nagao.",
+        "usage": "Useful implementation/arrangement handwriting control; do not treat the whole Genesis soundtrack as Hikichi composition."
+      },
+      {
+        "work": "E.V.O.: Search for Eden",
+        "candidate": "Masanori Hikichi",
+        "evidence": "Hikichi is credited as Sound Creator; the musical composition/arrangement lineage is separately credited.",
+        "usage": "Implementation/sound-production evidence only unless exact composition evidence emerges."
+      },
+      {
+        "work": "Ys IV: Mask of the Sun",
+        "candidate": "Miyoko Takaoka",
+        "evidence": "Takaoka's own works list explicitly says arrangement only; game credits place CUBE members in sound-manipulation roles.",
+        "usage": "Arrangement realization control, never a Takaoka composer control by default."
+      }
+    ],
+    "future_acquisition_or_verification": [
+      {
+        "work": "Wizardry I・II",
+        "candidate": "Miyoko Takaoka",
+        "reason": "Highest-priority missing precursor corpus because it can directly test the first-three Wizardry III・IV inheritance hypothesis."
+      },
+      {
+        "work": "Gleylancer",
+        "candidate": "Masanori Hikichi",
+        "reason": "Hikichi has direct Music & Sound Effects credit, but the soundtrack has multiple composers; exact cue partition is needed."
+      },
+      {
+        "work": "Galaxy Force II (Mega Drive)",
+        "candidate": "Masanori Hikichi",
+        "reason": "Hikichi is directly credited S.E. / Music alongside the original Sega composers; separate port composition/arrangement/implementation roles before use."
+      },
+      {
+        "work": "Human Sports Festival",
+        "candidate": "Masanori Hikichi",
+        "reason": "Direct Sound Composers credit makes it a promising independent Hikichi world if exact cue scope can be recovered."
+      },
+      {
+        "work": "Power of the Hired",
+        "candidate": "Masanori Hikichi",
+        "reason": "Hikichi is credited for Music; acquire/verify a native corpus and exact credit scope."
+      }
     ]
   },
   "special_confound": {
