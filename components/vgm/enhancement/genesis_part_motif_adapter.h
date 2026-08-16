@@ -65,6 +65,7 @@ make_genesis_part_gesture_observation(
         onset->active->start,
         std::log2(*relative_pitch),
         std::move(pitch_basis),
+        "log2_frequency_ratio_octaves",
     };
 }
 
