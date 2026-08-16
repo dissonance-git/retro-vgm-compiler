@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -64,6 +66,10 @@ struct creative_attribution_hypothesis {
     evidence_status status = evidence_status::hypothesis;
     double proposed_confidence = 0.0;
     double confidence = 0.0;
+    double independent_support_ceiling = 0.0;
+    std::size_t role_support_observations = 0;
+    std::size_t grounding_support_observations = 0;
+    std::size_t support_domains = 0;
     bool role_specific_support = false;
     bool documentary_grounded = false;
     bool cross_domain_grounded = false;
@@ -73,8 +79,10 @@ struct creative_attribution_hypothesis {
 };
 
 // Epistemic ceilings, not calibrated probabilities.
+constexpr double creative_attribution_grounding_support_threshold = 0.60;
 constexpr double creative_attribution_metadata_only_ceiling = 0.25;
 constexpr double creative_attribution_no_role_support_ceiling = 0.40;
+constexpr double creative_attribution_weak_support_ceiling = 0.49;
 constexpr double creative_attribution_single_domain_ceiling = 0.74;
 constexpr double creative_attribution_strong_conflict_ceiling = 0.49;
 
@@ -162,6 +170,18 @@ inline void validate_creative_attribution_evidence(
         throw std::invalid_argument("creative-attribution evidence requires a source");
 }
 
+inline double creative_attribution_independent_support_ceiling(
+    const std::map<std::uint8_t, double>& support_domains) {
+    if (support_domains.empty())
+        return 0.0;
+    std::vector<double> strengths;
+    strengths.reserve(support_domains.size());
+    for (const auto& item : support_domains)
+        strengths.push_back(item.second);
+    std::sort(strengths.begin(), strengths.end(), std::greater<double>{});
+    return strengths.size() >= 2 ? strengths[1] : strengths.front();
+}
+
 inline creative_attribution_hypothesis make_creative_attribution_hypothesis(
     std::string candidate,
     creative_attribution_role role,
@@ -175,11 +195,14 @@ inline creative_attribution_hypothesis make_creative_attribution_hypothesis(
         throw std::invalid_argument("creative attribution requires evidence");
 
     bool has_role_support = false;
+    bool has_grounding_role_support = false;
     bool documentary = false;
     bool metadata_support = false;
     bool non_metadata_role_support = false;
     bool strong_conflict = false;
-    std::set<std::uint8_t> support_domains;
+    std::size_t role_support_count = 0;
+    std::size_t grounding_support_count = 0;
+    std::map<std::uint8_t, double> support_domains;
 
     for (const auto& item : evidence) {
         validate_creative_attribution_evidence(item);
@@ -198,12 +221,21 @@ inline creative_attribution_hypothesis make_creative_attribution_hypothesis(
 
             has_role_support = true;
             non_metadata_role_support = true;
-            support_domains.insert(creative_attribution_domain(item.kind));
+            ++role_support_count;
+
             if (creative_evidence_is_documentary(item) &&
                 item.status == evidence_status::exact &&
                 item.confidence >= 0.90) {
                 documentary = true;
             }
+
+            if (item.confidence < creative_attribution_grounding_support_threshold)
+                continue;
+
+            has_grounding_role_support = true;
+            ++grounding_support_count;
+            const std::uint8_t domain = creative_attribution_domain(item.kind);
+            support_domains[domain] = std::max(support_domains[domain], item.confidence);
         } else if (
             item.role_scope == role && item.confidence >= 0.80 &&
             item.kind == creative_attribution_evidence_kind::contradiction) {
@@ -215,6 +247,11 @@ inline creative_attribution_hypothesis make_creative_attribution_hypothesis(
     result.candidate = std::move(candidate);
     result.role = role;
     result.proposed_confidence = proposed_confidence;
+    result.independent_support_ceiling =
+        creative_attribution_independent_support_ceiling(support_domains);
+    result.role_support_observations = role_support_count;
+    result.grounding_support_observations = grounding_support_count;
+    result.support_domains = support_domains.size();
     result.role_specific_support = has_role_support;
     result.documentary_grounded = documentary;
     result.cross_domain_grounded = support_domains.size() >= 2;
@@ -223,12 +260,20 @@ inline creative_attribution_hypothesis make_creative_attribution_hypothesis(
     result.evidence = std::move(evidence);
 
     double confidence = proposed_confidence;
-    if (result.metadata_only)
+    if (result.metadata_only) {
         confidence = std::min(confidence, creative_attribution_metadata_only_ceiling);
-    else if (!has_role_support)
+    } else if (!has_role_support) {
         confidence = std::min(confidence, creative_attribution_no_role_support_ceiling);
-    else if (!result.cross_domain_grounded && !documentary)
-        confidence = std::min(confidence, creative_attribution_single_domain_ceiling);
+    } else if (!has_grounding_role_support) {
+        confidence = std::min(confidence, creative_attribution_weak_support_ceiling);
+    } else {
+        // The final role hypothesis cannot be more confident than the
+        // independent evidence actually grounding it. In a multi-domain claim,
+        // this is the weaker of the strongest independent domains.
+        confidence = std::min(confidence, result.independent_support_ceiling);
+        if (!result.cross_domain_grounded && !documentary)
+            confidence = std::min(confidence, creative_attribution_single_domain_ceiling);
+    }
 
     // Exact, role-specific documentary evidence can coexist with technical
     // conflict without being automatically erased. Otherwise a strong direct
