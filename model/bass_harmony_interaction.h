@@ -20,6 +20,8 @@ enum class bass_harmony_interaction_kind : std::uint8_t {
 };
 
 struct bass_harmony_interaction_hypothesis {
+    time_coordinate first_time{};
+    time_coordinate second_time{};
     bass_harmony_interaction_kind kind = bass_harmony_interaction_kind::unresolved;
     node_id bass_part_id = 0;
     std::int64_t bass_motion_semitones = 0;
@@ -70,7 +72,28 @@ inline bass_harmony_interaction_hypothesis infer_bass_harmony_interaction(
     if (first.projection.nearest_steps.empty())
         throw std::invalid_argument("bass-harmony interaction requires at least one voice");
 
+    const time_coordinate first_time = first.projection.source_verticality.observation_time;
+    const time_coordinate second_time = second.projection.source_verticality.observation_time;
+    if (first_time.domain != second_time.domain ||
+        first_time.tick_rate != second_time.tick_rate ||
+        first_time.loop_iteration != second_time.loop_iteration ||
+        second_time.tick <= first_time.tick) {
+        throw std::invalid_argument("bass-harmony interaction requires ordered chords in one local time basis");
+    }
+    if (voices.first_time.domain != first_time.domain ||
+        voices.first_time.tick_rate != first_time.tick_rate ||
+        voices.first_time.loop_iteration != first_time.loop_iteration ||
+        voices.second_time.domain != second_time.domain ||
+        voices.second_time.tick_rate != second_time.tick_rate ||
+        voices.second_time.loop_iteration != second_time.loop_iteration ||
+        voices.first_time.tick != first_time.tick ||
+        voices.second_time.tick != second_time.tick) {
+        throw std::invalid_argument("bass-harmony interaction voice leading must describe the same chord transition");
+    }
+
     bass_harmony_interaction_hypothesis result;
+    result.first_time = first_time;
+    result.second_time = second_time;
     result.confidence = std::min({first.confidence, second.confidence, voices.confidence});
     result.harmonic_identity_changed =
         first.root_pitch_class != second.root_pitch_class || first.quality != second.quality;
