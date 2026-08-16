@@ -127,6 +127,27 @@ inline void validate_pitch_class_collection_profile(
         throw std::invalid_argument("pitch-class collection requires positive salience");
 }
 
+inline bool time_span_contains_span(const time_span& outer, const time_span& inner) noexcept {
+    if (outer.start.domain != inner.start.domain ||
+        outer.start.tick_rate != inner.start.tick_rate ||
+        outer.start.loop_iteration != inner.start.loop_iteration ||
+        inner.start.tick < outer.start.tick) {
+        return false;
+    }
+    if (inner.end.has_value()) {
+        if (inner.end->domain != inner.start.domain ||
+            inner.end->tick_rate != inner.start.tick_rate ||
+            inner.end->loop_iteration != inner.start.loop_iteration) {
+            return false;
+        }
+    }
+    if (!outer.end.has_value())
+        return true;
+    if (!inner.end.has_value())
+        return false;
+    return inner.end->tick <= outer.end->tick;
+}
+
 inline std::int64_t nearest_12tet_pitch_class_for_center(
     double center_octave_class,
     const equal_temperament_model& tuning,
@@ -155,6 +176,8 @@ inline std::vector<diatonic_mode_candidate> infer_diatonic_mode_candidates(
     const tonal_center_hypothesis& center,
     const pitch_class_collection_profile& collection) {
     validate_pitch_class_collection_profile(collection);
+    if (!time_span_contains_span(center.region, collection.region))
+        throw std::invalid_argument("pitch-class collection must lie inside the supplied tonal-center region");
     const std::int64_t center_pitch_class = nearest_12tet_pitch_class_for_center(
         center.center_octave_class,
         collection.tuning);
@@ -246,13 +269,16 @@ inline tonal_key_class_hypothesis infer_tonal_key_class_hypothesis(
     const bool distinct_winner = result.separation >= diatonic_key_min_separation;
 
     if (enough_center && enough_collection && enough_fit && distinct_winner) {
+        const double separation_confidence = std::min(
+            1.0,
+            result.separation / diatonic_key_min_separation);
         result.mode = best.mode;
         result.key_class_resolved = true;
         result.confidence = std::min(
             {best.confidence,
              center.confidence,
              collection.confidence,
-             result.separation + diatonic_key_min_separation,
+             separation_confidence,
              diatonic_key_confidence_ceiling});
     }
 
