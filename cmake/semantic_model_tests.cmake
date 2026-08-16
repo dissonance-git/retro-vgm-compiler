@@ -8,6 +8,7 @@
 list(APPEND GAMEAUDIO_TEST_TARGETS
     tonal_region_evidence_adapter_test
     harmonic_pitch_class_collection_adapter_test
+    diatonic_chord_degree_hypothesis_test
 )
 
 add_executable(
@@ -18,6 +19,10 @@ add_executable(
     harmonic_pitch_class_collection_adapter_test
     tests/model/harmonic_pitch_class_collection_adapter_test.cpp
 )
+add_executable(
+    diatonic_chord_degree_hypothesis_test
+    tests/model/diatonic_chord_degree_hypothesis_test.cpp
+)
 
 target_include_directories(
     tonal_region_evidence_adapter_test
@@ -25,6 +30,10 @@ target_include_directories(
 )
 target_include_directories(
     harmonic_pitch_class_collection_adapter_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    diatonic_chord_degree_hypothesis_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -35,4 +44,8 @@ add_test(
 add_test(
     NAME harmonic_pitch_class_collection_adapter
     COMMAND harmonic_pitch_class_collection_adapter_test
+)
+add_test(
+    NAME diatonic_chord_degree_hypothesis
+    COMMAND diatonic_chord_degree_hypothesis_test
 )
