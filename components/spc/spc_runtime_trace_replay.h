@@ -106,7 +106,7 @@ inline spc_runtime_trace_replay_result replay_spc_runtime_trace(
     spc_runtime_trace_replay_result result;
     std::size_t next_write = 0;
 
-    const auto synchronize_to_serial = [&](std::uint64_t target_serial) mutable {
+    const auto synchronize_to_serial = [&](std::uint64_t target_serial) {
         if (target_serial < tracker.write_serial())
             throw std::invalid_argument("SPC runtime trace event moves backward in RAM-write time");
 
