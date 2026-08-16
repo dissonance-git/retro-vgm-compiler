@@ -82,6 +82,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         tonal_center_evidence_adapter_test
         diatonic_key_hypothesis_test
         pitch_class_collection_adapter_test
+        tonal_region_relation_test
         vgm_execution_graph_adapter_test
         vgm_command_trace_capture_test
         vgm_yamaha_register_write_test
@@ -159,6 +160,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(tonal_center_evidence_adapter_test tests/model/tonal_center_evidence_adapter_test.cpp)
     add_executable(diatonic_key_hypothesis_test tests/model/diatonic_key_hypothesis_test.cpp)
     add_executable(pitch_class_collection_adapter_test tests/model/pitch_class_collection_adapter_test.cpp)
+    add_executable(tonal_region_relation_test tests/model/tonal_region_relation_test.cpp)
     add_executable(vgm_execution_graph_adapter_test tests/vgm/vgm_execution_graph_adapter_test.cpp)
     add_executable(vgm_command_trace_capture_test tests/vgm/vgm_command_trace_capture_test.cpp)
     add_executable(vgm_yamaha_register_write_test tests/vgm/vgm_yamaha_register_write_test.cpp)
@@ -209,6 +211,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(tonal_center_evidence_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(diatonic_key_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(pitch_class_collection_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(tonal_region_relation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     foreach(test_target IN LISTS GAMEAUDIO_TEST_TARGETS)
         target_link_libraries(${test_target} PRIVATE gameaudio_vgm_core)
@@ -270,6 +273,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME tonal_center_evidence_adapter COMMAND tonal_center_evidence_adapter_test)
     add_test(NAME diatonic_key_hypothesis COMMAND diatonic_key_hypothesis_test)
     add_test(NAME pitch_class_collection_adapter COMMAND pitch_class_collection_adapter_test)
+    add_test(NAME tonal_region_relation COMMAND tonal_region_relation_test)
     add_test(NAME vgm_execution_graph_adapter COMMAND vgm_execution_graph_adapter_test)
     add_test(NAME vgm_command_trace_capture COMMAND vgm_command_trace_capture_test)
     add_test(NAME vgm_yamaha_register_write COMMAND vgm_yamaha_register_write_test)
