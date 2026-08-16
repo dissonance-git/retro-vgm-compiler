@@ -33,7 +33,7 @@ set(
 )
 set(
     SNES_SPC_FORENSIC_PATCH_CONTRACT
-    "retro-vgm-compiler:snes-spc-runtime-hooks-v1"
+    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1"
 )
 
 if(NOT SNES_SPC_FORENSIC_COMMIT STREQUAL
@@ -54,7 +54,7 @@ FetchContent_Declare(
     UPDATE_DISCONNECTED TRUE
     PATCH_COMMAND
         ${Python3_EXECUTABLE}
-        ${RETRO_VGM_COMPILER_ROOT}/tools/spc/patch_snes_spc_runtime_strict.py
+        ${RETRO_VGM_COMPILER_ROOT}/tools/spc/patch_snes_spc_forensic.py
         <SOURCE_DIR>
 )
 
@@ -86,11 +86,14 @@ target_compile_definitions(gameaudio_snes_spc_forensic
         # copy_state() toggles IPL visibility as serialization machinery, which
         # must never masquerade as a hardware-time APURAM mutation.
         SPC_NO_COPY_STATE_FUNCS=1
-        # Force the accurate DSP to catch up at SPC700 memory-access
-        # boundaries. Playback normally permits lazy DSP catch-up, but a
-        # forensic APURAM trace needs host callback order to preserve hardware
-        # causal order between CPU writes and DSP/echo phases.
-        SPC_MORE_ACCURACY=1
+        # Keep upstream's broad validation mode disabled. SPC_MORE_ACCURACY
+        # also enables unrelated probabilistic timer-glitch behavior, which is
+        # inappropriate for deterministic corpus evidence.
+        SPC_MORE_ACCURACY=0
+        # Catch only the accurate DSP up at SPC700 memory-access boundaries so
+        # host callback order preserves the causal order between CPU writes and
+        # DSP/echo phases without importing the broader validation behavior.
+        RETRO_VGM_SPC_FORENSIC_ORDERING=1
 )
 
 target_compile_features(gameaudio_snes_spc_forensic PUBLIC cxx_std_17)
