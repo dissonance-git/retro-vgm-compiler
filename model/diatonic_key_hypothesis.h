@@ -53,6 +53,7 @@ struct diatonic_mode_candidate {
 struct tonal_key_class_hypothesis {
     time_span region{};
     equal_temperament_model tuning{};
+    musical_pitch_role pitch_role = musical_pitch_role::programmed;
     double center_octave_class = 0.0;
     std::int64_t center_pitch_class = 0;
     std::optional<diatonic_mode> mode{};
@@ -230,6 +231,7 @@ inline tonal_key_class_hypothesis infer_tonal_key_class_hypothesis(
     tonal_key_class_hypothesis result;
     result.region = collection.region;
     result.tuning = collection.tuning;
+    result.pitch_role = collection.pitch_role;
     result.center_octave_class = center.center_octave_class;
     result.center_pitch_class = candidates.front().center_pitch_class;
     result.collection_scope = collection.scope;
@@ -290,6 +292,8 @@ inline node_id add_tonal_key_class_hypothesis(
         evidence_status::hypothesis, hypothesis.confidence, "12-TET pitch class under retained tuning contract"});
     key.attributes.push_back({"mode", std::string{to_string(*hypothesis.mode)},
         evidence_status::hypothesis, hypothesis.confidence, ""});
+    key.attributes.push_back({"pitch_role", std::string{to_string(hypothesis.pitch_role)},
+        evidence_status::derived, hypothesis.confidence, ""});
     key.attributes.push_back({"tuning_divisions_per_octave",
         static_cast<std::uint64_t>(hypothesis.tuning.divisions_per_octave),
         evidence_status::derived, hypothesis.tuning.confidence, "divisions/octave"});
@@ -307,7 +311,7 @@ inline node_id add_tonal_key_class_hypothesis(
         evidence_status::derived, 1.0, ""});
     key.provenance.push_back({evidence_status::hypothesis, hypothesis.confidence,
         "tonal center + structurally grounded pitch-class collection", std::nullopt,
-        "theory-scoped 12-TET diatonic key class retaining its tuning contract; preserves competing mode candidates and does not establish enharmonic spelling or Roman-numeral function"});
+        "theory-scoped 12-TET diatonic key class retaining tuning and pitch-role contracts; preserves competing mode candidates and does not establish enharmonic spelling or Roman-numeral function"});
     return graph.add_node(std::move(key));
 }
 
