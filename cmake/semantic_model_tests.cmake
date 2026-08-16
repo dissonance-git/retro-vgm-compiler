@@ -10,6 +10,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     harmonic_pitch_class_collection_adapter_test
     diatonic_chord_degree_hypothesis_test
     structural_composer_grammar_bridge_test
+    role_scoped_orchestration_grammar_test
 )
 
 add_executable(
@@ -28,6 +29,10 @@ add_executable(
     structural_composer_grammar_bridge_test
     tests/model/structural_composer_grammar_bridge_test.cpp
 )
+add_executable(
+    role_scoped_orchestration_grammar_test
+    tests/model/role_scoped_orchestration_grammar_test.cpp
+)
 
 target_include_directories(
     tonal_region_evidence_adapter_test
@@ -43,6 +48,10 @@ target_include_directories(
 )
 target_include_directories(
     structural_composer_grammar_bridge_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    role_scoped_orchestration_grammar_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -61,6 +70,10 @@ add_test(
 add_test(
     NAME structural_composer_grammar_bridge
     COMMAND structural_composer_grammar_bridge_test
+)
+add_test(
+    NAME role_scoped_orchestration_grammar
+    COMMAND role_scoped_orchestration_grammar_test
 )
 
 add_test(
