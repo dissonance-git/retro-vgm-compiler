@@ -3,6 +3,7 @@
 #include "genesis_part_evidence.h"
 #include "../../../model/part_motif_discovery.h"
 #include "../../../model/part_motif_profile.h"
+#include "../../../model/part_phrase_boundary_discovery.h"
 
 #include <algorithm>
 #include <cmath>
@@ -120,6 +121,20 @@ discover_genesis_part_motifs(
     return vgmtooling::model::discover_repeated_part_motifs(
         collect_genesis_part_gestures(graph, part_id),
         policy);
+}
+
+inline std::vector<vgmtooling::model::phrase_boundary_hypothesis>
+discover_genesis_part_phrase_boundaries(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const vgmtooling::model::part_motif_discovery_policy& motif_policy = {},
+    double minimum_gap_ratio = 2.0) {
+    return vgmtooling::model::discover_part_phrase_boundaries(
+        collect_genesis_part_gestures(graph, part_id),
+        motif_policy,
+        minimum_gap_ratio,
+        0.95,
+        "genesis-part-phrase-discovery");
 }
 
 } // namespace gameaudio::vgm
