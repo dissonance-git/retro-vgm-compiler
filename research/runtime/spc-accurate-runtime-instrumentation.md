@@ -100,14 +100,19 @@ The sink still receives no ID666 text or catalog metadata. It observes only the 
 
 Normal playback may let the SPC700 execute ahead of the DSP and catch the DSP up lazily. That host scheduling is acceptable for audio output but not for one ordered forensic trace: a later CPU RAM callback could otherwise arrive before an older DSP phase callback.
 
-The isolated forensic build therefore forces:
+A broad upstream switch is deliberately **not** used to solve this. `SPC_MORE_ACCURACY` includes behavior beyond host callback synchronization, including an upstream probabilistic timer-glitch model. Importing that unrelated stochastic validation behavior would make deterministic corpus replay harder to defend.
+
+The isolated forensic build therefore uses:
 
 ```text
 SPC_LESS_ACCURATE=0
-SPC_MORE_ACCURACY=1
+SPC_MORE_ACCURACY=0
+RETRO_VGM_SPC_FORENSIC_ORDERING=1
 ```
 
-`SPC_MORE_ACCURACY` catches the accurate DSP up at SPC700 memory-access boundaries. This is not a new musical assumption; it is required so callback order preserves the hardware causal order already represented by the emulator.
+`RETRO_VGM_SPC_FORENSIC_ORDERING` is a local exact-sentinel patch to `MEM_ACCESS`. It catches the already-accurate DSP up before SPC700 memory accesses only when `time > m.dsp_time`, using the normal accurate `RUN_DSP` path. It does not enable upstream `SPC_MORE_ACCURACY` timer/glitch behavior.
+
+This is an observation-order constraint, not a new musical assumption: callback order must preserve the hardware causal order already represented by the emulator.
 
 The default Retro VGM Compiler build does not enable or fetch this dependency. The instrumented core lives behind the standalone `tools/spc/forensic/` CMake entrypoint.
 
@@ -242,18 +247,27 @@ Replay:
 components/spc/spc_runtime_trace_replay.h
 ```
 
-Pinned exact-sentinel transformer:
+Pinned exact-sentinel transformers:
 
 ```text
 tools/spc/patch_snes_spc_runtime.py
 tools/spc/patch_snes_spc_runtime_strict.py
+tools/spc/patch_snes_spc_forensic.py
 ```
+
+The first two define and strictly verify the runtime hook surface. `patch_snes_spc_forensic.py` composes those hooks with the narrower deterministic host-order patch required by the research build.
 
 Standalone forensic build and sidecar runner:
 
 ```text
 tools/spc/forensic/CMakeLists.txt
 tools/spc/forensic/spc_forensic_features.cpp
+```
+
+The current sidecar patch-contract identifier is:
+
+```text
+retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1
 ```
 
 The vendor core reports only:
@@ -304,7 +318,7 @@ The emitted `spc_forensic_features` JSON contains implementation provenance, cap
 
 ## First calibration surface
 
-The manual `.github/workflows/spc-forensic.yml` first runs the strict transformer regression and direct accurate-DSP bridge regression. Only after those succeed does it execute six real SPC fixtures and upload their creator-blind sidecars.
+The manual `.github/workflows/spc-forensic.yml` first runs the transformer-integrity regression and direct accurate-DSP bridge regression. Only after those succeed does it execute six real SPC fixtures and upload their creator-blind sidecars.
 
 The six are selected downstream from existing authoritative external-tag routing so both Cube candidates have controls in more than one soundtrack:
 
@@ -330,8 +344,9 @@ Do not promote the instrumentation to real-corpus evidence until all are true:
 5. KON register write and accepted voice start remain distinct events;
 6. dropped capture observations create a hard continuity barrier;
 7. poisoned title/game/composer/ID666/GD3/external-tag nodes do not change extracted motif geometry;
-8. the pinned upstream core and local hook contract are recorded in provenance for every generated sidecar;
-9. CPU RAM callbacks and DSP callbacks remain monotonic under the forced memory-access synchronization;
-10. the direct accurate-DSP bridge regression compiles and executes against the actually patched pinned core.
+8. the pinned upstream core and local hook/ordering contract are recorded in provenance for every generated sidecar;
+9. CPU RAM callbacks and DSP callbacks remain monotonic under the narrow forensic memory-access synchronization;
+10. the direct accurate-DSP bridge regression compiles and executes against the actually patched pinned core;
+11. the forensic target remains deterministic and does not opt into the broad stochastic `SPC_MORE_ACCURACY` path.
 
 Until those tests run against an actual instrumented core, the SPC corpus path is architecturally connected and workflow-ready but not yet experimentally executed.
