@@ -12,7 +12,7 @@ SPC file snapshot
 != persistent musical part
 ```
 
-This note pins the execution core and hook boundary used for the next implementation step. The core is a source of device facts only. It must not receive catalog metadata, ID666 data, external tags, composer labels, or attribution hypotheses.
+This note pins the execution core and hook boundary used for the forensic SPC path. The core is a source of device facts only. It must not receive catalog metadata, ID666 data, external tags, composer labels, or attribution hypotheses.
 
 ## Pinned execution core
 
@@ -37,6 +37,7 @@ Primary files:
 ```text
 snes_spc/SNES_SPC.h
 snes_spc/SNES_SPC.cpp
+snes_spc/SNES_SPC_misc.cpp
 snes_spc/SPC_DSP.h
 snes_spc/SPC_DSP.cpp
 ```
@@ -49,11 +50,11 @@ clock_rate        = 1024000
 clocks_per_sample = 32
 ```
 
-Runtime instrumentation should therefore use the 1,024,000-clock SPC basis. Reducing observation time to 32 kHz sample boundaries would erase DSP phase ordering that this experiment specifically needs.
+Runtime instrumentation therefore uses the 1,024,000-clock SPC basis. Reducing observation time to 32 kHz sample boundaries would erase DSP phase ordering that this experiment specifically needs.
 
 ## Why the accurate DSP
 
-The accurate `SPC_DSP` schedules the internal DSP work across 32 hardware phases. That gives explicit observation points for facts that a player-oriented per-sample abstraction can collapse together.
+The accurate `SPC_DSP` schedules internal DSP work across 32 hardware phases. That gives explicit observation points for facts that a player-oriented per-sample abstraction can collapse together.
 
 In particular:
 
@@ -73,13 +74,50 @@ These are not one event.
 
 A `KON` register write therefore must not be emitted directly as `key_on_accepted`.
 
+## Controlled-load boundary
+
+The raw SPC fixture remains the sole initial-state evidence object, but `SNES_SPC::load_spc()` performs deterministic machine setup after copying those bytes. In particular, the saved control state may make the IPL ROM visible at `$FFC0-$FFFF` before controlled execution begins.
+
+Therefore the forensic sequence is:
+
+```text
+SNES_SPC::init()
+        ↓
+attach metadata-blind runtime sink
+        ↓
+SNES_SPC::load_spc(exact fixture bytes)
+        ↓
+record deterministic load-time visible-RAM transitions
+        ↓
+controlled execution
+```
+
+Attaching only after `load_spc()` would lose an initial IPL visibility mutation and make replay begin from the wrong visible high-RAM state for affected fixtures.
+
+The sink still receives no ID666 text or catalog metadata. It observes only the memory/device effects produced while loading the exact fixture.
+
+## Causal host-order requirement
+
+Normal playback may let the SPC700 execute ahead of the DSP and catch the DSP up lazily. That host scheduling is acceptable for audio output but not for one ordered forensic trace: a later CPU RAM callback could otherwise arrive before an older DSP phase callback.
+
+The isolated forensic build therefore forces:
+
+```text
+SPC_LESS_ACCURATE=0
+SPC_MORE_ACCURACY=1
+```
+
+`SPC_MORE_ACCURACY` catches the accurate DSP up at SPC700 memory-access boundaries. This is not a new musical assumption; it is required so callback order preserves the hardware causal order already represented by the emulator.
+
+The default Retro VGM Compiler build does not enable or fetch this dependency. The instrumented core lives behind the standalone `tools/spc/forensic/` CMake entrypoint.
+
 ## APURAM mutation coverage
 
 Event-time BRR identity is only exact if every APURAM mutation visible to the DSP advances the RAM generation model.
 
 ### 1. SPC700 CPU-visible RAM writes
 
-`SNES_SPC::cpu_write(...)` is the ordinary CPU write funnel. The observation must describe the final bytes visible in APURAM after the source mutation has completed.
+`SNES_SPC::cpu_write(...)` is the ordinary CPU write funnel. The observation describes the final bytes visible in APURAM after the source mutation has completed.
 
 High-memory writes require care because IPL ROM visibility can make the transient CPU write differ from the final DSP-visible byte.
 
@@ -93,7 +131,7 @@ spc700_cpu
 
 `SNES_SPC::enable_rom(...)` copies 64 bytes at `$FFC0-$FFFF` between the visible RAM window and IPL/hidden high-RAM state.
 
-The visible 64-byte replacement must be represented as one mutation boundary when the overlay changes.
+The visible 64-byte replacement is represented as one mutation boundary when the overlay actually changes bytes.
 
 Origin:
 
@@ -113,7 +151,7 @@ Origin:
 dsp_echo
 ```
 
-Ignoring echo writes would make the claim "exact event-time RAM version" false.
+Ignoring echo writes would make the claim `exact event-time RAM version` false.
 
 ## Voice lifecycle hook points
 
@@ -130,7 +168,7 @@ execution_reset
 routing_state_changed
 ```
 
-The first instrumentation pass should prioritize exact lifecycle/sample facts over broad controller telemetry.
+The first instrumentation pass prioritizes exact lifecycle/sample facts over broad controller telemetry.
 
 ### `key_on_accepted`
 
@@ -142,11 +180,11 @@ Emit when the voice's BRR address is actually initialized from the resolved dire
 
 This is the strongest point for event-time BRR materialization.
 
-### `source_latched`
+### source identity
 
 The source-number/directory-address pipeline is staggered. Do not label a direct instantaneous read of `SRCN` as the source that necessarily produced the current BRR pointer.
 
-The hook must report the source identity associated with the directory entry that actually produced the active BRR address.
+The `sample_phase_started` hook reports the source identity associated with the directory entry that actually produced the active BRR address. A duplicate decorative `source_latched` event is unnecessary for this first pass.
 
 ### `release_entered`
 
@@ -158,7 +196,19 @@ Emit when envelope state actually reaches inactive/zero, and handle immediate-st
 
 ### `execution_reset`
 
-Reset/soft-reset is a hard semantic continuity boundary. It must close live voice episodes and cannot be healed later by sample/pitch similarity.
+Reset/soft-reset is a hard semantic continuity boundary. It closes live voice episodes and cannot be healed later by sample/pitch similarity.
+
+## State-serialization exclusion
+
+The forensic target is compiled with:
+
+```text
+SPC_NO_COPY_STATE_FUNCS=1
+```
+
+The upstream `copy_state()` implementation temporarily toggles IPL-ROM visibility while serializing RAM and then restores register state. Those operations are serialization machinery, not hardware-time mutations in the controlled musical execution.
+
+Rather than invent observer-suppression semantics for a feature the experiment does not need, save/load-state support is excluded from the forensic target. The upstream state serializer remains untouched and the ordinary project build is unaffected.
 
 ## Helix-owned boundary
 
@@ -166,6 +216,12 @@ Producer-facing interface:
 
 ```text
 components/spc/spc_runtime_instrumentation_sink.h
+```
+
+Project-owned vendor bridge:
+
+```text
+components/spc/snes_spc_runtime_hook_bridge.h
 ```
 
 Offline recorder:
@@ -184,6 +240,20 @@ Replay:
 
 ```text
 components/spc/spc_runtime_trace_replay.h
+```
+
+Pinned exact-sentinel transformer:
+
+```text
+tools/spc/patch_snes_spc_runtime.py
+tools/spc/patch_snes_spc_runtime_strict.py
+```
+
+Standalone forensic build and sidecar runner:
+
+```text
+tools/spc/forensic/CMakeLists.txt
+tools/spc/forensic/spc_forensic_features.cpp
 ```
 
 The vendor core reports only:
@@ -206,9 +276,10 @@ The recorder owns:
 RAM write serial
 trace index
 capture-window overflow accounting
+one monotonic observation clock contract
 ```
 
-The emulator must not invent these clocks itself.
+A vendor callback cannot choose its own RAM generation or trace ordinal.
 
 ## Downstream firewall
 
@@ -229,6 +300,25 @@ exact SPC snapshot
 
 ID666 and other embedded tags are outside this chain. External tags are authoritative for catalog identity when present, but they also remain outside feature extraction and are joined only after the creator-blind geometry exists.
 
+The emitted `spc_forensic_features` JSON contains implementation provenance, capture/replay diagnostics, and musical geometry. It deliberately does not emit title, game, artist, composer, ID666, or external-tag fields. Sidecar filenames may be used as routing identities after extraction.
+
+## First calibration surface
+
+The manual `.github/workflows/spc-forensic.yml` first runs the strict transformer regression and direct accurate-DSP bridge regression. Only after those succeed does it execute six real SPC fixtures and upload their creator-blind sidecars.
+
+The six are selected downstream from existing authoritative external-tag routing so both Cube candidates have controls in more than one soundtrack:
+
+```text
+Ancient Magic 01  → Hikichi route
+Ancient Magic 04  → Takaoka route
+Ancient Magic 10  → Hikichi route
+Terranigma 03     → Takaoka route
+Terranigma 06     → Takaoka route
+Terranigma 08     → Hikichi route
+```
+
+Those names/routes determine which immutable fixtures are executed first. They are not arguments to the feature extractor and are absent from its JSON geometry.
+
 ## Acceptance tests before real corpus claims
 
 Do not promote the instrumentation to real-corpus evidence until all are true:
@@ -236,10 +326,12 @@ Do not promote the instrumentation to real-corpus evidence until all are true:
 1. identical SPC + identical controlled run produces byte-identical trace facts;
 2. a RAM rewrite at the same BRR address produces a distinct runtime sample identity;
 3. DSP echo writes advance RAM generation and can invalidate an overlapping BRR version;
-4. IPL overlay changes are visible as high-RAM mutations;
+4. IPL overlay changes are visible as high-RAM mutations, including deterministic load-time overlay;
 5. KON register write and accepted voice start remain distinct events;
 6. dropped capture observations create a hard continuity barrier;
 7. poisoned title/game/composer/ID666/GD3/external-tag nodes do not change extracted motif geometry;
-8. the pinned upstream core and local hook patch are recorded in provenance for every generated trace.
+8. the pinned upstream core and local hook contract are recorded in provenance for every generated sidecar;
+9. CPU RAM callbacks and DSP callbacks remain monotonic under the forced memory-access synchronization;
+10. the direct accurate-DSP bridge regression compiles and executes against the actually patched pinned core.
 
-Until those tests run against an actual instrumented core, the SPC corpus path is architecturally connected but not yet experimentally executed.
+Until those tests run against an actual instrumented core, the SPC corpus path is architecturally connected and workflow-ready but not yet experimentally executed.
