@@ -34,6 +34,14 @@
       "reason": "Jointly credited composition. Existing external tag names Hikichi alone and must not override the commercial soundtrack credit."
     }
   ],
+  "disputed_mapping_holdouts": [
+    {
+      "fixture_path": "tests/corpus/terranigma-spc/20 - Firm Steps Upon the Land.spc",
+      "source_a": "Tenchi Souzou Creative Soundtracks KTCR-1344 transcription credits original-version track 25 Firm Steps Upon the Land to Masanori Hikichi",
+      "source_b": "MusicBrainz gamerip maps the recording of the corresponding Japanese work to Masanori Hikichi and Miyoko Takaoka jointly",
+      "reason": "The sources disagree at the exact gamerip-to-work/composer mapping boundary. Exclude from grounding until reconciled rather than selecting the convenient label."
+    }
+  ],
   "evaluation_only_clues": [
     {
       "fixture_path": "tests/corpus/ancient-magic-spc/01 - Title.spc",
