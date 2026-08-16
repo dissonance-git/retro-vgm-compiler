@@ -6,9 +6,12 @@
 #include "counterpoint_motion_profile.h"
 #include "harmonic_rhythm_profile.h"
 #include "imitative_part_relation.h"
+#include "ionian_cadence_class_hypothesis.h"
+#include "ionian_functional_tendency_hypothesis.h"
 #include "orchestration_transition_hypothesis.h"
 #include "section_orchestration_marker.h"
 #include "section_relation_hypothesis.h"
+#include "tonal_region_relation.h"
 #include "voice_leading_hypothesis.h"
 
 #include <algorithm>
@@ -55,7 +58,7 @@ inline blind_structural_grammar_observation make_blind_structural_observation(
     validate_structural_grammar_context(context);
     if (rule_key.empty())
         throw std::invalid_argument("blind structural grammar observation requires a rule key");
-    if (confidence < 0.0 || confidence > 1.0)
+    if (!std::isfinite(confidence) || confidence < 0.0 || confidence > 1.0)
         throw std::invalid_argument("blind structural grammar confidence must be in [0, 1]");
 
     blind_structural_grammar_observation result;
@@ -200,6 +203,103 @@ inline blind_structural_grammar_observation cadential_arrival_as_grammar_observa
         role_scope,
         arrival.confidence,
         "function-neutral structural arrival; tonic/key/cadence class remain unresolved");
+}
+
+inline blind_structural_grammar_observation ionian_functional_tendency_as_grammar_observation(
+    const structural_grammar_context& context,
+    const ionian_functional_tendency_hypothesis& tendency,
+    creative_attribution_role role_scope) {
+    if (!tendency.candidate_resolved ||
+        tendency.kind == ionian_functional_tendency_kind::unresolved)
+        throw std::invalid_argument("unresolved functional tendency cannot become creator-grammar evidence");
+    if (!tendency.voice_leading_supplied &&
+        !tendency.phrase_arrival_cross_part_grounded)
+        throw std::invalid_argument("functional grammar requires voice-leading or cross-part phrase grounding beyond degree motion");
+    if (!tendency.source_degree.has_value() || !tendency.target_degree.has_value())
+        throw std::invalid_argument("functional grammar requires resolved source and target scale degrees");
+
+    const std::string signature =
+        std::string{"ionian_function:"} + to_string(tendency.kind) +
+        ";degree=" + std::to_string(*tendency.source_degree) +
+        ">" + std::to_string(*tendency.target_degree) +
+        ";identity_voice=" +
+        std::string{tendency.voice_leading_identity_grounded ? "true" : "false"} +
+        ";phrase_arrival=" +
+        std::string{tendency.phrase_arrival_cross_part_grounded ? "true" : "false"};
+
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::bass_harmony,
+        role_scope,
+        tendency.confidence,
+        "theory-scoped Ionian functional tendency grounded beyond static chord degree; Roman numeral and universal function remain outside this observation");
+}
+
+inline blind_structural_grammar_observation ionian_cadence_as_grammar_observation(
+    const structural_grammar_context& context,
+    const ionian_cadence_class_hypothesis& cadence,
+    creative_attribution_role role_scope) {
+    if (!cadence.cadence_candidate_resolved ||
+        cadence.kind == ionian_cadence_candidate_kind::unresolved)
+        throw std::invalid_argument("unresolved cadence candidate cannot become creator-grammar evidence");
+    if (!cadence.phrase_cross_part_grounded)
+        throw std::invalid_argument("cadence grammar requires cross-part phrase grounding");
+
+    std::string degree_token = "unresolved";
+    if (cadence.source_degree.has_value() && cadence.target_degree.has_value()) {
+        degree_token = std::to_string(*cadence.source_degree) +
+            ">" + std::to_string(*cadence.target_degree);
+    }
+    const std::string signature =
+        std::string{"ionian_cadence:"} + to_string(cadence.kind) +
+        ";degree=" + degree_token +
+        ";source_root_position=" +
+        std::string{cadence.source_root_position ? "true" : "false"} +
+        ";target_root_position=" +
+        std::string{cadence.target_root_position ? "true" : "false"} +
+        ";soprano_tonic=" +
+        std::string{cadence.final_soprano_observed
+            ? (cadence.final_soprano_tonic ? "true" : "false")
+            : "unresolved"};
+
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::phrase_form,
+        role_scope,
+        cadence.confidence,
+        "theory-scoped cadence candidate grounded at a cross-part phrase arrival; absolute tonic and creator identity are excluded from the signature");
+}
+
+inline blind_structural_grammar_observation tonal_region_as_grammar_observation(
+    const structural_grammar_context& context,
+    const tonal_region_relation_hypothesis& relation,
+    creative_attribution_role role_scope) {
+    if (relation.kind != tonal_region_relation_kind::tonicization_candidate &&
+        relation.kind != tonal_region_relation_kind::modulation_candidate &&
+        relation.kind != tonal_region_relation_kind::return_candidate)
+        throw std::invalid_argument("only grounded tonicization/modulation/return relations may become tonal-region creator grammar");
+    if (!relation.target_center_cross_origin_grounded ||
+        relation.independent_support_groups < 2 ||
+        relation.independent_support_origins < 2)
+        throw std::invalid_argument("tonal-region grammar requires independent cross-origin support");
+
+    const double semitone_distance = relation.center_distance_octaves * 12.0;
+    const std::string signature =
+        std::string{"tonal_region:"} + to_string(relation.kind) +
+        ";topology=" + to_string(relation.topology) +
+        ";center_distance_semitones=" + quantized_nonnegative_token(semitone_distance) +
+        ";target_key=" +
+        std::string{relation.target_key_class_resolved ? "resolved" : "unresolved"};
+
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::phrase_form,
+        role_scope,
+        relation.confidence,
+        "transposition-invariant local tonal-region relation; absolute center, key spelling, and creator identity are excluded from the rule key");
 }
 
 inline blind_structural_grammar_observation section_relation_as_grammar_observation(
