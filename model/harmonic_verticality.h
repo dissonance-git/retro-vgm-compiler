@@ -131,7 +131,8 @@ inline node_id add_harmonic_verticality(
     const harmonic_verticality& verticality) {
     if (verticality.source_nodes.size() < 2 ||
         verticality.source_nodes.size() != verticality.part_ids.size() ||
-        verticality.source_nodes.size() != verticality.frequencies_hz.size()) {
+        verticality.source_nodes.size() != verticality.frequencies_hz.size() ||
+        verticality.source_nodes.size() != verticality.intervals_above_lowest_octaves.size()) {
         throw std::invalid_argument("harmonic verticality is incomplete");
     }
     for (std::size_t index = 0; index < verticality.source_nodes.size(); ++index) {
@@ -178,10 +179,10 @@ inline node_id add_harmonic_verticality(
     });
     const node_id collection_id = graph.add_node(std::move(collection));
 
-    for (node_id source_id : verticality.source_nodes) {
+    for (std::size_t index = 0; index < verticality.source_nodes.size(); ++index) {
         edge relation;
         relation.kind = edge_kind::derived_from;
-        relation.from = source_id;
+        relation.from = verticality.source_nodes[index];
         relation.to = collection_id;
         relation.attributes.push_back({
             "support_role",
@@ -189,6 +190,27 @@ inline node_id add_harmonic_verticality(
             evidence_status::derived,
             verticality.confidence,
             "",
+        });
+        relation.attributes.push_back({
+            "persistent_part_id",
+            static_cast<std::uint64_t>(verticality.part_ids[index]),
+            evidence_status::derived,
+            1.0,
+            "node_id",
+        });
+        relation.attributes.push_back({
+            "frequency_hz",
+            verticality.frequencies_hz[index],
+            evidence_status::derived,
+            verticality.confidence,
+            "Hz",
+        });
+        relation.attributes.push_back({
+            "interval_above_lowest_octaves",
+            verticality.intervals_above_lowest_octaves[index],
+            evidence_status::derived,
+            verticality.confidence,
+            "octaves",
         });
         graph.add_edge(std::move(relation));
     }
