@@ -88,7 +88,6 @@ struct tonal_region_relation_hypothesis {
 };
 
 constexpr double tonal_region_center_equivalence_tolerance_octaves = 35.0 / 1200.0;
-constexpr double tonal_region_unresolved_ceiling = 0.45;
 constexpr double tonal_region_contrast_ceiling = 0.60;
 constexpr double tonal_region_retained_center_ceiling = 0.82;
 constexpr double tonal_region_tonicization_candidate_ceiling = 0.74;
@@ -146,15 +145,23 @@ inline const char* to_string(tonal_region_relation_evidence_origin origin) noexc
     return "unknown";
 }
 
-inline bool compatible_tonal_region_time_basis(const time_span& first, const time_span& second) noexcept {
-    return first.start.domain == second.start.domain &&
-           first.start.tick_rate == second.start.tick_rate &&
-           first.start.loop_iteration == second.start.loop_iteration;
+inline bool compatible_tonal_region_coordinate_basis(
+    const time_coordinate& first,
+    const time_coordinate& second) noexcept {
+    return first.domain == second.domain &&
+           first.tick_rate == second.tick_rate &&
+           first.loop_iteration == second.loop_iteration;
+}
+
+inline bool compatible_tonal_region_time_basis(
+    const time_span& first,
+    const time_span& second) noexcept {
+    return compatible_tonal_region_coordinate_basis(first.start, second.start);
 }
 
 inline bool finite_valid_tonal_region(const time_span& region) noexcept {
     return region.end.has_value() &&
-           compatible_collection_time_basis(region.start, *region.end) &&
+           compatible_tonal_region_coordinate_basis(region.start, *region.end) &&
            region.end->tick > region.start.tick;
 }
 
@@ -265,9 +272,7 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
             ? independent_strengths[0]
             : independent_strengths[1];
 
-    const double base_confidence = std::min(
-        source_center.confidence,
-        target_center.confidence);
+    const double base_confidence = std::min(source_center.confidence, target_center.confidence);
     const bool target_grounded = target_center.cross_origin_grounded &&
         target_center.confidence >= tonal_region_min_grounded_center_confidence;
     const bool phrase_partition = has_relation_evidence_kind(
@@ -358,9 +363,8 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
     if (result.strong_counterevidence)
         result.confidence = std::min(result.confidence, tonal_region_strong_conflict_ceiling);
 
-    // Relation kinds are deliberately hypotheses. Even a strong modulation or
-    // tonicization candidate is not promoted to an established functional
-    // analysis at this layer.
+    // Candidate relation labels remain hypotheses. This layer does not establish
+    // functional modulation, tonicization, pivot function or Roman numerals.
     result.modulation_established = false;
     result.tonicization_established = false;
     return result;
@@ -369,15 +373,21 @@ inline tonal_region_relation_hypothesis infer_tonal_region_relation(
 inline node_id add_tonal_region_relation_hypothesis(
     musical_execution_graph& graph,
     const tonal_region_relation_hypothesis& hypothesis) {
+    for (const auto& item : hypothesis.supporting_evidence) {
+        if (item.source_node != 0 && graph.find_node(item.source_node) == nullptr)
+            throw std::invalid_argument("tonal-region relation references an unknown support node");
+    }
+
     node relation;
     relation.kind = node_kind::musical_relation;
     relation.layer = semantic_layer::musical_structure;
     relation.flow = flow_kind::value;
     relation.label = "tonal region relation hypothesis";
-    relation.active = time_span{
-        hypothesis.source_region.start,
-        hypothesis.target_region.end,
-    };
+    const time_coordinate relation_end =
+        hypothesis.source_region.end->tick >= hypothesis.target_region.end->tick
+            ? *hypothesis.source_region.end
+            : *hypothesis.target_region.end;
+    relation.active = time_span{hypothesis.source_region.start, relation_end};
     relation.attributes.push_back({
         "identity_scope",
         std::string{"tonal_region_relation_hypothesis"},
@@ -439,8 +449,6 @@ inline node_id add_tonal_region_relation_hypothesis(
     for (const auto& item : hypothesis.supporting_evidence) {
         if (item.source_node == 0)
             continue;
-        if (graph.find_node(item.source_node) == nullptr)
-            throw std::invalid_argument("tonal-region relation references an unknown support node");
         edge support;
         support.kind = edge_kind::derived_from;
         support.from = item.source_node;
