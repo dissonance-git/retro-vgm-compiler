@@ -142,7 +142,7 @@ int main() {
 
     // Opaque source-native realization identities are comparable only inside
     // the same basis. Equal strings across source families do not imply timbre
-    // equality or difference.
+    // equality or difference, and incomparability must not become "stable".
     const auto different_basis = make_part_orchestration_state(
         second_role,
         realization("brr_sample_version", "patch-a"),
@@ -152,7 +152,8 @@ int main() {
     const auto basis_guard = infer_orchestration_transition(first, different_basis);
     assert(!basis_guard.realization_comparable);
     assert(!basis_guard.timbre_changed);
-    assert(basis_guard.kind == orchestration_transition_kind::stable_assignment);
+    assert(basis_guard.kind == orchestration_transition_kind::unresolved);
+    assert(basis_guard.confidence <= incomparable_realization_orchestration_ceiling);
 
     // Existing musical relations can feed role evidence without turning a
     // physical coordinate into role identity.
