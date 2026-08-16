@@ -1,10 +1,11 @@
 # Sonic 3 composer / arranger / programmer attribution control
 
 Status: active project control  
-Primary goal: use Sonic 3 & Knuckles as a hard real-world test of composer-level understanding without collapsing composition, arrangement, programming, source company, driver behavior, or version history into one `artist` label.
+Primary goal: use Sonic 3 & Knuckles as a hard real-world test of composer-level understanding without collapsing composition, arrangement, programming, source company, driver behavior, version history, or soundtrack-local production into one `artist` label.
 
 Related:
 
+- `research/composer-grammar-attribution.md`
 - `research/sonic3-vgm-gun-hazard-spc.md`
 - `research/sonic-smps-pitch-recovery.md`
 - `research/musicological-authorship-attribution.md`
@@ -13,7 +14,7 @@ Related:
 
 ## Research archive
 
-The current project background includes a user-supplied offline archive saved on 2026-08-15 containing:
+The project background includes a user-supplied offline archive saved on 2026-08-15 containing:
 
 - all 18 saved pages of **The Sonic 3 Music Ramble**;
 - all 29 saved pages of **The "Sonic The Hedgehog 3 & Knuckles" Quest for Music Composer Research**;
@@ -21,7 +22,77 @@ The current project background includes a user-supplied offline archive saved on
 
 The two forum threads contain 921 saved posts in total. They are research evidence, not an automatic truth set. Individual posts range from first-hand recollection and cited documentary evidence to explicit speculation, technical inference, correction of earlier claims, and ordinary discussion.
 
-This distinction is essential because the discussion itself demonstrates that Sonic 3 attribution is a moving evidence problem rather than a static credits table.
+This distinction is essential because the discussion demonstrates that Sonic 3 attribution is a moving evidence problem rather than a static credits table.
+
+## Sonic 3 is the target environment, not the whole training world
+
+The most important control principle is now:
+
+```text
+SONIC 3
+held-out target environment
+
+OTHER SOUNDTRACKS BY THE SAME PEOPLE
+creator-generalization controls
+```
+
+A model trained only inside Sonic 3 can accidentally learn:
+
+- the Sonic 3 driver;
+- Universal Voice Bank usage;
+- one shared FM patch vocabulary;
+- one production period;
+- one sound team;
+- one platform;
+- one group of arrangers/programmers;
+- one game-specific formal vocabulary;
+- related cue families;
+- prototype/final lineage.
+
+Therefore a Sonic 3 attribution should become much stronger when the same proposed creator grammar also appears in **different soundtracks by the same person**.
+
+The decisive question is not merely:
+
+> Which Sonic 3 tracks resemble one another?
+
+It is:
+
+> Which musical behaviors follow Maeda, Nagao, Setsumaru, Senoue, or another historically plausible contributor outside Sonic 3, and then reappear in a held-out Sonic 3 cue?
+
+## Two independent axes
+
+### Axis A: one work across representations
+
+A Sonic work may be observable through:
+
+```text
+MIDI-like source / transcription
+MML-like or sequence source
+SMPS data
+prototype sequence
+final sequence
+VGM execution
+FM / PSG / DAC state
+rendered audio
+later port / arrangement
+```
+
+These views should teach one another without being collapsed into one canonical representation.
+
+### Axis B: one creator across soundtracks
+
+A composer/programmer may appear across:
+
+```text
+Sonic 3 & Knuckles
+other Mega Drive games
+SNES games / SPC controls
+other Sega projects
+later platforms / PSF-family controls
+MIDI / source-available material
+```
+
+A creator rule becomes much more interesting when it survives a change of soundtrack, platform, arranger, or implementation environment.
 
 ## Core role separation
 
@@ -40,15 +111,23 @@ composition
 
 The forum archive repeatedly describes cases where the person who supplied or composed musical material was not necessarily the person who converted, embellished, arranged, optimized, or programmed the Mega Drive realization.
 
-Therefore a technical fingerprint recovered from VGM or SMPS may strongly support an **arranger/programmer** hypothesis while providing little or no direct support for a **composer** hypothesis.
+Therefore a technical fingerprint recovered from VGM or SMPS may strongly support an **arranger/programmer** hypothesis while providing weak direct support for a **composer** hypothesis.
 
-That boundary is a first-class regression requirement.
+But the inverse boundary is equally important: arrangement, timbre, or synthesis evidence is not forbidden from composer attribution when independent historical evidence shows that the composer controlled that layer.
+
+The rule is:
+
+```text
+all representations may contribute
++
+role provenance determines what each contribution means
+```
 
 ## Symbolic source is not one uniform MIDI layer
 
-The 2025-2026 Music Ramble discussion describes the Sonic 3 production sources as heterogeneous and asynchronous. The proposed historical picture includes material arriving from several parties and in different states, with MIDI-like source data in some cases but substantial Mega Drive-side alteration in others.
+The Music Ramble discussion describes the Sonic 3 production sources as heterogeneous and asynchronous. The proposed historical picture includes material arriving from several parties and in different states, with MIDI-like source data in some cases and substantial Mega Drive-side alteration in others.
 
-The durable architectural lesson is independent of the exact historical workflow:
+The durable architectural lesson is:
 
 ```text
 incoming symbolic material
@@ -58,21 +137,21 @@ arrangement / editing / embellishment
 SMPS sequence and control decisions
         ↓
 YM2612 / PSG / DAC execution
+        ↓
+heard musical object
 ```
 
-A surviving MIDI, Collection MIDI, prototype sequence, final SMPS sequence, and final VGM may therefore be related views of one musical work without being interchangeable copies.
+A surviving MIDI, prototype sequence, final SMPS sequence, VGM, and later port can be related views of one work without being interchangeable copies.
 
-The Music Ramble specifically discusses examples where the Mega Drive arrangement appears to add or rewrite material relative to a MIDI-like source, including bass, PSG activity, intros, channel use, and other sequence details.
+Differences such as added bass, rewritten PSG, changed intros, voice assignments, or altered channel behavior should be modeled as transformations and creative/technical evidence, not automatically repaired away.
 
-Game Music Interpreter should model those differences as transformations and correspondences, not as transcription errors to erase.
-
-## Evidence classes from the forum archive
+## Evidence classes from the archive
 
 ### Documentary / first-hand evidence
 
 The saved material includes or discusses direct composer/arranger statements, interviews, old websites, game/source credits, prototype evidence, and private correspondence.
 
-One important uncertainty control comes from Dissident93's 2019 post #26 in the composer-research thread: he records that some older Uwabo/Nagao information came from his direct Facebook contact, but that the original messages were no longer recoverable, and that Nagao was not remembered as completely certain about the full extent of his contributions.
+One uncertainty control comes from Dissident93's 2019 post #26 in the composer-research thread: some older Uwabo/Nagao information was remembered from direct Facebook contact, but the original messages were no longer recoverable and the contributor was not remembered as completely certain about the full extent of the work.
 
 That means:
 
@@ -82,9 +161,9 @@ reported first-hand recollection
 != exact exhaustive track list
 ```
 
-The project should preserve that evidence as useful testimony with uncertainty rather than promoting it to exact ground truth.
+The project should retain that testimony with uncertainty rather than promote it to exact ground truth.
 
-The same post also raises the possibility of reused pre-Sonic-3 material, noting the Special Stage / Blue Spheres lineage to SegaSonic Bros. The saved Development/Music page likewise documents that a previously created Yoshiaki Kashima song was repurposed for Sonic 3.
+The same archive also raises reused pre-Sonic-3 material, including the Special Stage / Blue Spheres lineage to SegaSonic Bros. The saved Development/Music page documents a previously created Yoshiaki Kashima song being repurposed for Sonic 3.
 
 Therefore:
 
@@ -97,112 +176,115 @@ appears in Sonic 3
 
 Prototype, final, Collection/PC, soundtrack, later-port and later-arrangement versions are evidence objects, not nuisance duplicates.
 
-The archive repeatedly uses version differences to reason about:
+They can reveal:
 
 - which material existed by a particular build;
-- whether one arrangement was replaced or substantially rewritten;
+- whether one arrangement was replaced or rewritten;
 - whether the same composition received a different programmer/arranger;
 - which note, bass, PSG, voice, modulation, and channel-layout decisions survived;
 - whether later versions descend from an earlier symbolic source rather than the final Mega Drive realization.
 
-A key proposed example is Sky Sanctuary, where the Music Ramble argues that prototype and final programming characteristics may indicate different realization authors even though the musical work remains recognizably related.
-
-The interpreter must therefore be able to represent:
+The interpreter must support:
 
 ```text
-same work / cue identity
+same work identity
 +
 different realization lineage
 +
 different arrangement/programming hypothesis
 ```
 
-without forcing either identity to overwrite the other.
+without overwriting either identity.
 
 ### Realization fingerprints
 
-The later Music Ramble develops a practical programmer/arranger fingerprint vocabulary. Candidate evidence includes:
+Candidate evidence from the forum discussion includes:
 
 - exact FM voice / patch reuse;
 - Universal Voice Bank use versus locally included voices;
-- modulation-control patterns and recurring `smpsModSet` parameter families;
+- modulation-control patterns and recurring `smpsModSet` families;
 - song-header initial values;
 - PSG participation and recurring PSG techniques;
-- channel layout and channel-sharing choices;
+- channel layout and sharing choices;
 - glissando / pitch-control habits;
-- `smpsNoAttack` and related articulation/control idioms;
-- panning and other control behavior;
+- `smpsNoAttack` and related articulation idioms;
+- panning/control behavior;
 - optimization state, calls, loops and repeated-section factoring;
-- characteristic additions made during conversion/arrangement;
+- characteristic additions during conversion/arrangement;
 - reuse of the same technical choices in other games associated with the same programmer.
 
-These are not all equally observable from VGM. Some require SMPS/source evidence, while VGM can expose downstream patch state, register/control trajectories, channel behavior and timing.
+These are not equally observable from VGM. Some require SMPS/source evidence. VGM can expose downstream patch state, register/control trajectories, timing, and physical voice activity.
 
 The shared model must record which layer actually supports each feature.
 
 ## A critical correction case: inherited labels can be wrong
 
-The saved 2026 Music Ramble supplies a particularly useful adversarial example.
+The saved 2026 Music Ramble gives a useful adversarial example.
 
-The saved Development/Music page currently presents Sonic 3's `Continue` and `Stage Clear - Act Passed` as Jun Senoue compositions/arrangements based on Sonic 3D Blast evidence.
+The saved Development/Music page presents Sonic 3's `Continue` and `Stage Clear - Act Passed` as Jun Senoue compositions/arrangements based on Sonic 3D Blast evidence.
 
-Music Ramble post #339 (2026-08-08) explicitly revisits that interpretation. The post argues that the Sonic 3D Blast credit data contains a gap after the credited Game Over cue, and that earlier interpretation may have incorrectly carried the preceding Jun Senoue credit across uncredited entries. It then points to implementation evidence that the author considers more Nagao-like, including Universal Voice Bank use, modulation patterns, PSG behavior and prototype/final sequence differences.
+Music Ramble post #339 (2026-08-08) explicitly revisits that interpretation and argues that the Sonic 3D Blast credit gap may have been interpreted incorrectly, while pointing to implementation details considered more Nagao-like.
 
-For Game Music Interpreter this is not yet a verdict about the historical author. It is a regression shape:
+For Game Music Interpreter this is not yet a historical verdict. It is a regression shape:
 
 ```text
-inherited metadata / prior interpretation
-        +
+inherited metadata / old interpretation
++
 new source-layout evidence
-        +
-new technical realization evidence
++
+new technical evidence
         ↓
-previous attribution must become revisable
+old attribution must remain revisable
 ```
 
 No confidence system is acceptable if an old label silently dominates contradictory new evidence.
 
-## Composer understanding versus realization attribution
+## Composer understanding is multi-view
 
-The archive also exposes the inverse danger: identifying the programmer is not the same as understanding the composer.
+A composer model should not be restricted to note/score features.
 
-Music Ramble post #207 explicitly notes that FM voices alone cannot identify composers reliably because much of the soundtrack appears to have been programmed or arranged by someone other than the original composer.
+Possible creator-facing evidence includes:
 
-The project should therefore maintain two different feature families.
+### Structural / symbolic
 
-### Composition-facing features
-
-Examples:
-
-- melodic interval and contour habits;
+- melodic interval and contour behavior;
 - phrase construction;
 - bass-motion strategy;
-- harmonic vocabulary and harmonic rhythm;
+- harmonic rhythm and progression habits;
 - cadential behavior;
 - motivic recurrence and transformation;
 - rhythmic cells and syncopation;
 - counterpoint and inner-voice behavior;
 - formal proportions and developmental strategy.
 
-### Arrangement / programming-facing features
+### Arrangement / orchestration
 
-Examples:
+- register assignment;
+- doubling;
+- density change;
+- countermelody deployment;
+- treatment of returns;
+- texture hierarchy.
 
-- FM patch vocabulary;
-- modulation and articulation controls;
-- PSG deployment;
-- voice-bank behavior;
-- channel allocation/layout;
-- register assignment and doubling;
-- panning/control idioms;
-- optimization/call/loop structure;
-- implementation-specific embellishment.
+### Timbre / synthesis
 
-A composition match with a realization mismatch is meaningful. A realization match with a composition mismatch is meaningful. Neither should be averaged into one anonymous similarity score.
+- FM/PSG/sample choices where creator-controlled;
+- envelope and articulation behavior;
+- modulation habits;
+- timbral contrast tied to musical form.
 
-## Existing high-value corpus contrasts
+### Performance / execution
 
-The committed 58-file Sonic 3 & Knuckles VGM set already supplies several useful within-project controls:
+- expressive pitch behavior;
+- attack/release patterns;
+- dynamic contour;
+- timing and negative-space behavior where recoverable.
+
+A composition-structure match with a realization mismatch is meaningful. A realization match with a composition mismatch is also meaningful. Neither should be averaged into one anonymous similarity score.
+
+## Existing within-Sonic-3 controls
+
+The committed 58-file Sonic 3 & Knuckles VGM set already supplies useful **within-soundtrack** controls:
 
 ```text
 prototype ↔ final
@@ -212,6 +294,8 @@ same cue family ↔ changed realization
 shared patch vocabulary ↔ different musical material
 similar musical material ↔ changed patch/control vocabulary
 ```
+
+These are valuable for understanding what changes inside the target environment, but they are not sufficient by themselves to establish a general composer grammar.
 
 Named research targets from the saved discussions include:
 
@@ -227,15 +311,15 @@ Named research targets from the saved discussions include:
 - Knuckles theme prototype/retail relationships;
 - Balloon Park;
 - the Buxer/Jackson-team cue family;
-- the Sega/Cube/Opus boundaries where evidence permits.
+- Sega/Cube/Opus boundaries where evidence permits.
 
 A named target is not a presumed answer.
 
 ## Test program
 
-### Test 1: blind realization-feature extraction
+### Test 1: blind VGM realization extraction
 
-Before supplying any artist/programmer labels, extract per-track realization features from the VGM corpus:
+Before supplying creator labels, extract per-track downstream realization features:
 
 ```text
 FM patch fingerprints
@@ -249,115 +333,145 @@ physical-channel activity/density
 register/control transition statistics
 ```
 
-The output must not contain artist names.
+These features are useful for realization clustering and as composer confound controls. They are not automatically composer evidence.
 
-Success criterion: technically meaningful repeated realization families emerge without metadata leakage.
+### Test 2: composition-facing reconstruction from VGM/sequence evidence
 
-### Test 2: paired-version stability
+Recover as much as evidence permits of:
+
+```text
+note-like events
+relative pitch trajectories
+onset/duration relationships
+persistent musical parts
+melody / bass / inner-voice candidates
+rhythmic cells
+phrase boundaries
+motif recurrence / transformation
+harmonic and formal relations
+```
+
+The goal is to turn VGM/SPC execution into a usable musical view, not to pretend the source was MIDI.
+
+### Test 3: paired-version stability
 
 For prototype/final and Act1/Act2 pairs, measure separately:
 
 ```text
-composition-like continuity
+musical-work continuity
 arrangement/programming continuity
 ```
-
-Do not use one similarity score.
 
 Questions include:
 
 - Does melodic/bass/rhythmic structure remain while patch/control vocabulary changes?
-- Does a final version preserve a prototype's realization fingerprint?
-- Does an Act 2 arrangement retain the composition while moving toward another programmer family?
+- Does a final version preserve a prototype realization fingerprint?
+- Does an Act 2 arrangement retain the work while changing creator-facing arrangement traits?
 
-### Test 3: known-control calibration
+### Test 4: frozen Sonic 3 holdout
 
-Use only tracks whose role attribution is sufficiently documented for the specific coordinate being tested.
+Do not train or tune on disputed targets such as Continue/Act Clear once they become evaluation items.
 
-For example, a confirmed composition credit can calibrate composition features but cannot automatically calibrate programmer features. A confirmed arrangement/programming statement can calibrate realization features but cannot automatically calibrate composition.
+Report:
 
-Every control must declare:
-
-```text
-person
-role
-track/version
-source
-confidence
-what the control is allowed to supervise
-what it is forbidden to supervise
-```
-
-### Test 4: disputed-target holdout
-
-Do not train or tune on disputed targets such as the newer Continue/Act Clear questions.
-
-After fingerprints are calibrated on controls, score disputed tracks independently and report:
-
-- supporting dimensions;
+- supporting creator-grammar dimensions;
 - contradicting dimensions;
-- nearest controls by each feature family;
-- whether evidence is source/driver/device/compositional;
+- representation provenance;
+- nearest controls by each evidence family;
 - confidence;
-- alternative hypotheses.
+- alternative hypotheses;
+- realization/programming hypothesis separately.
 
-No automatic historical verdict.
+### Test 5: cross-soundtrack same-creator controls
 
-### Test 5: cross-game same-artist controls
+This is the major evidence upgrade.
 
-The next major evidence upgrade is additional VGM/SPC material from games with known work by the same composers/arrangers/programmers.
+Add VGM/SPC/PSF/MIDI/MML/tracker or other material from **different soundtracks** with known work by the same plausible Sonic 3 contributors.
 
-These controls should answer the decisive question:
+The decisive question is:
 
-> Does a proposed Sonic 3 fingerprint travel with the person outside Sonic 3, or is it merely a Sonic 3 toolchain/library artifact?
+> Does a proposed Sonic 3 behavior travel with the person outside Sonic 3, or does it stay with the Sonic 3 soundtrack/toolchain/team?
 
 Prefer controls that vary one factor at a time where possible:
 
 ```text
-same person + same driver family + different game
-same person + different driver/platform
+same person + different soundtrack + same driver family
+same person + different soundtrack + different driver/platform
 same driver/toolchain + different person
-same shared patch/library + different person
+same patch/library + different person
 same composer + different arranger/programmer
 same arranger/programmer + different composer
+same composer + different soundtrack + different synthesis architecture
 ```
 
-SPC controls are especially valuable because they can test whether composition-facing habits survive a completely different synthesis architecture while implementation-facing fingerprints appropriately disappear or transform.
+SPC controls are especially useful because they can force Genesis-specific synthesis fingerprints to disappear while deeper musical relations either survive or fail.
 
-### Test 6: composer-level musical fingerprint
+### Test 6: leave-one-soundtrack-out creator grammar
 
-Once note/sequence and persistent-part recovery is strong enough, build a separate composition analysis over:
+Once a candidate has material from several soundtracks:
 
-- melody;
-- bass;
-- harmony;
-- rhythm;
-- phrase/form;
-- motivic transformation;
-- counterpoint;
-- repetition/variation;
-- arrangement-independent structural relations.
+```text
+train grammar on soundtrack A + B
+hold out soundtrack C
+```
 
-This is the layer that should eventually answer questions like `does this track think like composer X?`, while the realization layer answers `does this track appear to have been programmed/arranged like programmer Y?`.
+Then rotate.
 
-The two answers may disagree, and disagreement is evidence.
+A proposed creator habit that cannot generalize across soundtracks should remain soundtrack-local or period-specific until better evidence appears.
+
+### Test 7: confound interventions
+
+Rerun candidate matching under conditions such as:
+
+```text
+without patch/sample identity
+without platform-specific features
+without soundtrack-local features
+without arranger/programmer features
+transposition-normalized
+tempo-normalized
+without related work families
+```
+
+The delta tells us what the attribution was actually using.
+
+### Test 8: creator evolution
+
+Do not assume a composer is frozen.
+
+Classify candidate rules as:
+
+```text
+stable long-range habit
+career-period habit
+soundtrack-local habit
+collaborator-dependent habit
+platform-dependent habit
+one-off experiment
+```
+
+A later soundtrack that contradicts an earlier rule is evidence about evolution, not merely a failed classifier.
 
 ## Required output shape
 
-A future Sonic 3 attribution result should resemble:
+A future Sonic 3 attribution should resemble:
 
 ```text
 TRACK / VERSION
 
-composition hypothesis
+composer hypothesis
   candidate(s)
-  structural support
+  cross-soundtrack creator rules
+  within-Sonic-3 support
+  representation convergence
   counterevidence
+  confound sensitivity
   confidence
 
 arrangement / programming hypothesis
   candidate(s)
   patch / modulation / channel / control support
+  cross-soundtrack programmer controls
   counterevidence
   confidence
 
@@ -376,6 +490,11 @@ Never compress this to one `artist = X` field.
 
 ## Immediate next step
 
-Run the first blind realization-fingerprint audit over the committed Sonic 3 VGM corpus. The initial goal is not to solve attribution. It is to determine whether VGM-visible patch/control/channel features reproduce any stable families at all and which candidate features are too toolchain-wide to discriminate people.
+1. Run the first blind VGM realization/trajectory audit over the committed Sonic 3 corpus.
+2. Treat its output as a **within-soundtrack baseline**, not a composer model.
+3. Keep disputed cue labels out of extraction and tuning.
+4. Add the same-creator VGM/SPC controls from other soundtracks unchanged when they arrive.
+5. Re-run the same feature extraction before tuning weights or adding creator-specific rules.
+6. Promote only relations that survive independent works, role checks, and ideally cross-soundtrack validation into `composer_grammar_evidence`.
 
-When additional same-artist VGM/SPC controls are added, rerun the exact same feature extraction unchanged before tuning weights or adding new fingerprint rules.
+> **Sonic 3 is the question. Other soundtracks by the same creators are the controls that tell us whether we have learned the people or merely the game.**
