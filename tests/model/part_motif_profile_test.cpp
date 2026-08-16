@@ -17,13 +17,15 @@ part_gesture_observation gesture(
     std::int64_t tick,
     double pitch,
     const char* basis = "synthetic-pitch",
-    std::int64_t loop_iteration = 0) {
+    std::int64_t loop_iteration = 0,
+    const char* interval_semantics = "log2_frequency_ratio_octaves") {
     return {
         node,
         part,
         {time_domain::source, tick, 0, loop_iteration},
         pitch,
         basis,
+        interval_semantics,
     };
 }
 
@@ -79,13 +81,13 @@ int main() {
     assert(close_enough(contrast.identity_confidence, contrast.combined_similarity));
     assert(*contrast.contour_similarity < 1.0);
 
-    // Unknown/incompatible pitch bases must not be silently compared. Rhythm
-    // remains usable, but rhythm alone cannot establish motif identity strongly.
+    // Unknown pitch cannot establish strong motif identity even when rhythm is
+    // an exact match.
     std::vector<part_gesture_observation> no_pitch = {
-        {31, 400, {time_domain::source, 0, 0, 0}, std::nullopt, ""},
-        {32, 400, {time_domain::source, 100, 0, 0}, std::nullopt, ""},
-        {33, 400, {time_domain::source, 200, 0, 0}, std::nullopt, ""},
-        {34, 400, {time_domain::source, 400, 0, 0}, std::nullopt, ""},
+        {31, 400, {time_domain::source, 0, 0, 0}, std::nullopt, "", ""},
+        {32, 400, {time_domain::source, 100, 0, 0}, std::nullopt, "", ""},
+        {33, 400, {time_domain::source, 200, 0, 0}, std::nullopt, "", ""},
+        {34, 400, {time_domain::source, 400, 0, 0}, std::nullopt, "", ""},
     };
     const auto rhythm_only = make_part_motif_profile(no_pitch);
     const auto rhythm_comparison = compare_part_motif_profiles(original, rhythm_only);
@@ -98,16 +100,35 @@ int main() {
         rhythm_comparison.identity_confidence,
         rhythm_only_motif_identity_ceiling));
 
-    const auto incompatible_basis = make_part_motif_profile({
-        gesture(41, 500, 0, 0.00, "other-pitch-basis"),
-        gesture(42, 500, 100, 2.0 / 12.0, "other-pitch-basis"),
-        gesture(43, 500, 200, 4.0 / 12.0, "other-pitch-basis"),
+    // Different native pitch coordinates may still yield the same derived
+    // interval semantics. This is the cross-representation bridge used for
+    // Genesis frequency ratios versus SPC pitch-rate ratios.
+    const auto different_native_basis = make_part_motif_profile({
+        gesture(41, 500, 0, 0.00, "other-native-basis"),
+        gesture(42, 500, 100, 2.0 / 12.0, "other-native-basis"),
+        gesture(43, 500, 200, 4.0 / 12.0, "other-native-basis"),
+        gesture(44, 500, 400, 1.0 / 12.0, "other-native-basis"),
     });
-    const auto basis_guard = compare_part_motif_profiles(original, incompatible_basis);
-    assert(!basis_guard.pitch_comparable);
-    assert(!basis_guard.interval_similarity.has_value());
-    assert(!basis_guard.contour_similarity.has_value());
-    assert(basis_guard.identity_confidence <= rhythm_only_motif_identity_ceiling);
+    const auto cross_representation = compare_part_motif_profiles(
+        original,
+        different_native_basis);
+    assert(cross_representation.pitch_comparable);
+    assert(close_enough(*cross_representation.interval_similarity, 1.0));
+    assert(close_enough(cross_representation.identity_confidence, 1.0));
+
+    const auto incompatible_interval_semantics = make_part_motif_profile({
+        gesture(45, 501, 0, 0.00, "other-native-basis", 0, "non_frequency_pitch_units"),
+        gesture(46, 501, 100, 2.0 / 12.0, "other-native-basis", 0, "non_frequency_pitch_units"),
+        gesture(47, 501, 200, 4.0 / 12.0, "other-native-basis", 0, "non_frequency_pitch_units"),
+        gesture(48, 501, 400, 1.0 / 12.0, "other-native-basis", 0, "non_frequency_pitch_units"),
+    });
+    const auto semantic_guard = compare_part_motif_profiles(
+        original,
+        incompatible_interval_semantics);
+    assert(!semantic_guard.pitch_comparable);
+    assert(!semantic_guard.interval_similarity.has_value());
+    assert(!semantic_guard.contour_similarity.has_value());
+    assert(semantic_guard.identity_confidence <= rhythm_only_motif_identity_ceiling);
 
     bool rejected_mixed_parts = false;
     try {
