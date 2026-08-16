@@ -68,7 +68,6 @@ set(SNES_SPC_SOURCE_DIR "${snes_spc_forensic_SOURCE_DIR}/snes_spc")
 add_library(gameaudio_snes_spc_forensic STATIC
     ${SNES_SPC_SOURCE_DIR}/SNES_SPC.cpp
     ${SNES_SPC_SOURCE_DIR}/SNES_SPC_misc.cpp
-    ${SNES_SPC_SOURCE_DIR}/SNES_SPC_state.cpp
     ${SNES_SPC_SOURCE_DIR}/SPC_DSP.cpp
 )
 
@@ -83,6 +82,10 @@ target_compile_definitions(gameaudio_snes_spc_forensic
     PRIVATE
         HAVE_STDINT_H=1
         SPC_LESS_ACCURATE=0
+        # State save/load intentionally stays outside the forensic build.
+        # copy_state() toggles IPL visibility as serialization machinery, which
+        # must never masquerade as a hardware-time APURAM mutation.
+        SPC_NO_COPY_STATE_FUNCS=1
         # Force the accurate DSP to catch up at SPC700 memory-access
         # boundaries. Playback normally permits lazy DSP catch-up, but a
         # forensic APURAM trace needs host callback order to preserve hardware
