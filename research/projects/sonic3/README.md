@@ -12,6 +12,7 @@ The project deliberately couples several evidence layers while preserving their 
 
 - [`attribution.md`](attribution.md) is the broad composer / arranger / programmer attribution program and control design.
 - [`harmonic-form.md`](harmonic-form.md) is the executable harmonic/tonal/form pressure test, including the blind VGM surface-harmony lane and the promotion path into persistent-part, key, function, cadence, tonal-region, and creator-grammar evidence.
+- [`psg-role-semantics.md`](psg-role-semantics.md) models Sonic 3's mixed YM2612+SN76489 arrangement surface: independent PSG tone, FM/PSG doubling or shadowing, PSG noise/percussion behavior, and the rule that hardware register position is not musical bass function.
 - [`rom-forensics.md`](rom-forensics.md) studies ROM-level implementation evidence and how it constrains attribution without turning implementation into composition evidence.
 - [`smps-pitch-recovery.md`](smps-pitch-recovery.md) studies inverse recovery of source-side SMPS pitch trajectories from downstream YM2612 execution.
 - [`cross-representation-controls.md`](cross-representation-controls.md) provides paired VGM/SPC and cross-representation controls for separating composition, arrangement, implementation, and format effects.
