@@ -49,6 +49,10 @@ node_id add_motif_episode(
     onset.attributes.push_back({
         "device_family", std::string{"YM2612"}, evidence_status::derived, 1.0, ""});
     onset.attributes.push_back({
+        "instance", std::uint64_t{0}, evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
+        "physical_channel", std::uint64_t{0}, evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
         "device_pitch_code", static_cast<std::uint64_t>(fnum), evidence_status::derived, 1.0, "device_native"});
     onset.attributes.push_back({
         "device_pitch_block", std::uint64_t{4}, evidence_status::derived, 1.0, "device_native"});
@@ -87,6 +91,53 @@ node_id add_motif_episode(
         at(tick),
         "performed-motif-test",
         static_cast<std::uint64_t>(tick));
+    return episode_id;
+}
+
+node_id add_psg_motif_episode(
+    musical_execution_graph& graph,
+    std::int64_t tick,
+    std::uint16_t tone_period,
+    std::size_t physical_channel = 0) {
+    node episode;
+    episode.kind = node_kind::voice_instance;
+    episode.layer = semantic_layer::synthesis;
+    episode.flow = flow_kind::stream;
+    episode.label = "SN76489 physical voice episode";
+    episode.active = time_span{at(tick), at(tick + 80)};
+    episode.attributes.push_back({
+        "device_family", std::string{"SN76489"}, evidence_status::derived, 1.0, ""});
+    episode.attributes.push_back({
+        "instance", std::uint64_t{0}, evidence_status::derived, 1.0, ""});
+    episode.attributes.push_back({
+        "physical_channel", static_cast<std::uint64_t>(physical_channel), evidence_status::derived, 1.0, ""});
+    const node_id episode_id = graph.add_node(std::move(episode));
+
+    node onset;
+    onset.kind = node_kind::musical_event;
+    onset.layer = semantic_layer::musical_performance;
+    onset.flow = flow_kind::event;
+    onset.label = "SN76489 pitched activity onset";
+    onset.active = time_span{at(tick), std::nullopt};
+    onset.attributes.push_back({
+        "event_kind", std::string{"pitched_activity_onset"}, evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
+        "device_family", std::string{"SN76489"}, evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
+        "instance", std::uint64_t{0}, evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
+        "physical_channel", static_cast<std::uint64_t>(physical_channel), evidence_status::derived, 1.0, ""});
+    onset.attributes.push_back({
+        "device_pitch_code", static_cast<std::uint64_t>(tone_period), evidence_status::derived, 1.0, "device_native"});
+    onset.attributes.push_back({
+        "gate_or_level", std::uint64_t{0}, evidence_status::derived, 1.0, "device_native"});
+    const node_id onset_id = graph.add_node(std::move(onset));
+
+    edge realization;
+    realization.kind = edge_kind::realizes;
+    realization.from = onset_id;
+    realization.to = episode_id;
+    graph.add_edge(std::move(realization));
     return episode_id;
 }
 
@@ -161,12 +212,34 @@ motif_fixture direct_fixture() {
     return result;
 }
 
+motif_fixture psg_fixture() {
+    motif_fixture result;
+    const std::vector<node_id> episodes = {
+        add_psg_motif_episode(result.graph, 100, 200),
+        add_psg_motif_episode(result.graph, 200, 100),
+        add_psg_motif_episode(result.graph, 300, 200),
+    };
+    result.part_id = add_part(result.graph, episodes);
+    return result;
+}
+
+motif_fixture mixed_family_fixture() {
+    motif_fixture result;
+    const std::vector<node_id> episodes = {
+        add_motif_episode(result.graph, 100, 1000, 7, {1, 1, 1, 1}),
+        add_psg_motif_episode(result.graph, 200, 275),
+        add_psg_motif_episode(result.graph, 300, 138),
+    };
+    result.part_id = add_part(result.graph, episodes);
+    return result;
+}
+
 } // namespace
 
 int main() {
     const genesis_pitch_clock_context clocks{
         7670454,
-        0,
+        3579545,
         "synthetic-vgm-header",
     };
 
@@ -248,6 +321,48 @@ int main() {
         assert(close_enough(
             comparison.identity_confidence,
             ym2612_missing_fundamental_pitch_ceiling));
+    }
+
+    {
+        auto fixture = psg_fixture();
+        const auto native = make_genesis_part_motif_profile(
+            fixture.graph,
+            fixture.part_id);
+        const auto performed = make_genesis_part_motif_profile(
+            fixture.graph,
+            fixture.part_id,
+            clocks);
+        assert(native.has_value());
+        assert(performed.has_value());
+        assert(native->pitch_basis == "genesis_sn76489_reciprocal_period");
+        assert(performed->pitch_basis == "absolute_performed_frequency_hz");
+        assert(performed->interval_octaves.has_value());
+        assert(performed->status == evidence_status::derived);
+        assert(close_enough(performed->evidence_confidence, 1.0));
+        assert(close_enough((*performed->interval_octaves)[0], 1.0));
+        assert(close_enough((*performed->interval_octaves)[1], -1.0));
+    }
+
+    {
+        auto fixture = mixed_family_fixture();
+        const auto performed = make_genesis_part_motif_profile(
+            fixture.graph,
+            fixture.part_id,
+            clocks);
+        assert(performed.has_value());
+        assert(performed->pitch_basis == "absolute_performed_frequency_hz");
+        assert(performed->interval_octaves.has_value());
+        assert(performed->interval_octaves->size() == 2);
+
+        // The first FM and PSG states are approximately the same performed
+        // pitch despite completely different native coordinate systems. Once
+        // persistent-part continuity is already grounded, the common frequency
+        // basis preserves the handoff without inventing a discontinuity.
+        assert(std::fabs((*performed->interval_octaves)[0]) < 0.02);
+        assert(std::fabs((*performed->interval_octaves)[1] - 1.0) < 0.02);
+        assert(close_enough(
+            performed->evidence_confidence,
+            ym2612_direct_periodicity_pitch_confidence));
     }
 
     return 0;
