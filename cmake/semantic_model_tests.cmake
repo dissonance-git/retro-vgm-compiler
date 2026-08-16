@@ -166,3 +166,14 @@ add_test(
     NAME blind_attribution_experiment
     COMMAND blind_attribution_experiment_test
 )
+
+add_test(
+    NAME attribution_control_registry_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/model
+        -p test_attribution_control_registry.py
+)
+set_tests_properties(
+    attribution_control_registry_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
