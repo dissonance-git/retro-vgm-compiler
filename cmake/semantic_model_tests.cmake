@@ -177,3 +177,14 @@ set_tests_properties(
     attribution_control_registry_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_test(
+    NAME blind_attribution_match_manifest_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/model
+        -p test_blind_attribution_match_manifest.py
+)
+set_tests_properties(
+    blind_attribution_match_manifest_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
