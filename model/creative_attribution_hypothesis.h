@@ -27,6 +27,10 @@ enum class creative_attribution_evidence_kind : std::uint8_t {
     arrangement_execution,
     driver_toolchain_signature,
     patch_sample_signature,
+    // A higher-order recurring creator rule that may integrate symbolic,
+    // arrangement, synthesis, performance, auditory, and soundtrack evidence.
+    // Role scope determines what the rule is allowed to support.
+    creator_grammar,
     documentary_role_credit,
     external_recollection,
     version_lineage,
@@ -98,6 +102,8 @@ inline const char* to_string(creative_attribution_evidence_kind kind) noexcept {
         return "driver_toolchain_signature";
     case creative_attribution_evidence_kind::patch_sample_signature:
         return "patch_sample_signature";
+    case creative_attribution_evidence_kind::creator_grammar:
+        return "creator_grammar";
     case creative_attribution_evidence_kind::documentary_role_credit:
         return "documentary_role_credit";
     case creative_attribution_evidence_kind::external_recollection:
@@ -133,17 +139,19 @@ inline std::uint8_t creative_attribution_domain(
         return 2;
     case creative_attribution_evidence_kind::patch_sample_signature:
         return 3;
+    case creative_attribution_evidence_kind::creator_grammar:
+        return 4;
     case creative_attribution_evidence_kind::documentary_role_credit:
     case creative_attribution_evidence_kind::external_recollection:
-        return 4;
-    case creative_attribution_evidence_kind::version_lineage:
         return 5;
-    case creative_attribution_evidence_kind::metadata_label:
+    case creative_attribution_evidence_kind::version_lineage:
         return 6;
-    case creative_attribution_evidence_kind::contradiction:
+    case creative_attribution_evidence_kind::metadata_label:
         return 7;
+    case creative_attribution_evidence_kind::contradiction:
+        return 8;
     }
-    return 7;
+    return 8;
 }
 
 inline void validate_creative_attribution_evidence(
