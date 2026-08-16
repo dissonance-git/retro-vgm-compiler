@@ -52,6 +52,7 @@ struct diatonic_mode_candidate {
 
 struct tonal_key_class_hypothesis {
     time_span region{};
+    equal_temperament_model tuning{};
     double center_octave_class = 0.0;
     std::int64_t center_pitch_class = 0;
     std::optional<diatonic_mode> mode{};
@@ -228,6 +229,7 @@ inline tonal_key_class_hypothesis infer_tonal_key_class_hypothesis(
         throw std::logic_error("diatonic mode candidate set unexpectedly empty");
     tonal_key_class_hypothesis result;
     result.region = collection.region;
+    result.tuning = collection.tuning;
     result.center_octave_class = center.center_octave_class;
     result.center_pitch_class = candidates.front().center_pitch_class;
     result.collection_scope = collection.scope;
@@ -272,6 +274,10 @@ inline node_id add_tonal_key_class_hypothesis(
     const tonal_key_class_hypothesis& hypothesis) {
     if (!hypothesis.key_class_resolved || !hypothesis.mode.has_value())
         throw std::invalid_argument("only a resolved tonal key class may be materialized as a key hypothesis");
+    validate_equal_temperament_model(hypothesis.tuning);
+    if (hypothesis.tuning.divisions_per_octave != 12)
+        throw std::invalid_argument("tonal key-class materialization requires its original 12-TET tuning contract");
+
     node key;
     key.kind = node_kind::pattern;
     key.layer = semantic_layer::musical_structure;
@@ -281,9 +287,16 @@ inline node_id add_tonal_key_class_hypothesis(
     key.attributes.push_back({"identity_scope", std::string{"tonal_key_class_hypothesis"},
         evidence_status::hypothesis, hypothesis.confidence, ""});
     key.attributes.push_back({"center_pitch_class", hypothesis.center_pitch_class,
-        evidence_status::hypothesis, hypothesis.confidence, "12-TET pitch class"});
+        evidence_status::hypothesis, hypothesis.confidence, "12-TET pitch class under retained tuning contract"});
     key.attributes.push_back({"mode", std::string{to_string(*hypothesis.mode)},
         evidence_status::hypothesis, hypothesis.confidence, ""});
+    key.attributes.push_back({"tuning_divisions_per_octave",
+        static_cast<std::uint64_t>(hypothesis.tuning.divisions_per_octave),
+        evidence_status::derived, hypothesis.tuning.confidence, "divisions/octave"});
+    key.attributes.push_back({"tuning_reference_frequency_hz", hypothesis.tuning.reference_frequency_hz,
+        evidence_status::derived, hypothesis.tuning.confidence, "Hz"});
+    key.attributes.push_back({"tuning_reference_step", hypothesis.tuning.reference_step,
+        evidence_status::derived, hypothesis.tuning.confidence, "step"});
     key.attributes.push_back({"collection_scope", std::string{to_string(hypothesis.collection_scope)},
         evidence_status::derived, 1.0, ""});
     key.attributes.push_back({"theory_scope", hypothesis.theory_scope,
@@ -294,7 +307,7 @@ inline node_id add_tonal_key_class_hypothesis(
         evidence_status::derived, 1.0, ""});
     key.provenance.push_back({evidence_status::hypothesis, hypothesis.confidence,
         "tonal center + structurally grounded pitch-class collection", std::nullopt,
-        "theory-scoped 12-TET diatonic key class; preserves competing mode candidates and does not establish enharmonic spelling or Roman-numeral function"});
+        "theory-scoped 12-TET diatonic key class retaining its tuning contract; preserves competing mode candidates and does not establish enharmonic spelling or Roman-numeral function"});
     return graph.add_node(std::move(key));
 }
 
