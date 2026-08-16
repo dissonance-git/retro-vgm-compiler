@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "purpose": "Record the 2026-08-16 user-supplied attribution-control intake after byte-preserving sorting, without promoting catalog metadata into authorship evidence.",
+  "metadata_precedence": {
+    "catalog_identity": "User-maintained foobar2000 external tags are the active catalog metadata layer. When an external tag exists, it supersedes embedded GD3, ID666, xSF tag, or other historical rip metadata for the user's current title/artist labeling.",
+    "embedded_metadata": "Embedded GD3/ID666/xSF fields may be inspected only as legacy provenance or fallback diagnostics when no external tag covers an object. They must not override an external tag.",
+    "role_evidence_firewall": "Neither external nor embedded artist metadata alone establishes composer, arranger, programmer, music-data, driver, patch-design, or implementation authorship. Role claims still require separately admitted documentary or experimental evidence."
+  },
+  "source_upload_commits": [
+    "e10ff1f038b87647ccf872d9510ab74bfecee51c",
+    "d2eeddf01612310bed6a4ae9cdeb437a75e42154"
+  ],
+  "sorted_commit": "99d71ea98f6f9a832f0673cc94a324f57c394c8d",
+  "staging_reason": "The permanent tests/corpus contract requires SHA-256 inventories and manifest registration. These files are staged byte-for-byte under imports/ until the normal corpus importer can register them without fabricating hashes in the connector-only environment.",
+  "new_staged_worlds": [
+    {
+      "id": "monster-maker-3-spc",
+      "path": "imports/sonic3-attribution/monster-maker-3-spc",
+      "fixture_count": 25,
+      "source_family": "SPC",
+      "target_people": ["Miyoko Takaoka", "Masanori Hikichi"],
+      "evidence_tier": "team_or_partial_participation",
+      "role_use": "blind composer partition and cross-game validation",
+      "documentary_boundary": "Miyoko Takaoka's Cube-era works list names Monster Maker 3 among titles for which she handled roughly 3-10 pieces. Surviving game/track research credits multiple sound contributors, including CUBE/Takaoka/Hikichi, so the whole set must not be labeled as one composer's training corpus.",
+      "next_test": "Run all cues label-blind through shared SPC persistent-part/motif/phrase features; only afterward compare the inferred partition with independently admitted cue clues."
+    },
+    {
+      "id": "ys-iv-mask-of-the-sun-spc",
+      "path": "imports/sonic3-attribution/ys-iv-mask-of-the-sun-spc",
+      "fixture_count": 36,
+      "source_family": "SPC",
+      "target_people": ["Miyoko Takaoka", "Masanori Hikichi"],
+      "evidence_tier": "arrangement_or_implementation_only",
+      "role_use": "arranger/realization grammar and composer-role negative control",
+      "documentary_boundary": "Takaoka's own Cube-era works list explicitly says she participated in Ys IV in arrangement only. The SFC game credits multiple CUBE music contributors. Therefore similarity to this set must not be promoted into Takaoka original-composer evidence by default.",
+      "next_test": "Use as an adversarial role test: composition-facing scoring should not gain Takaoka composer confidence merely from Ys IV similarity, while arranger/realization scoring may use separately grounded evidence."
+    },
+    {
+      "id": "64-ozumo-2-usf-nintendo-64",
+      "path": "imports/sonic3-attribution/64-ozumo-2-usf-nintendo-64",
+      "fixture_count": 25,
+      "sidecar_count": 1,
+      "source_family": "USF",
+      "target_people": ["Miyoko Takaoka"],
+      "evidence_tier": "work_level_single_composer_validation",
+      "role_use": "cross-platform composer-vs-music-data separation control",
+      "documentary_boundary": "Original game staff credits explicitly separate Composer: Miyoko Kobayashi from Music Data Creation: Minako Adachi (Pure Sound), Sound Program: Takanori Kikuchi, and Sound Effects Data Creation: Takuya Yokota. This is a high-value role-separation world once USF musical structure is available.",
+      "next_test": "Compare composer-facing structural grammar with Takaoka SPC controls while preventing N64 sequence/data implementation traits from entering composer evidence."
+    }
+  ],
+  "duplicate_intake": {
+    "policy": "Loose-root duplicates were removed by rebuilding from the pre-upload tree after preserving genuinely new blobs in staging. Existing canonical corpus objects remain unchanged.",
+    "recognized_existing_worlds": [
+      "ancient-magic-spc",
+      "kakinoki-shougi-spc",
+      "america-oudan-ultra-quiz-spc",
+      "super-black-bass-spc",
+      "ecology-magic-ym2608",
+      "dr-robotniks-mean-bean-machine-vgz"
+    ]
+  },
+  "still_missing_native_or_exact_partition": [
+    "Wizardry I-II native sequence/chip dump (user has MP3 only)",
+    "Gleylancer exact cue partition",
+    "Power of the Hired native corpus / exact cue scope"
+  ]
+}
