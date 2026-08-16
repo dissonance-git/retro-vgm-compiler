@@ -19,6 +19,7 @@ struct part_gesture_observation {
     time_coordinate onset{};
     std::optional<double> log2_pitch_coordinate{};
     std::string pitch_basis;
+    std::string interval_semantics;
 };
 
 struct part_motif_profile {
@@ -28,6 +29,7 @@ struct part_motif_profile {
     std::optional<std::vector<double>> interval_octaves{};
     std::optional<std::vector<std::int8_t>> pitch_contour{};
     std::string pitch_basis;
+    std::string interval_semantics;
     std::optional<double> pitch_range_octaves{};
 };
 
@@ -104,14 +106,22 @@ inline part_motif_profile make_part_motif_profile(
 
     bool all_have_pitch = true;
     bool same_pitch_basis = !observations.front().pitch_basis.empty();
+    bool same_interval_semantics = !observations.front().interval_semantics.empty();
     const std::string basis = observations.front().pitch_basis;
+    const std::string interval_semantics = observations.front().interval_semantics;
     for (const auto& observation : observations) {
         all_have_pitch = all_have_pitch && observation.log2_pitch_coordinate.has_value() &&
             std::isfinite(*observation.log2_pitch_coordinate);
         same_pitch_basis = same_pitch_basis && observation.pitch_basis == basis;
+        same_interval_semantics = same_interval_semantics &&
+            observation.interval_semantics == interval_semantics;
     }
 
-    if (all_have_pitch && same_pitch_basis) {
+    // Coordinate differences are only valid when every event in this one
+    // profile shares the same native coordinate basis. Once derived, however,
+    // the resulting interval semantics may be comparable with another profile
+    // produced from a different native representation.
+    if (all_have_pitch && same_pitch_basis && same_interval_semantics) {
         std::vector<double> intervals;
         std::vector<std::int8_t> contour;
         intervals.reserve(observations.size() - 1);
@@ -132,6 +142,7 @@ inline part_motif_profile make_part_motif_profile(
         result.interval_octaves = std::move(intervals);
         result.pitch_contour = std::move(contour);
         result.pitch_basis = basis;
+        result.interval_semantics = interval_semantics;
         result.pitch_range_octaves = high - low;
     }
 
@@ -177,7 +188,8 @@ inline part_motif_similarity compare_part_motif_profiles(
     result.pitch_comparable =
         first.interval_octaves.has_value() && second.interval_octaves.has_value() &&
         first.pitch_contour.has_value() && second.pitch_contour.has_value() &&
-        !first.pitch_basis.empty() && first.pitch_basis == second.pitch_basis;
+        !first.interval_semantics.empty() &&
+        first.interval_semantics == second.interval_semantics;
 
     if (result.pitch_comparable) {
         result.interval_similarity = bounded_difference_similarity(
