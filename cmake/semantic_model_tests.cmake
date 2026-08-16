@@ -11,6 +11,8 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     diatonic_chord_degree_hypothesis_test
     structural_composer_grammar_bridge_test
     role_scoped_orchestration_grammar_test
+    realization_role_deployment_test
+    genesis_psg_analysis_features_test
 )
 
 add_executable(
@@ -33,6 +35,14 @@ add_executable(
     role_scoped_orchestration_grammar_test
     tests/model/role_scoped_orchestration_grammar_test.cpp
 )
+add_executable(
+    realization_role_deployment_test
+    tests/model/realization_role_deployment_test.cpp
+)
+add_executable(
+    genesis_psg_analysis_features_test
+    tests/vgm/genesis_psg_analysis_features_test.cpp
+)
 
 target_include_directories(
     tonal_region_evidence_adapter_test
@@ -52,6 +62,14 @@ target_include_directories(
 )
 target_include_directories(
     role_scoped_orchestration_grammar_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    realization_role_deployment_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    genesis_psg_analysis_features_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -74,6 +92,14 @@ add_test(
 add_test(
     NAME role_scoped_orchestration_grammar
     COMMAND role_scoped_orchestration_grammar_test
+)
+add_test(
+    NAME realization_role_deployment
+    COMMAND realization_role_deployment_test
+)
+add_test(
+    NAME genesis_psg_analysis_features
+    COMMAND genesis_psg_analysis_features_test
 )
 
 add_test(
