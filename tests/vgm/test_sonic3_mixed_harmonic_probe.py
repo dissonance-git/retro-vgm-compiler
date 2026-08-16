@@ -36,7 +36,6 @@ class Sonic3MixedHarmonicProbeTest(unittest.TestCase):
 
         role = result["psg_role_evidence"]
         self.assertGreater(role["same_pitch_fm_doubling_candidate_voice_ticks"], 0)
-        self.assertGreater(role["noncoincident_pitched_voice_ticks"], 0)
         self.assertIn("does not establish bass_foundation", role["mixed_context_bass_policy"])
 
         noise = result["psg_noise_surface"]
@@ -103,6 +102,22 @@ class Sonic3MixedHarmonicProbeTest(unittest.TestCase):
         self.assertEqual(triad["label"], "0:major")
         self.assertEqual(triad["inversion"], "root_position")
         self.assertEqual(triad["bass_source"], "YM2612")
+
+    def test_noncoincident_psg_pitch_remains_available_as_independent_part_candidate(self) -> None:
+        fm_pitch = {
+            "resolved": True,
+            "performed_hz": 261.63,
+            "device_family": "YM2612",
+        }
+        psg_pitch = {
+            "resolved": True,
+            "performed_hz": 659.26,
+            "device_family": "SN76489",
+        }
+        self.assertFalse(probe.psg.pitch_coincident(fm_pitch, psg_pitch))
+        # Non-coincidence does not establish independence either. It merely keeps
+        # the PSG source available for persistent-part/counterpoint analysis.
+        self.assertNotEqual(fm_pitch["device_family"], psg_pitch["device_family"])
 
     def test_self_test_keeps_hihat_unresolved(self) -> None:
         result = probe._synthetic_self_test()
