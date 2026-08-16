@@ -20,6 +20,8 @@ struct part_gesture_observation {
     std::optional<double> log2_pitch_coordinate{};
     std::string pitch_basis;
     std::string interval_semantics;
+    evidence_status status = evidence_status::derived;
+    double confidence = 1.0;
 };
 
 struct part_motif_profile {
@@ -31,6 +33,8 @@ struct part_motif_profile {
     std::string pitch_basis;
     std::string interval_semantics;
     std::optional<double> pitch_range_octaves{};
+    evidence_status status = evidence_status::derived;
+    double evidence_confidence = 1.0;
 };
 
 struct part_motif_similarity {
@@ -42,6 +46,7 @@ struct part_motif_similarity {
     bool pitch_comparable = false;
     bool transposition_invariant = true;
     bool tempo_scale_invariant = true;
+    double evidence_confidence = 1.0;
 };
 
 constexpr double rhythm_only_motif_identity_ceiling = 0.55;
@@ -76,8 +81,12 @@ inline part_motif_profile make_part_motif_profile(
 
     std::vector<double> iois;
     iois.reserve(observations.size() - 1);
+    evidence_status weakest_status = observations.front().status;
+    double evidence_confidence = 1.0;
     for (std::size_t index = 0; index < observations.size(); ++index) {
         const auto& observation = observations[index];
+        if (observation.source_node == 0)
+            throw std::invalid_argument("part motif observations require source nodes");
         if (observation.part_id != part_id)
             throw std::invalid_argument("one motif profile cannot silently merge different persistent parts");
         if (observation.onset.domain != time_domain_value ||
@@ -85,6 +94,12 @@ inline part_motif_profile make_part_motif_profile(
             observation.onset.loop_iteration != loop_iteration) {
             throw std::invalid_argument("motif observations require one compatible local time and loop basis");
         }
+        if (observation.confidence < 0.0 || observation.confidence > 1.0)
+            throw std::invalid_argument("motif observation confidence must be in [0, 1]");
+        weakest_status = static_cast<evidence_status>(std::max(
+            static_cast<std::uint8_t>(weakest_status),
+            static_cast<std::uint8_t>(observation.status)));
+        evidence_confidence = std::min(evidence_confidence, observation.confidence);
         if (index == 0)
             continue;
         const std::int64_t delta = observation.onset.tick - observations[index - 1].onset.tick;
@@ -97,6 +112,8 @@ inline part_motif_profile make_part_motif_profile(
 
     part_motif_profile result;
     result.part_id = part_id;
+    result.status = weakest_status;
+    result.evidence_confidence = evidence_confidence;
     result.source_nodes.reserve(observations.size());
     for (const auto& observation : observations)
         result.source_nodes.push_back(observation.source_node);
@@ -181,6 +198,9 @@ inline part_motif_similarity compare_part_motif_profiles(
         first.normalized_inter_onset_intervals,
         second.normalized_inter_onset_intervals,
         1.0);
+    result.evidence_confidence = std::min(
+        first.evidence_confidence,
+        second.evidence_confidence);
 
     double weighted_sum = 0.35 * result.rhythm_similarity;
     double total_weight = 0.35;
@@ -205,9 +225,10 @@ inline part_motif_similarity compare_part_motif_profiles(
     }
 
     result.combined_similarity = total_weight > 0.0 ? weighted_sum / total_weight : 0.0;
-    result.identity_confidence = result.pitch_comparable
+    const double structural_identity = result.pitch_comparable
         ? result.combined_similarity
         : std::min(result.combined_similarity, rhythm_only_motif_identity_ceiling);
+    result.identity_confidence = std::min(structural_identity, result.evidence_confidence);
     return result;
 }
 
