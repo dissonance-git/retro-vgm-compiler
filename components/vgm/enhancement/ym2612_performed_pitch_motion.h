@@ -2,6 +2,7 @@
 
 #include "genesis_pitch_motion_adapter.h"
 #include "ym2612_episode_pitch_analysis.h"
+#include "../../../model/analysis_pitch_bridge.h"
 
 #include <algorithm>
 #include <cmath>
@@ -340,6 +341,57 @@ analyze_ym2612_performed_pitch_motion(
         projection.samples,
         projection.confidence,
         policy);
+}
+
+inline std::vector<vgmtooling::model::absolute_pitch_state_sample>
+ym2612_performed_pitch_states(
+    const ym2612_performed_pitch_motion_projection& projection) {
+    using namespace vgmtooling::model;
+
+    if (!projection.static_operator_network_grounded || projection.samples.empty())
+        return {};
+
+    std::vector<absolute_pitch_state_sample> result;
+    result.reserve(projection.samples.size());
+    for (const auto& sample : projection.samples) {
+        if (sample.pitch_basis != "ym2612_static_operator_network_performed_frequency_hz" ||
+            sample.interval_semantics != "log2_frequency_ratio_octaves") {
+            throw std::invalid_argument(
+                "YM2612 performed-pitch state conversion requires the operator-network absolute-frequency basis");
+        }
+        const double frequency_hz = std::exp2(sample.log2_pitch_coordinate);
+        if (!std::isfinite(frequency_hz) || frequency_hz <= 0.0)
+            throw std::logic_error("YM2612 performed-pitch trajectory produced an invalid absolute frequency");
+
+        absolute_pitch_state_sample state;
+        state.source_node = sample.source_node;
+        state.physical_episode_id = sample.physical_episode_id;
+        state.time = sample.time;
+        state.frequency_hz = frequency_hz;
+        state.status = evidence_status::hypothesis;
+        state.confidence = projection.confidence;
+        result.push_back(std::move(state));
+    }
+    return result;
+}
+
+inline std::vector<vgmtooling::model::absolute_musical_pitch_observation>
+ym2612_performed_pitch_part_trajectory(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id pitch_parameter_id,
+    const genesis_pitch_clock_context& clocks,
+    std::string source) {
+    const auto projection = project_ym2612_performed_pitch_motion(
+        graph,
+        pitch_parameter_id,
+        clocks);
+    const auto states = ym2612_performed_pitch_states(projection);
+    return vgmtooling::model::absolute_musical_pitch_trajectory_from_states(
+        graph,
+        states,
+        projection.invalidating_time,
+        vgmtooling::model::musical_pitch_role::performed,
+        std::move(source));
 }
 
 } // namespace gameaudio::vgm
