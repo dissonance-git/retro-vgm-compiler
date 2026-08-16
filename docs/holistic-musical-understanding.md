@@ -4,267 +4,313 @@
 
 The highest-level musical understanding is the project goal.
 
-Everything below it, from exact bits and bytes through driver execution, synthesis state, separated source audio, symbolic reconstruction, perceptual organization, formal analysis, and documentary research, exists because it can improve, constrain, explain, or validate that understanding.
+Everything below it, from exact bits and bytes through driver execution, synthesis state, symbolic reconstruction, sample/patch behavior, rendered audio, perceptual organization, formal analysis, and documentary research, exists because it can improve, constrain, explain, or validate that understanding.
 
-A successful system should be able to encounter a game soundtrack and develop an integrated understanding comparable in breadth to a strong critic, musicologist, composer, arranger, producer, and audio engineer working together.
+A successful system should encounter a game soundtrack and build an integrated model comparable in breadth to a strong critic, musicologist, composer, arranger, producer, and audio engineer working together.
 
-For multi-composer soundtracks, one of the strongest tests of that understanding is whether the system can recover enough recurring **compositional grammar** to attribute held-out cues among the historically plausible credited composers for musical reasons rather than implementation shortcuts.
+For multi-composer soundtracks, one of the strongest tests is whether the system can recover enough recurring creator-specific grammar to attribute held-out cues for the right musical reasons.
+
+The understanding must generalize along two axes:
 
 ```text
-source / sequence / execution truth
+same work across different representations
++
+same composer across different soundtracks
+```
+
+The first asks whether the system can reconcile MIDI/MML/native sequence/VGM/SPC/PSF/audio/etc. as complementary views of one musical object.
+
+The second asks whether it can recognize deeper habits that follow a composer from soundtrack to soundtrack while platforms, collaborators, libraries, genres, and production conditions change.
+
+## The integrated path
+
+```text
+source-native truth
         ↓
-heard and symbolic musical organization
+representation-specific semantics
+        ↕
+cross-representation correspondences
         ↓
-parts • melody • bass • rhythm • harmony
+persistent musical parts
         ↓
-phrase • motif • cadence • counterpoint • form
+melody • bass • rhythm • harmony • timbre • articulation
         ↓
-track-level musical model
+phrase • motif • cadence • counterpoint • form • arrangement
         ↓
-soundtrack-wide relationships
+integrated song model
         ↓
-composer grammars from securely attributed works
+relationships within one soundtrack
+        ↓
+relationships across different soundtracks by the same creator
+        ↓
+cross-soundtrack creator grammar
         ↓
 blind attribution as a capstone stress test
 ```
 
-Attribution is therefore not a side feature. It is one demanding way to test whether the integrated musical model has become deep enough to distinguish individual compositional thought from shared platform, genre, driver, library, and arrangement conventions.
+Attribution is not a side classifier. It is one demanding way to test whether the musical model has become deep enough to distinguish creator-specific thought from shared platform, driver, arranger, patch bank, genre, or soundtrack-local conventions.
 
 ## What the top layer should understand
 
-Depending on the soundtrack and the available evidence, the system should synthesize claims about:
+Depending on the evidence, the system should synthesize claims about:
 
 - melodic language, recurring cells, motifs, themes, transformations, and long-range recall;
-- rhythm, groove, meter, pacing, syncopation, repetition, variation, and temporal feel;
+- rhythm, groove, meter, syncopation, repetition, variation, and temporal feel;
 - harmony, modality, tonality, voice leading, counterpoint, harmonic rhythm, ambiguity, and cadence;
-- form, phrase behavior, sectional function, buildup, arrival, departure, return, interruption, extension, and release;
+- phrase behavior, formal function, buildup, arrival, departure, extension, return, interruption, and release;
 - instrumentation, synthesis vocabulary, sample language, timbral families, register, density, and orchestration;
-- arrangement roles such as foreground, accompaniment, bass foundation, punctuation, countermelody, texture, and transition;
-- production and mix hierarchy, including dynamics, spectral balance, effects, contrast, intimacy, scale, and spatial organization;
-- expressive trajectory, atmosphere, tension, expectation, dramatic pacing, and the relationship between local gestures and larger arcs;
-- stylistic language, influences, historical lineage, genre relationships, platform aesthetics, and the degree to which a soundtrack accepts, exploits, or resists its technological context;
-- relationships among tracks, including shared themes, harmonic or timbral vocabularies, character/location associations, transformation networks, and the larger architecture of the soundtrack;
-- interactive or game-functional behavior when relevant, including looping, layering, state changes, transitions, adaptive form, and how musical design serves gameplay or narrative;
-- recurring compositional rules that distinguish one composer from another within the same project when the evidence supports that distinction.
+- foreground/background roles, accompaniment, bass foundation, punctuation, countermelody, texture, and transition;
+- articulation, dynamics, pitch-control behavior, and negative space;
+- production and mix hierarchy when relevant to the musical organization;
+- expressive trajectory, tension, expectation, pacing, and local-to-global relationships;
+- stylistic lineage and platform aesthetics without confusing them with composer identity;
+- relationships among tracks inside one soundtrack;
+- relationships among unrelated works by the same composer across different soundtracks;
+- which traits are stable, period-specific, collaborator-specific, platform-specific, soundtrack-local, or one-off experiments.
 
-The result should read as a coherent interpretation of a musical work or soundtrack, not as a checklist with one sentence per feature.
+The result should be a coherent interpretation, not a checklist of measurements.
 
 ## Composer-grade understanding without invented intent
 
-The aspirational standard is composer-grade structural understanding: the system should understand how the parts support one another well enough to discuss why a choice works, what alternatives would change, how a passage develops prior material, and how local decisions participate in the identity of the whole.
+The aspirational standard is composer-grade structural understanding: the system should understand how musical choices support one another well enough to discuss why a passage works, what alternatives would change, how material develops, and how local decisions participate in the identity of the whole.
 
-This does not license invented biography or undocumented intention.
-
-Keep these distinct:
+Keep distinct:
 
 ```text
 what the music demonstrably does
 !=
-what a compositional model strongly suggests
+what a musical model strongly suggests
 !=
 what documentary evidence says the creator intended
 ```
 
-The first two can still support deep musical criticism and attribution. Documentary intent strengthens a claim when it exists, but lack of an interview should not reduce analysis to surface description.
+Deep analysis does not require invented biography or intention.
 
-## Understanding before attribution
+## No privileged representation
 
-The project should not optimize directly for composer labels and then interpret the winning classifier after the fact.
+No source family is the master musical truth.
 
-The correct direction is:
-
-```text
-recover the piece
-→ understand the piece
-→ discover recurring rules across known works
-→ build composer grammar
-→ test an unknown cue
-```
-
-A system that cannot explain the unknown cue's melodic construction, bass logic, phrase behavior, motif transformations, counterpoint, harmony, cadence, and form has not earned a composer attribution simply because a statistical model selects the right name.
-
-The attribution benchmark is intentionally hard because it asks whether the model has learned something stable about musical thought rather than incidental encoding.
-
-## Composition grammar and realization grammar are different
-
-Game music often has several creative layers:
+A symbolic sequence may reveal exact note and phrase structure. VGM can reveal articulation, modulation, channel behavior, and synthesis details. SPC can reveal sample, envelope, pitch-rate, and runtime voice behavior. Audio can reveal grouping, emphasis, texture, and timbral relationships that are not obvious from source data alone.
 
 ```text
-composition
-arrangement
-sequence / sound-data programming
-patch / sample design
-driver / engine programming
-final realization
+MIDI / MML / tracker / native sequence
+        ↕
+driver execution
+        ↕
+chip / DSP / sample behavior
+        ↕
+performed gesture
+        ↕
+auditory organization
 ```
 
-These may involve different people.
+Everything may teach everything else, but native semantics stay intact.
 
-The holistic system should therefore maintain at least two broad grammatical views.
-
-### Composition grammar
-
-- melody;
-- bass and harmonic motion;
-- rhythm;
-- phrase construction;
-- motif development;
-- counterpoint and voice leading;
-- cadence;
-- form;
-- recurring relations between those dimensions.
-
-### Realization grammar
-
-- patch and sample vocabulary;
-- instrument assignment;
-- modulation and articulation controls;
-- PSG/FM/sample deployment;
-- channel allocation;
-- panning and hardware control;
-- driver idioms;
-- optimization and sequence-programming habits.
-
-The same cue can therefore support:
-
-```text
-composer A
-+
-arranger/programmer B
-+
-shared team patch bank
-```
-
-without contradiction.
-
-## Symbolic and sequence evidence is a composer-facing bridge
-
-`MIDI-like` information in this project means symbolic note and sequence information in the broad sense, not the MIDI file format specifically.
-
-Depending on the source family, composer-facing evidence may appear as:
-
-- MIDI notes, tracks, controllers, bends, tempo and meter;
-- MML or another text music language;
-- tracker notes, rows, effects and instrument commands;
-- SMPS, GEMS, N-SPC, SSEQ or another native driver/sequence language;
-- validated sequence bytecode recovered from ROM, RAM, executable data or decoded hex;
-- score-like source, source code or tables that establish note/rest/duration/instrument/loop structure;
-- reconstructed performance events inferred upward from VGM, SPC or other execution evidence;
-- external transcriptions retained explicitly as external evidence.
-
-These representations can expose note succession, rests, phrase timing, logical tracks, instrument changes, loops, articulation, modulation and control flow.
-
-They are among the strongest bridges toward composer-level understanding because they often sit near the decisions a composer or arranger actually made.
-
-But they are not the destination and they are not automatically interchangeable.
+This means:
 
 ```text
 MIDI track
-!= MML voice
-!= tracker channel
 != driver logical track
-!= physical chip channel
+!= physical channel
+!= physical voice episode
 != persistent musical part
+!= auditory stream
 ```
 
-The objective is not to turn every source into MIDI. It is to recover as much of the underlying musical program as the evidence supports, then reason upward into composition.
-
-## Cooperative representation law
-
-Every supported representation should be allowed to teach the others while retaining its own semantics.
+and:
 
 ```text
-symbolic source / sequence
-        ↕
-driver and allocation behavior
-        ↕
-chip / DSP / sample execution
-        ↕
-rendered audio and auditory organization
-        ↓
-shared musical interpretation
-        ↓
-composer grammar
+MIDI program
+!= FM patch
+!= BRR sample
+!= tracker instrument
 ```
 
-A source with explicit logical tracks and notes can teach the system what persistent musical identity looks like after allocation into hardware resources. VGM or SPC can teach the system where a score-like representation misses synthesis, articulation, sample, allocation or runtime details. Audio can pressure-test whether implementation distinctions actually become meaningful heard distinctions.
+A correspondence may be strong without becoming an equivalence.
 
-This is cross-supervision, not normalization.
+## Cross-representation understanding
 
-A correspondence may be strong without becoming an identity statement. The system should preserve native objects and express mappings, alignments, transformations, support and uncertainty between them.
-
-> Everything may help everything else understand the music, but nothing may erase what makes a source uniquely informative.
-
-## Lower layers are instrumental
-
-Use the lowest layer that materially improves the musical question.
+For one work, the system should ask which musical relations survive across representations.
 
 Examples:
 
+- does the melody inferred from VGM agree with the native sequence or external MIDI transcription?
+- does an SPC sample change correspond to an articulation or orchestration change in the symbolic layer?
+- does the rendered audio support the persistent-part grouping inferred from execution state?
+- do several native channels cooperate to realize one persistent musical role?
+- does one symbolic part migrate across physical resources without losing musical identity?
+
+Disagreement is evidence. It may reveal transcription loss, allocation effects, synthesis-dependent articulation, incomplete runtime capture, or incorrect inference.
+
+## Cross-soundtrack understanding
+
+Understanding one soundtrack is not enough to identify a composer robustly.
+
+A soundtrack contains many shared local causes:
+
+- one engine or driver;
+- one platform;
+- one production period;
+- one patch/sample bank;
+- one sound team;
+- recurring cue functions;
+- shared arrangers/programmers;
+- related themes and derivative cues.
+
+So creator-level grammar should be tested across **different soundtracks** whenever possible.
+
 ```text
-exact sequence/driver evidence
-    useful when it resolves phrasing, allocation, articulation, looping, or transformation
-
-chip/source isolation
-    useful when it resolves instrumentation, counterpoint, effects, or mix hierarchy
-
-rendered audio
-    useful when the heard result matters more than hidden implementation state
-
-score-like reconstruction
-    useful when pitch/rhythm/harmony/form are the discriminating questions
-
-musicological/documentary evidence
-    useful when identity, lineage, version, attribution, or historical practice matters
+composer A
+├── soundtrack 1
+│   ├── independent work family 1
+│   └── independent work family 2
+├── soundtrack 2
+│   ├── independent work family 3
+│   └── independent work family 4
+└── soundtrack 3
+    └── independent work family 5
 ```
 
-Do not descend to bytes merely because bytes are available. Do not stop at bytes merely because they are exact.
+The key question is:
 
-Traceability is valuable when it improves confidence, exposes causality, distinguishes alternatives, or permits correction. It is supporting infrastructure for understanding, not the definition of understanding.
+> What musical behaviors follow the composer when the soundtrack around them changes?
+
+## Composer grammar is multi-view
+
+A creator-specific grammar can include several evidence families.
+
+### Structural / symbolic
+
+- melodic contour and interval relations;
+- bass and harmonic motion;
+- rhythm and meter;
+- phrase construction;
+- motif development;
+- counterpoint and voice leading;
+- cadence and form.
+
+### Arrangement / orchestration
+
+- register and density;
+- doubling;
+- countermelody strategy;
+- foreground/background organization;
+- instrument-role migration;
+- textural treatment of returns and transitions.
+
+### Timbre / synthesis
+
+- patch/sample choices where creator-controlled;
+- envelope/articulation habits;
+- modulation behavior;
+- timbral contrast;
+- synthesis changes tied to form.
+
+### Performance / execution
+
+- expressive pitch control;
+- attack/release behavior;
+- dynamic contour;
+- microtiming where recoverable;
+- silence and negative space;
+- interaction between implementation and phrase shape.
+
+### Soundtrack-level
+
+- thematic reuse;
+- cue-family transformation;
+- repeated solutions to location/character/state functions;
+- recurring harmonic/timbral pairings;
+- how the composer solves similar musical problems in different projects.
+
+These views should constrain one another rather than be concatenated blindly.
+
+## Role scope, not modality censorship
+
+Game music often distributes creative work across several people:
+
+```text
+composition
+!= arrangement
+!= sequence / sound-data programming
+!= patch / sample design
+!= driver / engine programming
+!= final realization
+```
+
+This does not mean timbre, arrangement, or execution are forbidden from composer attribution.
+
+It means every observation must carry role provenance.
+
+A patch, articulation, or orchestration habit may be genuine composer evidence when the composer historically controlled that layer. The same feature may instead belong to an arranger, programmer, shared library, or toolchain in another soundtrack.
+
+So the law is:
+
+```text
+all representations may contribute
++
+role provenance determines what each contribution means
+```
+
+## Composer evolution
+
+A composer is not a frozen centroid.
+
+The model should distinguish:
+
+```text
+stable long-range habits
+career-period habits
+soundtrack-local habits
+collaborator-dependent habits
+platform-dependent habits
+one-off experiments
+```
+
+A useful composer grammar is therefore a structured region with trajectories, not one static vector.
 
 ## Holistic synthesis law
 
-Top-level reasoning should integrate mutually constraining evidence rather than analyze dimensions independently and concatenate the outputs.
+Top-level reasoning should integrate mutually constraining evidence.
 
-For example, a section may become structurally larger because several changes coincide:
+For example:
 
 ```text
-register expands
-+ harmonic rhythm changes
-+ countermelody enters
-+ bass articulation becomes more active
-+ a familiar motif returns in transformed form
+retained melodic cell
++ changed bass motion
++ widened register
++ brighter timbral assignment
++ countermelody entry
++ delayed cadence
         ↓
-structural arrival
+structural return with increased weight
 ```
 
-Likewise, a composer grammar should not be a flat feature vector if stronger relations are available.
+If a related strategy recurs across independent works and different soundtracks, it can become creator-level evidence.
 
-Prefer:
+Prefer relational claims such as:
 
 ```text
 composer repeatedly reharmonizes a retained upper motif by changing bass motion at phrase-extension points
 ```
 
-over:
+over flat statistics such as:
 
 ```text
-composer has high rate of chord X
+composer uses chord X frequently
 ```
-
-The relational description explains a compositional behavior.
 
 ## Soundtrack-scale understanding
 
-A game soundtrack is not merely a folder of independent tracks.
+A soundtrack is not a folder of unrelated tracks.
 
-The system should build a soundtrack-level graph containing relations such as:
+Build a graph containing relations such as:
 
 ```text
 track
 ↕ motif/theme transformations
 track
-↕ harmonic or modal language
+↕ harmonic/modal language
 track
 ↕ phrase/form habits
 track
@@ -274,41 +320,33 @@ track
 track
 ```
 
-When multiple composers are credited, securely attributed tracks can also support composer-specific subgraphs.
+For multi-composer projects, securely attributed tracks can form composer-specific subgraphs.
+
+Those subgraphs should then be compared with the same composers' work in other soundtracks.
+
+## Strong validation controls
+
+Preferred validation modes include:
 
 ```text
-known work families for composer A
-        ↓
-recurring musical rules
-        ↓
-composer A grammar
-
-known work families for composer B
-        ↓
-recurring musical rules
-        ↓
-composer B grammar
+leave-one-work-family-out
+leave-one-soundtrack-out
+leave-one-platform-out
+leave-one-arranger-out
+leave-one-career-period-out
 ```
 
-Unknown cues can then be tested against those grammars while remaining fully held out.
+Matched-decoy controls include:
 
-## Cross-platform same-composer controls
-
-Same-composer music on different machines is a particularly valuable control.
-
-Surface timbre and implementation should change strongly across Genesis VGM, SNES SPC, PSF-family, MIDI, tracker and other sources. Some arrangement/programming habits may also change.
-
-More portable signals should include, where genuinely characteristic:
-
-- melodic contour and transformation;
-- phrase construction;
-- bass/harmonic strategy;
-- rhythmic grammar;
-- motivic development;
-- counterpoint;
-- cadence and formal behavior.
-
-If those relations follow the composer across platforms while patch, sample, driver and channel fingerprints disappear, the evidence becomes substantially more composer-facing.
+```text
+same driver + different composer
+same patch/sample bank + different composer
+same arranger + different composer
+same composer + different arranger
+same composer + different platform
+same composer + different soundtrack
+similar cue function + different composer
+```
 
 ## Confound interventions
 
@@ -322,24 +360,21 @@ without patch/sample identity
 without instrumentation
 without platform-specific features
 without arranger/programmer features
+without soundtrack-local features
 transposition-normalized
 tempo-normalized
 without related versions or derivative cues
 ```
 
-If the attribution collapses under one intervention, that sensitivity is part of the result.
+If attribution collapses under one intervention, that sensitivity is part of the result.
 
-A high score is less interesting than knowing **why** the score is high.
+A high score is less interesting than knowing why the score is high.
 
 ## Human musical discourse
 
 Human-facing language is a projection over evidence, not another truth layer.
 
-The same musical object may be discussed naturally as a listener, critic, composer, theorist, producer, engineer, or forensic analyst.
-
-The aspirational standard is composer-grade structural understanding without invented intent: the system should understand how musical choices support one another well enough to discuss why a passage works, how material develops, how an arrangement creates contrast, and why a held-out cue resembles one composer's established grammar more than another's.
-
-An attribution explanation should use meaningful musical concepts such as:
+The system should be able to explain not only what a passage contains but what the musical relationships are doing:
 
 - phrase extension;
 - bass counterpoint;
@@ -347,11 +382,10 @@ An attribution explanation should use meaningful musical concepts such as:
 - rhythmic displacement;
 - reharmonized return;
 - cadence avoidance;
-- recurring interval/contour grammar.
+- timbral reinforcement of structural events;
+- recurring cross-soundtrack transformation strategies.
 
-It should not expose only opaque vector dimensions.
-
-See `docs/human-musical-discourse.md`, `docs/composer-level-understanding.md`, and `research/composer-grammar-attribution.md`.
+An attribution explanation should expose those concepts, not opaque latent dimensions.
 
 ## Evaluation target
 
@@ -369,13 +403,11 @@ or:
 
 The stronger test is:
 
-> After studying this soundtrack, can the system explain what makes it musically itself, how its parts cooperate across time, how themes and formal strategies recur, and how individual composers within the project differ in the way they construct music?
+> Can the system understand a work across its available representations, understand a composer across unrelated soundtracks, and explain which musical behaviors survive changes in platform, collaborators, arrangement, and production?
 
-For a multi-composer game, an even harder capstone test is:
+For a multi-composer game, the capstone becomes:
 
-> Given only securely attributed controls for the credited composers and a completely held-out cue, can the system identify the most plausible composer from composition-facing musical grammar, survive matched-decoy and confound tests, and explain the result in musically meaningful terms?
-
-A further composer-level test is counterfactual reasoning: what changes if the bass motion, articulation, register, orchestration, countermelody, phrase continuation or motif transformation changes while other material stays fixed?
+> Given securely attributed controls from this soundtrack and other soundtracks by the same candidates, can the system identify the most plausible composer of a completely held-out cue, survive matched-decoy and confound tests, and explain the result in musically meaningful terms?
 
 ## Evaluation ladder
 
@@ -383,20 +415,20 @@ A further composer-level test is counterfactual reasoning: what changes if the b
 L0  source parsing
 L1  note / sequence / performance recovery
 L2  persistent musical parts
-L3  melody / bass / rhythm / harmony
-L4  phrase / motif / counterpoint / cadence / form
-L5  integrated track-level musical model
-L6  recurring compositional rules across independent works
-L7  composer grammar
+L3  melody / bass / rhythm / harmony / timbre / articulation
+L4  phrase / motif / counterpoint / cadence / form / arrangement
+L5  integrated cross-representation song model
+L6  recurring rules across independent works
+L7  cross-soundtrack composer grammar
 L8  blind attribution among plausible credited composers
-L9  robustness to confound interventions and platform changes
+L9  robustness to soundtrack/platform/representation confound tests
 L10 musically persuasive, traceable explanation
 ```
 
-If attribution reaches L8 while the system is weak at L3-L7, investigate leakage before celebrating the score.
+If attribution reaches L8 while the system is weak at L3-L7, investigate leakage before celebrating the result.
 
 ## Completion principle
 
 Lower-level machinery is justified when it helps the system climb this ladder.
 
-> **The project succeeds when exact source knowledge grows into a musical model deep enough to explain the song, compare compositional grammars across works, and make difficult authorship distinctions for the right musical reasons.**
+> **The project succeeds when exact source knowledge grows into a cross-representation musical model, that model generalizes across independent works and soundtracks, and difficult authorship distinctions emerge for defensible musical reasons.**
