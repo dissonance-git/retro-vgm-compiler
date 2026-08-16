@@ -9,6 +9,8 @@ using namespace gameaudio::spc;
 
 namespace {
 
+constexpr std::uint64_t spc_clock_rate = 1024000;
+
 spc_runtime_capture_record event(
     std::int64_t tick,
     std::uint8_t voice = 0) {
@@ -19,11 +21,10 @@ spc_runtime_capture_record event(
         spc_runtime_capture_field::source_index |
         spc_runtime_capture_field::pitch_rate;
     record.tick = tick;
-    record.tick_rate = 1024000;
+    record.tick_rate = spc_clock_rate;
     record.voice = voice;
     record.source_index = 3;
     record.pitch_rate = 0x1000;
-    // These are deliberately poisoned. The recorder must own both clocks.
     record.trace_index = 999999;
     record.ram_write_serial = 999999;
     return record;
@@ -38,20 +39,35 @@ int main() {
         assert(recorder.ram_write_serial() == 0);
         assert(recorder.next_trace_index() == 1);
 
-        assert(recorder.observe_apuram_write_byte(0x2000, 0x11) == 1);
+        assert(recorder.observe_apuram_write_byte(
+            spc_runtime_ram_write_origin::spc700_cpu,
+            15,
+            spc_clock_rate,
+            0x2000,
+            0x11) == 1);
         recorder.observe_voice_event(event(20));
 
-        assert(recorder.observe_apuram_write_le16(0xFFFF, 0x4433) == 2);
+        assert(recorder.observe_apuram_write_le16(
+            spc_runtime_ram_write_origin::dsp_echo,
+            25,
+            spc_clock_rate,
+            0xFFFF,
+            0x4433) == 2);
         recorder.observe_voice_event(event(30));
         assert(recorder.flush_window());
 
         const auto& trace = recorder.trace();
         assert(trace.ram_writes.size() == 2);
         assert(trace.ram_writes[0].serial == 1);
+        assert(trace.ram_writes[0].tick == 15);
+        assert(trace.ram_writes[0].tick_rate == spc_clock_rate);
+        assert(trace.ram_writes[0].origin == spc_runtime_ram_write_origin::spc700_cpu);
         assert(trace.ram_writes[0].address == 0x2000);
         assert(trace.ram_writes[0].bytes.size() == 1);
         assert(trace.ram_writes[0].bytes[0] == 0x11);
         assert(trace.ram_writes[1].serial == 2);
+        assert(trace.ram_writes[1].tick == 25);
+        assert(trace.ram_writes[1].origin == spc_runtime_ram_write_origin::dsp_echo);
         assert(trace.ram_writes[1].address == 0xFFFF);
         assert(trace.ram_writes[1].bytes.size() == 2);
         assert(trace.ram_writes[1].bytes[0] == 0x33);
@@ -69,7 +85,6 @@ int main() {
         assert(!trace.windows[0].overflowed);
         assert(trace.windows[0].dropped == 0);
 
-        // Empty drains do not create synthetic evidence windows.
         assert(!recorder.flush_window());
         assert(recorder.trace().windows.size() == 1);
 
@@ -99,7 +114,6 @@ int main() {
         assert(window.first_dropped->trace_index == spc_runtime_capture::capacity);
         assert(window.next_trace_index == spc_runtime_capture::capacity + 2);
 
-        // Trace identity must continue across a drain, not restart at zero.
         recorder.observe_voice_event(event(20000));
         assert(recorder.flush_window());
         assert(recorder.trace().windows.size() == 2);
@@ -115,6 +129,21 @@ int main() {
         bool threw = false;
         try {
             recorder.observe_voice_event(invalid);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+
+        const std::uint8_t value = 0x00;
+        threw = false;
+        try {
+            (void)recorder.observe_apuram_write(
+                spc_runtime_ram_write_origin::controlled_fixture,
+                0,
+                0,
+                0x0000,
+                &value,
+                1);
         } catch (const std::invalid_argument&) {
             threw = true;
         }
