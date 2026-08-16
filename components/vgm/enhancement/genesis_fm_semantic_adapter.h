@@ -80,7 +80,11 @@ inline genesis_fm_semantic_append_result append_genesis_fm_semantic_record(
     const node* event = graph.find_node(*result.pitch.performance.performance_event_id);
     const node* episode = graph.find_node(*result.pitch.performance.physical_voice_episode_id);
     if (event == nullptr || episode == nullptr || !event->active.has_value())
-        throw std::logic_error("new Genesis performance episode is missing its graph objects");
+        throw std::logic_error("Genesis performance event is missing its graph objects");
+
+    const auto event_kind = genesis_fm_semantic_string_attribute(*event, "event_kind");
+    if (!event_kind.has_value() || *event_kind != "pitched_activity_onset")
+        return result;
 
     const auto family = genesis_fm_semantic_string_attribute(*event, "device_family");
     if (!family.has_value() || *family != "YM2612")
