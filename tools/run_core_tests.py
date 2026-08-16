@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and run every dependency-free VGM core test without foobar/libvgm.
+"""Build and run every dependency-free core test without foobar/libvgm.
 
 This is the fallback validation loop while GitHub-hosted Actions runners are
 unavailable. It intentionally compiles each test against the complete local
@@ -19,7 +19,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ENHANCEMENT = ROOT / "components" / "vgm" / "enhancement"
-TEST_DIR = ROOT / "tests" / "vgm"
+TEST_DIRS = [
+    ROOT / "tests" / "vgm",
+    ROOT / "tests" / "spc",
+    ROOT / "tests" / "model",
+]
 
 CORE_SOURCES = [
     ENHANCEMENT / "genesis_state.cpp",
@@ -63,6 +67,7 @@ def compile_test(
             "/W4",
             "/WX",
             "/permissive-",
+            f"/I{ROOT}",
             f"/I{ENHANCEMENT}",
             *sources,
             f"/Fe:{output}",
@@ -76,6 +81,7 @@ def compile_test(
             "-Wextra",
             "-Wpedantic",
             "-Werror",
+            f"-I{ROOT}",
             f"-I{ENHANCEMENT}",
             *sources,
             "-o",
@@ -97,7 +103,12 @@ def main() -> int:
             print(f"  {path.relative_to(ROOT)}", file=sys.stderr)
         return 2
 
-    tests = sorted(TEST_DIR.glob("*_test.cpp"))
+    tests = sorted(
+        test
+        for directory in TEST_DIRS
+        if directory.is_dir()
+        for test in directory.glob("*_test.cpp")
+    )
     if not tests:
         print("No dependency-free tests found.", file=sys.stderr)
         return 2
@@ -116,20 +127,21 @@ def main() -> int:
     failed: list[str] = []
     try:
         for test in tests:
-            name = test.stem
+            relative = test.relative_to(ROOT)
+            name = relative.with_suffix("").as_posix().replace("/", "__")
             case_dir = build_root / name
             case_dir.mkdir(parents=True, exist_ok=True)
             executable = case_dir / (name + (".exe" if os.name == "nt" else ""))
-            print(f"[build] {name}")
+            print(f"[build] {relative}")
             try:
                 compile_test(compiler, family, test, executable, case_dir)
-                print(f"[run]   {name}")
+                print(f"[run]   {relative}")
                 subprocess.run([str(executable)], cwd=case_dir, check=True)
             except subprocess.CalledProcessError as exc:
-                failed.append(name)
-                print(f"[FAIL]  {name}: exit {exc.returncode}", file=sys.stderr)
+                failed.append(relative.as_posix())
+                print(f"[FAIL]  {relative}: exit {exc.returncode}", file=sys.stderr)
             else:
-                print(f"[pass]  {name}")
+                print(f"[pass]  {relative}")
     finally:
         if args.keep:
             print(f"kept build directory: {build_root}")
