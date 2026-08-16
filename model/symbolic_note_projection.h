@@ -81,10 +81,26 @@ struct symbolic_note_projection {
     std::vector<provenance_ref> provenance;
 };
 
+inline void validate_symbolic_pitch_source(
+    const absolute_musical_pitch_observation& observation) {
+    // Symbolic projection is intentionally less restrictive than harmonic
+    // analysis: a useful provisional note may exist before persistent-part
+    // identity is solved. Unknown part identity is exported as an explicit
+    // loss instead of being silently invented or rejected.
+    if (observation.source_node == 0)
+        throw std::invalid_argument("symbolic pitch source requires a source node");
+    if (!std::isfinite(observation.frequency_hz) || observation.frequency_hz <= 0.0)
+        throw std::invalid_argument("symbolic pitch source frequency must be finite and positive");
+    if (observation.confidence < 0.0 || observation.confidence > 1.0)
+        throw std::invalid_argument("symbolic pitch source confidence must be in [0, 1]");
+    if (observation.source.empty())
+        throw std::invalid_argument("symbolic pitch source requires provenance");
+}
+
 inline symbolic_note_projection make_symbolic_note_projection(
     const absolute_musical_pitch_observation& observation,
     symbolic_note_projection_policy policy) {
-    validate_absolute_musical_pitch_observation(observation);
+    validate_symbolic_pitch_source(observation);
     validate_equal_temperament_model(policy.tuning);
     if (!std::isfinite(policy.maximum_deviation_cents) ||
         policy.maximum_deviation_cents <= 0.0) {
