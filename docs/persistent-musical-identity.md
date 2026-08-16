@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the current VGM Tooling frontier for recovering persistent musical voices/parts from executable game-music evidence.
+This document records the current Game Music Interpreter frontier for recovering persistent musical voices/parts from executable game-music evidence.
 
 The problem exists because implementation resources are not musical identities:
 
@@ -25,6 +25,8 @@ physical slot
 
 This distinction is supported independently by game-driver behavior, current VGM/SPC adapters, OpenMusic's voice-separation libraries, and symbolic voice-separation literature.
 
+Persistent-part recovery is one of the central bridges between low-level execution and composer-level understanding. Without it, a system may know exactly what every chip voice did while still failing to recognize melody, bass, countermelody, accompaniment, voice leading, phrase continuity, or thematic transformation.
+
 ## Current evidence hierarchy
 
 Persistent identity should use the strongest source-supported evidence available. A lower-level heuristic must not override a stronger upper-layer identity merely because the heuristic is easier to compute.
@@ -43,9 +45,9 @@ This is not a universal scalar weighting. Evidence can conflict, be unavailable,
 
 ## Part identity versus auditory-stream identity
 
-Some symbolic voice-separation literature defines a musical voice in perceptual terms, close to an auditory stream. That is useful research but is not identical to VGM Tooling's `part` object.
+Some symbolic voice-separation literature defines a musical voice in perceptual terms, close to an auditory stream. That is useful research but is not identical to Game Music Interpreter's `part` object.
 
-VGM Tooling already has separate semantic layers and node kinds for:
+Game Music Interpreter already has separate semantic layers and node kinds for:
 
 - musical-performance `part`;
 - synthesis `voice_instance`;
@@ -60,6 +62,53 @@ A listener may fuse several authored/physical sources into one stream or split o
 
 The analysis must say which question it is answering.
 
+## Symbolic supervision and execution inference
+
+Persistent identity is a natural place for source families to teach one another.
+
+When a symbolic or sequence representation exposes an explicit logical track, it can provide a strong supervisory example of how one musical part manifests downstream:
+
+```text
+known logical track
+        ↓
+notes / rests / articulation / instrument changes
+        ↓
+driver allocation
+        ↓
+physical voice episodes and device events
+```
+
+That paired evidence can teach the common model which execution patterns tend to preserve musical identity through channel reassignment, note changes, patch reuse, sample reuse, rests, retriggers, or control changes.
+
+When only VGM/SPC or another execution-side source survives, the inverse analysis can then ask whether similar evidence supports a persistent-part hypothesis:
+
+```text
+physical episode A
++ compatible timing
++ compatible pitch trajectory
++ compatible patch/sample identity
++ articulation/control continuity
+        ↓
+possible persistent musical part
+        ↓
+physical episode B
+```
+
+This is not a claim that the hidden historical source was MIDI, SMPS, SSEQ, MML, or any other known format. It is a transfer of musical-identity knowledge across representations.
+
+The reverse direction matters too. Execution evidence can reveal that a symbolic transcription or export has flattened meaningful distinctions, for example:
+
+- one apparent symbolic instrument corresponds to several materially different FM patches or sample articulations;
+- one logical track is physically interrupted by voice stealing without losing musical identity;
+- one note-like symbolic event realizes as a longer envelope/release gesture;
+- a sample or patch change carries articulation or orchestration meaning not represented by note pitch alone.
+
+Therefore:
+
+> Symbolic data can supervise execution-only inference, and execution evidence can correct symbolic simplification. Neither becomes the canonical truth.
+
+See `docs/composer-level-understanding.md`.
+
 ## GitHub and literature pressure tests
 
 ### OpenMusic Streamsep
@@ -70,7 +119,7 @@ Useful lesson:
 
 > Persistent grouping is a separate analysis over events, not a property of the hardware channel that produced them.
 
-Its cubic implementation and score-centric feature set make it a research/reference algorithm rather than a realtime VGM Tooling dependency.
+Its cubic implementation and score-centric feature set make it a research/reference algorithm rather than a realtime Game Music Interpreter dependency.
 
 ### Voice separation as link prediction
 
@@ -78,7 +127,7 @@ Karystinaios, Foscarin, and Widmer model symbolic voice separation as a multi-tr
 
 The accompanying `manoskary/vocsep_ijcai2023` implementation uses Partitura note structures and a family of note, pitch, metrical, density, harmonic, and voice-leading descriptors.
 
-Useful lesson for VGM Tooling:
+Useful lesson for Game Music Interpreter:
 
 ```text
 performance event
@@ -88,7 +137,7 @@ performance event
 trajectory / persistent-part hypothesis
 ```
 
-The important transfer is the **relation-first** formulation. VGM Tooling does not need to import the graph neural network or its training stack to benefit from that decomposition.
+The important transfer is the **relation-first** formulation. Game Music Interpreter does not need to import the graph neural network or its training stack to benefit from that decomposition.
 
 ### Other symbolic voice-separation work
 
@@ -107,9 +156,9 @@ These approaches reinforce three durable constraints:
 2. longer temporal/contextual fragments can be stronger than one adjacent-note comparison;
 3. competing assignments are normal and should not be erased prematurely.
 
-## Why VGM Tooling can do better than score-only separation
+## Why Game Music Interpreter can do better than score-only separation
 
-Generic symbolic systems usually begin with note-like events because that is the highest layer they possess. VGM Tooling can often retain deeper causal evidence.
+Generic symbolic systems usually begin with note-like events because that is the highest layer they possess. Game Music Interpreter can often retain deeper causal evidence.
 
 Examples:
 
@@ -121,11 +170,21 @@ Examples:
 
 A source-aware analysis should use these facts before falling back to generic score heuristics.
 
+The long-term advantage comes from combining both directions:
+
+```text
+explicit symbolic identity teaches execution mapping
++
+execution truth teaches symbolic limitations
+        ↓
+stronger persistent-part recovery across all formats
+```
+
 ## Source-relative feature availability
 
 A common identity analysis must not require every source to expose the same features.
 
-### Authored symbolic / MML
+### Authored symbolic / MIDI / MML
 
 Potentially available:
 
@@ -134,9 +193,10 @@ Potentially available:
 - authored pitch and duration;
 - instrument selection;
 - articulation/modulation;
-- macros/loops/control flow.
+- tempo/meter where represented;
+- macros/loops/control flow where represented.
 
-When the dialect semantics are validated, these can be stronger than any inverse voice-separation heuristic.
+When the source semantics are validated, these can be stronger than any inverse voice-separation heuristic.
 
 ### Driver / sequence formats
 
@@ -146,7 +206,8 @@ Potentially available:
 - track-local event order;
 - instrument/sample/patch identity;
 - modulation state;
-- allocation policy into hardware resources.
+- allocation policy into hardware resources;
+- loop, call, branch, variable, random, and other control-flow semantics.
 
 Driver identity can remain stable while physical voices are rotated or stolen.
 
@@ -162,7 +223,7 @@ Currently represented by the project:
 - device-native pitch-control transition history;
 - capture gaps and resynchronization boundaries.
 
-Not currently proved merely by the VGM register trace:
+Not proved merely by the VGM register trace:
 
 - original driver track;
 - authored part identity;
@@ -216,7 +277,7 @@ However, some useful pitch relations can be derived without claiming an absolute
 - PSG relative pitch movement can be derived from tone-period ratios;
 - S-DSP pitch-rate ratios can describe relative playback-rate movement, but only become musical interval evidence when sample/tuning continuity supports that interpretation.
 
-Therefore a future analysis should distinguish:
+Therefore analysis should distinguish:
 
 ```text
 device-native pitch state
@@ -225,6 +286,8 @@ normalized / authored pitch hypothesis
 ```
 
 rather than demanding one universal pitch number at ingestion.
+
+A later alignment to known symbolic data may strengthen a pitch interpretation, but it must not rewrite the original device-native observation.
 
 ## Current executable regression
 
@@ -244,13 +307,13 @@ This uses the existing `part`, `groups_into`, provenance, and evidence-state voc
 
 ## Immediate implementation direction
 
-Do **not** implement a universal weighted voice score yet.
+Do **not** implement a universal weighted voice score merely to make all source families look alike.
 
-The next project-owned analysis should first make feature availability explicit and test source-specific evidence extraction from real adapters. It should be capable of producing candidate successor/grouping evidence even when some common symbolic features are unavailable.
+The project-owned analysis should make feature availability explicit and test source-specific evidence extraction from real adapters. It should be capable of producing candidate successor/grouping evidence even when some common symbolic features are unavailable.
 
 High-value candidate evidence includes:
 
-- exact driver-track identity;
+- exact authored/driver-track identity;
 - exact/derived instrument or sample identity;
 - physical-episode continuity;
 - control-trajectory continuity;
@@ -261,7 +324,9 @@ High-value candidate evidence includes:
 - source allocation change as a neutral fact rather than an identity break;
 - capture completeness and provenance quality.
 
-Only after these features are extracted from at least two materially different source families should VGM Tooling choose a deterministic, probabilistic, learned, or hybrid grouping policy.
+High-value cross-representation controls include paired or aligned cases where symbolic sequence identity and downstream execution are both known. Those cases should be used to calibrate and falsify execution-only grouping rules without treating one format's semantics as universal.
+
+Only after features are extracted from materially different source families should the project choose deterministic, probabilistic, learned, or hybrid grouping policies. Source-specific policies may remain necessary even when they feed a shared persistent-part representation.
 
 That policy should remain analysis-side initially. Normal realtime playback must not depend on whole-song voice separation.
 
@@ -269,6 +334,7 @@ That policy should remain analysis-side initially. Normal realtime playback must
 
 See:
 
+- `docs/composer-level-understanding.md`
 - `docs/openmusic-libraries.md`
 - `docs/music-representation-systems.md`
 - `docs/musical-execution-model.md`
