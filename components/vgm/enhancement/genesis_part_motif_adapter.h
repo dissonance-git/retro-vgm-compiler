@@ -1,6 +1,7 @@
 #pragma once
 
 #include "genesis_part_evidence.h"
+#include "ym2612_episode_pitch_analysis.h"
 #include "../../../model/part_motif_discovery.h"
 #include "../../../model/part_motif_profile.h"
 #include "../../../model/part_phrase_boundary_discovery.h"
@@ -71,6 +72,88 @@ make_genesis_part_gesture_observation(
     };
 }
 
+inline std::optional<vgmtooling::model::part_gesture_observation>
+make_genesis_performed_part_gesture_observation(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    vgmtooling::model::node_id episode_id,
+    const genesis_pitch_clock_context& clocks) {
+    using namespace vgmtooling::model;
+
+    const node* part = graph.find_node(part_id);
+    const node* episode = graph.find_node(episode_id);
+    if (part == nullptr || part->kind != node_kind::part)
+        throw std::invalid_argument("Genesis performed motif adapter requires a persistent-part node");
+    if (episode == nullptr || episode->kind != node_kind::voice_instance)
+        throw std::invalid_argument("Genesis performed motif adapter requires a physical voice episode");
+
+    bool member = false;
+    for (const edge* relation : graph.edges_from(episode_id, edge_kind::groups_into)) {
+        if (relation->to == part_id) {
+            member = true;
+            break;
+        }
+    }
+    if (!member)
+        throw std::invalid_argument("Genesis episode is not a member of the requested persistent part");
+
+    const node* onset = genesis_episode_onset_event(graph, episode_id);
+    if (onset == nullptr || !onset->active.has_value())
+        return std::nullopt;
+
+    const auto* family_item = find_genesis_part_attribute(*onset, "device_family");
+    const auto* family = family_item == nullptr
+        ? nullptr
+        : std::get_if<std::string>(&family_item->value);
+
+    // Version one intentionally upgrades only all-YM2612 part profiles. A part
+    // that crosses synthesis families falls back as a whole to the established
+    // source-relative representation instead of mixing pitch bases.
+    if (family == nullptr || *family != "YM2612")
+        return std::nullopt;
+
+    const auto features = extract_ym2612_episode_pitch_features(
+        graph,
+        episode_id,
+        clocks);
+    const analysis_feature* performed = features.find("performed_pitch_frequency_hz");
+    if (performed == nullptr ||
+        performed->availability != feature_availability::present) {
+        return std::nullopt;
+    }
+    if (!performed->value.has_value() || !performed->status.has_value() ||
+        !performed->confidence.has_value()) {
+        throw std::logic_error("present YM2612 performed-pitch feature lacks evidence fields");
+    }
+    const auto* frequency = std::get_if<double>(&*performed->value);
+    if (frequency == nullptr || !std::isfinite(*frequency) || *frequency <= 0.0)
+        throw std::logic_error("present YM2612 performed-pitch feature lacks a valid frequency");
+
+    return part_gesture_observation{
+        onset->id,
+        part_id,
+        onset->active->start,
+        std::log2(*frequency),
+        "absolute_performed_frequency_hz",
+        "log2_frequency_ratio_octaves",
+        *performed->status,
+        *performed->confidence,
+    };
+}
+
+inline void sort_genesis_part_gestures(
+    std::vector<vgmtooling::model::part_gesture_observation>& observations) {
+    std::sort(observations.begin(), observations.end(), [](const auto& first, const auto& second) {
+        if (first.onset.domain != second.onset.domain)
+            return static_cast<int>(first.onset.domain) < static_cast<int>(second.onset.domain);
+        if (first.onset.tick_rate != second.onset.tick_rate)
+            return first.onset.tick_rate < second.onset.tick_rate;
+        if (first.onset.loop_iteration != second.onset.loop_iteration)
+            return first.onset.loop_iteration < second.onset.loop_iteration;
+        return first.onset.tick < second.onset.tick;
+    });
+}
+
 inline std::vector<vgmtooling::model::part_gesture_observation>
 collect_genesis_part_gestures(
     const vgmtooling::model::musical_execution_graph& graph,
@@ -91,16 +174,45 @@ collect_genesis_part_gestures(
             observations.push_back(*observation);
     }
 
-    std::sort(observations.begin(), observations.end(), [](const auto& first, const auto& second) {
-        if (first.onset.domain != second.onset.domain)
-            return static_cast<int>(first.onset.domain) < static_cast<int>(second.onset.domain);
-        if (first.onset.tick_rate != second.onset.tick_rate)
-            return first.onset.tick_rate < second.onset.tick_rate;
-        if (first.onset.loop_iteration != second.onset.loop_iteration)
-            return first.onset.loop_iteration < second.onset.loop_iteration;
-        return first.onset.tick < second.onset.tick;
-    });
+    sort_genesis_part_gestures(observations);
     return observations;
+}
+
+// Prefer absolute performed FM pitch only when every physical episode grouped
+// into this part can support that same coordinate basis. Otherwise return the
+// complete native-relative projection. This makes fallback a part-level choice,
+// never an event-by-event mixture of incompatible pitch semantics.
+inline std::vector<vgmtooling::model::part_gesture_observation>
+collect_genesis_part_gestures(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const genesis_pitch_clock_context& clocks) {
+    using namespace vgmtooling::model;
+
+    const auto native = collect_genesis_part_gestures(graph, part_id);
+    const node* part = graph.find_node(part_id);
+    if (part == nullptr || part->kind != node_kind::part)
+        throw std::invalid_argument("Genesis performed motif collection requires a persistent-part node");
+
+    std::vector<part_gesture_observation> performed;
+    std::size_t membership_count = 0;
+    for (const edge* membership : graph.edges_to(part_id, edge_kind::groups_into)) {
+        ++membership_count;
+        const auto observation = make_genesis_performed_part_gesture_observation(
+            graph,
+            part_id,
+            membership->from,
+            clocks);
+        if (!observation.has_value())
+            return native;
+        performed.push_back(*observation);
+    }
+
+    if (membership_count == 0 || performed.size() != membership_count)
+        return native;
+
+    sort_genesis_part_gestures(performed);
+    return performed;
 }
 
 inline std::optional<vgmtooling::model::part_motif_profile>
@@ -108,6 +220,17 @@ make_genesis_part_motif_profile(
     const vgmtooling::model::musical_execution_graph& graph,
     vgmtooling::model::node_id part_id) {
     auto observations = collect_genesis_part_gestures(graph, part_id);
+    if (observations.size() < 3)
+        return std::nullopt;
+    return vgmtooling::model::make_part_motif_profile(observations);
+}
+
+inline std::optional<vgmtooling::model::part_motif_profile>
+make_genesis_part_motif_profile(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const genesis_pitch_clock_context& clocks) {
+    auto observations = collect_genesis_part_gestures(graph, part_id, clocks);
     if (observations.size() < 3)
         return std::nullopt;
     return vgmtooling::model::make_part_motif_profile(observations);
@@ -123,6 +246,17 @@ discover_genesis_part_motifs(
         policy);
 }
 
+inline std::vector<vgmtooling::model::repeated_part_motif_hypothesis>
+discover_genesis_part_motifs(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const genesis_pitch_clock_context& clocks,
+    const vgmtooling::model::part_motif_discovery_policy& policy = {}) {
+    return vgmtooling::model::discover_repeated_part_motifs(
+        collect_genesis_part_gestures(graph, part_id, clocks),
+        policy);
+}
+
 inline std::vector<vgmtooling::model::phrase_boundary_hypothesis>
 discover_genesis_part_phrase_boundaries(
     const vgmtooling::model::musical_execution_graph& graph,
@@ -135,6 +269,21 @@ discover_genesis_part_phrase_boundaries(
         minimum_gap_ratio,
         0.95,
         "genesis-part-phrase-discovery");
+}
+
+inline std::vector<vgmtooling::model::phrase_boundary_hypothesis>
+discover_genesis_part_phrase_boundaries(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const genesis_pitch_clock_context& clocks,
+    const vgmtooling::model::part_motif_discovery_policy& motif_policy = {},
+    double minimum_gap_ratio = 2.0) {
+    return vgmtooling::model::discover_part_phrase_boundaries(
+        collect_genesis_part_gestures(graph, part_id, clocks),
+        motif_policy,
+        minimum_gap_ratio,
+        0.95,
+        "genesis-performed-part-phrase-discovery");
 }
 
 } // namespace gameaudio::vgm
