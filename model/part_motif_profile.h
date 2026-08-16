@@ -36,9 +36,13 @@ struct part_motif_similarity {
     double rhythm_similarity = 0.0;
     std::optional<double> contour_similarity{};
     double combined_similarity = 0.0;
+    double identity_confidence = 0.0;
+    bool pitch_comparable = false;
     bool transposition_invariant = true;
     bool tempo_scale_invariant = true;
 };
+
+constexpr double rhythm_only_motif_identity_ceiling = 0.55;
 
 inline double median_positive(std::vector<double> values) {
     values.erase(
@@ -66,6 +70,7 @@ inline part_motif_profile make_part_motif_profile(
 
     const time_domain time_domain_value = observations.front().onset.domain;
     const std::uint64_t tick_rate = observations.front().onset.tick_rate;
+    const std::int64_t loop_iteration = observations.front().onset.loop_iteration;
 
     std::vector<double> iois;
     iois.reserve(observations.size() - 1);
@@ -73,8 +78,11 @@ inline part_motif_profile make_part_motif_profile(
         const auto& observation = observations[index];
         if (observation.part_id != part_id)
             throw std::invalid_argument("one motif profile cannot silently merge different persistent parts");
-        if (observation.onset.domain != time_domain_value || observation.onset.tick_rate != tick_rate)
-            throw std::invalid_argument("motif observations require one compatible local time basis");
+        if (observation.onset.domain != time_domain_value ||
+            observation.onset.tick_rate != tick_rate ||
+            observation.onset.loop_iteration != loop_iteration) {
+            throw std::invalid_argument("motif observations require one compatible local time and loop basis");
+        }
         if (index == 0)
             continue;
         const std::int64_t delta = observation.onset.tick - observations[index - 1].onset.tick;
@@ -166,12 +174,12 @@ inline part_motif_similarity compare_part_motif_profiles(
     double weighted_sum = 0.35 * result.rhythm_similarity;
     double total_weight = 0.35;
 
-    const bool pitch_comparable =
+    result.pitch_comparable =
         first.interval_octaves.has_value() && second.interval_octaves.has_value() &&
         first.pitch_contour.has_value() && second.pitch_contour.has_value() &&
         !first.pitch_basis.empty() && first.pitch_basis == second.pitch_basis;
 
-    if (pitch_comparable) {
+    if (result.pitch_comparable) {
         result.interval_similarity = bounded_difference_similarity(
             *first.interval_octaves,
             *second.interval_octaves,
@@ -185,6 +193,9 @@ inline part_motif_similarity compare_part_motif_profiles(
     }
 
     result.combined_similarity = total_weight > 0.0 ? weighted_sum / total_weight : 0.0;
+    result.identity_confidence = result.pitch_comparable
+        ? result.combined_similarity
+        : std::min(result.combined_similarity, rhythm_only_motif_identity_ceiling);
     return result;
 }
 
