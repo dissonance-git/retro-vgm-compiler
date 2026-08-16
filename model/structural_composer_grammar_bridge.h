@@ -6,6 +6,7 @@
 #include "counterpoint_motion_profile.h"
 #include "harmonic_rhythm_profile.h"
 #include "imitative_part_relation.h"
+#include "orchestration_transition_hypothesis.h"
 #include "section_relation_hypothesis.h"
 #include "voice_leading_hypothesis.h"
 
@@ -217,6 +218,44 @@ inline blind_structural_grammar_observation section_relation_as_grammar_observat
         role_scope,
         relation.confidence,
         "section transformation grounded in cross-phrase relations; conventional form label unresolved");
+}
+
+inline blind_structural_grammar_observation orchestration_transition_as_grammar_observation(
+    const structural_grammar_context& context,
+    const orchestration_transition_hypothesis& transition,
+    creative_attribution_role role_scope) {
+    if (transition.kind == orchestration_transition_kind::unresolved)
+        throw std::invalid_argument("unresolved orchestration transition cannot become creator-grammar evidence");
+
+    std::string register_token = "unresolved";
+    if (transition.register_comparable) {
+        const double magnitude = std::fabs(transition.register_shift);
+        const char* direction = transition.register_shift > 1e-9
+            ? "up"
+            : (transition.register_shift < -1e-9 ? "down" : "static");
+        register_token = std::string{direction} + ":" + quantized_nonnegative_token(magnitude);
+    }
+
+    const std::string timbre_token = transition.realization_comparable
+        ? (transition.timbre_changed ? "changed" : "stable")
+        : "unresolved";
+
+    const std::string signature =
+        std::string{"orchestration:"} + to_string(transition.kind) +
+        ";role=" + to_string(transition.first_role) + ">" + to_string(transition.second_role) +
+        ";part_preserved=" + std::string{transition.persistent_part_preserved ? "true" : "false"} +
+        ";timbre=" + timbre_token +
+        ";register=" + register_token +
+        ";material_grounded=" +
+        std::string{transition.musical_material_continuity_grounded ? "true" : "false"};
+
+    return make_blind_structural_observation(
+        context,
+        signature,
+        composer_grammar_dimension::arrangement_orchestration,
+        role_scope,
+        transition.confidence,
+        "time-local role/realization/register transition; source-native timbre identities remain representation-scoped and creator identity is not available during extraction");
 }
 
 } // namespace vgmtooling::model
