@@ -16,13 +16,14 @@ time_span span(std::int64_t begin, std::int64_t end) {
     };
 }
 
-part_role_evidence relational(
+part_role_evidence support(
     part_role_evidence_kind kind,
     double confidence,
-    std::string detail) {
+    std::string detail,
+    part_role_evidence_origin origin = part_role_evidence_origin::musical_analysis) {
     return {
         kind,
-        part_role_evidence_origin::musical_analysis,
+        origin,
         part_role_evidence_polarity::supports,
         evidence_status::hypothesis,
         confidence,
@@ -44,8 +45,15 @@ musical_part_role_hypothesis role(
         span(begin, end),
         confidence,
         {
-            relational(part_role_evidence_kind::melodic_motif_prominence, confidence, "structural material"),
-            relational(part_role_evidence_kind::phrase_initiation_or_completion, confidence, "phrase position"),
+            support(
+                part_role_evidence_kind::melodic_motif_prominence,
+                confidence,
+                "structural material"),
+            support(
+                part_role_evidence_kind::auditory_salience,
+                confidence,
+                "independent salience evidence",
+                part_role_evidence_origin::auditory_analysis),
         });
 }
 
@@ -67,6 +75,8 @@ orchestration_realization realization(
 int main() {
     const auto first_role = role(10, musical_part_role::melodic_foreground, 0, 100, 0.86);
     const auto second_role = role(10, musical_part_role::melodic_foreground, 100, 200, 0.84);
+    assert(first_role.cross_domain_grounded);
+    assert(second_role.cross_domain_grounded);
 
     const auto first = make_part_orchestration_state(
         first_role,
