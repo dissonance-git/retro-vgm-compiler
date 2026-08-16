@@ -53,7 +53,8 @@ creative_attribution_evidence counter(
 int main() {
     // Sonic-inspired control 1: a strong FM/modulation/channel fingerprint can
     // support an arranger/programmer hypothesis, but it must not leak upward
-    // into composer attribution.
+    // into composer attribution. Final confidence is bounded by the weaker
+    // independent grounding domain, not the caller's proposed confidence.
     std::vector<creative_attribution_evidence> realization_evidence{
         support(
             creative_attribution_evidence_kind::arrangement_execution,
@@ -78,7 +79,10 @@ int main() {
         realization_evidence);
     assert(programmer.role_specific_support);
     assert(programmer.cross_domain_grounded);
-    assert(programmer.confidence > creative_attribution_single_domain_ceiling);
+    assert(programmer.support_domains == 2);
+    assert(programmer.grounding_support_observations == 2);
+    assert(close_enough(programmer.independent_support_ceiling, 0.82));
+    assert(close_enough(programmer.confidence, 0.82));
 
     const auto composer_from_programming = make_creative_attribution_hypothesis(
         "candidate-programmer",
@@ -116,7 +120,8 @@ int main() {
         composition_evidence);
     assert(composer.role_specific_support);
     assert(composer.cross_domain_grounded);
-    assert(close_enough(composer.confidence, 0.88));
+    assert(close_enough(composer.independent_support_ceiling, 0.85));
+    assert(close_enough(composer.confidence, 0.85));
 
     const auto programmer_from_composition = make_creative_attribution_hypothesis(
         "candidate-composer",
@@ -182,7 +187,8 @@ int main() {
 
     // Control 5: recollection is useful but not exact documentary grounding.
     // A remembered conversation whose original messages are lost must not act
-    // like a preserved role-specific primary document.
+    // like a preserved role-specific primary document, and a 0.70 recollection
+    // cannot be inflated to the generic single-domain ceiling.
     const auto recollection = make_creative_attribution_hypothesis(
         "recollected-candidate",
         creative_attribution_role::composer,
@@ -196,13 +202,14 @@ int main() {
             "first-hand contact was reported but the original messages are no longer recoverable")});
     assert(recollection.role_specific_support);
     assert(!recollection.documentary_grounded);
-    assert(close_enough(
-        recollection.confidence,
-        creative_attribution_single_domain_ceiling));
+    assert(!recollection.cross_domain_grounded);
+    assert(close_enough(recollection.independent_support_ceiling, 0.70));
+    assert(close_enough(recollection.confidence, 0.70));
 
     // Control 6: exact role-specific documentary evidence is a different
     // epistemic class and may remain strong even when lower-level evidence is
-    // awkward or conflicting.
+    // awkward or conflicting. It is still bounded by the documentary evidence
+    // itself and the proposed confidence.
     const auto documented = make_creative_attribution_hypothesis(
         "documented-candidate",
         creative_attribution_role::arranger_programmer,
@@ -223,6 +230,7 @@ int main() {
         });
     assert(documented.documentary_grounded);
     assert(documented.strong_conflict_present);
+    assert(close_enough(documented.independent_support_ceiling, 0.99));
     assert(close_enough(documented.confidence, 0.97));
 
     // Control 7: prototype and final can keep one composition identity while
@@ -289,10 +297,39 @@ int main() {
                 "final realization diverges from prototype while retaining the musical work"),
         });
 
-    assert(same_work_composer.confidence >= 0.80);
-    assert(prototype_programmer.confidence >= 0.80);
-    assert(final_programmer.confidence >= 0.80);
+    assert(close_enough(same_work_composer.confidence, 0.86));
+    assert(close_enough(prototype_programmer.confidence, 0.82));
+    assert(close_enough(final_programmer.confidence, 0.84));
     assert(prototype_programmer.candidate != final_programmer.candidate);
+
+    // Control 8: multiple weak role-specific hints still cannot become strong
+    // merely by occupying different evidence domains.
+    const auto weak_multidomain = make_creative_attribution_hypothesis(
+        "weak-candidate",
+        creative_attribution_role::composer,
+        0.95,
+        {
+            support(
+                creative_attribution_evidence_kind::composition_structure,
+                creative_attribution_role::composer,
+                evidence_status::hypothesis,
+                0.55,
+                "weak-structure",
+                "weak structural resemblance"),
+            support(
+                creative_attribution_evidence_kind::version_lineage,
+                creative_attribution_role::composer,
+                evidence_status::hypothesis,
+                0.58,
+                "weak-lineage",
+                "weak project/version compatibility"),
+        });
+    assert(weak_multidomain.role_support_observations == 2);
+    assert(weak_multidomain.grounding_support_observations == 0);
+    assert(!weak_multidomain.cross_domain_grounded);
+    assert(close_enough(
+        weak_multidomain.confidence,
+        creative_attribution_weak_support_ceiling));
 
     return 0;
 }
