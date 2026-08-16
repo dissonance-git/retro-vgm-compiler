@@ -1,4 +1,4 @@
-#include "components/vgm/enhancement/ym2612_performed_pitch_motion.h"
+#include "../../components/vgm/enhancement/ym2612_performed_pitch_motion.h"
 
 #include <cassert>
 #include <cmath>
