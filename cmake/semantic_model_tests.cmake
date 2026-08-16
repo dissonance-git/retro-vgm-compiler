@@ -188,3 +188,14 @@ set_tests_properties(
     blind_attribution_match_manifest_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_test(
+    NAME cube_calibration_admissions_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/model
+        -p test_cube_calibration_admissions.py
+)
+set_tests_properties(
+    cube_calibration_admissions_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
