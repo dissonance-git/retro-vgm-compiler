@@ -75,6 +75,51 @@ int main() {
     assert(!output.used_studio_fm);
     assert(transport.empty());
 
+    // Family composition law for the audible Enhanced Genesis path:
+    //
+    //   reference = unrelated + exact_psg + exact_fm
+    //   protected = reference + enhanced_psg - exact_psg
+    //   final     = protected + studio_fm - exact_fm
+    //             = unrelated + enhanced_psg + studio_fm
+    //
+    // Use asymmetric signed contributions so this cannot pass only because all
+    // source families happen to be positive or centered the same way.
+    constexpr std::int64_t unrelated_l = 910;
+    constexpr std::int64_t unrelated_r = -730;
+    constexpr std::int64_t exact_psg_l = -120;
+    constexpr std::int64_t exact_psg_r = 85;
+    constexpr std::int64_t enhanced_psg_l = -175;
+    constexpr std::int64_t enhanced_psg_r = 140;
+    constexpr std::int64_t exact_fm_l = 260;
+    constexpr std::int64_t exact_fm_r = -310;
+    constexpr std::int64_t studio_fm_l = 335;
+    constexpr std::int64_t studio_fm_r = -255;
+
+    constexpr std::int64_t reference_l = unrelated_l + exact_psg_l + exact_fm_l;
+    constexpr std::int64_t reference_r = unrelated_r + exact_psg_r + exact_fm_r;
+    constexpr std::int64_t protected_l =
+        reference_l + enhanced_psg_l - exact_psg_l;
+    constexpr std::int64_t protected_r =
+        reference_r + enhanced_psg_r - exact_psg_r;
+    constexpr std::int64_t expected_final_l =
+        unrelated_l + enhanced_psg_l + studio_fm_l;
+    constexpr std::int64_t expected_final_r =
+        unrelated_r + enhanced_psg_r + studio_fm_r;
+
+    transport.reset();
+    assert(transport.push(frame(
+        50,
+        static_cast<std::int32_t>(protected_l),
+        static_cast<std::int32_t>(protected_r),
+        exact_fm_l,
+        exact_fm_r,
+        true)));
+    assert(transport.apply_studio_fm(50, studio_fm_l, studio_fm_r));
+    assert(transport.pop_final(output));
+    assert(output.left == expected_final_l);
+    assert(output.right == expected_final_r);
+    assert(output.used_studio_fm);
+
     // Runtime evidence loss is a quality downgrade, never a timeline rewrite.
     // Already-finalized Studio frames stay valid; unresolved frames become their
     // protected PlayerA reference values and drain in original order.
