@@ -54,10 +54,10 @@ inline spc_original_sample_interval_result reconstruct_spc_original_sample_inter
     const auto source = reconstruct_spc_upstream_candidate_sample(
         *interval.source,
         result.game_position);
-    if (!source.valid || !std::isfinite(source.normalized_sample))
+    if (!source.valid || !std::isfinite(source.sample))
         return result;
 
-    result.source_normalized = source.normalized_sample;
+    result.source_normalized = source.sample;
     // Preserve the exact eleven-bit game envelope trajectory but remove the
     // S-DSP's final integer multiply/shift truncation from the Enhanced source.
     result.post_envelope_normalized = result.source_normalized
