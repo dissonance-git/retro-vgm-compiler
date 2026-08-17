@@ -57,6 +57,27 @@ int main() {
     assert(block.sources()[fm1].left[0] == 9.0f);
     assert(block.sources()[fm1].right[0] == 8.0f);
 
+    // Exact topology is still checked, but a source which contributes exact
+    // digital zero throughout the delivered block is not a Spatial object. It
+    // cannot veto an active lane merely because no route write ever occurred.
+    queue.reset(225u);
+    assert(queue.push_reference(reference_frame(225u, 0.0, 0.0, 2.0, -2.0)));
+    assert(queue.push_reference(reference_frame(226u, 0.0, 0.0, 3.0, -3.0)));
+    assert(block.consume(queue, 225u, 2u));
+    assert(block.valid());
+    assert(!block.source_present(fm1));
+    assert(!block.sources()[fm1].present());
+    assert(block.source_present(psg0));
+    assert(block.sources()[psg0].present());
+
+    // If every exact source is silent, the presentation sidecar has no source
+    // objects to render and fails closed without inventing one.
+    queue.reset(240u);
+    assert(queue.push_reference(reference_frame(240u, 0.0, 0.0, 0.0, 0.0)));
+    assert(!block.consume(queue, 240u, 1u));
+    assert(block.last_error() == genesis_selected_source_block_error::no_sources);
+    assert(!queue.valid());
+
     // The generated host may carry an explicit provenance bit. Inexact
     // replacement is rejected without mutating or invalidating the reference
     // lane, so that source family can remain on protected quality.
