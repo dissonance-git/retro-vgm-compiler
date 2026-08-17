@@ -147,9 +147,8 @@ void write_json(
     int warning_count,
     const std::vector<vgmtooling::hes::apu_write_observation>& apu_writes,
     const std::vector<vgmtooling::hes::adpcm_write_observation>& adpcm_writes) {
-    opts.output_path.parent_path().empty()
-        ? void()
-        : std::filesystem::create_directories(opts.output_path.parent_path());
+    if (!opts.output_path.parent_path().empty())
+        std::filesystem::create_directories(opts.output_path.parent_path());
     std::ofstream out(opts.output_path, std::ios::binary);
     if (!out)
         throw std::runtime_error("could not open JSON output");
