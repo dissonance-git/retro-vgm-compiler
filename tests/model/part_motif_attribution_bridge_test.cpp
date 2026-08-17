@@ -1,5 +1,6 @@
 #include "model/part_motif_attribution_bridge.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -32,6 +33,24 @@ part_motif_profile profile(
     return make_part_motif_profile(observations);
 }
 
+part_motif_profile raw_profile(
+    node_id part_id,
+    std::vector<double> rhythm,
+    std::vector<double> intervals,
+    std::vector<std::int8_t> contour,
+    double evidence_confidence) {
+    part_motif_profile result;
+    result.part_id = part_id;
+    result.normalized_inter_onset_intervals = std::move(rhythm);
+    result.interval_octaves = std::move(intervals);
+    result.pitch_contour = std::move(contour);
+    result.pitch_basis = "synthetic-native-basis";
+    result.interval_semantics = "log2_frequency_ratio_octaves";
+    result.status = evidence_status::derived;
+    result.evidence_confidence = evidence_confidence;
+    return result;
+}
+
 } // namespace
 
 int main() {
@@ -61,6 +80,29 @@ int main() {
     assert(one_part_only.matched_pair_count == 1);
     assert(std::fabs(one_part_only.matched_coverage - 0.5) < 1e-12);
     assert(one_part_only.similarity <= 0.5 + 1e-12);
+
+    // Regression from randomized profile-order testing. The former greedy
+    // matcher gave 0.398333... in one enumeration and 0.378333... after merely
+    // permuting the same profiles. Maximum-weight assignment must preserve the
+    // larger, globally optimal score under both query and control permutations.
+    std::vector<part_motif_profile> order_query = {
+        raw_profile(10, {1.0, 1.0}, {0.25, -0.5}, {1, -1}, 1.0),
+        raw_profile(11, {2.0}, {-0.25}, {-1}, 0.8),
+        raw_profile(12, {2.0, 1.5}, {0.25, 0.25}, {1, 1}, 0.8),
+        raw_profile(13, {1.5, 1.5, 1.5}, {-0.5, 0.0, -0.5}, {-1, 0, -1}, 0.9),
+    };
+    std::vector<part_motif_profile> order_control = {
+        raw_profile(20, {1.0, 2.0}, {0.0, -0.25}, {0, -1}, 0.9),
+        raw_profile(21, {2.0}, {0.0}, {0}, 0.75),
+        raw_profile(22, {1.5, 1.5}, {0.0, -0.25}, {0, -1}, 1.0),
+    };
+    const auto optimal = compare_part_motif_profile_sets(order_query, order_control);
+    assert(std::fabs(optimal.similarity - 0.3983333333333333) < 1e-12);
+
+    std::reverse(order_query.begin(), order_query.end());
+    std::rotate(order_control.begin(), order_control.begin() + 1, order_control.end());
+    const auto permuted = compare_part_motif_profile_sets(order_query, order_control);
+    assert(std::fabs(permuted.similarity - optimal.similarity) < 1e-12);
 
     const auto match = make_part_motif_composer_control_match(
         "sonic3-unknown",
