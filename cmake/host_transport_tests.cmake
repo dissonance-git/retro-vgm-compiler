@@ -18,6 +18,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_upstream_playback_reconstruction_test
     snesapu_studio_source_provider_test
     snesapu_studio_source_packet_test
+    snesapu_brr_playback_topology_test
     spc_original_sample_interval_test
     snes_spc_enhanced_source_hook_bridge_test
     snesapu_source_transport_v2_test
@@ -94,6 +95,10 @@ add_executable(
 add_executable(
     snesapu_studio_source_packet_test
     tests/spc/snesapu_studio_source_packet_test.cpp
+)
+add_executable(
+    snesapu_brr_playback_topology_test
+    tests/spc/snesapu_brr_playback_topology_test.cpp
 )
 add_executable(
     spc_original_sample_interval_test
@@ -214,6 +219,10 @@ target_include_directories(
 )
 target_include_directories(
     snesapu_studio_source_packet_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    snesapu_brr_playback_topology_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -343,6 +352,10 @@ add_test(
     COMMAND snesapu_studio_source_packet_test
 )
 add_test(
+    NAME snesapu_brr_playback_topology
+    COMMAND snesapu_brr_playback_topology_test
+)
+add_test(
     NAME spc_original_sample_interval
     COMMAND spc_original_sample_interval_test
 )
@@ -425,5 +438,21 @@ add_test(
 )
 set_tests_properties(
     spc_studio_source_provider_patch_python
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME spc_studio_source_transport_patch_python
+    COMMAND ${Python3_EXECUTABLE} tests/spc/test_studio_source_transport_patch.py
+)
+set_tests_properties(
+    spc_studio_source_transport_patch_python
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME spc_enhanced_runtime_rate_python
+    COMMAND ${Python3_EXECUTABLE} tests/spc/test_enhanced_runtime_rate.py
+)
+set_tests_properties(
+    spc_enhanced_runtime_rate_python
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
