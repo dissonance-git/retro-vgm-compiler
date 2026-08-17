@@ -20,6 +20,9 @@ jobs:
       - name: Patcher integrity regression
         run: python3 -B -m unittest discover -s tests/spc -p 'test_snes_spc_runtime_patcher.py'
 
+      - name: Blind calibration boundary regression
+        run: python3 -B -m unittest tests.spc.test_freeze_forensic_sidecars tests.spc.test_cube_blind_panel
+
       - name: Configure isolated forensic runtime
         run: cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
 
@@ -29,45 +32,36 @@ jobs:
       - name: Phase-accurate DSP bridge regression
         run: ctest --test-dir build-spc-forensic --output-on-failure
 
-      - name: Generate creator-blind SPC feature sidecars
+      - name: Capture and freeze creator-blind four-world panel
         env:
           SECONDS_PER_FIXTURE: ${{ inputs.seconds }}
         run: |
-          mkdir -p spc-forensic-sidecars
+          python3 -B tools/spc/capture_blind_panel.py \
+            --panel research/projects/sonic3/spc-cube-blind-panel.json \
+            --extractor build-spc-forensic/spc_forensic_features \
+            --output-dir spc-forensic-blind/sidecars \
+            --freeze-output spc-forensic-blind/frozen-matrix.json \
+            --seconds "$SECONDS_PER_FIXTURE"
 
-          # Selection is downstream calibration planning only. Creator labels
-          # never enter spc_forensic_features or the emitted musical geometry.
-          # Ancient Magic: 01/10 route to Hikichi; 04 routes to Takaoka.
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/ancient-magic-spc/01 - Title.spc" \
-            spc-forensic-sidecars/ancient-magic-01.json \
-            "$SECONDS_PER_FIXTURE"
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/ancient-magic-spc/04 - City.spc" \
-            spc-forensic-sidecars/ancient-magic-04.json \
-            "$SECONDS_PER_FIXTURE"
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/ancient-magic-spc/10 - Boss Battle.spc" \
-            spc-forensic-sidecars/ancient-magic-10.json \
-            "$SECONDS_PER_FIXTURE"
-
-          # Terranigma: 03/06 route to Takaoka; 08 routes to Hikichi.
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/terranigma-spc/03 - Hometown.spc" \
-            spc-forensic-sidecars/terranigma-03.json \
-            "$SECONDS_PER_FIXTURE"
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/terranigma-spc/06 - Dark Side Field.spc" \
-            spc-forensic-sidecars/terranigma-06.json \
-            "$SECONDS_PER_FIXTURE"
-          build-spc-forensic/spc_forensic_features \
-            "tests/corpus/terranigma-spc/08 - Into the Door.spc" \
-            spc-forensic-sidecars/terranigma-08.json \
-            "$SECONDS_PER_FIXTURE"
-
-      - name: Upload label-blind feature sidecars
+      - name: Upload frozen creator-blind evidence
         uses: actions/upload-artifact@v4
         with:
-          name: spc-forensic-sidecars
-          path: spc-forensic-sidecars/*.json
+          name: spc-forensic-blind
+          path: spc-forensic-blind/
+          if-no-files-found: error
+
+      - name: Reveal evidence-safe Cube calibration
+        run: |
+          python3 -B tools/spc/evaluate_cube_calibration.py \
+            --freeze spc-forensic-blind/frozen-matrix.json \
+            --panel research/projects/sonic3/spc-cube-blind-panel.json \
+            --admissions research/projects/sonic3/attribution-control-admissions.jsonl \
+            --policy research/projects/sonic3/cube-calibration-policy.json \
+            --output spc-forensic-reveal/cube-calibration.json
+
+      - name: Upload post-freeze calibration reveal
+        uses: actions/upload-artifact@v4
+        with:
+          name: spc-forensic-reveal
+          path: spc-forensic-reveal/cube-calibration.json
           if-no-files-found: error
