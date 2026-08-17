@@ -59,6 +59,28 @@ research/cache/vgm-song-capsules/<corpus-id>/
 
 A second identical invocation reuses the capsules without parsing the VGM/VGZ again.
 
+## Build every admitted composer
+
+The role index now contains 50 admitted composition controls across seven creators:
+
+- Tatsuyuki Maeda: 26
+- Jun Senoue: 12
+- Haruyo Oguro: 5
+- Naofumi Hataya: 4
+- Tomonori Sawada: 1
+- Masaru Setsumaru: 1
+- Seirou Okamoto: 1
+
+`The Scorching Sand` remains excluded because its Golden Axe III soundtrack assignment conflicts with Tomonori Sawada's later creator statement.
+
+Build the entire admitted composer world with one command:
+
+```bash
+python tools/build_admitted_composer_caches.py
+```
+
+The helper fans `build-creator` across every admitted composer. Because capsules are keyed by source song rather than creator, repeated creator/role views reuse the same parsed object instead of duplicating it.
+
 To pre-cache a whole control soundtrack, including negatives:
 
 ```bash
