@@ -57,6 +57,17 @@ int main() {
     assert(block.sources()[fm1].left[0] == 9.0f);
     assert(block.sources()[fm1].right[0] == 8.0f);
 
+    // The generated host may carry an explicit provenance bit. Inexact
+    // replacement is rejected without mutating or invalidating the reference
+    // lane, so that source family can remain on protected quality.
+    queue.reset(250u);
+    assert(queue.push_reference(reference_frame(250u, 1.0, 1.0, 2.0, 2.0)));
+    assert(!queue.replace_source(250u, fm1, 9.0, 8.0, false));
+    assert(queue.valid());
+    assert(block.consume(queue, 250u, 1u));
+    assert(block.sources()[fm1].left[0] == 1.0f);
+    assert(block.sources()[fm1].right[0] == 1.0f);
+
     // A topology change inside one delivered block is not silently represented
     // as a lane appearing/disappearing halfway through the Omniphony block.
     queue.reset(300u);
