@@ -311,3 +311,20 @@ add_test(
     NAME ym2612_hq_source_calibration
     COMMAND ym2612_hq_source_calibration_test
 )
+
+add_test(
+    NAME spc_original_sample_candidates_python
+    COMMAND ${Python3_EXECUTABLE} tests/spc/test_original_sample_candidates.py
+)
+set_tests_properties(
+    spc_original_sample_candidates_python
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME spc_prebrr_sidecar_python
+    COMMAND ${Python3_EXECUTABLE} tests/spc/test_prebrr_sidecar.py
+)
+set_tests_properties(
+    spc_prebrr_sidecar_python
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
