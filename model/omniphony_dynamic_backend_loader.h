@@ -2,6 +2,7 @@
 
 #include "realtime_musical_omniphony_pipeline.h"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <type_traits>
@@ -62,6 +63,12 @@ inline bool omniphony_source_config_valid(
         && config.reflection_level >= 0.0f;
 }
 
+#ifdef _WIN32
+// Internal-linkage anchor: every embedding DLL gets its own address, letting
+// GetModuleHandleEx recover the component module rather than foobar2000.exe.
+static const unsigned char omniphony_loader_module_anchor = 0u;
+#endif
+
 // Owns only the platform/DLL and Omniphony processor lifetime. It has no source
 // quality policy and no musical state. Callers resolve their reference versus
 // higher-quality source lanes before they ever reach this object.
@@ -74,6 +81,13 @@ public:
     omniphony_dynamic_backend_loader& operator=(const omniphony_dynamic_backend_loader&) = delete;
 
     bool open_default(const omniphony_source_config_transport& config) noexcept {
+#ifdef _WIN32
+        std::array<wchar_t, 32768> sibling{};
+        if (sibling_library_path(sibling.data(), sibling.size()) && open(sibling.data(), config))
+            return true;
+#endif
+        // Keep the ordinary Windows search fallback for developer builds that
+        // intentionally place the renderer on PATH or beside foobar2000.exe.
         return open(L"omniphony_source.dll", config);
     }
 
@@ -175,6 +189,40 @@ public:
 
 private:
 #ifdef _WIN32
+    static bool sibling_library_path(wchar_t* output, std::size_t capacity) noexcept {
+        if (output == nullptr || capacity < 32u)
+            return false;
+
+        HMODULE owner = nullptr;
+        if (!::GetModuleHandleExW(
+                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                reinterpret_cast<LPCWSTR>(&omniphony_loader_module_anchor),
+                &owner) || owner == nullptr)
+            return false;
+
+        const DWORD length = ::GetModuleFileNameW(
+            owner,
+            output,
+            static_cast<DWORD>(capacity));
+        if (length == 0u || static_cast<std::size_t>(length) >= capacity)
+            return false;
+
+        std::size_t slash = static_cast<std::size_t>(length);
+        while (slash != 0u && output[slash - 1u] != L'\\' && output[slash - 1u] != L'/')
+            --slash;
+        if (slash == 0u)
+            return false;
+
+        constexpr wchar_t dll_name[] = L"omniphony_source.dll";
+        constexpr std::size_t dll_chars = sizeof(dll_name) / sizeof(dll_name[0]);
+        if (slash + dll_chars > capacity)
+            return false;
+        for (std::size_t index = 0; index < dll_chars; ++index)
+            output[slash + index] = dll_name[index];
+        return true;
+    }
+
     template <typename Fn>
     Fn resolve(const char* name) noexcept {
         return reinterpret_cast<Fn>(::GetProcAddress(module_, name));
