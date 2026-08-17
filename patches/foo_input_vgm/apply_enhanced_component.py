@@ -59,6 +59,7 @@ def main() -> int:
     # after every source-quality patch so presentation cannot affect admission.
     run(here / "apply_spatial_selected_source_transport.py", source)
     run(here / "apply_spatial_omniphony_runtime.py", source)
+    run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
     print("foo_input_vgm enhanced + Spatial component patch set applied")
     return 0
 
