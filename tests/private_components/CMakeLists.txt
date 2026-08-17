@@ -165,6 +165,20 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# Keep the executable Omniphony version gate synchronized with the compiler's
+# transport constants. The real Windows package verifier then loads the archived
+# DLL copies and executes these same zero-argument ABI functions.
+add_test(
+    NAME omniphony_runtime_abi_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_omniphony_runtime_abi_contract.py
+)
+set_tests_properties(
+    omniphony_runtime_abi_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # The private builder itself is part of the product contract. Keep outputs
 # deterministic and prove every packaged executable's bitness before archive
 # creation so a stale or wrong-architecture artifact cannot be selected.
