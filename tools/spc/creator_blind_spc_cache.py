@@ -48,8 +48,11 @@ def destination_for(
     *,
     corpus_id: str,
     cache_root: pathlib.Path = DEFAULT_CACHE_ROOT,
+    seconds: int = DEFAULT_SECONDS,
 ) -> pathlib.Path:
-    return cache_root / corpus_id / f"{source.name}.json"
+    if seconds <= 0:
+        raise ValueError("seconds must be positive")
+    return cache_root / corpus_id / f"{seconds}s" / f"{source.name}.json"
 
 
 def _load_json(path: pathlib.Path) -> dict[str, Any] | None:
@@ -109,6 +112,7 @@ def build_one(
         source,
         corpus_id=corpus_id,
         cache_root=cache_root,
+        seconds=seconds,
     )
     if not refresh and cache_current(destination, source, seconds=seconds):
         return destination, False
