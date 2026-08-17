@@ -55,14 +55,24 @@ class StudioHqFmObserverPatchTest(unittest.TestCase):
             reset_body.index("observe_initial_studio_hq_pregen(m_ym);"),
             reset_body.index("const UINT8 result = VGMPlayer::Reset();"),
         )
+        self.assertIn(
+            "m_studio_hq_fm_active = m_studio_hq_fm_observer.configured();",
+            reset_body,
+        )
 
-        # A seek is a source discontinuity. Evidence must fail closed instead of
-        # pretending the pre-seek FIR history still belongs to the new ordinal.
+        # A seek discards native FIR history but keeps destination tags in the
+        # absolute PlayerA playback-sample coordinate. Studio therefore becomes
+        # temporarily reference-only while rebuilding lookahead, not disabled.
         seek_start = text.index("    UINT8 Seek")
         seek_end = text.index("    UINT8 Stop", seek_start)
         seek_body = text[seek_start:seek_end]
-        self.assertIn("m_studio_hq_fm_observer.reset();", seek_body)
-        self.assertIn("m_studio_hq_fm_active = false;", seek_body)
+        self.assertIn("VGMPlayer::GetCurPos(PLAYPOS_SAMPLE)", seek_body)
+        self.assertIn("m_studio_hq_fm_observer.reset(destination_base);", seek_body)
+        self.assertIn(
+            "m_studio_hq_fm_active = m_studio_hq_fm_observer.configured();",
+            seek_body,
+        )
+        self.assertNotIn("m_studio_hq_fm_active = false;", seek_body)
 
         # This pass is intentionally observability-only. The audible HQ buffer is
         # still produced by the historical linear mirror and there must be no
