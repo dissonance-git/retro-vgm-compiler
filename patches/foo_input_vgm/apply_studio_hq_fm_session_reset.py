@@ -50,7 +50,7 @@ def main() -> int:
 \tbool decode_run(audio_chunk &p_chunk, abort_callback &p_abort) override;
 """,
         """\tstatic bool g_is_our_path(const char *p_path, const char *p_extension);
-\tvoid decode_initialize(unsigned int p_flags, abort_callback &p_abort);
+\tvoid decode_initialize(unsigned int p_flags, abort_callback &p_abort) override;
 \tbool decode_run(audio_chunk &p_chunk, abort_callback &p_abort) override;
 """,
         "Studio decode-session override declaration",
