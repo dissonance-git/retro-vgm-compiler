@@ -1,5 +1,6 @@
 #include "yamaha_opm_register.h"
 #include "ym2151_enhanced_recomposition.h"
+#include "ym2151_selected_source_transport.h"
 
 #include <array>
 #include <cassert>
@@ -111,6 +112,30 @@ int main() {
         ym2151_enhanced_recomposition_error::missing_enhanced_source);
     assert(recomposition.left()[0] == reference_l[0]);
     assert(recomposition.right()[0] == reference_r[0]);
+
+    // The same eight channel identities now survive the producer/render-ahead
+    // boundary. The queue contains the already-selected source quality, while
+    // the delivered block only enforces exact provenance and host-clock order.
+    constexpr std::size_t fm1_index =
+        static_cast<std::size_t>(ym2151_recomposition_source::fm1);
+    constexpr std::size_t fm8_index =
+        static_cast<std::size_t>(ym2151_recomposition_source::fm8);
+    ym2151_selected_source_queue<4> queue;
+    queue.reset(500u);
+    ym2151_selected_source_frame source_frame{};
+    source_frame.ordinal = 500u;
+    source_frame.source[fm1_index] = {1.0, -1.0, true, true};
+    source_frame.source[fm8_index] = {0.0, 0.0, true, true};
+    assert(queue.push_reference(source_frame));
+    assert(queue.replace_source(500u, fm1_index, 2.0, -2.0, true));
+
+    ym2151_selected_source_block_storage<2> delivered;
+    assert(delivered.consume(queue, 500u, 1u));
+    assert(delivered.valid());
+    assert(delivered.source_present(fm1_index));
+    assert(!delivered.source_present(fm8_index));
+    assert(delivered.sources()[fm1_index].left[0] == 2.0f);
+    assert(delivered.sources()[fm1_index].right[0] == -2.0f);
 
     return 0;
 }
