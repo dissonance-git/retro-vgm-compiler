@@ -57,10 +57,6 @@ int main() {
     assert(upsample.source_position(2) < 1.0);
     assert(!upsample.has_history(2));
 
-    // Exact libvgm-linear upsampling phase: Resmpl_Init pre-generates one real
-    // native sample into history.next; history.last is the protected startup
-    // zero. Newly_captured[0] is therefore native ordinal one, and destination
-    // frame zero still points at that one-sample startup history coordinate.
     studio_linear_timing_snapshot up{};
     up.source_rate_hz = 53267;
     up.destination_rate_hz = 96000;
@@ -79,9 +75,6 @@ int main() {
     assert(up1.phase_units == static_cast<std::int64_t>(up_fp * 2u)
         - static_cast<std::int64_t>(studio_source_resampler_kernel::phase_count));
 
-    // The same destination instant is invariant if the source capture is split
-    // after frame 50. native_base advances by exactly the native frames pulled
-    // by the first segment, while sample_p/sample_next carry libvgm's phase.
     constexpr std::uint64_t split = 50;
     const std::uint64_t split_fp =
         ((split - 1u) * (1u << 11) * up.source_rate_hz) / up.destination_rate_hz;
@@ -98,8 +91,6 @@ int main() {
     assert(whole.valid && split_view.valid);
     assert(whole.phase_units == split_view.phase_units);
 
-    // Downsampling uses the midpoint of libvgm's exact box-average interval.
-    // Its 1/2048 boundaries become exact 1/4096 Studio phase units.
     studio_linear_timing_snapshot down{};
     down.source_rate_hz = 53267;
     down.destination_rate_hz = 44100;
@@ -113,8 +104,43 @@ int main() {
     assert(down0.phase_units == static_cast<std::int64_t>(b0 + b1)
         - static_cast<std::int64_t>(studio_source_resampler_kernel::phase_count));
 
-    // Quantized negative startup coordinates remain representable for planning
-    // but correctly expose missing history.
+    // Historical libvgm linear-down timing evaluates the segment origin and
+    // local offset with separate integer divisions. Preserve that quirk as a
+    // reference diagnostic, while the enhanced FIR scheduler remains invariant
+    // to the same output being split across host blocks.
+    constexpr std::uint64_t down_split = 50;
+    const std::uint64_t down_split_fp =
+        (down_split * rate_fp) / down.destination_rate_hz;
+    const std::uint32_t down_split_next = static_cast<std::uint32_t>(
+        (down_split_fp + (1u << 11) - 1u) / (1u << 11));
+    studio_linear_timing_snapshot down_after = down;
+    down_after.sample_p = static_cast<std::uint32_t>(down_split);
+    down_after.sample_last = down_split_next;
+    const std::uint64_t down_pulled = down_split_next;
+
+    const auto reference_whole = reference_linear_downsample_source_position(
+        down, 0, down_split);
+    const auto reference_split = reference_linear_downsample_source_position(
+        down_after, down_pulled, 0);
+    assert(reference_whole.valid && reference_split.valid);
+    assert(reference_whole.phase_units != reference_split.phase_units);
+    const std::int64_t reference_delta =
+        reference_whole.phase_units - reference_split.phase_units;
+    assert(reference_delta >= -2 && reference_delta <= 2);
+
+    const auto enhanced_whole = studio_linear_source_position(down, 0, down_split);
+    const auto enhanced_split = studio_linear_source_position(
+        down_after, down_pulled, 0);
+    assert(enhanced_whole.valid && enhanced_split.valid);
+    assert(enhanced_whole.phase_units == enhanced_split.phase_units);
+
+    const std::uint64_t absolute_b0 =
+        (down_split * rate_fp) / down.destination_rate_hz;
+    const std::uint64_t absolute_b1 =
+        ((down_split + 1u) * rate_fp) / down.destination_rate_hz;
+    assert(enhanced_whole.phase_units
+        == static_cast<std::int64_t>(absolute_b0 + absolute_b1));
+
     studio_source_phase_position negative{
         -static_cast<std::int64_t>(studio_source_resampler_kernel::phase_count) / 2,
         true
