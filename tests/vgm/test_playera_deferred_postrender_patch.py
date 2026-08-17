@@ -129,6 +129,10 @@ class PlayerADeferredPostRenderPatchTest(unittest.TestCase):
         self.assertIn("SetDeferredPostRenderProcessor", header)
         self.assertIn("_deferredRenderBuf", header)
         self.assertIn("_deferredRenderBuf.resize(smplBufferLen);", source)
+        self.assertIn(
+            "PLAYSTATE_END by\n\t// itself is not EOF here because chip release tails remain renderable.",
+            header,
+        )
 
         render_start = source.index("UINT32 PlayerA::Render")
         render_end = source.index("/*static*/ UINT8 PlayerA::PlayCallbackS", render_start)
@@ -147,6 +151,19 @@ class PlayerADeferredPostRenderPatchTest(unittest.TestCase):
         self.assertIn("_deferredEmitSmpl + finalized", render)
         self.assertIn("_deferredEmitSmpl += curSmpl;", render)
         self.assertIn("passes < 16", render)
+
+        # VGMPlayer keeps PLAYSTATE_PLAY set after PLAYSTATE_END so chip release
+        # tails remain renderable. The FIR must not flush its post-roll merely
+        # because the command stream reached end-of-data.
+        self.assertEqual(
+            render.count("sourceEnded = (state & PLAYSTATE_PLAY) ? 0 : 1;"),
+            2,
+        )
+        source_ended_lines = [
+            line for line in render.splitlines() if "sourceEnded =" in line
+        ]
+        self.assertTrue(source_ended_lines)
+        self.assertTrue(all("PLAYSTATE_END" not in line for line in source_ended_lines))
 
         start = source[source.index("UINT8 PlayerA::Start"):source.index("UINT8 PlayerA::Stop")]
         reset = source[source.index("UINT8 PlayerA::Reset"):source.index("UINT8 PlayerA::FadeOut")]
