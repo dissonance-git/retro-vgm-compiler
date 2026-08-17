@@ -59,7 +59,7 @@ class AdmittedComposerCacheTests(unittest.TestCase):
             },
         )
 
-    def test_build_all_routes_only_backend_compatible_fixtures(self):
+    def test_build_all_reports_spc_as_backend_unavailable_when_extractor_missing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = pathlib.Path(temp_dir)
             credits = temp / "credits.jsonl"
@@ -118,7 +118,8 @@ class AdmittedComposerCacheTests(unittest.TestCase):
         self.assertEqual(result["creator_count"], 2)
         self.assertEqual(result["role_selected_tracks"], 3)
         self.assertEqual(result["cacheable_tracks"], 1)
-        self.assertEqual(result["unsupported_tracks"], 2)
+        self.assertEqual(result["backend_unavailable_tracks"], 2)
+        self.assertEqual(result["unsupported_tracks"], 0)
         self.assertEqual(result["selected_tracks"], 1)
         self.assertEqual(result["built"], 1)
         self.assertEqual(result["reused"], 0)
@@ -126,10 +127,66 @@ class AdmittedComposerCacheTests(unittest.TestCase):
         by_creator = {item["creator"]: item for item in result["results"]}
         self.assertEqual(by_creator["A"]["role_selected_tracks"], 2)
         self.assertEqual(by_creator["A"]["cacheable_tracks"], 1)
+        self.assertEqual(by_creator["A"]["backend_unavailable_tracks"], 1)
         self.assertEqual(by_creator["A"]["unsupported_fixtures"], ["b.spc"])
         self.assertEqual(by_creator["B"]["role_selected_tracks"], 1)
         self.assertEqual(by_creator["B"]["cacheable_tracks"], 0)
+        self.assertEqual(by_creator["B"]["backend_unavailable_tracks"], 1)
         self.assertEqual(by_creator["B"]["unsupported_fixtures"], ["c.spc"])
+
+    def test_build_all_routes_spc_when_forensic_backend_is_supplied(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            credits = temp / "credits.jsonl"
+            credits.write_text("", encoding="utf-8")
+            admissions = temp / "admissions.jsonl"
+            admissions.write_text(
+                json.dumps(
+                    {
+                        "fixture_path": "tests/corpus/world-spc/01 - Cue.spc",
+                        "candidate": "Cube Composer",
+                        "role": "composer",
+                        "status": "exact",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            extractor = temp / "spc_forensic_features"
+            extractor.write_bytes(b"placeholder")
+            calls = []
+
+            def fake_spc_build_one(source, **kwargs):
+                calls.append((source, kwargs))
+                return temp / "spc-cache" / "cue.json", True
+
+            with mock.patch.object(
+                all_caches.spc_cache, "build_one", side_effect=fake_spc_build_one
+            ):
+                result = all_caches.build_all(
+                    credit_index=credits,
+                    admissions_path=admissions,
+                    role="composer",
+                    repo_root=temp,
+                    cache_root=temp / "vgm-cache",
+                    cache_index=temp / "vgm-cache" / "index.jsonl",
+                    refresh=False,
+                    admitted_statuses={"exact"},
+                    spc_extractor=extractor,
+                    spc_cache_root=temp / "spc-cache",
+                    spc_seconds=5,
+                )
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], temp / "tests/corpus/world-spc/01 - Cue.spc")
+        self.assertEqual(calls[0][1]["corpus_id"], "world-spc")
+        self.assertEqual(calls[0][1]["seconds"], 5)
+        self.assertTrue(result["spc_backend_ready"])
+        self.assertEqual(result["role_selected_tracks"], 1)
+        self.assertEqual(result["cacheable_tracks"], 1)
+        self.assertEqual(result["backend_unavailable_tracks"], 0)
+        self.assertEqual(result["unsupported_tracks"], 0)
+        self.assertEqual(result["built"], 1)
 
     def test_genesis_routing_index_remains_small_and_format_specific(self):
         records = all_caches.read_jsonl(ROOT / all_caches.DEFAULT_CREDITS)
@@ -191,20 +248,12 @@ class AdmittedComposerCacheTests(unittest.TestCase):
         )
         self.assertEqual(sum(counts.values()), 66)
 
-        cacheable = [
+        genesis = [
             record for record in admitted if all_caches.cacheable_by_current_backend(record)
         ]
-        unsupported = [
-            record
-            for record in admitted
-            if not all_caches.cacheable_by_current_backend(record)
-        ]
-        self.assertEqual(len(cacheable), 51)
-        self.assertEqual(len(unsupported), 15)
-        self.assertEqual(
-            {pathlib.PurePosixPath(record["fixture_path"]).suffix for record in unsupported},
-            {".spc"},
-        )
+        spc = [record for record in admitted if all_caches._suffix(record) in all_caches.SPC_SUFFIXES]
+        self.assertEqual(len(genesis), 51)
+        self.assertEqual(len(spc), 15)
 
         cube = [
             record
