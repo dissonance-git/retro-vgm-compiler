@@ -8,7 +8,10 @@ This experiment calibrates a feature model. It does **not** assign Sonic 3 autho
 
 The evidence lanes remain separate:
 
-- `structural` is composition-facing evidence inferred from the current physical-channel YM2612 musical trajectory model.
+- `structural` is the preregistered composition-facing aggregate inferred from the current physical-channel YM2612 musical trajectory model.
+- `structural_pitch` isolates interval, interval-bigram, and contour evidence.
+- `structural_rhythm` isolates tempo-normalized onset-gap evidence.
+- the two structural subviews are diagnostics of the same underlying key-on evidence, not independent corroboration.
 - `realization` is arrangement / sound-data / driver / patch / routing-facing evidence.
 - success in `realization` alone must never be translated into a composition credit.
 
@@ -85,13 +88,12 @@ The evaluator must fail closed if:
 
 ## Primary readouts
 
-Read structural and realization views independently.
-
-For each view inspect:
+For each of `structural`, `structural_pitch`, `structural_rhythm`, and `realization`, inspect:
 
 1. Golden Axe III within-soundtrack retrieval
 2. Sonic 3D Blast within-soundtrack retrieval
 3. Genesis cross-soundtrack retrieval
+4. Genesis cross-soundtrack retrieval split by held-out query world
 
 Primary statistics:
 
@@ -103,13 +105,18 @@ Primary statistics:
 
 Raw precision is never sufficient. A Maeda-heavy candidate pool can produce superficially good precision by chance, which is why lift over the query-specific positive fraction is mandatory.
 
+The `structural` aggregate remains the preregistered promotion statistic. Pitch and rhythm subviews explain *why* it succeeds or fails; they do not multiply the evidence count.
+
 ## Preregistered calibration gate
 
-Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless the structural view satisfies all of the following:
+Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless the `structural` view satisfies all of the following:
 
 - positive precision lift over chance in Golden Axe III,
 - positive precision lift over chance in Sonic 3D Blast,
-- positive precision lift over chance in Genesis cross-soundtrack retrieval,
+- positive precision lift over chance in aggregate Genesis cross-soundtrack retrieval,
+- positive cross-soundtrack precision lift when Golden Axe III is the query world,
+- positive cross-soundtrack precision lift when Sonic 3D Blast is the query world,
+- positive cross-soundtrack precision lift when J.League Pro Striker 2 is the query world,
 - positive mean best-Maeda-minus-best-non-Maeda margin in both same-game worlds,
 - no result depends on the quarantined Scorching Sand label.
 
@@ -117,16 +124,22 @@ This is a minimum gate, not proof of creator identity. If it fails, improve the 
 
 Realization may be informative even when structural calibration fails, but it can support only arrangement / sequencing / programming / toolchain hypotheses.
 
-## Required ablations before Sonic 3 promotion
+## Ablation status before Sonic 3 promotion
 
-The current first-pass audit already normalizes transposition-facing interval features and normalized timing gaps, but the full Maeda promotion path still requires explicit ablations for:
+Several requested confounds are already removed by construction in the composition-facing path:
 
-- patch / voice identity removed,
-- platform-specific realization removed,
-- tempo sensitivity checked,
-- transposition sensitivity checked,
-- each soundtrack used as the query world while same-soundtrack candidates are excluded,
-- composition-facing and realization-facing evidence kept separate.
+- patch / voice identity is absent from `structural`, `structural_pitch`, and `structural_rhythm`,
+- realization-specific pan, algorithm, feedback, patch, PSG, DAC, and routing behavior is absent from structural scoring,
+- pitch is represented by relative semitone motion rather than absolute key, making the pitch lens transposition-tolerant,
+- onset gaps are divided by each physical channel's median positive gap before quantization, making the rhythm lens tempo-normalized,
+- cross-soundtrack scoring excludes same-soundtrack candidates and now reports each query world separately.
+
+Still required before a strong Sonic 3 promotion:
+
+- verify that the result is not carried by only pitch or only rhythm without understanding that asymmetry,
+- improve persistent-part recovery so physical YM2612 channels are not silently treated as stable compositional voices,
+- repeat the control experiment after any material feature-model change,
+- keep composition-facing and realization-facing evidence separate throughout.
 
 Any ablation that destroys the Maeda signal lowers confidence. An implementation-heavy signal that disappears when realization features are removed is not evidence of composition.
 
