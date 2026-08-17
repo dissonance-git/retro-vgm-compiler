@@ -1,0 +1,163 @@
+name: Sonic 3 Maeda frozen calibration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sonic3-maeda-calibration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FROZEN_METHOD_COMMIT: 47fa9fbc3ef0f5b1c2a5e91a7ab22efb7088d43c
+      OUT: research/projects/sonic3
+    steps:
+      - name: Checkout frozen method tree
+        uses: actions/checkout@v4
+        with:
+          ref: 47fa9fbc3ef0f5b1c2a5e91a7ab22efb7088d43c
+          fetch-depth: 1
+
+      - name: Verify frozen tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$FROZEN_METHOD_COMMIT"
+          git status --short
+          python --version
+
+      - name: Run frozen VGM regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m unittest discover -s tests/vgm -p 'test_*.py'
+
+      - name: Stage A - creator-blind extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/cross_soundtrack_vgm_audit.py \
+            tests/corpus/golden-axe-iii-genesis-vgz \
+            tests/corpus/sonic-3d-blast-genesis-vgm \
+            tests/corpus/j-league-pro-striker-2-vgz \
+            --include-within-soundtrack \
+            --neighbors 0 \
+            --json "$OUT/maeda-calibration-frozen-audit.json"
+          sha256sum "$OUT/maeda-calibration-frozen-audit.json" | tee "$OUT/maeda-calibration-frozen-audit.sha256"
+
+      - name: Stage B - documentary Maeda unblinding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/maeda_calibration_eval.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --k 3 \
+            --json "$OUT/maeda-calibration-results.json"
+
+      - name: Stage C - count-matched Maeda null
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/maeda_calibration_null.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --k 3 \
+            --permutations 5000 \
+            --seed 20260816 \
+            --json "$OUT/maeda-calibration-null.json"
+
+      - name: Stage D - anti-sibling creator specificity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sonic3d_role_specificity_eval.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --families "$OUT/sonic3d-role-family-policy.json" \
+            --json "$OUT/sonic3d-role-specificity-results.json"
+
+      - name: Stage E - primary family-block role null
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sonic3d_role_specificity_null.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --families "$OUT/sonic3d-role-family-policy.json" \
+            --permutation-unit family-block \
+            --permutations 5000 \
+            --seed 20260816 \
+            --json "$OUT/sonic3d-role-specificity-null.json"
+
+      - name: Stage F - direct-mapping-only replication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sonic3d_role_specificity_eval.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --families "$OUT/sonic3d-role-family-policy.json" \
+            --exclude-mapping-state derived_audio_correspondence \
+            --json "$OUT/sonic3d-role-specificity-direct-map.json"
+          python tools/sonic3d_role_specificity_null.py \
+            "$OUT/maeda-calibration-frozen-audit.json" \
+            --policy "$OUT/maeda-calibration-policy.json" \
+            --families "$OUT/sonic3d-role-family-policy.json" \
+            --exclude-mapping-state derived_audio_correspondence \
+            --permutation-unit family-block \
+            --permutations 5000 \
+            --seed 20260816 \
+            --json "$OUT/sonic3d-role-specificity-direct-map-null.json"
+
+      - name: Write execution manifest
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          out = pathlib.Path(os.environ['OUT'])
+          names = [
+              'maeda-calibration-frozen-audit.json',
+              'maeda-calibration-frozen-audit.sha256',
+              'maeda-calibration-results.json',
+              'maeda-calibration-null.json',
+              'sonic3d-role-specificity-results.json',
+              'sonic3d-role-specificity-null.json',
+              'sonic3d-role-specificity-direct-map.json',
+              'sonic3d-role-specificity-direct-map-null.json',
+          ]
+          manifest = {
+              'frozen_method_commit': os.environ['FROZEN_METHOD_COMMIT'],
+              'executed_repository_head': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+              'artifacts_present': {name: (out / name).is_file() for name in names},
+          }
+          (out / 'maeda-calibration-execution-manifest.json').write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload calibration artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic3-maeda-frozen-calibration
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            research/projects/sonic3/maeda-calibration-frozen-audit.json
+            research/projects/sonic3/maeda-calibration-frozen-audit.sha256
+            research/projects/sonic3/maeda-calibration-results.json
+            research/projects/sonic3/maeda-calibration-null.json
+            research/projects/sonic3/sonic3d-role-specificity-results.json
+            research/projects/sonic3/sonic3d-role-specificity-null.json
+            research/projects/sonic3/sonic3d-role-specificity-direct-map.json
+            research/projects/sonic3/sonic3d-role-specificity-direct-map-null.json
+            research/projects/sonic3/maeda-calibration-execution-manifest.json
