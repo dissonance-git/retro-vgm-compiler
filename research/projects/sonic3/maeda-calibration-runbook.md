@@ -1,47 +1,28 @@
 # Tatsuyuki Maeda blind calibration runbook
 
-This is the preregistered execution path for testing whether the current VGM feature model can rediscover known Tatsuyuki Maeda controls before any unresolved Sonic 3 cue is allowed into the experiment.
+This preregisters the control experiment that must succeed before any unresolved Sonic 3 cue may be scored as a Tatsuyuki Maeda candidate. It calibrates a feature model; it does **not** assign Sonic 3 authorship.
 
-## Claim boundary
+## Evidence lanes
 
-This experiment calibrates a feature model. It does **not** assign Sonic 3 authorship.
+- `structural`: primary composition-facing aggregate from the current YM2612 key-on trajectory model.
+- `structural_pitch`: interval, interval-bigram, and contour diagnostic.
+- `structural_rhythm`: tempo-normalized onset-gap diagnostic.
+- `realization`: arrangement / sequence / sound-data / patch / routing / implementation-facing evidence.
 
-The evidence lanes remain separate:
+Pitch and rhythm are subviews of the same structural evidence, not independent confirmations. Realization can never satisfy a composition gate.
 
-- `structural` is the preregistered composition-facing aggregate inferred from the current physical-channel YM2612 musical trajectory model.
-- `structural_pitch` isolates interval, interval-bigram, and contour evidence.
-- `structural_rhythm` isolates tempo-normalized onset-gap evidence.
-- the two structural subviews are diagnostics of the same underlying key-on evidence, not independent corroboration.
-- `realization` is arrangement / sound-data / driver / patch / routing-facing evidence.
-- success in `realization` alone must never be translated into a composition credit.
+The held-out target is `tests/corpus/sonic-3-knuckles`. It is forbidden from all calibration audits.
 
-The held-out target is `tests/corpus/sonic-3-knuckles`. It is forbidden from the calibration audit.
+## Control worlds
 
-## Frozen control worlds
+1. `golden-axe-iii-genesis-vgz`: 10 Maeda, 4 Hataya, 5 Oguro, 1 uncontested Sawada. `The Scorching Sand` remains a quarantined documentary conflict and is excluded from scoring.
+2. `sonic-3d-blast-genesis-vgm`: complete 24-track role map. Composition is Maeda 10 / Senoue 12 / Setsumaru 1 / Okamoto 1. Arrangement/programming is Maeda 10 / Senoue 10 / Setsumaru 4. Setsumaru and Okamoto are composition singletons, not learnable classes.
+3. `j-league-pro-striker-2-vgz`: six whole-soundtrack Maeda-positive Genesis controls.
+4. `super-columns-vgm`: future cross-platform stress only. The current extractor is Genesis/YM2612-centric and must not mix Game Gear PSG evidence into the primary calibration.
 
-Use only these Genesis worlds in the first executable calibration:
+## Stage A: freeze creator-blind features
 
-1. `tests/corpus/golden-axe-iii-genesis-vgz`
-   - same-game positive and negative controls
-   - 10 Maeda controls
-   - Hataya, Oguro, and uncontested Sawada tracks are non-Maeda controls
-   - `11 - The Scorching Sand.vgz` is quarantined and excluded from scoring
-2. `tests/corpus/sonic-3d-blast-genesis-vgm`
-   - complete 24-track per-track role map
-   - composition: Maeda 10, Senoue 12, Setsumaru 1, Okamoto 1
-   - arrangement/programming: Maeda 10, Senoue 10, Setsumaru 4
-   - only Maeda and Senoue are recurring composition classes; Setsumaru and Okamoto are singleton sentinels
-   - same zone/work/source-lineage family candidates are excluded from role-specificity retrieval
-   - two corpus-tail role mappings are `derived_audio_correspondence` and must be removed in a mandatory sensitivity replication
-3. `tests/corpus/j-league-pro-striker-2-vgz`
-   - six whole-soundtrack Maeda-positive controls
-   - useful only in cross-soundtrack retrieval because this world contains no internal non-Maeda controls
-
-`tests/corpus/super-columns-vgm` is deliberately excluded. The current extractor is Genesis/YM2612-centric; Super Columns becomes a cross-platform stress test only after a platform-neutral musical representation exists.
-
-## Stage A: creator-blind extraction
-
-Run this before loading `maeda-calibration-policy.json` into any scoring process:
+Run before loading documentary labels into any scoring process:
 
 ```bash
 python tools/cross_soundtrack_vgm_audit.py \
@@ -53,26 +34,16 @@ python tools/cross_soundtrack_vgm_audit.py \
   --json research/projects/sonic3/maeda-calibration-frozen-audit.json
 ```
 
-The output must declare:
+Required contract:
 
 ```text
 model = blind cross-soundtrack Genesis VGM creator audit
 label_policy contains: No composer/artist metadata
 ```
 
-No composer labels are permitted in this file. Do not include the Sonic 3 corpus.
+The audit must contain no Sonic 3 target tracks and no creator labels. Record its SHA-256 before unblinding. Any feature change creates a new experiment.
 
-Freeze an integrity digest before unblinding:
-
-```bash
-sha256sum research/projects/sonic3/maeda-calibration-frozen-audit.json
-```
-
-Record the digest with the result artifact or commit message. If the audit changes, it is a new experiment.
-
-## Stage B: documentary Maeda unblinding
-
-Only after Stage A is frozen:
+## Stage B: Maeda-vs-rest unblinding
 
 ```bash
 python tools/maeda_calibration_eval.py \
@@ -82,9 +53,11 @@ python tools/maeda_calibration_eval.py \
   --json research/projects/sonic3/maeda-calibration-results.json
 ```
 
-The evaluator must fail closed if the input is not the creator-blind audit contract, the held-out Sonic 3 target appears, the Sonic 3D Blast partition is incomplete, or any required scored control is missing.
+The evaluator fails closed on a non-blind audit, held-out Sonic 3 leakage, incomplete Sonic 3D coverage, or missing scored controls.
 
-## Stage C: count-matched Maeda-label null
+Read structural and realization lanes separately. Report Golden Axe III within-soundtrack, Sonic 3D Blast within-soundtrack, aggregate Genesis cross-soundtrack, and cross-soundtrack results by query world. Primary statistics are precision@k, chance precision, lift over chance, MRR, and best-positive-minus-best-negative margin.
+
+## Stage C: count-matched Maeda null
 
 ```bash
 python tools/maeda_calibration_null.py \
@@ -96,17 +69,9 @@ python tools/maeda_calibration_null.py \
   --json research/projects/sonic3/maeda-calibration-null.json
 ```
 
-The null preserves the observed Maeda count separately inside Golden Axe III and Sonic 3D Blast. J.League Pro Striker 2 remains fixed as a whole-soundtrack Maeda-positive world. The disputed Scorching Sand track remains excluded.
+Golden Axe III and Sonic 3D Blast retain their observed Maeda counts; J.League remains a fixed whole-soundtrack positive world. Scorching Sand stays excluded. Empirical p-values use the plus-one correction `(1 + null >= observed) / (1 + permutations)`.
 
-All empirical p-values use the plus-one correction:
-
-```text
-(1 + number of null scores >= observed score) / (1 + permutations)
-```
-
-## Stage D: Sonic 3D Blast role specificity with anti-sibling exclusion
-
-Use the same frozen Stage A audit. This asks whether recurring creators can be distinguished inside one soundtrack after related-work shortcuts are removed.
+## Stage D: Sonic 3D creator specificity
 
 ```bash
 python tools/sonic3d_role_specificity_eval.py \
@@ -116,46 +81,50 @@ python tools/sonic3d_role_specificity_eval.py \
   --json research/projects/sonic3/sonic3d-role-specificity-results.json
 ```
 
-The family policy is mandatory. Every query excludes candidates from the same zone/work/source-lineage family. Act 1 cannot retrieve Act 2 of the same zone as a creator win, and `Robotnik 2` cannot retrieve the related `Robotnik 3` / unused-1D Boss-2-family variant as a creator win.
+The family policy is mandatory. Every query excludes candidates from the same zone/work/source-lineage family. Act 1 cannot retrieve Act 2 of the same zone, and the related Robotnik 2 / Robotnik 3 Boss-2 lineage cannot retrieve within itself.
 
-### Composition lane
+Composition uses structural evidence to distinguish recurring Maeda and Senoue classes. Setsumaru and Okamoto remain singleton sentinels and may cause errors. Arrangement/programming uses realization to distinguish Maeda, Senoue, and Setsumaru; it cannot satisfy a composition gate.
 
-The recurring classes are Maeda 10 and Senoue 12. Setsumaru and Okamoto are singleton sentinels: they may steal a top-1 retrieval and count as an error, but they must never be treated as learned creator clusters.
+## Stage E: primary family-block role null
 
-`structural` is primary. `structural_pitch` and `structural_rhythm` are diagnostic subviews only.
-
-Primary statistics are balanced top-1 accuracy, Maeda recall, Senoue recall, mean reciprocal rank, mean best-same-minus-best-other margin, singleton top-1 intrusions, and number of same-family candidate instances excluded.
-
-### Arrangement/programming lane
-
-`realization` uses recurring role classes Maeda 10, Senoue 10, Setsumaru 4. This lane can calibrate implementation fingerprints only and is forbidden from satisfying a composition gate.
-
-## Stage E: anti-sibling role-label permutation null
+Family correlation must remain present in the primary null:
 
 ```bash
 python tools/sonic3d_role_specificity_null.py \
   research/projects/sonic3/maeda-calibration-frozen-audit.json \
   --policy research/projects/sonic3/maeda-calibration-policy.json \
   --families research/projects/sonic3/sonic3d-role-family-policy.json \
+  --permutation-unit family-block \
   --permutations 5000 \
   --seed 20260816 \
   --json research/projects/sonic3/sonic3d-role-specificity-null.json
 ```
 
-The null keeps feature vectors and every `family_id` fixed while permuting role labels across tracks. It preserves the exact observed label multiset separately for composition and arrangement/programming, including singleton treatment.
+The family-block null keeps feature vectors and family IDs fixed. Complete label packages move only among selected families with the same track count, with labels permitted to reorder inside the target family. This preserves global role counts, family-size distribution, the multiset of within-family label compositions, singleton treatment, and the same-family exclusion geometry while breaking creator-to-feature alignment.
 
-The primary composition null statistics are balanced top-1 accuracy, minimum recall across learnable classes, mean reciprocal rank, and mean best-same-minus-best-other margin. Pitch, rhythm, and realization nulls are diagnostics, not alternative composition pass routes.
+A track-wise shuffle is a **secondary sensitivity only**:
+
+```bash
+python tools/sonic3d_role_specificity_null.py \
+  research/projects/sonic3/maeda-calibration-frozen-audit.json \
+  --policy research/projects/sonic3/maeda-calibration-policy.json \
+  --families research/projects/sonic3/sonic3d-role-family-policy.json \
+  --permutation-unit track \
+  --permutations 5000 \
+  --seed 20260816 \
+  --json research/projects/sonic3/sonic3d-role-specificity-track-null.json
+```
+
+Track-wise significance cannot rescue a failed family-block result. The two nulls are sensitivity views of one dataset, not independent evidence.
 
 ## Stage F: direct-mapping-only replication
 
-Two committed Sonic 3D corpus-tail mappings are explicitly derived rather than direct title/role matches:
+Two Sonic 3D tail mappings are explicitly `derived_audio_correspondence` rather than direct title matches:
 
 - `19 - Special Stage 2.vgm` -> `Sonic 3 Bonus Stage`
 - `22 - Robotnik 3.vgm` -> `unused 1D`
 
-A valid creator signal must survive removing both. The complete 24-track audit and complete role/family maps are still validated first; only then are `derived_audio_correspondence` rows excluded.
-
-Observed 22-track sensitivity panel:
+The full 24-track audit and maps are validated first, then both rows are removed:
 
 ```bash
 python tools/sonic3d_role_specificity_eval.py \
@@ -166,7 +135,7 @@ python tools/sonic3d_role_specificity_eval.py \
   --json research/projects/sonic3/sonic3d-role-specificity-direct-map.json
 ```
 
-Matched 22-track permutation null:
+Matched 22-track primary null:
 
 ```bash
 python tools/sonic3d_role_specificity_null.py \
@@ -174,123 +143,51 @@ python tools/sonic3d_role_specificity_null.py \
   --policy research/projects/sonic3/maeda-calibration-policy.json \
   --families research/projects/sonic3/sonic3d-role-family-policy.json \
   --exclude-mapping-state derived_audio_correspondence \
+  --permutation-unit family-block \
   --permutations 5000 \
   --seed 20260816 \
   --json research/projects/sonic3/sonic3d-role-specificity-direct-map-null.json
 ```
 
-The selected-panel counts must become:
+Expected selected-panel counts are composition Maeda 10 / Senoue 10 / Setsumaru 1 / Okamoto 1 and arrangement/programming Maeda 10 / Senoue 9 / Setsumaru 3. The 22-track null must be recomputed on the selected geometry, never reused from the 24-track distribution.
 
-- composition: Maeda 10, Senoue 10, Setsumaru 1, Okamoto 1
-- arrangement/programming: Maeda 10, Senoue 9, Setsumaru 3
+## Preregistered pass gate
 
-This is a sensitivity replication of the same hypothesis, not an independent evidence multiplier.
+**Sonic 3 stays sealed unless every primary structural condition passes.**
 
-## Primary Maeda readouts
+Maeda-vs-rest:
+- positive structural precision lift in Golden Axe III, Sonic 3D Blast, and aggregate Genesis cross-soundtrack retrieval;
+- structural precision-lift permutation `p <= 0.05` in all three environments;
+- positive cross-soundtrack lift when each of Golden Axe III, Sonic 3D Blast, and J.League is the query world;
+- positive mean best-Maeda-minus-best-non-Maeda margin in both mixed-composer same-game worlds;
+- no scored result depends on Scorching Sand.
 
-For each of `structural`, `structural_pitch`, `structural_rhythm`, and `realization`, inspect Golden Axe III within-soundtrack retrieval, Sonic 3D Blast within-soundtrack retrieval, Genesis cross-soundtrack retrieval, and cross-soundtrack retrieval split by held-out query world.
+Sonic 3D 24-track specificity:
+- same-family candidates excluded;
+- structural balanced top-1 accuracy `> 0.50`;
+- Maeda recall `> 0.50` and Senoue recall `> 0.50`;
+- structural best-same-minus-best-other margin `> 0`;
+- **family-block** permutation `p <= 0.05` for structural balanced accuracy and structural margin;
+- singleton intrusions reported, never removed post hoc.
 
-Primary statistics are `precision_at_k`, `chance_precision_at_k`, `precision_lift_over_chance`, `mean_reciprocal_rank`, `mean_best_positive_minus_best_negative`, and empirical permutation p-values.
+Sonic 3D 22-track direct-map replication must satisfy the same directional thresholds and the same two matched **family-block** significance thresholds, with `included_track_count == 22` and the derived mapping state excluded. If either 24-track or 22-track panel fails, the creator-specificity gate fails.
 
-Raw precision is never sufficient. The `structural` aggregate remains the preregistered promotion statistic. Pitch and rhythm explain why it succeeds or fails; they do not multiply the evidence count.
+Pitch/rhythm subviews, realization, track-wise nulls, 24/22 replications, and multiple statistics are diagnostics or robustness checks. They must not be counted as independent evidence multipliers or used to create alternate pass routes.
 
-## Preregistered calibration gate
+## Remaining representation caveat
 
-Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless every primary structural requirement below is satisfied.
-
-### Maeda-vs-rest control gate
-
-- positive precision lift over chance in Golden Axe III,
-- positive precision lift over chance in Sonic 3D Blast,
-- positive precision lift over chance in aggregate Genesis cross-soundtrack retrieval,
-- empirical permutation `p <= 0.05` for structural precision lift in Golden Axe III,
-- empirical permutation `p <= 0.05` for structural precision lift in Sonic 3D Blast,
-- empirical permutation `p <= 0.05` for structural precision lift in aggregate Genesis cross-soundtrack retrieval,
-- positive cross-soundtrack precision lift when Golden Axe III is the query world,
-- positive cross-soundtrack precision lift when Sonic 3D Blast is the query world,
-- positive cross-soundtrack precision lift when J.League Pro Striker 2 is the query world,
-- positive mean best-Maeda-minus-best-non-Maeda margin in both same-game worlds,
-- no result depends on the quarantined Scorching Sand label.
-
-The three primary `p <= 0.05` requirements are an intersection gate. Diagnostic p-values do not create extra ways to pass.
-
-### Sonic 3D creator-specificity gate: complete 24-track role map
-
-The primary `structural` result must satisfy:
-
-- `same_family_candidates_excluded == true`,
-- balanced top-1 accuracy `> 0.50`,
-- Maeda recall `> 0.50`,
-- Senoue recall `> 0.50`,
-- mean best-same-minus-best-other margin `> 0`,
-- empirical role-permutation `p <= 0.05` for structural balanced top-1 accuracy,
-- empirical role-permutation `p <= 0.05` for structural mean best-same-minus-best-other margin,
-- singleton top-1 intrusions are reported explicitly and never removed post hoc.
-
-Both significance requirements must pass. Raw per-class recall thresholds remain mandatory so one creator cannot carry the aggregate.
-
-### Sonic 3D creator-specificity gate: direct-mapping-only replication
-
-The 22-track Stage F `structural` result must independently satisfy the same directional and significance conditions:
-
-- `excluded_mapping_states == ["derived_audio_correspondence"]`,
-- `included_track_count == 22`,
-- `same_family_candidates_excluded == true`,
-- balanced top-1 accuracy `> 0.50`,
-- Maeda recall `> 0.50`,
-- Senoue recall `> 0.50`,
-- mean best-same-minus-best-other margin `> 0`,
-- matched 22-track permutation `p <= 0.05` for structural balanced top-1 accuracy,
-- matched 22-track permutation `p <= 0.05` for structural mean best-same-minus-best-other margin.
-
-If the complete-map panel passes but the direct-mapping-only replication fails, the creator-specificity gate fails. The two panels are robustness checks of one hypothesis and must not be counted as two independent confirmations.
-
-Any role-specificity result that succeeds through same-family siblings or uncertain corpus-tail mappings is invalid by construction.
-
-This is a minimum calibration gate, not proof of creator identity. If it fails, improve the representation on controls and rerun as a new frozen experiment. Do not tune on Sonic 3.
-
-Realization may be informative even when structural calibration fails, but it can support only arrangement / sequencing / programming / toolchain hypotheses.
-
-## Ablation status before Sonic 3 promotion
-
-Already removed or controlled in the composition-facing path:
-
-- patch / voice identity,
-- realization-specific pan, algorithm, feedback, patch, PSG, DAC, and routing behavior,
-- absolute-key dependence through relative semitone motion,
-- raw-tempo dependence through per-channel median-normalized onset gaps,
-- same-soundtrack shortcuts in cross-soundtrack scoring,
-- same-family sibling shortcuts in Sonic 3D role specificity,
-- label-count advantage through permutation nulls,
-- the two uncertain Sonic 3D corpus-tail role mappings through mandatory direct-mapping-only replication.
-
-Still required before a strong Sonic 3 promotion:
-
-- understand whether any structural result is carried only by pitch or only by rhythm,
-- improve persistent-part recovery so physical YM2612 channels are not silently treated as stable compositional voices,
-- repeat the entire control experiment after any material feature-model change,
-- keep composition-facing and realization-facing evidence separate throughout.
-
-Any ablation that destroys the Maeda signal lowers confidence. An implementation-heavy signal that disappears when realization features are removed is not evidence of composition.
+The current structural extractor is already patch-free, relative-pitch based, and median-gap normalized, so patch identity, absolute key, and raw tempo are not primary structural shortcuts. The major remaining representation limitation is **persistent-part recovery**: physical YM2612 channels are not guaranteed to be stable compositional voices. A material change to that representation requires rerunning the entire control experiment from a new frozen blind audit.
 
 ## Quarantined adversarial probe
 
-After the scored calibration is frozen, `Golden Axe III / The Scorching Sand` may be passed through the same feature space as an **unscored adversarial probe**. Ask where it falls naturally, but never use the answer to alter training labels or calibration scores.
+After scored calibration is frozen, Golden Axe III `The Scorching Sand` may be projected into the same feature space as an **unscored** adversarial probe. Its location can be observed, but it cannot alter labels, thresholds, or calibration scores.
 
-## Only then: Sonic 3 candidate search
+## Only then: Sonic 3
 
-If the structural calibration gate survives the Maeda controls, both empirical null families, anti-sibling role-specificity tests, direct-mapping-only replication, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
-
-The allowed conclusion format is:
+Only after every gate above survives may unresolved Sonic 3 cues enter a new frozen blind extraction. The allowed conclusion is limited to:
 
 ```text
 Maeda candidate: supported / mixed / not supported by calibrated structural similarity
 ```
 
-Never:
-
-```text
-composed by Tatsuyuki Maeda
-```
-
-unless independent historical evidence later closes that gap.
+Never convert similarity alone into `composed by Tatsuyuki Maeda`; independent historical evidence is required for a historical assignment.
