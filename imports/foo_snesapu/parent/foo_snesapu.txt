@@ -1,0 +1,119 @@
+* このプラグインは
+
+  SNESAPU.DLLを使ってfoobar2000でSPCを再生するプラグインです。
+
+
+* 用意する物
+
+ foobar2000 v1.0以上
+ Sunburst版SNESAPU.DLL(http://dgrfactory.jp/)
+
+* 利用方法
+
+  foo_snesapu.dllをfoobar2000のコンポーネントフォルダーにコピー。
+  SNESAPU.DLLをfoobar2000.exeの有る場所にコピー。
+
+
+* オリジナルからの改良点
+
+  SNESAPU独自拡張版(主にScrpit700)の機能が使用可能。
+  ExtendedID666タグの読み込み。
+  常用できる程度の安定動作。
+
+
+* 未実装部分
+
+ ID666タグのdate/time/fade/emulator項目の書き込み -> 必要?
+ 拡張ID666の書き込み
+
+
+* オリジナルのあった場所
+
+  http://www.hydrogenaudio.org/forums/index.php%3Fshowtopic%3D23952
+  (既にdead linkです)
+
+  hydrogenaudioにあったオリジナルの出来が余りにも酷かったので改造した
+  のがこのコンポーネントの原型です。
+
+* ライセンス
+
+  SNESAMPのソースを一部流用したのでGPLが適用されます。
+
+* ビルド方法
+　1,WTL8をC:にインストール
+　2,WTL8のincludeディレクトリを追加のincludeディレクトリに追加
+　3,foobar2000_ATL_helpers、foobar2000_component_client、foobar2000_SDK、foobar2000_sdk_helpers、pfcをビルドして*.libを生成する。
+　4,sharedディレクトリ内のshared.libと、3で作った*.libを追加の依存ファイルに追加しビルド。
+
+* 連絡先
+
+  2chのSPCスレにでも書けば対応するかも?
+
+
+* 履歴
+[2013/10/27]
+Imported dll_manager and updated it
+SNESAPU.dll is now loaded from the component install directory
+Fixed the preferences dialog by rewriting most of it
+Moved file sample format information to dynamic reporter, since it can change with configuration
+
+[2013/06/07]
+SDKおよび、snesapuのヘッダーファイルを更新してリビルド。環境はMSVC2010 + WTL8.0
+foobar1.1設定画面が反映されないのは相変わらずだが、とりあえず、ビットレートが反映されるようになったらしい。
+この辺のバグは、設定画面のUIの処理を書き直すしかないだろうね。あとは任せた。
+
+[2010/01/22]
+ExtendedID666のOST_TRACKの読み込みを再修正。
+Preferenceのコードをfoobar1.0用に作り直し。
+Mixing設定の廃止。
+Disable envelope/Disable noise/Write DSP echo memory map/Disable surroundの設定を追加。
+
+[2009/05/05]
+ExtendedID666のOST_TRACKの読み込みを修正。
+Sunburstの変更に合わせてMixingTypeの廃止。
+その他、細かい修正。
+
+[2007/09/06]
+今回から正式サポートするのはSunburst版のSNESAPUのみをにします。
+デュアルコアCPUが増えてきたので複数インスタンスで動作するように修正。(少々強引...)
+ID666タグの一部書き込みをサポート。
+その他小バグ修正。
+
+[2007/02/05]
+Seekの精度を上げた。
+Script700SEファイルの読み込みを実装。
+ExtendedID666タグ読み込みを全て実装。
+不要なコードを削除。
+Sunburst版でフェードアウトが効かない対策
+ -> 再生周波数を変えてSetAPUOptを2回コールすると回避できる模様。初期化が上手くいってない?
+無音検知実装。
+左右拡散度、 フィードバック設定追加。
+
+[2007/01/21]
+負方向のシーク後にフェードアウトが効かない不具合を修正。
+MSVCR80.dllを不要にした。
+Sunburst版v2.11.2ではフェードアウトが効きません。
+v2.11.0以前及び他のコアではうまく動作するのでSSDLaboコアの不具合だと思います...
+
+[2006/12/20]
+ExtendedID666タグの未実装部分を実装(演奏時間/チャンネルミュート)
+
+[2006/09/25]
+foobar2000最新SDKでビルド。
+ID666:エミュレータ種別でSNESGTに対応。
+Sunburst版:SNESAPU.DLL 2.11.0までの追加機能に対応。
+Sunburst版:Script700を使用後にScript700を解除していない不具合を修正。
+
+[2006/04/12]
+ID666バイナリーフォーマットの演奏時間を修正。
+
+[2006/04/01]
+foobar2000 v0.9に対応してみる。
+
+[2005/06/24]
+ID666バイナリーフォーマット対応
+日付情報を表示
+
+[2005/01/27]
+Sunburst版SNESAPU.DLLでGetScript700Dataが非推奨になったのでコードを削除。
+設定画面のタブオーダー修正。

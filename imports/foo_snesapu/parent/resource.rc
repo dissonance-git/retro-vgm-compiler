@@ -1,0 +1,132 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// �p�� (�č�) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_CONFIG DIALOGEX 0, 0, 332, 288
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "Quality",IDC_STATIC,6,3,320,48
+    LTEXT           "Sample Rate:",IDC_STATIC,26,13,55,15,SS_CENTERIMAGE
+    COMBOBOX        IDC_SAMPLERATE,83,13,60,130,CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT           "Interpolation:",IDC_STATIC,26,30,55,15,SS_CENTERIMAGE
+    COMBOBOX        IDC_INTERPOLATION,83,30,60,90,CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT           "Bits per sample:",IDC_STATIC,181,13,55,15,SS_CENTERIMAGE
+    COMBOBOX        IDC_BITS,238,13,60,90,CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT           "No. of Channels:",IDC_STATIC,181,30,55,15,SS_CENTERIMAGE
+    COMBOBOX        IDC_CHANNELS,238,30,60,90,CBS_DROPDOWNLIST | WS_TABSTOP
+    GROUPBOX        "DSP Options",IDC_STATIC,6,54,320,108
+    CONTROL         "Use old ADPCM decompression routine",IDC_DSP_OLDADPCM,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,65,138,15
+    CONTROL         "Enable Spatial Pre-Conditioning",IDC_SEM71_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,145,15
+    CONTROL         "Reverse stereo position",IDC_DSP_REVERSE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,78,138,15
+    CONTROL         "Disable echo",IDC_DSP_DISECHO,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,78,145,15
+    CONTROL         "Disable pitch modulation",IDC_DSP_DISPITM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,91,145,15
+    CONTROL         "Disable pitch read",IDC_DSP_DISPITR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,91,145,15
+    CONTROL         "Disable FIR low pass",IDC_DSP_DISFIR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,104,145,15
+    CONTROL         "Bass boost",IDC_DSP_BASSBOOST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,104,138,15
+    CONTROL         "Disable envelope",IDC_DSP_DISENV,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,117,145,15
+    CONTROL         "Disable noise",IDC_DSP_DISNOISE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,117,145,15
+    CONTROL         "Write DSP echo memory map",IDC_DSP_ECHOMEM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,130,145,15
+    CONTROL         "Disable surround sound",IDC_DSP_NOSURND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,130,145,15
+    CONTROL         "Simulate analog anomalies (LPF)",IDC_DSP_ANALOG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,143,145,15
+    GROUPBOX        "Song Timing",IDC_STATIC,6,167,320,64
+    CONTROL         "Use internal SPC song lengths",IDC_USESPCLENGTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,177,145,15
+    CONTROL         "Failing that, force these lengths:",IDC_FORCELENGTH,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,192,145,15
+    LTEXT           "Song length (ms):",IDC_STATIC,26,210,55,15,SS_CENTERIMAGE
+    EDITTEXT        IDC_SONGLENGTH,85,210,60,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Fade length (ms):",IDC_STATIC,178,210,55,15,SS_CENTERIMAGE
+    EDITTEXT        IDC_FADELENGTH,237,210,60,14,ES_AUTOHSCROLL | ES_NUMBER
+    GROUPBOX        "Misc",IDC_STATIC,6,235,320,50
+    CONTROL         "Use fast seeking",IDC_FASTSEEK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,243,145,15
+    LTEXT           "Volume",IDC_STATIC,16,265,24,8
+    CONTROL         "",IDC_VOLUME,"msctls_trackbar32",TBS_AUTOTICKS | WS_TABSTOP,41,263,100,12
+    EDITTEXT        IDC_VOLUME_VALUE,146,264,20,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
+    CONTROL         "Ignore script700",IDC_IGNORE_SCRIPT700,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,243,145,15
+    CONTROL         "Ignore amplification field in XID6 tag",IDC_IGNORE_XID6_AMP,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,258,145,15
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_CONFIG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 325
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 281
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // �p�� (�č�) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

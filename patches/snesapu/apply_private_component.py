@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Apply the complete private foo_snesapu parent/component patch stack.
 
-The source tree must be the SRCE-v2-capable vgmspc base pinned by
-apply_spatial_omniphony_private_runtime.py. SNESAPU itself is patched/built
-separately because it is a distinct 32-bit dependency tree.
+The source tree must be the internal SRCE-v2-capable foo_snesapu bootstrap
+materialized by tools/materialize_foo_snesapu.py. SNESAPU itself is
+patched/built separately because it is a distinct 32-bit dependency tree.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def main() -> int:
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
     add_algorithm_include(parent / "stdafx.h")
 
-    print("private foo_snesapu Enhanced + Spatial patch stack applied")
+    print("private foo_snesapu enhanced + Spatial patch stack applied")
     return 0
 
 

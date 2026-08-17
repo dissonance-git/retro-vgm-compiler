@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Add an independent Enhanced preference to the historical foobar SNESAPU shell.
+"""Add an independent enhanced preference to the historical foobar SNESAPU shell.
 
 This patch is configuration/UI only. It deliberately does not reinterpret the
-legacy interpolation combo and does not couple Enhanced to Omniphony/Spatial.
+legacy interpolation combo and does not couple enhanced to Omniphony/Spatial.
 The runtime consumes cfg_enhanced_enabled separately.
 """
 
@@ -52,24 +52,24 @@ def main() -> int:
 
     replace_once(
         resource_h,
-        """#define IDC_SPATIAL_DEPTH_LABEL         1032
+        """#define IDC_SEM71_ENABLED               1029
 
 
 // Next default values for new objects
 """,
-        """#define IDC_SPATIAL_DEPTH_LABEL         1032
-#define IDC_ENHANCED_ENABLED            1033
+        """#define IDC_SEM71_ENABLED               1029
+#define IDC_ENHANCED_ENABLED            1030
 
 
 // Next default values for new objects
 """,
-        "SNES Enhanced control id",
+        "SNES enhanced control id",
     )
     replace_once(
         resource_h,
-        """#define _APS_NEXT_CONTROL_VALUE         1033
+        """#define _APS_NEXT_CONTROL_VALUE         1029
 """,
-        """#define _APS_NEXT_CONTROL_VALUE         1034
+        """#define _APS_NEXT_CONTROL_VALUE         1031
 """,
         "SNES next control id",
     )
@@ -78,9 +78,9 @@ def main() -> int:
         """    CONTROL         "Enable Spatial Pre-Conditioning",IDC_SEM71_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,145,15
 """,
         """    CONTROL         "Spatial",IDC_SEM71_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,60,15
-    CONTROL         "Enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,240,65,70,15
+    CONTROL         "enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,240,65,70,15
 """,
-        "SNES independent Spatial/Enhanced controls",
+        "SNES independent Spatial/enhanced controls",
     )
 
     replace_once(
@@ -97,7 +97,7 @@ static const GUID guid_enhanced_enabled =
 { 0x47f27b61, 0x8ac2, 0x4f30, { 0xb9, 0x11, 0x72, 0xd8, 0x91, 0x51, 0x5a, 0x03 } };
 #endif
 """,
-        "SNES Enhanced preference GUID",
+        "SNES enhanced preference GUID",
     )
     replace_once(
         prefs,
@@ -110,7 +110,7 @@ cfg_int cfg_sem71_enabled             (guid_sem71_enabled,             1);  // p
 cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // protected reference remains default
 #endif
 """,
-        "SNES Enhanced cfg var",
+        "SNES enhanced cfg var",
     )
     replace_once(
         prefs,
@@ -123,7 +123,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 \t\tCOMMAND_ID_HANDLER_EX(IDC_ENHANCED_ENABLED, OnEditChange)
 #endif
 """,
-        "SNES Enhanced message handler",
+        "SNES enhanced message handler",
     )
     replace_once(
         prefs,
@@ -136,7 +136,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 \tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, cfg_enhanced_enabled, 0);
 #else
 """,
-        "SNES Enhanced initialization",
+        "SNES enhanced initialization",
     )
     replace_once(
         prefs,
@@ -146,7 +146,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 #endif
 """,
         """#else
-\t// Source-aware Spatial/Enhanced paths are x64-only in this shell.
+\t// Source-aware Spatial/enhanced paths are x64-only in this shell.
 \t::EnableWindow(GetDlgItem(IDC_SEM71_ENABLED), FALSE);
 \t::EnableWindow(GetDlgItem(IDC_ENHANCED_ENABLED), FALSE);
 #endif
@@ -164,7 +164,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 \t((CButton)GetDlgItem(IDC_ENHANCED_ENABLED)).SetCheck(0); // reference synthesis default
 #endif
 """,
-        "SNES Enhanced reset",
+        "SNES enhanced reset",
     )
     replace_once(
         prefs,
@@ -177,7 +177,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 \tcfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_GETCHECK, 0, 0);
 #endif
 """,
-        "SNES Enhanced apply",
+        "SNES enhanced apply",
     )
     replace_once(
         prefs,
@@ -196,7 +196,7 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
 \t}
 #endif
 """,
-        "SNES Enhanced dirty-state tracking",
+        "SNES enhanced dirty-state tracking",
     )
     replace_once(
         input_cpp,
@@ -205,10 +205,10 @@ cfg_int cfg_enhanced_enabled          (guid_enhanced_enabled,          0);  // p
         """extern cfg_int cfg_sem71_enabled;
 extern cfg_int cfg_enhanced_enabled;
 """,
-        "SNES Enhanced runtime declaration",
+        "SNES enhanced runtime declaration",
     )
 
-    print("SNESAPU independent Enhanced preference applied successfully")
+    print("SNESAPU independent enhanced preference applied successfully")
     return 0
 
 
