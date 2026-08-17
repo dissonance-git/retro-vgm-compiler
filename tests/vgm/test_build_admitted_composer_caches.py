@@ -23,24 +23,26 @@ def test_admitted_creators_filters_roles_and_conflicts():
     assert all_caches.admitted_creators(records) == ["A", "B"]
 
 
-def test_build_all_dispatches_each_admitted_composer_once(tmp_path, monkeypatch):
+def test_build_all_routes_only_backend_compatible_fixtures(tmp_path, monkeypatch):
     credits = tmp_path / "credits.jsonl"
     records = [
-        {"fixture_path": "a.vgm", "creator": "B", "role": "composer", "status": "exact"},
-        {"fixture_path": "b.vgm", "creator": "A", "role": "composer", "status": "exact"},
-        {"fixture_path": "c.vgm", "creator": "A", "role": "composer", "status": "conflict"},
+        {"fixture_path": "a.vgm", "creator": "A", "role": "composer", "status": "exact"},
+        {"fixture_path": "b.spc", "creator": "A", "role": "composer", "status": "exact"},
+        {"fixture_path": "c.spc", "creator": "B", "role": "composer", "status": "exact"},
+        {"fixture_path": "ignored.vgm", "creator": "C", "role": "composer", "status": "conflict"},
     ]
     credits.write_text("\n".join(json.dumps(record) for record in records) + "\n")
 
     calls = []
 
     def fake_build_creator(**kwargs):
-        calls.append(kwargs["creator"])
+        filtered = all_caches.read_jsonl(kwargs["credit_index"])
+        calls.append((kwargs["creator"], [record["fixture_path"] for record in filtered]))
         return {
             "creator": kwargs["creator"],
             "role": kwargs["role"],
-            "selected_tracks": 1,
-            "built": 1,
+            "selected_tracks": len(filtered),
+            "built": len(filtered),
             "reused": 0,
         }
 
@@ -55,11 +57,22 @@ def test_build_all_dispatches_each_admitted_composer_once(tmp_path, monkeypatch)
         admitted_statuses={"exact"},
     )
 
-    assert calls == ["A", "B"]
+    assert calls == [("A", ["a.vgm"])]
     assert result["creator_count"] == 2
-    assert result["selected_tracks"] == 2
-    assert result["built"] == 2
+    assert result["role_selected_tracks"] == 3
+    assert result["cacheable_tracks"] == 1
+    assert result["unsupported_tracks"] == 2
+    assert result["selected_tracks"] == 1
+    assert result["built"] == 1
     assert result["reused"] == 0
+
+    by_creator = {item["creator"]: item for item in result["results"]}
+    assert by_creator["A"]["role_selected_tracks"] == 2
+    assert by_creator["A"]["cacheable_tracks"] == 1
+    assert by_creator["A"]["unsupported_fixtures"] == ["b.spc"]
+    assert by_creator["B"]["role_selected_tracks"] == 1
+    assert by_creator["B"]["cacheable_tracks"] == 0
+    assert by_creator["B"]["unsupported_fixtures"] == ["c.spc"]
 
 
 def test_sonic3_credit_index_covers_all_admitted_composer_controls():
@@ -81,8 +94,16 @@ def test_sonic3_credit_index_covers_all_admitted_composer_controls():
         "Tomonori Sawada": 2,
         "Masaru Setsumaru": 1,
         "Seirou Okamoto": 1,
+        "Miyoko Takaoka": 19,
+        "Masanori Hikichi": 9,
     }
-    assert sum(counts.values()) == 51
+    assert sum(counts.values()) == 79
+
+    cacheable = [record for record in admitted if all_caches.cacheable_by_current_backend(record)]
+    unsupported = [record for record in admitted if not all_caches.cacheable_by_current_backend(record)]
+    assert len(cacheable) == 51
+    assert len(unsupported) == 28
+    assert {pathlib.PurePosixPath(record["fixture_path"]).suffix for record in unsupported} == {".spc"}
 
     scorching = [
         record for record in admitted
@@ -92,3 +113,21 @@ def test_sonic3_credit_index_covers_all_admitted_composer_controls():
     assert scorching[0]["creator"] == "Tomonori Sawada"
     assert scorching[0]["status"] == "derived"
     assert "counterevidence" in scorching[0]
+
+
+def test_cube_controls_are_external_terranigma_only():
+    records = all_caches.read_jsonl(
+        ROOT / "research" / "projects" / "sonic3" / "role-credit-index.jsonl"
+    )
+    cube = [
+        record for record in records
+        if record.get("creator") in {"Miyoko Takaoka", "Masanori Hikichi"}
+    ]
+    assert len(cube) == 28
+    assert {record["corpus_id"] for record in cube} == {"terranigma-spc"}
+    assert all(
+        record["source_policy"]
+        == "research/projects/sonic3/cube-composer-control-policy.json"
+        for record in cube
+    )
+    assert not any("sonic-3-and-knuckles" in record["fixture_path"] for record in cube)
