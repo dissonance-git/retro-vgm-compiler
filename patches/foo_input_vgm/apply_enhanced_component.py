@@ -28,6 +28,7 @@ def main() -> int:
 
     run(here / "apply_enhanced_ui.py", source)
     run(here / "apply_source_aware_player.py", source)
+    run(here / "apply_source_aware_shadow_include.py", source)
     run(here / "apply_hq_nuked_fm_lift.py", source)
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
