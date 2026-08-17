@@ -10,31 +10,36 @@ VGM/VGZ binaries are ingestion inputs, not the normal query surface. Each song g
 
 The cache deliberately separates two concerns:
 
-- **features**: creator-blind evidence extracted from the music stream;
-- **labels**: documentary composer / arranger / programmer evidence stored in separate research policy or index files.
+- **features/evidence**: creator-blind material extracted from the music stream;
+- **labels**: documentary composer / arranger / programmer evidence stored in separate research policy or catalog files.
 
-Do not put composer names into song capsules. A label should be overlaid only after blind extraction when an experiment needs ground truth.
+Do not put composer names into song capsules. A label is overlaid only after blind extraction when an experiment needs ground truth.
 
 ## Current capsule views
 
-A single ingestion pass stores all currently useful views:
+A single ingestion operation stores both a reusable event layer and the current derived views:
 
-1. `gen1`
+1. `canonical_events`
+   - every accepted ordinary full YM2612 key-on
+   - VGM tick, physical channel, FNUM, block
+   - patch fingerprints, algorithm, feedback, AMS/FMS, pan
+   - this is the future-facing layer: new interval, timing, part, phrase, register, or patch ideas can usually be derived from JSON without reopening the VGM
+2. `gen1`
    - pooled relative-semitone interval histogram
    - interval bigrams
    - contour
    - normalized onset-gap rhythm
    - channel usage / density
    - patch and realization summaries
-2. `gen2_parts`
-   - the interval and interval-bigram histograms kept separately for each active YM2612 channel
+3. `gen2_parts`
+   - interval and interval-bigram histograms kept separately for each active YM2612 channel
    - enough to perform permutation-invariant part matching without reparsing audio
-3. `gen3_motion_parts`
+4. `gen3_motion_parts`
    - Gen-2 parts with repeated-note `0` intervals removed
    - all bigrams touching `0` removed
    - enough to run the frozen Gen-3 motion matcher directly from cache
 
-The cache stores features, not scores. Scores are cheap derived products and can be regenerated for any reference/query set.
+The cache stores evidence/features, not creator scores. Scores are cheap derived products and can be regenerated for any reference/query set.
 
 ## Commands
 
@@ -52,7 +57,7 @@ The default destination is:
 research/music/creator-feature-cache/tracks/<soundtrack-id>/
 ```
 
-Existing song capsules are reused. `--refresh` is intentionally explicit and should be used only when the extractor/schema changes.
+Existing song capsules are reused. `--refresh` is intentionally explicit and should be used only when the extractor/schema or source corpus intentionally changes.
 
 Build a creator-blind matrix later without touching a VGM:
 
@@ -66,12 +71,12 @@ python tools/vgm_creator_cached_similarity.py \
 
 ## Composer catalogs
 
-A composer catalog should be a **small label/index overlay** pointing at cached song identities. For example, a Tatsuyuki Maeda catalog can reference all documentary Maeda-positive tracks plus explicit non-Maeda controls without duplicating any musical features.
+A composer catalog is a **small label/index overlay** pointing at cached song identities. `catalogs/tatsuyuki-maeda.json`, for example, lists the 26 primary Genesis tracks currently supported by documentary Maeda composer evidence without duplicating their musical data.
 
 That means adding another creator should usually cost only:
 
 1. ingest any songs not already cached;
-2. add documentary role labels to a separate index;
+2. add documentary role labels to a separate catalog;
 3. run queries over the existing feature library.
 
 No repeated soundtrack-wide parsing is required.
