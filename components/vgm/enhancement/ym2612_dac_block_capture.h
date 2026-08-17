@@ -24,6 +24,7 @@ public:
         counts_ = {{0, 0}};
         overflow_ = {{false, false}};
         dropped_ = {{0, 0}};
+        pan_changed_ = {{false, false}};
     }
 
     void observe(const command_event& event, std::uint64_t absolute_sample) noexcept {
@@ -39,6 +40,18 @@ public:
         } else if (event.kind == command_event_kind::command) {
             if (event.payload == nullptr || event.payload_size < 2)
                 return;
+
+            // Channel 6 pan lives at B6 on YM2612 port 1. The first audible DAC
+            // rung deliberately admits only blocks whose pan is stable from the
+            // captured block origin. This records the contrary evidence rather
+            // than guessing stereo from the distorted reference DAC lane.
+            if (event.command == 0x53 || event.command == 0xA3) {
+                instance = event.command == 0xA3 ? 1 : 0;
+                if (event.payload[0] == 0xB6)
+                    pan_changed_[instance] = true;
+                return;
+            }
+
             if (event.command == 0x52 || event.command == 0xA2)
                 instance = event.command == 0xA2 ? 1 : 0;
             else
@@ -91,6 +104,10 @@ public:
         return dropped_[instance & 1u];
     }
 
+    bool pan_changed(std::size_t instance) const noexcept {
+        return pan_changed_[instance & 1u];
+    }
+
     std::uint64_t block_start_sample() const noexcept { return block_start_sample_; }
 
 private:
@@ -98,6 +115,7 @@ private:
     std::array<std::size_t, instance_count> counts_{{0, 0}};
     std::array<bool, instance_count> overflow_{{false, false}};
     std::array<std::uint64_t, instance_count> dropped_{{0, 0}};
+    std::array<bool, instance_count> pan_changed_{{false, false}};
     std::uint64_t block_start_sample_ = 0;
 };
 
