@@ -1,3 +1,4 @@
+#include "components/vgm/foo_input_vgm/src/studio_alignment_queue.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_resampler.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_stream.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_timeline.h"
@@ -118,6 +119,40 @@ int main() {
         passband.data() + before_final,
         1));
     assert(future_stream.reconstruct(kernel, stream_position).valid);
+
+    // Whole authored host frames stay queued until FM's complete future FIR
+    // window exists. Protected DAC/PSG/reference payloads are delayed together.
+    struct protected_frame {
+        std::int32_t reference = 0;
+        std::int32_t dac = 0;
+        std::int32_t psg = 0;
+    };
+    studio_alignment_queue<protected_frame, 4> aligned;
+    const protected_frame protected0{101, 7, 11};
+    const studio_source_phase_position aligned_position{
+        static_cast<std::int64_t>(
+            64 * studio_source_resampler_kernel::phase_count + 321),
+        true
+    };
+    assert(aligned.push(900, aligned_position, protected0));
+    studio_source_stream<128> aligned_stream;
+    const auto aligned_window = plan_studio_source_window(aligned_position);
+    assert(aligned_window.valid);
+    const std::size_t aligned_before_final =
+        static_cast<std::size_t>(aligned_window.final);
+    assert(aligned_stream.append(0, passband.data(), aligned_before_final));
+    assert(!aligned.front_ready(aligned_stream));
+    assert(aligned_stream.append(
+        static_cast<std::uint64_t>(aligned_before_final),
+        passband.data() + aligned_before_final,
+        1));
+    assert(aligned.front_ready(aligned_stream));
+    studio_alignment_queue<protected_frame, 4>::entry aligned_out{};
+    assert(aligned.pop_ready(aligned_stream, aligned_out));
+    assert(aligned_out.destination_ordinal == 900);
+    assert(aligned_out.payload.reference == 101);
+    assert(aligned_out.payload.dac == 7);
+    assert(aligned_out.payload.psg == 11);
 
     assert(!kernel.reconstruct(constant.data(), constant.size(), 12.0).valid);
     assert(!kernel.reconstruct(constant.data(), constant.size(), 1000.0).valid);
