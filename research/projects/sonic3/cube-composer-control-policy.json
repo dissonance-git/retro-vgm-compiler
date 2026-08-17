@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "purpose": "Role-scoped external composition controls for Sonic 3 CUBE-composer calibration without admitting any sealed Sonic 3 target cue labels.",
+  "creators": [
+    {"canonical_name":"Miyoko Takaoka","aliases":["Miyoko Kobayashi","小林美代子","高岡美代子"]},
+    {"canonical_name":"Masanori Hikichi","aliases":["曳地正則"]}
+  ],
+  "role_firewall": "composition != arrangement != sequence/sound-data programming != driver programming != patch/sample design != final realization",
+  "sealed_target_policy": "Sonic 3 remains a held-out target. This policy admits only external control works and does not encode disputed Sonic 3 cue authorship.",
+  "sources": [
+    {"id":"terranigma_game_credits","kind":"game_credits","url":"https://www.mobygames.com/game/9107/terranigma/credits/snes/","use":"Confirms Miyoko Takaoka and Masanori Hikichi in the explicit Sound Composers role for Terranigma."},
+    {"id":"terranigma_commercial_soundtrack","kind":"commercial_soundtrack_credit","url":"https://vgmdb.net/album/1920","use":"Commercial 1995 soundtrack credits both composers and publishes track-number composition allocation for its original-version program."},
+    {"id":"terranigma_gamerip_work_relations","kind":"secondary_track_mapping","url":"https://musicbrainz.org/release/5f2210aa-92b4-4380-9319-a94f5c59c9a4","use":"Maps gamerip English titles/recordings to per-work composer relations. Used as a title/recording join surface, not as sole proof that either person held the composer role."},
+    {"id":"terranigma_creator_interview_and_liner_notes","kind":"creator_primary_context","url":"https://shmuplations.com/quintet/","use":"Preserves Masanori Hikichi interview context and translated Terranigma liner notes from Miyoko Kobayashi and Hikichi, including composition and sound-patch role distinctions."}
+  ],
+  "admission_rule": "Admit a corpus fixture only when the external control role is composition and the track-to-work join is direct or a bounded title alias. Mixed-soundtrack blanket credit is not expanded to every cue.",
+  "status_meaning": {
+    "exact": "Corpus title is directly aligned with a gamerip/work composer relation.",
+    "derived": "Same recording/work is joined through a bounded English-title alias documented by the mapping source."
+  },
+  "admitted_tracks": [
+    {"fixture_path":"tests/corpus/terranigma-spc/02 - Light and Darkness.spc","creators":["Miyoko Takaoka","Masanori Hikichi"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/03 - Hometown.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/05 - Unforeseen Occurrence.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/06 - Dark Side Field.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/07 - Tower of Trial.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/08 - Into the Door.spc","creators":["Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_open_the_door"},
+    {"fixture_path":"tests/corpus/terranigma-spc/09 - Elle.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/11 - Further Into the Wide World.spc","creators":["Miyoko Takaoka"],"status":"derived","mapping_state":"title_alias_light_side_field"},
+    {"fixture_path":"tests/corpus/terranigma-spc/12 - Underground.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/14 - The Flying Dandelion.spc","creators":["Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_revival_of_plants"},
+    {"fixture_path":"tests/corpus/terranigma-spc/15 - Evergreen.spc","creators":["Miyoko Takaoka"],"status":"derived","mapping_state":"title_alias_ever_green"},
+    {"fixture_path":"tests/corpus/terranigma-spc/16 - Top of Saint Mountain.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/18 - Flying to the Sky.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/19 - Zoo.spc","creators":["Miyoko Takaoka"],"status":"derived","mapping_state":"title_alias_zue_recording_zoo"},
+    {"fixture_path":"tests/corpus/terranigma-spc/20 - Firm Steps Upon the Land.spc","creators":["Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_revival_of_animals"},
+    {"fixture_path":"tests/corpus/terranigma-spc/21 - The Willful Lion.spc","creators":["Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_willful_lion"},
+    {"fixture_path":"tests/corpus/terranigma-spc/22 - Fight Against Powerful Enemies.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/23 - Thy Name Shall be Humankind.spc","creators":["Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_revival_of_humans"},
+    {"fixture_path":"tests/corpus/terranigma-spc/25 - Wandering Spirits.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/26 - Town.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/29 - Prime Blue.spc","creators":["Miyoko Takaoka"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/37 - Perel.spc","creators":["Miyoko Takaoka","Masanori Hikichi"],"status":"exact","mapping_state":"direct_gamerip_work_relation"},
+    {"fixture_path":"tests/corpus/terranigma-spc/45 - Overcoming Everything.spc","creators":["Miyoko Takaoka","Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_final_battle"},
+    {"fixture_path":"tests/corpus/terranigma-spc/47 - The Way Home.spc","creators":["Miyoko Takaoka","Masanori Hikichi"],"status":"derived","mapping_state":"title_alias_return_to_mother_earth"}
+  ],
+  "explicit_exclusions": [
+    {"fixture_path":"tests/corpus/terranigma-spc/42 - Genius's Playground.spc","reason":"Terranigma documentation identifies the laboratory cue as a Yuzo Koshiro contribution; do not use it as a Takaoka/Hikichi composition control."}
+  ],
+  "unadmitted_remainder": "Terranigma fixtures without a sufficiently specific per-track composition join remain available as soundtrack context/negative controls but are not labeled as either CUBE composer's composition controls."
+}
