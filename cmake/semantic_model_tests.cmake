@@ -357,6 +357,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     studio_source_timeline_test
     studio_source_resampler_test
     studio_hq_fm_observer_rebase_test
+    studio_frame_transport_test
 )
 
 add_executable(
@@ -391,6 +392,10 @@ add_executable(
     studio_hq_fm_observer_rebase_test
     tests/vgm/studio_hq_fm_observer_rebase_test.cpp
 )
+add_executable(
+    studio_frame_transport_test
+    tests/vgm/studio_frame_transport_test.cpp
+)
 
 target_include_directories(
     ym2612_hq_fm_backend_test
@@ -422,6 +427,10 @@ target_include_directories(
 )
 target_include_directories(
     studio_hq_fm_observer_rebase_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_frame_transport_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -456,4 +465,41 @@ add_test(
 add_test(
     NAME studio_hq_fm_observer_rebase
     COMMAND studio_hq_fm_observer_rebase_test
+)
+add_test(
+    NAME studio_frame_transport
+    COMMAND studio_frame_transport_test
+)
+
+add_test(
+    NAME studio_hq_fm_observer_patch_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_studio_hq_fm_observer_patch.py
+)
+set_tests_properties(
+    studio_hq_fm_observer_patch_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME studio_hq_fm_runtime_patch_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_studio_hq_fm_runtime_patch.py
+)
+set_tests_properties(
+    studio_hq_fm_runtime_patch_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME playera_deferred_postrender_patch_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/vgm
+        -p test_playera_deferred_postrender_patch.py
+)
+set_tests_properties(
+    playera_deferred_postrender_patch_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
