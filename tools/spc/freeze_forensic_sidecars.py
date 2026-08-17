@@ -228,6 +228,10 @@ def _maximum_weight_assignment(weights: list[list[float]]) -> list[tuple[int, in
     column_count = len(weights[0])
     if any(len(row) != column_count for row in weights):
         raise ValueError("assignment weight matrix must be rectangular")
+    for row in weights:
+        for weight in row:
+            if not math.isfinite(float(weight)) or float(weight) < 0.0:
+                raise ValueError("assignment weights must be finite and nonnegative")
 
     transposed = row_count > column_count
     if transposed:
@@ -237,8 +241,6 @@ def _maximum_weight_assignment(weights: list[list[float]]) -> list[tuple[int, in
     n = len(matrix)
     m = len(matrix[0])
 
-    # Hungarian algorithm for rectangular minimum-cost assignment, using the
-    # negative identity confidence as cost. n <= m by construction.
     u = [0.0] * (n + 1)
     v = [0.0] * (m + 1)
     p = [0] * (m + 1)
@@ -290,13 +292,42 @@ def _maximum_weight_assignment(weights: list[list[float]]) -> list[tuple[int, in
     return pairs
 
 
+def _profile_assignment_key(profile: dict[str, Any]) -> tuple[Any, ...]:
+    """Canonical musical key for assignment tie-breaking.
+
+    Only fields consumed by ``compare_profiles`` participate. Native pitch basis,
+    representation, provenance, artifact hashes, source-node ids, and profile
+    enumeration are deliberately excluded.
+    """
+    intervals = profile.get("interval_octaves")
+    contour = profile.get("pitch_contour")
+    semantics = profile.get("interval_semantics")
+    return (
+        tuple(float(value) for value in profile["normalized_inter_onset_intervals"]),
+        intervals is not None,
+        tuple(float(value) for value in intervals) if isinstance(intervals, list) else (),
+        contour is not None,
+        tuple(int(value) for value in contour) if isinstance(contour, list) else (),
+        semantics if isinstance(semantics, str) else "",
+        float(profile["evidence_confidence"]),
+    )
+
+
 def compare_profile_sets(query: list[dict[str, Any]], control: list[dict[str, Any]]) -> dict[str, Any]:
     if not query or not control:
         return {"query_profile_count":len(query),"control_profile_count":len(control),"matched_pair_count":0,"pitch_comparable_pair_count":0,"matched_coverage":0.0,"similarity":0.0,"matches":[]}
 
+    # Hungarian assignment is globally optimal, but an optimum may not be unique.
+    # Canonicalize by scored musical content first so tied optima do not let
+    # profile enumeration alter diagnostics such as pitch-comparable pair count.
+    query_order = sorted(range(len(query)), key=lambda index: _profile_assignment_key(query[index]))
+    control_order = sorted(range(len(control)), key=lambda index: _profile_assignment_key(control[index]))
+    canonical_query = [query[index] for index in query_order]
+    canonical_control = [control[index] for index in control_order]
+
     similarities = [
-        [compare_profiles(q_profile, c_profile) for c_profile in control]
-        for q_profile in query
+        [compare_profiles(q_profile, c_profile) for c_profile in canonical_control]
+        for q_profile in canonical_query
     ]
     weights = [
         [float(item["identity_confidence"]) for item in row]
@@ -305,11 +336,16 @@ def compare_profile_sets(query: list[dict[str, Any]], control: list[dict[str, An
     assignment = _maximum_weight_assignment(weights)
 
     matches=[]; score_sum=0.0; pitch_comparable=0
-    for qi,ci in assignment:
-        similarity=similarities[qi][ci]
+    for canonical_qi, canonical_ci in assignment:
+        similarity=similarities[canonical_qi][canonical_ci]
         score_sum += float(similarity["identity_confidence"])
         pitch_comparable += 1 if similarity["pitch_comparable"] else 0
-        matches.append({"query_index":qi,"control_index":ci,**similarity})
+        matches.append({
+            "query_index": query_order[canonical_qi],
+            "control_index": control_order[canonical_ci],
+            **similarity,
+        })
+    matches.sort(key=lambda item: (item["query_index"], item["control_index"]))
     denominator=max(len(query),len(control))
     return {"query_profile_count":len(query),"control_profile_count":len(control),"matched_pair_count":len(matches),"pitch_comparable_pair_count":pitch_comparable,"matched_coverage":len(matches)/denominator,"similarity":score_sum/denominator,"matches":matches}
 
@@ -329,14 +365,14 @@ def freeze_corpus(cues: list[CueSidecar]) -> dict[str, Any]:
         for ri in range(li,len(ordered)):
             right=ordered[ri]; comparison=compare_profile_sets(left.profiles,right.profiles); score=float(comparison["similarity"])
             matrix[left.cue_id][right.cue_id]=score; matrix[right.cue_id][left.cue_id]=score
-            if li!=ri: pairs.append({"left":left.cue_id,"right":right.cue_id,**comparison})
+            if li != ri: pairs.append({"left":left.cue_id,"right":right.cue_id,**comparison})
     return {
         "model":FREEZE_MODEL,
-        "claim_boundary":"Opaque cue identities and creator-blind persistent-part motif geometry only. Native representations and provenance are retained for audit but never scored. Soundtrack, track-title, composer, candidate, and attribution identities are joined later.",
+        "claim_boundary":"Opaque cue ids and creator-blind persistent-part motif geometry only. Native representations and provenance are retained for audit but never scored. Identity labels are joined later.",
         "similarity_contract":"model/part_motif_attribution_bridge.h",
         "provenance_worlds":{key:provenance_worlds[key] for key in sorted(provenance_worlds)},
         "cue_count":len(ordered),
-        "cues":[{"cue_id":cue.cue_id,"representation":cue.representation,"artifact_sha256":cue.sha256,"sidecar_sha256":cue.sha256,"diagnostics":cue.diagnostics,"part_profiles":cue.profiles} for cue in ordered],
+        "cues":[{"cue_id":cue.cue_id,"artifact_sha256":cue.sha256,"representation":cue.representation,"diagnostics":cue.diagnostics,"part_profiles":cue.profiles} for cue in ordered],
         "similarity_matrix":matrix,
         "pairwise":pairs,
     }
@@ -346,16 +382,17 @@ def _parse_cue_argument(text: str) -> tuple[str,pathlib.Path]:
     if not separator or not cue_id or not path: raise argparse.ArgumentTypeError("cue must be formatted cue-NNN=path.json")
     return cue_id,pathlib.Path(path)
 
-def main() -> None:
+def main()->None:
     parser=argparse.ArgumentParser()
-    parser.add_argument("--cue",action="append",default=[],type=_parse_cue_argument)
-    parser.add_argument("--profile-cue",action="append",default=[],type=_parse_cue_argument)
+    parser.add_argument("--cue",action="append",type=_parse_cue_argument,default=[])
+    parser.add_argument("--profile-bundle",action="append",type=_parse_cue_argument,default=[])
     parser.add_argument("--output",type=pathlib.Path,required=True)
     args=parser.parse_args()
     cues=[load_sidecar(cue_id,path) for cue_id,path in args.cue]
-    cues.extend(load_profile_bundle(cue_id,path) for cue_id,path in args.profile_cue)
-    if len(cues)<2: parser.error("at least two --cue/--profile-cue inputs are required")
+    cues.extend(load_profile_bundle(cue_id,path) for cue_id,path in args.profile_bundle)
+    if not cues: parser.error("at least one --cue or --profile-bundle is required")
     frozen=freeze_corpus(cues)
+    args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(frozen,indent=2,sort_keys=True)+"\n",encoding="utf-8")
 
 if __name__ == "__main__":
