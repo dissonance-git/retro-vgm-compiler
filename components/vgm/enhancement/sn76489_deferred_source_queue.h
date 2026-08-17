@@ -48,10 +48,10 @@ public:
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
     [[nodiscard]] std::uint64_t next_ordinal() const noexcept { return next_ordinal_; }
 
-    // Generate every frame in [next_ordinal(), end_ordinal). Failure is
-    // transactional with respect to queue capacity: capacity/range checks occur
-    // before the synth advances, so the caller may fail closed without a partly
-    // advanced descendant clock.
+    // Generate every frame in [next_ordinal(), end_ordinal). The synth is copied
+    // first and committed only after the complete interval succeeds. Queue
+    // capacity/range checks also happen before rendering, so every failure leaves
+    // the caller's authoritative descendant state exactly at the old ordinal.
     bool render_until(
         sn76489_enhanced& synth,
         std::uint64_t end_ordinal,
@@ -74,14 +74,18 @@ public:
         if (!std::isfinite(scale_left) || !std::isfinite(scale_right))
             return fail();
 
+        auto candidate = synth;
+        std::size_t staged_size = 0;
+        std::uint64_t staged_ordinal = next_ordinal_;
+
         while (remaining != 0) {
             const std::size_t chunk = remaining < ScratchFrames ? remaining : ScratchFrames;
             float* outputs[stem_count]{};
             for (std::size_t channel = 0; channel < stem_count; ++channel)
                 outputs[channel] = scratch_[channel].data();
 
-            const std::uint8_t stereo_mask = synth.stereo_mask();
-            synth.render(outputs, chunk);
+            const std::uint8_t stereo_mask = candidate.stereo_mask();
+            candidate.render(outputs, chunk);
 
             for (std::size_t frame = 0; frame < chunk; ++frame) {
                 std::int64_t left = 0;
@@ -105,13 +109,17 @@ public:
                     }
                 }
 
-                const std::size_t index = (head_ + size_) % Capacity;
-                frames_[index] = {next_ordinal_, left, right};
-                ++size_;
-                ++next_ordinal_;
+                const std::size_t index = (head_ + size_ + staged_size) % Capacity;
+                frames_[index] = {staged_ordinal, left, right};
+                ++staged_size;
+                ++staged_ordinal;
             }
             remaining -= chunk;
         }
+
+        synth = candidate;
+        size_ += staged_size;
+        next_ordinal_ = staged_ordinal;
         return true;
     }
 
