@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "creator": "Tatsuyuki Maeda",
+  "role": "composer",
+  "purpose": "Documentary label overlay for creator-feature-cache research. Musical features live in creator-blind per-song capsules and are never duplicated here.",
+  "label_source": "research/projects/sonic3/maeda-calibration-policy.json",
+  "platform_scope": "Mega Drive / Genesis primary calibration",
+  "positive_track_count": 26,
+  "soundtracks": [
+    {
+      "soundtrack_id": "golden-axe-iii-genesis-vgz",
+      "cache_root": "research/music/creator-feature-cache/tracks/golden-axe-iii-genesis-vgz",
+      "tracks": [
+        "03 - Wilderness.vgz",
+        "05 - Thief Stage.vgz",
+        "06 - Map.vgz",
+        "09 - Dim Jungle.vgz",
+        "12 - Bloody Street.vgz",
+        "14 - A Voyage to Castle.vgz",
+        "15 - Boss Even Stage.vgz",
+        "19 - In the Castle.vgz",
+        "20 - Last Boss.vgz",
+        "21 - Ending.vgz"
+      ],
+      "documentary_state": "track-resolved derived composer credits",
+      "note": "11 - The Scorching Sand remains a quarantined credit conflict and is not in this catalog."
+    },
+    {
+      "soundtrack_id": "sonic-3d-blast-genesis-vgm",
+      "cache_root": "research/music/creator-feature-cache/tracks/sonic-3d-blast-genesis-vgm",
+      "tracks": [
+        "05 - Rusty Ruin Zone Act 1.vgm",
+        "06 - Rusty Ruin Zone Act 2.vgm",
+        "09 - Diamond Dust Zone Act 1.vgm",
+        "10 - Diamond Dust Zone Act 2.vgm",
+        "11 - Volcano Valley Zone Act 1.vgm",
+        "12 - Volcano Valley Zone Act 2.vgm",
+        "13 - Gene Gadget Zone Act 1.vgm",
+        "14 - Gene Gadget Zone Act 2.vgm",
+        "16 - Panic Puppet Zone Act 2.vgm",
+        "20 - Robotnik 1.vgm"
+      ],
+      "documentary_state": "ROM-discovered per-track Song by role mapping"
+    },
+    {
+      "soundtrack_id": "j-league-pro-striker-2-vgz",
+      "cache_root": "research/music/creator-feature-cache/tracks/j-league-pro-striker-2-vgz",
+      "tracks": [
+        "01 - Opening Theme.vgz",
+        "02 - Match Setup.vgz",
+        "03 - Opening Theme (Returning).vgz",
+        "04 - Unknown (Sound Test 86).vgz",
+        "05 - Unknown (Sound Test 87).vgz",
+        "06 - Unknown (Sound Test 8A).vgz"
+      ],
+      "documentary_state": "whole-soundtrack composer credit"
+    }
+  ],
+  "excluded_cross_platform_worlds": [
+    {
+      "soundtrack_id": "super-columns-vgm",
+      "platform": "Game Gear",
+      "reason": "Useful future cross-platform stress control, but not part of the primary Genesis creator library."
+    }
+  ],
+  "research_rule": "Load cached creator-blind song capsules first, then overlay this catalog. Never select or extract features based on creator labels."
+}
