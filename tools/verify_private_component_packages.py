@@ -5,10 +5,11 @@ The build stages files in disposable directories, but the deletion gate is about
 what is actually shipped. This verifier reopens each renamed ZIP
 (`.fb2k-component`), checks the exact sibling payload expected by the runtime,
 and inspects the packaged PE images themselves. On Windows it also extracts and
-loads each packaged Omniphony DLL, executes its ABI version functions, and proves
-compatibility with the compiler contract. It rejects path traversal, duplicate
-case-insensitive names, nested layout, zero-byte runtime files, wrong
-architectures, and missing runtime ABI exports.
+loads each packaged Omniphony DLL, executes its ABI version functions, and starts
+the exact packaged x86 spcplayer far enough to reach its own usage path. That
+proves its sibling SNESAPU DLL can be resolved by the Windows loader. It rejects
+path traversal, duplicate case-insensitive names, nested layout, zero-byte
+runtime files, wrong architectures, and missing runtime ABI exports.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import importlib.util
 import os
 from pathlib import Path, PurePosixPath
 import struct
+import subprocess
 import tempfile
 import zipfile
 
@@ -285,6 +287,47 @@ def verify_packaged_omniphony_runtime(path: Path, label: str) -> tuple[int, int]
         return major, minor
 
 
+def validate_spcplayer_startup_result(returncode: int, output: str) -> None:
+    normalized = output.lower()
+    if returncode != 1:
+        raise AssertionError(
+            f"packaged spcplayer startup returned {returncode}, expected usage exit 1"
+        )
+    if "spcplayer" not in normalized or "usage:" not in normalized:
+        raise AssertionError(
+            "packaged spcplayer did not reach its own usage path; "
+            f"captured output was {output!r}"
+        )
+
+
+def verify_packaged_spcplayer_startup(path: Path) -> bool | None:
+    """On Windows, prove the archived x86 child resolves its sibling SNESAPU DLL."""
+    if os.name != "nt":
+        return None
+    with tempfile.TemporaryDirectory(prefix="spcplayer-package-smoke-") as temporary:
+        root = Path(temporary)
+        with zipfile.ZipFile(path, "r") as archive:
+            for name in SPC_EXPECTED:
+                (root / name).write_bytes(archive.read(name))
+        player = root / "spcplayer.exe"
+        try:
+            completed = subprocess.run(
+                [str(player)],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise AssertionError(f"packaged spcplayer could not start: {exc}") from exc
+        validate_spcplayer_startup_result(
+            completed.returncode,
+            (completed.stdout or "") + (completed.stderr or ""),
+        )
+        return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("vgm_component", type=Path)
@@ -299,8 +342,11 @@ def main() -> int:
     verify_runtime_contracts(spc, SPC_RUNTIME_CONTRACTS, "SPC")
     vgm_abi = verify_packaged_omniphony_runtime(vgm, "VGM")
     spc_abi = verify_packaged_omniphony_runtime(spc, "SPC")
+    spcplayer_started = verify_packaged_spcplayer_startup(spc)
     if vgm_abi is not None or spc_abi is not None:
         print(f"packaged Omniphony runtime ABI verified: VGM={vgm_abi}, SPC={spc_abi}")
+    if spcplayer_started:
+        print("packaged spcplayer startup and sibling SNESAPU resolution verified")
     print("private foobar component package payloads and runtime PE contracts verified")
     return 0
 
