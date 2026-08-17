@@ -38,10 +38,10 @@ struct studio_hq_fm_ready_frame {
 
 template <std::size_t LaneCount, std::size_t NativeCapacity, std::size_t PendingCapacity>
 class studio_hq_fm_observer {
-    static_assert(LaneCount > 0, "Studio HQ FM observer needs at least one lane.");
+    static_assert(LaneCount > 0, "HQ FM observer needs at least one lane.");
     static_assert(NativeCapacity >= studio_source_resampler_kernel::tap_count,
-        "Studio HQ FM native history is too small for one FIR window.");
-    static_assert(PendingCapacity > 0, "Studio HQ FM pending queue must be non-zero.");
+        "HQ FM native history is too small for one FIR window.");
+    static_assert(PendingCapacity > 0, "HQ FM pending queue must be non-zero.");
 
 public:
     using ready_frame = studio_hq_fm_ready_frame<LaneCount>;
@@ -53,6 +53,11 @@ public:
         configured_ = kernel_.configure(
             static_cast<double>(source_rate_hz),
             static_cast<double>(destination_rate_hz));
+        // At initial device attachment, the negative-time FM state is known:
+        // Nuked resets the chip to full envelope attenuation and the HQ lift's
+        // own modulation/output history is zero. That is real source evidence,
+        // not padding. Any later reset/seek revokes this allowance.
+        known_zero_prefix_ = configured_;
         return configured_;
     }
 
@@ -71,6 +76,7 @@ public:
         released_next_ = destination_base;
         first_studio_destination_ordinal_ = destination_base;
         started_studio_domain_ = false;
+        known_zero_prefix_ = false;
         invalid_ = false;
     }
 
@@ -164,7 +170,7 @@ public:
                 return report;
             }
 
-            if (window.first < 0) {
+            if (window.first < 0 && !known_zero_prefix_) {
                 if (started_studio_domain_ || !pending_.empty()) {
                     invalidate();
                     return report;
@@ -249,7 +255,10 @@ private:
         if (!window.valid)
             return false;
         for (const auto& stream : streams_) {
-            if (!stream.contains(window))
+            const bool ready = window.first < 0 && known_zero_prefix_
+                ? stream.contains_with_known_zero_prefix(window)
+                : stream.contains(window);
+            if (!ready)
                 return false;
         }
         return true;
@@ -258,9 +267,16 @@ private:
     std::size_t drain_ready() noexcept {
         std::size_t released = 0;
         while (const auto* front = pending_.front()) {
-            if (!all_lanes_ready(front->source_position))
+            const bool lanes_ready = all_lanes_ready(front->source_position);
+            if (!lanes_ready)
                 break;
             if (ready_count_ == PendingCapacity) {
+                invalidate();
+                return 0;
+            }
+
+            const auto window = plan_studio_source_window(front->source_position);
+            if (!window.valid) {
                 invalidate();
                 return 0;
             }
@@ -268,8 +284,10 @@ private:
             ready_frame candidate{};
             candidate.destination_ordinal = front->destination_ordinal;
             for (std::size_t lane = 0; lane < LaneCount; ++lane) {
-                const auto reconstructed = streams_[lane].reconstruct(
-                    kernel_, front->source_position);
+                const auto reconstructed = window.first < 0 && known_zero_prefix_
+                    ? streams_[lane].reconstruct_with_known_zero_prefix(
+                        kernel_, front->source_position)
+                    : streams_[lane].reconstruct(kernel_, front->source_position);
                 if (!reconstructed.valid) {
                     invalidate();
                     return 0;
@@ -287,7 +305,7 @@ private:
             candidate.valid = true;
 
             typename pending_queue::entry entry{};
-            if (!pending_.pop_ready(streams_[0], entry)) {
+            if (!pending_.pop_ready_when(lanes_ready, entry)) {
                 invalidate();
                 return 0;
             }
@@ -312,11 +330,19 @@ private:
         std::uint64_t keep_from = 0;
         if (const auto* front = pending_.front()) {
             const auto window = plan_studio_source_window(front->source_position);
-            if (!window.valid || window.first < 0) {
+            if (!window.valid) {
                 invalidate();
                 return;
             }
-            keep_from = static_cast<std::uint64_t>(window.first);
+            if (window.first < 0) {
+                if (!known_zero_prefix_) {
+                    invalidate();
+                    return;
+                }
+                keep_from = 0;
+            } else {
+                keep_from = static_cast<std::uint64_t>(window.first);
+            }
         } else {
             constexpr std::uint64_t reserve =
                 static_cast<std::uint64_t>(studio_source_resampler_kernel::tap_count * 2u);
@@ -345,6 +371,7 @@ private:
     std::uint64_t first_studio_destination_ordinal_ = 0;
     bool configured_ = false;
     bool started_studio_domain_ = false;
+    bool known_zero_prefix_ = false;
     bool invalid_ = false;
 };
 
