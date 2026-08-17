@@ -145,6 +145,8 @@ public:
     bool render_voice(
         std::uint32_t voice,
         std::uint32_t m_rate_q16_16,
+        std::uint32_t effective_source_number,
+        std::uint32_t live_loop_brr_block_address,
         std::uint32_t directory_page,
         std::uint32_t interpolation_raw,
         float* output_sample) noexcept
@@ -156,17 +158,29 @@ public:
             return false;
 
         snesapu_source_interpolation interpolation{};
-        if (directory_page > 0xffu
+        if (effective_source_number > 0xffu
+            || live_loop_brr_block_address > 0xffffu
+            || directory_page > 0xffu
+            || static_cast<std::uint8_t>(effective_source_number)
+                != state.source->source_number
+            || (state.source->playback.loop.present
+                && static_cast<std::uint16_t>(live_loop_brr_block_address)
+                    != state.source->loop_brr_block_address)
             || static_cast<std::uint8_t>(directory_page) != state.directory_page
             || !snesapu_source_interpolation_from_raw(interpolation_raw, interpolation)
             || !snesapu_source_rate_representable(m_rate_q16_16))
             return stop_and_fail(voice);
 
-        // SetDSPOpt may change the historical interpolation routine while a
-        // voice is alive. The studio waveform is different, but its presentation
-        // instant must continue to follow the selected pInter timing contract.
-        // DIR is different: SNESAPU consults it again at an END+LOOP transition,
-        // so any live DIR change forfeits trajectory authority immediately.
+        // The pinned SNESAPU loop-restart path may refresh mSrc from the live
+        // DSP SRCN, apply Script700 NoteChange again, and re-read that source's
+        // loop pointer from current DIR RAM. The assembly callback therefore
+        // supplies the live effective SRCN and loop pointer on every restored
+        // sample. A dynamic remap is rejected before the first post-remap studio
+        // sample can use the old authored trajectory.
+        //
+        // SetDSPOpt may also change the historical interpolation routine while a
+        // voice is alive. That changes only the pInter timing center, so keep the
+        // accumulated source phase and update the center without resetting it.
         state.trajectory.set_interpolation(interpolation);
         const auto projection = state.trajectory.project(state.source->playback.loop);
         if (!projection.valid)
@@ -232,6 +246,8 @@ public:
         void* user,
         std::uint32_t voice,
         std::uint32_t m_rate_q16_16,
+        std::uint32_t effective_source_number,
+        std::uint32_t live_loop_brr_block_address,
         std::uint32_t directory_page,
         std::uint32_t interpolation,
         float* output_sample) noexcept
@@ -242,6 +258,8 @@ public:
         return self->render_voice(
             voice,
             m_rate_q16_16,
+            effective_source_number,
+            live_loop_brr_block_address,
             directory_page,
             interpolation,
             output_sample) ? 1u : 0u;
