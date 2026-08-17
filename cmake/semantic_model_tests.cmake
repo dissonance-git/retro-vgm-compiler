@@ -342,3 +342,5 @@ add_test(
     NAME spatial_source_host_assembler
     COMMAND spatial_source_host_assembler_test
 )
+
+include(cmake/host_transport_tests.cmake)
