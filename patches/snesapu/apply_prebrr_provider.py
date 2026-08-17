@@ -66,8 +66,9 @@ PUBLIC SetDSPPreBrrProvider, callback:dword, user:dword
 // receives SRCN, the 16-bit BRR block address, and a writable sixteen-sample
 // int16 buffer. Return non-zero only when the buffer contains the complete,
 // evidence-approved pre-BRR game-grid block. Return zero for exact BRR fallback.
+// u32 is deliberate: the assembly caller tests the full EAX return register.
 
-typedef b8 (__stdcall *DSPPreBrrProvider)(void *user, u32 srcn, u32 brrAddr, s16 *out16);
+typedef u32 (__stdcall *DSPPreBrrProvider)(void *user, u32 srcn, u32 brrAddr, s16 *out16);
 void SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);
 
 
@@ -77,9 +78,6 @@ void SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);
         "DSP pre-BRR C declarations",
     )
 
-    # Source capture may already have inserted two function pointers between
-    # SetDSPEFBCT and SetDSPOpt. Anchor after SetDSPEFBCT so both patched and
-    # unpatched layouts remain a singular semantic location.
     replace_once(
         dll / "SNESAPU.h",
         """    void        (__stdcall *SetDSPEFBCT)(s32 leak);
@@ -122,8 +120,6 @@ import  void        __stdcall SetDSPPreBrrProvider(DSPPreBrrProvider callback, v
         "DSP pre-BRR provider state",
     )
 
-    # Insert a setter before the stable song-length section. No provider is
-    # installed by default, so the historical decoder is bit-for-bit reachable.
     replace_once(
         asm,
         """;===================================================================================================
