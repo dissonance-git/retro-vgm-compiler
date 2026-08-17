@@ -8,7 +8,7 @@ queues whole protected WAVE_32BS frames and replaces only the six exact FM
 contributions when the corresponding ordinal-tagged Studio frame becomes ready.
 
 DAC, PSG, QSound, unrelated chips, and metadata remain inside the protected
-reference frame. Existing block-local Enhanced families are deliberately held at
+reference frame. Existing block-local enhanced families are deliberately held at
 reference while deferred transport is engaged because their outer capture layer
 still has one-render-per-decode semantics. Any Studio evidence failure becomes
 protected reference output, never an FM-only delay or invented history.
