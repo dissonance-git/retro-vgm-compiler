@@ -4,16 +4,21 @@
 The build stages files in disposable directories, but the deletion gate is about
 what is actually shipped. This verifier reopens each renamed ZIP
 (`.fb2k-component`), checks the exact sibling payload expected by the runtime,
-and inspects the packaged PE images themselves. It rejects path traversal,
-duplicate case-insensitive names, nested layout, zero-byte runtime files, wrong
+and inspects the packaged PE images themselves. On Windows it also extracts and
+loads each packaged Omniphony DLL, executes its ABI version functions, and proves
+compatibility with the compiler contract. It rejects path traversal, duplicate
+case-insensitive names, nested layout, zero-byte runtime files, wrong
 architectures, and missing runtime ABI exports.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import os
 from pathlib import Path, PurePosixPath
 import struct
+import tempfile
 import zipfile
 
 
@@ -252,6 +257,34 @@ def verify_runtime_contracts(
                 )
 
 
+def _load_omniphony_abi_verifier():
+    path = Path(__file__).with_name("verify_omniphony_runtime_abi.py")
+    spec = importlib.util.spec_from_file_location("omniphony_runtime_abi", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load Omniphony runtime ABI verifier: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def verify_packaged_omniphony_runtime(path: Path, label: str) -> tuple[int, int] | None:
+    """On Windows, load the exact archived DLL and execute its ABI functions."""
+    if os.name != "nt":
+        return None
+    verifier = _load_omniphony_abi_verifier()
+    with tempfile.TemporaryDirectory(prefix="omniphony-package-abi-") as temporary:
+        dll = Path(temporary) / "omniphony_source.dll"
+        with zipfile.ZipFile(path, "r") as archive:
+            dll.write_bytes(archive.read("omniphony_source.dll"))
+        try:
+            major, minor = verifier.load_and_verify(dll)
+        except (AssertionError, RuntimeError) as exc:
+            raise AssertionError(
+                f"{label} packaged Omniphony runtime ABI validation failed: {exc}"
+            ) from exc
+        return major, minor
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("vgm_component", type=Path)
@@ -264,6 +297,10 @@ def main() -> int:
     verify_archive(spc, SPC_EXPECTED, "SPC")
     verify_runtime_contracts(vgm, VGM_RUNTIME_CONTRACTS, "VGM")
     verify_runtime_contracts(spc, SPC_RUNTIME_CONTRACTS, "SPC")
+    vgm_abi = verify_packaged_omniphony_runtime(vgm, "VGM")
+    spc_abi = verify_packaged_omniphony_runtime(spc, "SPC")
+    if vgm_abi is not None or spc_abi is not None:
+        print(f"packaged Omniphony runtime ABI verified: VGM={vgm_abi}, SPC={spc_abi}")
     print("private foobar component package payloads and runtime PE contracts verified")
     return 0
 
