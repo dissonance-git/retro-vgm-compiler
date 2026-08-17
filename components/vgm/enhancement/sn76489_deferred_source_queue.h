@@ -11,18 +11,28 @@
 namespace gameaudio::vgm {
 
 struct sn76489_deferred_source_frame {
+    static constexpr std::size_t stem_count = sn76489_enhanced::stem_count;
+
     std::uint64_t ordinal = 0;
     std::int64_t left = 0;
     std::int64_t right = 0;
+    std::array<std::int64_t, stem_count> source_left{};
+    std::array<std::int64_t, stem_count> source_right{};
 };
 
 // Bounded realtime bridge for PlayerA-style render-ahead.
 //
-// The ordinary Enhanced PSG block path is intentionally decode-block local.
+// The ordinary enhanced PSG block path is intentionally decode-block local.
 // A deferred renderer needs a different clock: command events and generated
 // source frames must advance on the player's absolute engine sample ordinal,
 // even when fewer samples have been delivered to the host. This queue owns only
 // that timing translation. The SN76489 synthesis law remains sn76489_enhanced.
+//
+// Each queued frame retains both the historical summed replacement coordinate
+// and all four already-routed source contributions. The sums keep the stereo
+// recompositor unchanged; the individual lanes let a later Spatial presenter
+// consume the exact same selected PSG realization without separating the final
+// mix or re-running synthesis on a different clock.
 //
 // Call render_until() immediately before applying each command at its absolute
 // sample ordinal, then again at the end of each engine-render span. The stereo
@@ -88,8 +98,9 @@ public:
             candidate.render(outputs, chunk);
 
             for (std::size_t frame = 0; frame < chunk; ++frame) {
-                std::int64_t left = 0;
-                std::int64_t right = 0;
+                sn76489_deferred_source_frame output{};
+                output.ordinal = staged_ordinal;
+
                 for (std::size_t channel = 0; channel < stem_count; ++channel) {
                     const float mono = scratch_[channel][frame];
                     if (!std::isfinite(mono))
@@ -98,19 +109,25 @@ public:
                     if ((stereo_mask & static_cast<std::uint8_t>(0x10u << channel)) != 0u) {
                         const float scaled = static_cast<float>(
                             static_cast<double>(mono) * scale_left);
-                        if (!accumulate_rounded(scaled, left))
+                        std::int64_t contribution = 0;
+                        if (!rounded_sample(scaled, contribution)
+                            || !accumulate_integer(contribution, output.left))
                             return fail();
+                        output.source_left[channel] = contribution;
                     }
                     if ((stereo_mask & static_cast<std::uint8_t>(0x01u << channel)) != 0u) {
                         const float scaled = static_cast<float>(
                             static_cast<double>(mono) * scale_right);
-                        if (!accumulate_rounded(scaled, right))
+                        std::int64_t contribution = 0;
+                        if (!rounded_sample(scaled, contribution)
+                            || !accumulate_integer(contribution, output.right))
                             return fail();
+                        output.source_right[channel] = contribution;
                     }
                 }
 
                 const std::size_t index = (head_ + size_ + staged_size) % Capacity;
-                frames_[index] = {staged_ordinal, left, right};
+                frames_[index] = output;
                 ++staged_size;
                 ++staged_ordinal;
             }
@@ -146,18 +163,22 @@ public:
     }
 
 private:
-    static bool accumulate_rounded(float sample, std::int64_t& total) noexcept {
+    static bool rounded_sample(float sample, std::int64_t& output) noexcept {
         if (!std::isfinite(sample))
             return false;
         const long double value = static_cast<long double>(sample);
         if (value < static_cast<long double>(std::numeric_limits<std::int64_t>::min())
             || value > static_cast<long double>(std::numeric_limits<std::int64_t>::max()))
             return false;
-        const std::int64_t rounded = static_cast<std::int64_t>(std::llround(sample));
-        if ((rounded > 0 && total > std::numeric_limits<std::int64_t>::max() - rounded)
-            || (rounded < 0 && total < std::numeric_limits<std::int64_t>::min() - rounded))
+        output = static_cast<std::int64_t>(std::llround(sample));
+        return true;
+    }
+
+    static bool accumulate_integer(std::int64_t value, std::int64_t& total) noexcept {
+        if ((value > 0 && total > std::numeric_limits<std::int64_t>::max() - value)
+            || (value < 0 && total < std::numeric_limits<std::int64_t>::min() - value))
             return false;
-        total += rounded;
+        total += value;
         return true;
     }
 
