@@ -165,6 +165,19 @@ class PlayerADeferredPostRenderPatchTest(unittest.TestCase):
         self.assertTrue(source_ended_lines)
         self.assertTrue(all("PLAYSTATE_END" not in line for line in source_ended_lines))
 
+        # Once the engine really ends, every PlayerA Render call must give the
+        # deferred callback a zero-input drain opportunity before deciding that
+        # no more engine samples can be rendered. This lets an EOF reference tail
+        # larger than one host buffer drain over consecutive calls without being
+        # dropped, duplicated, or forcing invented future FM samples.
+        loop = render.index("while (finalized < smplCount && passes < 16)")
+        first_drain = render.index("cbResult = _deferredPostRenderFunc(", loop)
+        play_guard = render.index("if (! (state & PLAYSTATE_PLAY))", first_drain)
+        engine_render = render.index("smplRendered = _player->Render(renderRequest", play_guard)
+        self.assertLess(first_drain, play_guard)
+        self.assertLess(play_guard, engine_render)
+        self.assertIn("basePbSmpl = _deferredEmitSmpl;", render[:loop])
+
         start = source[source.index("UINT8 PlayerA::Start"):source.index("UINT8 PlayerA::Stop")]
         reset = source[source.index("UINT8 PlayerA::Reset"):source.index("UINT8 PlayerA::FadeOut")]
         seek = source[source.index("UINT8 PlayerA::Seek"):source.index("#if 1")]
