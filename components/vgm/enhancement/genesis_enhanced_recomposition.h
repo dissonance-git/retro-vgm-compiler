@@ -61,7 +61,7 @@ struct genesis_source_replacement_view {
 //
 // Unsupported sources, effects, other chips, and unknown residuals remain
 // bit-for-bit in the protected reference path. This is the audible bridge from
-// sidecar synthesis to Enhanced playback without double-rendering a source.
+// sidecar synthesis to enhanced playback without double-rendering a source.
 //
 // All inputs must already share the same host-rate, stereo-route, and final
 // song/fade gain domain. Resampling or gain alignment belongs at the producer
