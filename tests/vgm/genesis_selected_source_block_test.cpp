@@ -52,7 +52,7 @@ int main() {
     // exactly the already-selected lane without knowing why it was selected.
     queue.reset(200u);
     assert(queue.push_reference(reference_frame(200u, 1.0, 1.0, 2.0, 2.0)));
-    assert(queue.replace_source(200u, fm1, 9.0, 8.0, true));
+    assert(queue.replace_source(200u, fm1, 9.0, 8.0));
     assert(block.consume(queue, 200u, 1u));
     assert(block.sources()[fm1].left[0] == 9.0f);
     assert(block.sources()[fm1].right[0] == 8.0f);
