@@ -49,6 +49,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
                 "apply_studio_hq_fm_runtime.py",
                 "apply_studio_hq_fm_session_reset.py",
                 "apply_studio_deferred_psg.py",
+                "apply_studio_deferred_psg_fail_closed.py",
                 "apply_studio_deferred_psg_session_reset.py",
             ):
                 self.run_patch(self.patches / script, generated)
@@ -128,10 +129,25 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         self.assertIn("input.protected_left = deferred_psg_block", shadow)
         self.assertIn("input.protected_right = deferred_psg_block", shadow)
 
+        # Losing the exact PSG source block is an immediate family-local failure.
+        # Do not retain an older queued prefix and wait for the next block to
+        # discover the mismatch indirectly through pop_expected().
+        psg_eligibility = shadow.index(
+            "bool deferred_psg_block = m_studio_deferred_psg_active"
+        )
+        psg_fail_close = shadow.index(
+            "if (m_studio_deferred_psg_active && !deferred_psg_block)",
+            psg_eligibility,
+        )
+        psg_advance = shadow.index(
+            "advance_studio_deferred_psg_to(rendered_end)", psg_fail_close
+        )
+        self.assertLess(psg_eligibility, psg_fail_close)
+        self.assertLess(psg_fail_close, psg_advance)
+
         # The complete PSG family candidate is committed to the protected frame
         # before that frame enters the FM transport. Studio then exchanges only
         # exact FM, preserving the already-enhanced PSG and exact DAC/other chips.
-        psg_advance = shadow.index("advance_studio_deferred_psg_to(rendered_end)")
         psg_pop = shadow.index(
             "m_studio_deferred_psg_queue.pop_expected(ordinal, enhanced)",
             psg_advance,
@@ -262,6 +278,9 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         psg = chain.index(
             'run(here / "apply_studio_deferred_psg.py", source)'
         )
+        psg_guard = chain.index(
+            'run(here / "apply_studio_deferred_psg_fail_closed.py", source)'
+        )
         psg_session = chain.index(
             'run(here / "apply_studio_deferred_psg_session_reset.py", source)'
         )
@@ -271,7 +290,8 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         self.assertLess(enhanced, deferred)
         self.assertLess(deferred, session)
         self.assertLess(session, psg)
-        self.assertLess(psg, psg_session)
+        self.assertLess(psg, psg_guard)
+        self.assertLess(psg_guard, psg_session)
 
     def test_deferred_runtime_does_not_patch_observer_api(self) -> None:
         runtime = (self.patches / "apply_studio_hq_fm_runtime.py").read_text(
