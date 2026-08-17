@@ -173,20 +173,21 @@ inline bool spc_upstream_window_is_contiguous(
 // This first exact implementation deliberately admits only boundaries that map
 // to integer upstream frames. Fractional source-domain loop boundaries require
 // a separately resampled virtual ring and fail closed here.
+//
+// `boundaries` is immutable source-binding geometry. The ordinary public entry
+// point below resolves it for standalone callers; realtime providers may resolve
+// it once at admission and reuse this exact implementation on every sample.
 inline spc_upstream_playback_reconstruction_result
-reconstruct_spc_upstream_candidate_playback_sample(
+reconstruct_spc_upstream_candidate_playback_sample_resolved(
     const spc_sample_restoration_candidate& candidate,
     const spc_game_sample_playback_span& playback,
-    const snesapu_source_trajectory_projection& trajectory) noexcept
+    const snesapu_source_trajectory_projection& trajectory,
+    const detail::spc_upstream_playback_boundaries& boundaries) noexcept
 {
     spc_upstream_playback_reconstruction_result result;
     if (!candidate.upstream.valid() || !candidate.coordinate_map.valid()
-        || !playback.valid() || !trajectory.valid || trajectory.before_key_on)
-        return result;
-
-    const auto boundaries = detail::resolve_spc_upstream_playback_boundaries(
-        candidate, playback);
-    if (!boundaries.valid)
+        || !playback.valid() || !trajectory.valid || trajectory.before_key_on
+        || !boundaries.valid)
         return result;
 
     double position = 0.0;
@@ -285,6 +286,31 @@ reconstruct_spc_upstream_candidate_playback_sample(
     return result;
 }
 
+inline spc_upstream_playback_reconstruction_result
+reconstruct_spc_upstream_candidate_playback_sample(
+    const spc_sample_restoration_candidate& candidate,
+    const spc_game_sample_playback_span& playback,
+    const snesapu_source_trajectory_projection& trajectory) noexcept
+{
+    const auto boundaries = detail::resolve_spc_upstream_playback_boundaries(
+        candidate, playback);
+    return reconstruct_spc_upstream_candidate_playback_sample_resolved(
+        candidate, playback, trajectory, boundaries);
+}
+
+inline spc_upstream_playback_reconstruction_result
+reconstruct_spc_upstream_playback_sample_resolved(
+    const spc_sample_restoration_candidate& candidate,
+    const spc_game_sample_playback_span& playback,
+    const snesapu_source_trajectory_projection& trajectory,
+    const detail::spc_upstream_playback_boundaries& boundaries) noexcept
+{
+    if (!may_use_spc_sample_restoration_automatically(candidate))
+        return {};
+    return reconstruct_spc_upstream_candidate_playback_sample_resolved(
+        candidate, playback, trajectory, boundaries);
+}
+
 inline spc_upstream_playback_reconstruction_result reconstruct_spc_upstream_playback_sample(
     const spc_sample_restoration_candidate& candidate,
     const spc_game_sample_playback_span& playback,
@@ -292,7 +318,8 @@ inline spc_upstream_playback_reconstruction_result reconstruct_spc_upstream_play
 {
     if (!may_use_spc_sample_restoration_automatically(candidate))
         return {};
-    return reconstruct_spc_upstream_candidate_playback_sample(candidate, playback, trajectory);
+    return reconstruct_spc_upstream_candidate_playback_sample(
+        candidate, playback, trajectory);
 }
 
 } // namespace gameaudio::spc
