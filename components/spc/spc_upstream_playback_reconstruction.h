@@ -161,28 +161,16 @@ inline bool spc_upstream_window_is_contiguous(
     return first_index >= boundaries.loop_start && end_index <= boundaries.loop_end;
 }
 
-} // namespace detail
-
-// Highest-confidence source sampler with authored key-on/END/LOOP topology.
-// The long FIR is evaluated over the *playback trajectory*, not blindly over
-// adjacent file frames. Before key-on and after a non-looping END the virtual
-// source is zero. On the first pass, pre-loop material remains available to the
-// left while right-side lookahead across END wraps to the loop start. After the
-// first wrap, the FIR neighborhood is periodic inside the loop.
-//
-// This first exact implementation deliberately admits only boundaries that map
-// to integer upstream frames. Fractional source-domain loop boundaries require
-// a separately resampled virtual ring and fail closed here.
-//
-// `boundaries` is immutable source-binding geometry. The ordinary public entry
-// point below resolves it for standalone callers; realtime providers may resolve
-// it once at admission and reuse this exact implementation on every sample.
+// Realtime primitive for callers that already resolved immutable source-binding
+// geometry under the normal admission contract. Keep this in detail so the
+// public API cannot be called with an arbitrary cached boundary object. The
+// numerical FIR/topology law is exactly the same as the standalone path below.
 inline spc_upstream_playback_reconstruction_result
 reconstruct_spc_upstream_candidate_playback_sample_resolved(
     const spc_sample_restoration_candidate& candidate,
     const spc_game_sample_playback_span& playback,
     const snesapu_source_trajectory_projection& trajectory,
-    const detail::spc_upstream_playback_boundaries& boundaries) noexcept
+    const spc_upstream_playback_boundaries& boundaries) noexcept
 {
     spc_upstream_playback_reconstruction_result result;
     if (!candidate.upstream.valid() || !candidate.coordinate_map.valid()
@@ -225,7 +213,7 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
     double weighted = 0.0;
     double weight_sum = 0.0;
 
-    if (detail::spc_upstream_window_is_contiguous(
+    if (spc_upstream_window_is_contiguous(
             first_virtual_index,
             end_virtual_index,
             boundaries,
@@ -254,7 +242,7 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
             const std::int64_t virtual_index = first_virtual_index
                 + static_cast<std::int64_t>(tap);
             bool zero = false;
-            const std::int64_t source_index = detail::map_spc_virtual_source_index(
+            const std::int64_t source_index = map_spc_virtual_source_index(
                 virtual_index, boundaries, trajectory.loop_cycle, zero);
             const double coefficient = static_cast<double>(coefficients[tap]);
             weight_sum += coefficient;
@@ -286,6 +274,18 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
     return result;
 }
 
+} // namespace detail
+
+// Highest-confidence source sampler with authored key-on/END/LOOP topology.
+// The long FIR is evaluated over the *playback trajectory*, not blindly over
+// adjacent file frames. Before key-on and after a non-looping END the virtual
+// source is zero. On the first pass, pre-loop material remains available to the
+// left while right-side lookahead across END wraps to the loop start. After the
+// first wrap, the FIR neighborhood is periodic inside the loop.
+//
+// This first exact implementation deliberately admits only boundaries that map
+// to integer upstream frames. Fractional source-domain loop boundaries require
+// a separately resampled virtual ring and fail closed here.
 inline spc_upstream_playback_reconstruction_result
 reconstruct_spc_upstream_candidate_playback_sample(
     const spc_sample_restoration_candidate& candidate,
@@ -294,20 +294,7 @@ reconstruct_spc_upstream_candidate_playback_sample(
 {
     const auto boundaries = detail::resolve_spc_upstream_playback_boundaries(
         candidate, playback);
-    return reconstruct_spc_upstream_candidate_playback_sample_resolved(
-        candidate, playback, trajectory, boundaries);
-}
-
-inline spc_upstream_playback_reconstruction_result
-reconstruct_spc_upstream_playback_sample_resolved(
-    const spc_sample_restoration_candidate& candidate,
-    const spc_game_sample_playback_span& playback,
-    const snesapu_source_trajectory_projection& trajectory,
-    const detail::spc_upstream_playback_boundaries& boundaries) noexcept
-{
-    if (!may_use_spc_sample_restoration_automatically(candidate))
-        return {};
-    return reconstruct_spc_upstream_candidate_playback_sample_resolved(
+    return detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
         candidate, playback, trajectory, boundaries);
 }
 
