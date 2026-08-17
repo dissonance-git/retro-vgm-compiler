@@ -17,6 +17,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     snesapu_source_object_projection_test
     spc_sample_restoration_test
     genesis_enhanced_recomposition_test
+    sn76489_enhanced_source_block_test
 )
 
 add_executable(
@@ -75,6 +76,10 @@ add_executable(
     genesis_enhanced_recomposition_test
     tests/vgm/genesis_enhanced_recomposition_test.cpp
 )
+add_executable(
+    sn76489_enhanced_source_block_test
+    tests/vgm/sn76489_enhanced_source_block_test.cpp
+)
 
 target_include_directories(
     spatial_source_host_session_test
@@ -132,6 +137,15 @@ target_include_directories(
     genesis_enhanced_recomposition_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_include_directories(
+    sn76489_enhanced_source_block_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(
+    sn76489_enhanced_source_block_test
+    PRIVATE gameaudio_vgm_core
+)
 
 add_test(
     NAME spatial_source_host_session
@@ -188,4 +202,8 @@ add_test(
 add_test(
     NAME genesis_enhanced_recomposition
     COMMAND genesis_enhanced_recomposition_test
+)
+add_test(
+    NAME sn76489_enhanced_source_block
+    COMMAND sn76489_enhanced_source_block_test
 )
