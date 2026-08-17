@@ -15,21 +15,23 @@ void assert_same(
     const auto boundaries = detail::resolve_spc_upstream_playback_boundaries(
         candidate, playback);
     assert(boundaries.valid);
-    assert(detail::spc_upstream_pcm_all_finite(candidate.upstream));
+
+    const auto plan = detail::compile_spc_upstream_playback_reconstruction_plan(
+        candidate, playback);
+    assert(plan.valid);
 
     const auto ordinary = reconstruct_spc_upstream_playback_sample(
         candidate, playback, trajectory);
     const auto resolved = detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
         candidate, playback, trajectory, boundaries);
-    const auto verified =
-        detail::reconstruct_spc_upstream_candidate_playback_sample_resolved<true>(
-            candidate, playback, trajectory, boundaries);
+    const auto planned = detail::reconstruct_spc_upstream_playback_plan_sample(
+        plan, trajectory);
 
     assert(ordinary.valid == resolved.valid);
-    assert(ordinary.valid == verified.valid);
+    assert(ordinary.valid == planned.valid);
     if (ordinary.valid) {
         assert(std::abs(ordinary.sample - resolved.sample) < 1.0e-12);
-        assert(std::abs(ordinary.sample - verified.sample) < 1.0e-12);
+        assert(std::abs(ordinary.sample - planned.sample) < 1.0e-12);
     }
 }
 
@@ -129,7 +131,7 @@ int main() {
     assert_same(looped, looped_playback, trajectory);
 
     // Invalid/fractional geometry still fails during setup resolution and cannot
-    // become a cached realtime plan.
+    // become a compiled realtime plan.
     auto fractional = looped;
     fractional.coordinate_map.upstream_frames_per_game_sample = 1.5;
     fractional.coordinate_map.upstream_loop_start = 96.0;
@@ -138,6 +140,8 @@ int main() {
     const auto bad = detail::resolve_spc_upstream_playback_boundaries(
         fractional, fractional_playback);
     assert(!bad.valid);
+    assert(!detail::compile_spc_upstream_playback_reconstruction_plan(
+        fractional, fractional_playback).valid);
 
     return 0;
 }
