@@ -351,6 +351,7 @@ include(cmake/host_transport_tests.cmake)
 list(APPEND GAMEAUDIO_TEST_TARGETS
     ym2612_hq_fm_backend_test
     spc_sample_restoration_policy_test
+    ym2612_hq_algorithm_test
 )
 
 add_executable(
@@ -361,6 +362,10 @@ add_executable(
     spc_sample_restoration_policy_test
     tests/spc/spc_sample_restoration_policy_test.cpp
 )
+add_executable(
+    ym2612_hq_algorithm_test
+    tests/vgm/ym2612_hq_algorithm_test.cpp
+)
 
 target_include_directories(
     ym2612_hq_fm_backend_test
@@ -368,6 +373,10 @@ target_include_directories(
 )
 target_include_directories(
     spc_sample_restoration_policy_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    ym2612_hq_algorithm_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -378,4 +387,8 @@ add_test(
 add_test(
     NAME spc_sample_restoration_policy
     COMMAND spc_sample_restoration_policy_test
+)
+add_test(
+    NAME ym2612_hq_algorithm
+    COMMAND ym2612_hq_algorithm_test
 )
