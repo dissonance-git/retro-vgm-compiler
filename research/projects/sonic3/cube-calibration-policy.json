@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "purpose": "Evidence-safe Miyoko Takaoka versus Masanori Hikichi composer-grammar calibration for the Sonic 3 Cube lineage.",
   "primary_mixed_composer_corpora": [
     "ancient-magic-spc",
@@ -124,6 +124,61 @@
         "usage": "Strong independent work-level validation. Do not auto-create exact-fixture admissions until the game-level credit-to-each-fixture inheritance is explicitly recorded."
       }
     ],
+    "prospective_exact_control_worlds": [
+      {
+        "work": "Gleylancer",
+        "candidate": "Masanori Hikichi",
+        "proposed_corpus_id": "gleylancer-genesis-vgm",
+        "platform": "Mega Drive / Genesis",
+        "device_family": "YM2612 + SN76489",
+        "status": "evidence_ready_bytes_missing",
+        "priority": "highest_current_hikichi_grounding_priority",
+        "role_evidence": "The licensed Gleylancer 30th Anniversary arrange soundtrack explicitly credits Masanori Hikichi as composer of Opening and Stage 1, and Noriyuki Iwadare as composer of Stage 2/4 material. This resolves cue-level composition beyond the original game's four-person Music & Sound Effects team credit.",
+        "sources": [
+          "https://www.amiami.jp/top/detail/detail?gcode=GAME-0027039&page=top",
+          "https://www.4gamer.net/games/999/G999905/20221012013/",
+          "https://vgmrips.net/packs/pack/gleylancer-mega-drive-genesis",
+          "https://www.zophar.net/music/sega-mega-drive-genesis/advanced-busterhawk-gleylancer"
+        ],
+        "proposed_cue_joins": [
+          {
+            "vgm_pack_ordinal": 1,
+            "vgm_pack_title": "Story Begin",
+            "commercial_title": "OPENING",
+            "licensed_arrangement_title": "The Road to the Universe (Opening)",
+            "composer": "Masanori Hikichi",
+            "mapping_state": "bounded_title_and_duration_alias",
+            "admission_after_bytes": "derived"
+          },
+          {
+            "vgm_pack_ordinal": 3,
+            "vgm_pack_title": "Stage 1 (Asteroid Field)",
+            "commercial_title": "STAGE 1",
+            "composer": "Masanori Hikichi",
+            "mapping_state": "direct_stage_title",
+            "admission_after_bytes": "exact"
+          },
+          {
+            "vgm_pack_ordinal": 4,
+            "vgm_pack_title": "Stage 2 (Purple Sea)",
+            "commercial_title": "STAGE 2",
+            "composer": "Noriyuki Iwadare",
+            "mapping_state": "direct_stage_title",
+            "usage_after_bytes": "same_game_non_hikichi_composer_decoy"
+          }
+        ],
+        "admission_gate": "Do not add these labels to attribution-control-admissions.jsonl until the immutable VGM/VGZ bytes are committed, hashed by the corpus machinery, and the actual archive filenames are joined to these three pack ordinals. The evidence is ready; the bytes are not yet present.",
+        "projected_effect_if_two_hikichi_cues_admitted": {
+          "masanori_hikichi_grounded_cue_count": 6,
+          "masanori_hikichi_grounded_soundtracks": [
+            "gleylancer-genesis-vgm",
+            "terranigma-spc"
+          ],
+          "strict_cross_soundtrack_status": "testable",
+          "total_takaoka_hikichi_grounded_composer_cues": 17
+        }
+      }
+    ],
     "derivative_inheritance_candidates": [
       {
         "corpus_id": "wizardry-iii-iv-huc6280",
@@ -182,6 +237,12 @@
         "usage": "Useful implementation/arrangement handwriting control; do not treat the whole Genesis soundtrack as Hikichi composition."
       },
       {
+        "work": "Galaxy Force II (Mega Drive)",
+        "candidate": "Masanori Hikichi",
+        "evidence": "The Mega Drive port credits M.Hikichi / CUBE for S.E. / Music, but the official WM-0574 soundtrack identifies the inherited Galaxy Force musical works as compositions by Koichi Namiki and/or Katsuhiro Hayashi. The port credit therefore cannot be promoted to composition evidence merely because the VGM pack lists Hikichi among music authors.",
+        "usage": "Resolved as an arrangement/implementation/port-realization confound. Useful for testing Hikichi implementation handwriting on YM2612/SN76489; exclude from Hikichi composer supervision unless a genuinely new Hikichi-composed cue is independently documented."
+      },
+      {
         "work": "E.V.O.: Search for Eden",
         "candidate": "Masanori Hikichi",
         "evidence": "Hikichi is credited as Sound Creator; the musical composition/arrangement lineage is separately credited.",
@@ -198,27 +259,17 @@
       {
         "work": "Wizardry I・II",
         "candidate": "Miyoko Takaoka",
-        "reason": "Highest-priority missing precursor corpus because it can directly test the first-three Wizardry III・IV inheritance hypothesis."
-      },
-      {
-        "work": "Gleylancer",
-        "candidate": "Masanori Hikichi",
-        "reason": "Hikichi has direct Music & Sound Effects credit, but the soundtrack has multiple composers; exact cue partition is needed."
-      },
-      {
-        "work": "Galaxy Force II (Mega Drive)",
-        "candidate": "Masanori Hikichi",
-        "reason": "Hikichi is directly credited S.E. / Music alongside the original Sega composers; separate port composition/arrangement/implementation roles before use."
+        "reason": "Highest-priority missing Takaoka precursor corpus for testing the first-three Wizardry III・IV inheritance hypothesis, but no longer the main CUBE attribution bottleneck because Takaoka already has two grounded soundtrack worlds."
       },
       {
         "work": "Human Sports Festival",
         "candidate": "Masanori Hikichi",
-        "reason": "Direct Sound Composers credit makes it a promising independent Hikichi world if exact cue scope can be recovered."
+        "reason": "Direct Sound Composers credit confirms participation, but three other named sound composers remain in the same role. Recover cue-level ownership before using it as Hikichi supervision."
       },
       {
         "work": "Power of the Hired",
         "candidate": "Masanori Hikichi",
-        "reason": "Hikichi is credited for Music; acquire/verify a native corpus and exact credit scope."
+        "reason": "Hikichi is one of five people credited for Music and a commercial original soundtrack exists. The remaining problem is cue-level partition; whole-game credit is insufficient for composer supervision."
       }
     ]
   },
