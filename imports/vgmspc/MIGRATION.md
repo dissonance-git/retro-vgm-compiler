@@ -28,16 +28,17 @@ The old repository or local checkout is deletable only when every non-third-part
 | `foo_input_vgm` foobar host source, resources, `.sln` / `.vcxproj` | Preserve the still-required host/build knowledge | source-specific VGM host area under `components/vgm/` | open |
 | `foo_snesapu` foobar/SPC player host source and projects | Preserve the still-required host/build knowledge | source-specific SPC host area under `components/spc/` | open |
 | `patches/libvgm` | Superseded by the newer combined source-capture patcher | `patches/libvgm/apply_source_capture.py` | retired |
-| SNESAPU source-capture / transport patches | Compare against and keep the newer chain | `patches/snesapu/`; current repository already contains the maintained source-capture, SRCE transport and enhanced paths | in progress |
-| VGM/Omniphony plugin patch logic | Compare against current selected-source and delivered-route transport | `patches/foo_input_vgm/`; current chain already renders finalized selected Genesis sources through Omniphony | in progress |
+| SNESAPU source-capture / SRCE v2 patches | Consolidated and then advanced beyond the old two-script chain | `patches/snesapu/apply_source_capture.py`, `patches/snesapu/upgrade_source_capture_v2.py`, and current SRCE v2 wire/storage/runtime work | migrated |
+| old VGM source-player / Omniphony plugin patches | Superseded by the selected-source and delivered-route architecture | `patches/foo_input_vgm/`; finalized reference/enhanced source choices are transported to delivered audio and then rendered conditionally through Omniphony | retired |
+| old SPC Omniphony plugin bridge | Contains host-level runtime semantics that must survive: source admission, absolute source clock, seek/reset handling, and reference fallback | compare/adapt into the canonical SPC host after current SRCE v2 transport settles | open |
 | `tests/vgm/genesis_source_plane_test.cpp` relative chip-height assertions | Intentionally superseded | old test asserts inferred PSG-above-YM placement; current source model keeps listener-space placement neutral unless authored/perceptual evidence earns it | retired |
-| authored YM2612 / Game Gear route assertions embedded in that test | Preserve where not already covered | current authored-route and route-transport tests | verify |
-| `tests/vgm/linear_source_resampler_test.cpp` | Unique useful regression | migrate/adapt under `tests/vgm/`; pins libvgm linear startup pre-roll, reset retention, segmentation and rate/volume parity | open |
-| `inference/` generic headers | Mine by model comparison | likely ancestors of `model/`; copy only relations not already represented more rigorously | open |
+| authored YM2612 / Game Gear route assertions embedded in that test | Already represented by stronger dedicated controls | `tests/vgm/authored_stereo_route_test.cpp` covers mute/left/right/both YM routing and Game Gear/SN76489 masks including noise | migrated |
+| `tests/vgm/linear_source_resampler_test.cpp` | Preserved as an external-libvgm integration regression | `tests/integration/libvgm-source/linear_source_resampler_test.cpp` with standalone dependency-aware CMake and provenance README | migrated |
+| `inference/chip_inference.h`, `chip_adapter.h`, `chip_hint_bus.h` | Intentionally superseded, not copied | current `model/realtime_musical_role_hypothesis.h` separates resemblance from confidence, records cue provenance, caps weak acoustic role evidence, and does not directly turn guessed roles into spatial coordinates; the old singleton Prism hint bus is obsolete | retired |
 | `.github/workflows/build.yml` | Mine build/release procedure, not repository layout | canonical Windows component build/package workflow in this repository | open |
 | `.github/workflows/snesapu-source.yml` | Mine unique SNESAPU validation/build behavior | canonical SPC validation/build workflow or tests | open |
 | `.github/workflows/spc-source-player.yml` | Mine unique source-player validation/build behavior | canonical SPC validation/build workflow or tests | open |
-| `Directory.Build.props` / `Directory.Build.targets` | Preserve only rules still required by imported projects | canonical component build support | open |
+| `Directory.Build.props` / `Directory.Build.targets` | Preserve only rules still required by imported projects | WTL include/toolset compatibility belongs in canonical component build support; old automatic patch invocations are superseded by explicit current patch chains | in progress |
 | `SDK-2025-03-07`, `WTL`, `libvgm-master`, `third_party`, `submodules` dependency copies/checkouts | Do not treat copies as project knowledge | preserve upstream URLs, exact required revisions, patch order and build flags; fetch/reconstruct dependencies reproducibly | open |
 | old `genesis_omniphony_projection.h` inferred depth/height policy | Intentionally superseded | current exact authored-route transport + selected-source Omniphony runtime avoids device/pitch-to-position invention | retired |
 | binaries, intermediate outputs, generated release packages | Do not migrate as source of truth | regenerate from canonical source/build; retain hashes only when scientifically useful | open |
@@ -59,6 +60,14 @@ These are migration facts, not a mandate to preserve the old directory layout or
 ## Dependency provenance observed in vgmspc
 
 The old tree references foobar2000 SDK, WTL, libvgm and Omniphony as external dependencies. Its later build additionally pins SPCPlay/SNESAPU and Omniphony revisions and pins a Rust toolchain. The canonical build must record exact revisions at the point where they are actually required, rather than inheriting an opaque copied dependency directory.
+
+Observed old release-build pins:
+
+- SPCPlay/SNESAPU commit: `fc770e268ecacb4523699e2edc5c0efdf80957d6`
+- Omniphony commit: `32cf0cba471d39768593cd42e0a768a4c47bc045`
+- Rust toolchain: `1.88.0`
+
+The old `.gitmodules` URLs identify the upstream foobar2000 SDK, WTL, libvgm and Omniphony repositories. Their copied checkout directories are not themselves migration payloads.
 
 ## Retirement checklist
 
