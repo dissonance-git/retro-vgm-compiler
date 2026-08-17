@@ -128,11 +128,12 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# This regression is script-style rather than unittest.TestCase-based; execute
+# it directly so a discovery run cannot silently report "Ran 0 tests".
 add_test(
     NAME spc_materializer_contract
-    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
-        -s ${RETRO_ROOT}/tests/spc
-        -p test_materialize_foo_snesapu.py
+    COMMAND ${Python3_EXECUTABLE} -B
+        ${RETRO_ROOT}/tests/spc/test_materialize_foo_snesapu.py
 )
 set_tests_properties(
     spc_materializer_contract
