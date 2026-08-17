@@ -33,6 +33,26 @@ class StudioSourceTransportPatchTest(unittest.TestCase):
         self.assertIn('GetProcAddress(module, "SetDSPStudioSourceProvider")', text)
         self.assertIn("&retro_studio_begin, &retro_studio_sample, &studio_runtime", text)
 
+        # The hot callback ABI must preserve the live source-topology facts
+        # computed by the SNESAPU assembly seam. DIR alone is insufficient: the
+        # pinned END+LOOP path may refresh DSP SRCN, apply Script700 NoteChange,
+        # and select a different directory loop word while the page is unchanged.
+        self.assertIn("using RetroStudioSampleCallback = u32 (__stdcall *)(", text)
+        self.assertIn("u32 effective_srcn", text)
+        self.assertIn("u32 live_loop_brr", text)
+        callback = text.index("static u32 __stdcall retro_studio_sample(")
+        forwarding = text.index("runtime->provider().render_voice(", callback)
+        self.assertLess(callback, forwarding)
+        for argument in (
+            "m_rate_q16_16",
+            "effective_srcn",
+            "live_loop_brr",
+            "directory_page",
+            "interpolation",
+            "out_sample",
+        ):
+            self.assertIn(argument, text[forwarding : forwarding + 400])
+
         # Sidecar discovery stays setup-only, local-file-only and bounded. A
         # missing top-rung source is normal and leaves the lower ladder alive.
         self.assertIn('sidecar += ".studiosrc"', text)
