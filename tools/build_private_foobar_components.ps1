@@ -30,6 +30,9 @@ $SdkExtract = Join-Path $WorkRoot 'foobar-sdk'
 $VgmTree = Join-Path $WorkRoot 'vgm-current'
 $SpcRoot = Join-Path $WorkRoot 'foo-snesapu-current'
 $FrontierBuild = Join-Path $WorkRoot 'frontier-tests'
+$VgmOutDir = Join-Path $WorkRoot 'out-vgm-x64'
+$SpcPlayerOutDir = Join-Path $WorkRoot 'out-spcplayer-x86'
+$SpcComponentOutDir = Join-Path $WorkRoot 'out-spc-x64'
 
 function Need-Command([string]$Name) {
     if (!(Get-Command $Name -ErrorAction SilentlyContinue)) { throw "Required command is not on PATH: $Name" }
@@ -54,12 +57,33 @@ function Junction([string]$Link, [string]$Target) {
     if ($LASTEXITCODE -ne 0) { throw "Failed to create junction: $Link -> $Target" }
 }
 
-function Find-ReleaseFile([string]$Filter, [string]$Root) {
-    $found = Get-ChildItem -Recurse -File -Filter $Filter -Path $Root -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notlike '*\Debug\*' -and $_.FullName -notlike '*\CMakeFiles\*' -and $_.FullName -notlike '*\dist\*' } |
-        Select-Object -First 1
-    if (!$found) { throw "$Filter not found under $Root" }
-    return $found.FullName
+function Require-File([string]$Path, [string]$Label) {
+    if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { throw "$Label missing: $Path" }
+}
+
+function Get-PEMachine([string]$Path) {
+    Require-File $Path 'PE image'
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    $reader = [System.IO.BinaryReader]::new($stream)
+    try {
+        if ($reader.ReadUInt16() -ne 0x5A4D) { throw "Not an MZ executable: $Path" }
+        $stream.Position = 0x3C
+        $peOffset = $reader.ReadInt32()
+        if ($peOffset -lt 0 -or ($peOffset + 6) -gt $stream.Length) { throw "Invalid PE offset in $Path" }
+        $stream.Position = $peOffset
+        if ($reader.ReadUInt32() -ne 0x00004550) { throw "Missing PE signature: $Path" }
+        return [int]$reader.ReadUInt16()
+    } finally {
+        $reader.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Assert-PEMachine([string]$Path, [int]$ExpectedMachine, [string]$Label) {
+    $actual = Get-PEMachine $Path
+    if ($actual -ne $ExpectedMachine) {
+        throw ("$Label machine mismatch: expected 0x{0:X4}, got 0x{1:X4}: $Path" -f $ExpectedMachine, $actual)
+    }
 }
 
 function Get-GitBlobSha([string]$Path) {
@@ -99,7 +123,7 @@ if (!(Test-Path $vcvars32)) { throw "vcvars32.bat not found: $vcvars32" }
 
 Remove-Item $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $OutputRoot -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory $WorkRoot, $OutputRoot -Force | Out-Null
+New-Item -ItemType Directory $WorkRoot, $OutputRoot, $VgmOutDir, $SpcPlayerOutDir, $SpcComponentOutDir -Force | Out-Null
 
 Write-Host '== 1. Compile the private source-transport frontier tests =='
 Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\private_components'), '-B', $FrontierBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64')
@@ -123,6 +147,7 @@ $fb2k = Split-Path (Split-Path $sdkProject.FullName -Parent) -Parent
 $sdkRoot = Split-Path $fb2k -Parent
 Assert-GitBlob $sdkProject.FullName $ExpectedSdkProjectBlob 'foobar SDK project'
 Assert-GitBlob (Join-Path $sdkRoot 'pfc\pfc.vcxproj') $ExpectedPfcProjectBlob 'foobar pfc project'
+Require-File (Join-Path $fb2k 'shared\shared-x64.lib') 'foobar SDK shared x64 library'
 
 Write-Host '== 3. Checkout and validate the Omniphony source renderer =='
 Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git' $Omniphony $OmniphonyCommit
@@ -131,7 +156,8 @@ $OmniRenderer = Join-Path $Omniphony 'omniphony-renderer'
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi') $OmniRenderer
 Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', 'source_ffi') $OmniRenderer
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
-if (!(Test-Path $OmniDll)) { throw "Omniphony source DLL missing: $OmniDll" }
+Require-File $OmniDll 'Omniphony source DLL'
+Assert-PEMachine $OmniDll 0x8664 'Omniphony source DLL'
 
 Write-Host '== 4. Patch and build pinned libvgm for exact source observation/replacement =='
 Run 'python' @((Join-Path $RetroRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
@@ -145,13 +171,7 @@ Copy-Item (Join-Path $RetroRoot 'model') (Join-Path $VgmTree 'model') -Recurse -
 Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_input_vgm.py'), '--sdk-root', $VgmSdkRoot)
 $VgmComponent = Join-Path $VgmSdkRoot 'foo_input_vgm'
 $vgmProject = Join-Path $VgmComponent 'foo_input_vgm.vcxproj'
-$projectText = Get-Content $vgmProject -Raw
-if ($projectText -notmatch 'input_vgm_shadow\.cpp') {
-    $needle = '    <ClCompile Include="src\input_vgm.cpp" />'
-    if (!$projectText.Contains($needle)) { throw 'Could not locate input_vgm.cpp project item' }
-    $projectText = $projectText.Replace($needle, $needle + "`r`n    <ClCompile Include=`"src\input_vgm_shadow.cpp`" />")
-    Set-Content $vgmProject $projectText -Encoding UTF8
-}
+Require-File (Join-Path $VgmComponent 'Directory.Build.targets') 'VGM project-owned MSBuild overlay'
 $vgmBase = $VgmSdkRoot
 $componentBase = Split-Path $vgmBase -Parent
 Junction (Join-Path $vgmBase 'SDK') (Join-Path $fb2k 'SDK')
@@ -163,9 +183,11 @@ Junction (Join-Path $componentBase 'libPPUI') (Join-Path $sdkRoot 'libPPUI')
 Junction (Join-Path $componentBase 'libvgm') $Libvgm
 Junction (Join-Path $componentBase 'WTL') $Wtl
 Junction (Join-Path $componentBase 'zlib') (Join-Path $Libvgm 'libs\include')
-$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'
-$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }
-Run $msbuild @($vgmBuildTarget, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
+$vgmOutArg = '/p:OutDir=' + $VgmOutDir + '\'
+Run $msbuild @($vgmProject, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $vgmOutArg, '/m', '/v:m')
+$FooVgm = Join-Path $VgmOutDir 'foo_input_vgm.dll'
+Require-File $FooVgm 'private VGM component'
+Assert-PEMachine $FooVgm 0x8664 'private VGM component'
 
 Write-Host '== 6. Materialize the SPC parent/child and patch the pinned editable SNESAPU =='
 Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_snesapu.py'), $SpcRoot, '--force')
@@ -201,16 +223,23 @@ exit /b 0
 Run 'cmd.exe' @('/d', '/c', $SnesapuCmd)
 $SnesapuLibDir = Join-Path $SnesapuSource 'Release'
 $SnesapuDll = Join-Path $SnesapuLibDir 'SNESAPU.dll'
-if (!(Test-Path (Join-Path $SnesapuLibDir 'snesapu.lib')) -or !(Test-Path $SnesapuDll)) { throw 'Patched SNESAPU outputs are missing' }
+Require-File (Join-Path $SnesapuLibDir 'snesapu.lib') 'patched SNESAPU import library'
+Require-File $SnesapuDll 'patched SNESAPU DLL'
+Assert-PEMachine $SnesapuDll 0x014C 'patched SNESAPU DLL'
 
 Write-Host '== 8. Build source-aware spcplayer and x64 foo_snesapu =='
-Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', "/p:SNESAPUIncludeDir=$SnesapuSource", "/p:SNESAPULibDir=$SnesapuLibDir", '/m', '/v:m')
-Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
+$spcPlayerOutArg = '/p:OutDir=' + $SpcPlayerOutDir + '\'
+$spcComponentOutArg = '/p:OutDir=' + $SpcComponentOutDir + '\'
+Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', "/p:SNESAPUIncludeDir=$SnesapuSource", "/p:SNESAPULibDir=$SnesapuLibDir", $spcPlayerOutArg, '/m', '/v:m')
+Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $spcComponentOutArg, '/m', '/v:m')
+$SpcPlayer = Join-Path $SpcPlayerOutDir 'spcplayer.exe'
+$FooSpc = Join-Path $SpcComponentOutDir 'foo_snesapu.dll'
+Require-File $SpcPlayer 'private SPC child player'
+Require-File $FooSpc 'private SPC component'
+Assert-PEMachine $SpcPlayer 0x014C 'private SPC child player'
+Assert-PEMachine $FooSpc 0x8664 'private SPC component'
 
-Write-Host '== 9. Package the two private foobar components =='
-$FooVgm = Find-ReleaseFile 'foo_input_vgm.dll' $VgmComponent
-$FooSpc = Find-ReleaseFile 'foo_snesapu.dll' $SpcRoot
-$SpcPlayer = Find-ReleaseFile 'spcplayer.exe' $SpcRoot
+Write-Host '== 9. Package and audit the two private foobar components =='
 $VgmPackage = Join-Path $WorkRoot 'package-vgm'
 $SpcPackage = Join-Path $WorkRoot 'package-spc'
 New-Item -ItemType Directory $VgmPackage, $SpcPackage -Force | Out-Null
@@ -220,6 +249,11 @@ Copy-Item $FooSpc (Join-Path $SpcPackage 'foo_snesapu.dll') -Force
 Copy-Item $SpcPlayer (Join-Path $SpcPackage 'spcplayer.exe') -Force
 Copy-Item $SnesapuDll (Join-Path $SpcPackage 'SNESAPU.dll') -Force
 Copy-Item $OmniDll (Join-Path $SpcPackage 'omniphony_source.dll') -Force
+
+$omniHash = (Get-FileHash $OmniDll -Algorithm SHA256).Hash
+foreach ($copy in @((Join-Path $VgmPackage 'omniphony_source.dll'), (Join-Path $SpcPackage 'omniphony_source.dll'))) {
+    if ((Get-FileHash $copy -Algorithm SHA256).Hash -ne $omniHash) { throw "Omniphony package copy differs from built DLL: $copy" }
+}
 
 $VgmZip = Join-Path $WorkRoot 'foo_input_vgm.zip'
 $SpcZip = Join-Path $WorkRoot 'foo_snesapu.zip'
@@ -245,6 +279,13 @@ $manifest = [ordered]@{
     rust_toolchain = $RustToolchain
     foo_snesapu_parent_provenance = 'dissonance-git/vgmspc@2b7ec8bbd7326eabee3ba39bb91130b9b128e74b (internal bootstrap only; no live dependency)'
     final_playback_contract_hz = 48000
+    binary_architecture = [ordered]@{
+        foo_input_vgm = 'x64'
+        foo_snesapu = 'x64'
+        omniphony_source = 'x64'
+        spcplayer = 'x86'
+        SNESAPU = 'x86'
+    }
     packages = @((Split-Path $VgmComponentPackage -Leaf), (Split-Path $SpcComponentPackage -Leaf))
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutputRoot 'build-manifest.json') -Encoding UTF8
@@ -262,16 +303,17 @@ Install by opening:
   $(Split-Path $VgmComponentPackage -Leaf)
   $(Split-Path $SpcComponentPackage -Leaf)
 
-Each component carries its own omniphony_source.dll. The SPC package also carries
-its exact x86 spcplayer.exe and patched SNESAPU.dll. enhanced and Spatial remain
-independent controls; failed source/renderer evidence falls back to the ordinary
-stereo path.
+Both components use one 48 kHz final playback timeline in every Enhanced/Spatial
+combination. Each component carries its exact omniphony_source.dll. The SPC
+package also carries its exact x86 spcplayer.exe and patched SNESAPU.dll.
+Enhanced and Spatial remain independent controls; failed source/renderer evidence
+falls back to the ordinary stereo path.
 "@ | Set-Content (Join-Path $OutputRoot 'README.txt') -Encoding UTF8
 
 $Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'
 Compress-Archive -Path @($VgmComponentPackage, $SpcComponentPackage, (Join-Path $OutputRoot 'build-manifest.json'), (Join-Path $OutputRoot 'SHA256SUMS.txt'), (Join-Path $OutputRoot 'README.txt')) -DestinationPath $Bundle -CompressionLevel Optimal
 
 Write-Host ''
-Write-Host 'Private components built successfully:'
+Write-Host 'Private components built and audited successfully:'
 Get-ChildItem $OutputRoot | Format-Table Name, Length
 Get-FileHash $Bundle -Algorithm SHA256 | Format-List
