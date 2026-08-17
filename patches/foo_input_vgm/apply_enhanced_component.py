@@ -55,7 +55,11 @@ def main() -> int:
     run(here / "apply_enhanced_dac_runtime.py", source)
     run(here / "apply_enhanced_dac_stream_session_reset.py", source)
     run(here / "apply_enhanced_dac_stream_mix.py", source)
-    print("foo_input_vgm enhanced component patch set applied")
+    # Spatial consumes only the already-finalized source choices. Keep this
+    # after every source-quality patch so presentation cannot affect admission.
+    run(here / "apply_spatial_selected_source_transport.py", source)
+    run(here / "apply_spatial_omniphony_runtime.py", source)
+    print("foo_input_vgm enhanced + Spatial component patch set applied")
     return 0
 
 
