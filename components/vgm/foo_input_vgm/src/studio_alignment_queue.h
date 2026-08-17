@@ -17,14 +17,14 @@ namespace foobar_vgm::source_audio {
 // that must remain phase-locked to it. Only the FM reconstruction has lookahead;
 // DAC, PSG, untouched chips, and metadata simply travel with the same ordinal.
 //
-// A frame can leave the queue only when the supplied native Studio stream owns
-// the complete FIR window for its exact source-time coordinate. This makes FIR
-// latency an explicit scheduling fact instead of an implicit FM-only delay.
+// A frame can leave the queue only after its native source support has been
+// verified. FIR latency is therefore an explicit scheduling fact instead of an
+// implicit FM-only delay.
 template <typename Payload, std::size_t Capacity>
 class studio_alignment_queue {
-    static_assert(Capacity > 0, "Studio alignment queue capacity must be non-zero.");
+    static_assert(Capacity > 0, "alignment queue capacity must be non-zero.");
     static_assert(std::is_copy_assignable<Payload>::value,
-        "Studio alignment payload must be copy assignable.");
+        "alignment payload must be copy assignable.");
 
 public:
     struct entry {
@@ -94,9 +94,18 @@ public:
 
     template <typename NativeStream>
     bool pop_ready(const NativeStream& stream, entry& out) noexcept {
-        if (!front_ready(stream))
+        return pop_ready_when(front_ready(stream), out);
+    }
+
+    // Some proven boundaries, such as a fresh OPN2's silent negative-time FM
+    // prefix, require a readiness predicate richer than NativeStream::contains.
+    // The caller still has to prove the complete FIR window before dequeueing;
+    // false never mutates the queue.
+    bool pop_ready_when(bool ready, entry& out) noexcept {
+        const entry* current = front();
+        if (!ready || current == nullptr)
             return false;
-        out = entries_[head_];
+        out = *current;
         head_ = (head_ + 1u) % Capacity;
         --count_;
         return true;
@@ -105,7 +114,7 @@ public:
     // End-of-stream fallback. Once the authoritative producer has ended, the
     // final post_roll frames can never gain future FIR support. The integration
     // may release their protected-reference payloads explicitly, but only via
-    // this distinct operation so tail fallback can never masquerade as Studio.
+    // this distinct operation so tail fallback can never masquerade as enhanced.
     bool pop_reference_tail(entry& out) noexcept {
         const entry* current = front();
         if (current == nullptr)
