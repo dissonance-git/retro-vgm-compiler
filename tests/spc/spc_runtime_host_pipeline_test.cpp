@@ -226,5 +226,126 @@ int main() {
         CHECK(pipeline.expected_reference_frame() == 0);
     }
 
+    {
+        // At native 32 kHz, the exact pre-pan source capture and the runtime
+        // route/identity evidence share one frame-for-frame protected window.
+        spc_runtime_host_pipeline<8, 4, 8, 32> pipeline;
+        pipeline.reset(spatial_source_host_discontinuity::initialize, 100);
+
+        spc_native_source_capture native;
+        native.reset_trace();
+        std::int16_t voices[spc_native_voice_count] = {};
+        const std::int16_t voice0[4] = {-32768, 16384, 8192, 0};
+        for (std::uint64_t frame = 0; frame < 4; ++frame) {
+            voices[0] = voice0[frame];
+            native.observe(
+                spc_native_sample_rate,
+                900 + frame,
+                voices,
+                spc_native_voice_count);
+        }
+        CHECK(native.valid());
+
+        spc_runtime_capture_record runtime[2];
+        runtime[0] = make_record(
+            0,
+            spc_voice_runtime_event_kind::routing_state_changed,
+            0,
+            0);
+        runtime[0].tick_rate = 32000;
+        runtime[0].fields = runtime[0].fields |
+            spc_runtime_capture_field::route_gain_left |
+            spc_runtime_capture_field::route_gain_right;
+        runtime[0].route_gain_left = -128;
+        runtime[0].route_gain_right = 64;
+
+        runtime[1] = make_record(
+            1,
+            spc_voice_runtime_event_kind::key_on_accepted,
+            1,
+            0);
+        runtime[1].tick_rate = 32000;
+
+        CHECK(pipeline.consume_native_reference_window(
+            100,
+            4,
+            0,
+            32000,
+            32000,
+            {runtime, 2, false},
+            native,
+            900));
+        CHECK(pipeline.expected_reference_frame() == 104);
+        CHECK(pipeline.buffered_frames() == 4);
+
+        const auto first = pipeline.pull(4);
+        CHECK(first.reference_frame_start == 100);
+        CHECK(first.sources.frame_count == 1);
+        CHECK(pipeline.last_pull_identity_limited());
+        CHECK(first.sources.lanes[0].evidence.generation == 0);
+        CHECK(first.sources.lanes[0].evidence.stereo_route.left_gain == -1.0f);
+        CHECK(first.sources.lanes[0].evidence.stereo_route.right_gain == 0.5f);
+        CHECK(first.sources.lanes[0].availability[0] == 1u);
+        CHECK(first.sources.lanes[0].mono_pcm[0] == -1.0f);
+
+        const auto second = pipeline.pull(4);
+        CHECK(second.reference_frame_start == 101);
+        CHECK(second.sources.frame_count == 3);
+        CHECK(second.sources.lanes[0].evidence.generation == 1);
+        CHECK(second.sources.lanes[0].availability[0] == 1u);
+        CHECK(second.sources.lanes[0].availability[2] == 1u);
+        CHECK(second.sources.lanes[0].mono_pcm[0] == 0.5f);
+        CHECK(second.sources.lanes[0].mono_pcm[1] == 0.25f);
+        CHECK(second.sources.lanes[0].mono_pcm[2] == 0.0f);
+    }
+
+    {
+        // Native PCM rejection precedes runtime-state mutation. Resampled host
+        // rates stay on the evidence-only path until FIR phase is observable.
+        spc_runtime_host_pipeline<8, 4, 8, 32> pipeline;
+        pipeline.reset(spatial_source_host_discontinuity::initialize, 0);
+        spc_native_source_capture native;
+        native.reset_trace();
+        std::int16_t voices[spc_native_voice_count] = {};
+        native.observe(spc_native_sample_rate, 0, voices, spc_native_voice_count);
+
+        auto onset = make_record(
+            0,
+            spc_voice_runtime_event_kind::key_on_accepted,
+            0,
+            1);
+        onset.tick_rate = 48000;
+        CHECK(!pipeline.consume_native_reference_window(
+            0,
+            1,
+            0,
+            48000,
+            48000,
+            {&onset, 1, false},
+            native,
+            0));
+        CHECK(pipeline.last_error() ==
+            spc_runtime_host_pipeline_error::native_source_rejected);
+        CHECK(pipeline.last_native_error() ==
+            spc_native_exact_source_error::unsupported_output_rate);
+        CHECK(pipeline.spatial_state().voices[1].generation == 0);
+        CHECK(pipeline.expected_reference_frame() == 0);
+
+        const std::uint64_t wrapped_looking_rate = (1ull << 32u) + 32000u;
+        onset.tick_rate = wrapped_looking_rate;
+        CHECK(!pipeline.consume_native_reference_window(
+            0,
+            1,
+            0,
+            wrapped_looking_rate,
+            wrapped_looking_rate,
+            {&onset, 1, false},
+            native,
+            0));
+        CHECK(pipeline.last_native_error() ==
+            spc_native_exact_source_error::unsupported_output_rate);
+        CHECK(pipeline.spatial_state().voices[1].generation == 0);
+    }
+
     return 0;
 }
