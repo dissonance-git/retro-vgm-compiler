@@ -5,6 +5,7 @@ project(retro_vgm_hes_forensic_runtime LANGUAGES C CXX)
 enable_testing()
 
 include(FetchContent)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 get_filename_component(
     RETRO_VGM_COMPILER_ROOT
@@ -32,13 +33,13 @@ set(
 )
 set(
     LIBGME_HES_FORENSIC_HOOK_CONTRACT
-    "retro-vgm-compiler:libgme-hes-apu-hook-v1-ordering-v1"
+    "retro-vgm-compiler:libgme-hes-psg-native-adpcm-hook-v1-ordering-v1"
 )
 
 if(NOT LIBGME_HES_FORENSIC_COMMIT STREQUAL
        "fe8da4b6d3876d7542c2fb69d94487e19836d678")
     message(FATAL_ERROR
-        "The HES forensic hook is evidence-bound to libgme commit "
+        "The HES forensic hooks are evidence-bound to libgme commit "
         "fe8da4b6d3876d7542c2fb69d94487e19836d678. "
         "Review the hook contract before changing the pin."
     )
@@ -72,6 +73,10 @@ FetchContent_Declare(
     GIT_SHALLOW FALSE
     GIT_PROGRESS FALSE
     UPDATE_DISCONNECTED TRUE
+    PATCH_COMMAND
+        ${Python3_EXECUTABLE}
+        ${RETRO_VGM_COMPILER_ROOT}/tools/hes/patch_libgme_hes_forensic.py
+        <SOURCE_DIR>
 )
 FetchContent_MakeAvailable(libgme_hes_forensic)
 
@@ -82,9 +87,10 @@ endif()
 set(HES_FORENSIC_HOOK_HEADER
     "${CMAKE_CURRENT_LIST_DIR}/hes_forensic_hook_inject.h")
 
-# libgme already owns the GME_APU_HOOK call at the HES CPU -> PSG boundary.
-# Force-include our definition before Classic_Emu.h supplies its no-op fallback.
-# No pinned upstream source file is patched or rewritten.
+# libgme already owns GME_APU_HOOK at the HES CPU -> PSG boundary. Force-include
+# our definition before Classic_Emu.h supplies its no-op fallback. The strict
+# FetchContent transform adds only the otherwise-missing ADPCM observation call
+# immediately before the pinned Hes_Apu_Adpcm write.
 if(MSVC)
     target_compile_options(gme_static PRIVATE "/FI${HES_FORENSIC_HOOK_HEADER}")
 else()
