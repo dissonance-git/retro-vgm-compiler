@@ -30,6 +30,7 @@ $SdkExtract = Join-Path $WorkRoot 'foobar-sdk'
 $VgmTree = Join-Path $WorkRoot 'vgm-current'
 $SpcRoot = Join-Path $WorkRoot 'foo-snesapu-current'
 $FrontierBuild = Join-Path $WorkRoot 'frontier-tests'
+$LibvgmSourceTestBuild = Join-Path $WorkRoot 'libvgm-source-tests'
 $VgmOutDir = Join-Path $WorkRoot 'out-vgm-x64'
 $SpcPlayerOutDir = Join-Path $WorkRoot 'out-spcplayer-x86'
 $SpcComponentOutDir = Join-Path $WorkRoot 'out-spc-x64'
@@ -163,6 +164,11 @@ Write-Host '== 4. Patch and build pinned libvgm for exact source observation/rep
 Run 'python' @((Join-Path $RetroRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
 Run 'cmake' @('-S', $Libvgm, '-B', (Join-Path $Libvgm 'build_x64'), '-G', 'Visual Studio 17 2022', '-A', 'x64', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_PLAYER=OFF', '-DBUILD_VGM2WAV=OFF', '-DCMAKE_CONFIGURATION_TYPES=Release', '-DUTIL_CHARCNV_ICONV=OFF', '-DUTIL_CHARCNV_WINAPI=ON')
 Run 'cmake' @('--build', (Join-Path $Libvgm 'build_x64'), '--config', 'Release', '--parallel')
+
+Write-Host '== 4b. Run the external libvgm source/resampler regression against that patched tree =='
+Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\integration\libvgm-source'), '-B', $LibvgmSourceTestBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DLIBVGM_ROOT=$Libvgm")
+Run 'cmake' @('--build', $LibvgmSourceTestBuild, '--config', 'Release', '--parallel')
+Run 'ctest' @('--test-dir', $LibvgmSourceTestBuild, '-C', 'Release', '--output-on-failure')
 
 Write-Host '== 5. Materialize and build the VGM component from this repository =='
 $VgmSdkRoot = Join-Path $VgmTree 'components\vgm'
