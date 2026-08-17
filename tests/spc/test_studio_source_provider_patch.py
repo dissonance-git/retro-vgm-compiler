@@ -48,6 +48,11 @@ class StudioSourceProviderPatchTest(unittest.TestCase):
                 ";===================================================================================================\n"
                 ";Set Song Length\n"
                 "\n"
+                "    Mov     ESI,[pAPURAM]\n"
+                "    ShL     EAX,2\n"
+                "    Add     AH,[dsp+dir]                                                        ;EAX -> Source directory\n"
+                "    Mov     SI,[EAX+ESI]                                                        ;ESI -> First block of waveform\n"
+                "    LEA     EDI,[EBX+sBuf]                                                      ;EDI -> Uncompressed sample buffer\n"
                 "    Mov     [EBX+bCur],ESI                                                      ;Save physical pointers to wave data\n"
                 "    Mov     [EBX+sIdx],EDI\n\n"
                 "    ;Fill first block: proven pre-BRR PCM or exact BRR decode ------\n"
@@ -73,14 +78,18 @@ class StudioSourceProviderPatchTest(unittest.TestCase):
             self.assertIn("studioSourceBegin", asm)
             self.assertIn("studioSourceSample", asm)
             self.assertIn("studioSourceVoices", asm)
+            self.assertIn("MovZX   EBP,word [EAX+ESI+2]", asm)
             self.assertIn("BSF     EDX,EDX", asm)
             self.assertIn("MovZX   EAX,byte [scr700chg+EAX]", asm)
+            self.assertIn("MovZX   EAX,byte [dsp+dir]", asm)
             self.assertIn("Push    dword [EBX+mRate]", asm)
             self.assertIn("FLd     dword [ESP]", asm)
             self.assertIn("Call    [pInter]", asm)
 
             dsp_h = (dll / "DSP.h").read_text(encoding="utf-8")
             self.assertIn("DSPStudioSourceBeginProvider", dsp_h)
+            self.assertIn("u32 loopBrrAddr", dsp_h)
+            self.assertIn("u32 directoryPage", dsp_h)
             self.assertIn("DSPStudioSourceSampleProvider", dsp_h)
             self.assertIn("float *outSample", dsp_h)
 
