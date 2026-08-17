@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "purpose": "Evidence-safe Miyoko Takaoka versus Masanori Hikichi composer-grammar calibration for the Sonic 3 Cube lineage.",
   "primary_mixed_composer_corpora": [
     "ancient-magic-spc",
@@ -7,7 +7,39 @@
   ],
   "grounding_admissions_path": "research/projects/sonic3/attribution-control-admissions.jsonl",
   "locator_inventory_path": "tests/corpus/sonic3-attribution-control-external-tags.jsonl",
+  "blind_panel_path": "research/projects/sonic3/spc-cube-blind-panel.json",
+  "blind_capture_tool": "tools/spc/capture_blind_panel.py",
+  "blind_freeze_tool": "tools/spc/freeze_forensic_sidecars.py",
+  "post_freeze_evaluator": "tools/spc/evaluate_cube_calibration.py",
   "external_tag_policy": "External artist tags locate candidate controls only. They never establish composition, arrangement, programming, or authorship.",
+  "blind_protocol": {
+    "feature_boundary": "SPC runtime execution, persistent-part recovery, motif extraction, and the full pairwise similarity matrix are produced before creator identity is joined.",
+    "freeze_boundary": "The creator-blind matrix is frozen and hashed before evidence admissions or historical candidate labels enter evaluation.",
+    "same_soundtrack_diagnostic": "Leave-one-cue-out evaluation may use controls from the same soundtrack, but is diagnostic only because game, engine, sample-bank, collaborator, or implementation context can remain shared.",
+    "strict_transfer_rule": "A creator-facing transfer result requires removing every grounded cue from the query soundtrack before ranking and requires complete candidate coverage after that exclusion. Missing candidate coverage is insufficient evidence, never a zero score.",
+    "team_world_rule": "Team-level or partial-participation corpora may report candidate affinity and partition structure but cannot produce correctness or authorship labels without exact cue-level grounding.",
+    "stress_holdout_rule": "Uncertain retrospective clues, jointly composed cues, disputed cue mappings, and third-party decoys are never composer training controls. They exist to pressure-test the frozen geometry after reveal.",
+    "reveal_reproducibility": "The reveal records the SHA-256 of the frozen matrix and should also bind the exact panel, admission, and policy inputs used for the reveal."
+  },
+  "current_grounding_state": {
+    "total_grounded_composer_cues": 15,
+    "miyoko_takaoka": {
+      "grounded_cue_count": 11,
+      "grounded_soundtracks": [
+        "ancient-magic-spc",
+        "terranigma-spc"
+      ],
+      "strict_cross_soundtrack_status": "testable"
+    },
+    "masanori_hikichi": {
+      "grounded_cue_count": 4,
+      "grounded_soundtracks": [
+        "terranigma-spc"
+      ],
+      "strict_cross_soundtrack_status": "underdetermined",
+      "reason": "All current strong Hikichi composer admissions are Terranigma cues. Same-soundtrack discrimination is informative but cannot establish cross-soundtrack Hikichi grammar until an independent exact Hikichi composer world is grounded."
+    }
+  },
   "calibration_strategy": {
     "within_game_boundary": "Use individually grounded Takaoka and Hikichi cues from the same soundtrack to suppress game, platform, engine, sample-bank, and production-context shortcuts.",
     "cross_game_boundary": "Require creator-facing relations to survive independent soundtrack worlds. Team-level, partial-participation, and implementation-only corpora are evaluation or confound worlds, not automatic composer supervision.",
