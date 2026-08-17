@@ -16,13 +16,14 @@ SCAN_ROOTS = (
 )
 
 # Historical prose may name the retired source repository. Executable dependency
-# shapes are forbidden: clone/fetch URLs, the old scaffold variable, or its old
-# working-directory name.
+# shapes are forbidden: clone/fetch URLs, the old scaffold variable/name, and
+# any attempt by maintained code to read the archival imports/vgmspc tree.
 FORBIDDEN = (
     re.compile(r"https://github\.com/dissonance-git/vgmspc(?:\.git)?", re.I),
     re.compile(r"git@github\.com:dissonance-git/vgmspc(?:\.git)?", re.I),
     re.compile(r"\bVgmSpcCommit\b"),
     re.compile(r"\bvgmspc-scaffold\b", re.I),
+    re.compile(r"\bimports[\\/]+vgmspc\b", re.I),
 )
 
 
