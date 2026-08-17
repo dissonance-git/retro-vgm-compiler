@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ym2612_enhanced_realization.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -22,6 +24,13 @@ enum class ym2612_enhanced_fm_mode : std::uint8_t {
 struct ym2612_hq_fm_profile {
     ym2612_enhanced_fm_mode mode =
         ym2612_enhanced_fm_mode::high_fidelity_opn_descendant;
+
+    // The first normal Enhanced target is a real six-channel Yamaha OPN2
+    // descendant. ymfm models YMF276/OPN2L as YM2612-derived but with 14-bit
+    // intermediate clipping and proper channel mixing, making it the cleanest
+    // concrete hardware-descendant baseline before a mathematical studio engine.
+    ym2612_enhanced_realization realization =
+        default_ym2612_enhanced_realization;
 
     static constexpr std::size_t physical_channel_count = 6;
     static constexpr std::size_t source_operator_count = 4;
@@ -53,12 +62,15 @@ struct ym2612_hq_fm_profile {
     bool anti_alias_above_host_nyquist = true;
 
     [[nodiscard]] constexpr bool valid() const noexcept {
-        return internal_oversample != 0 && internal_oversample <= 32;
+        return internal_oversample != 0
+            && internal_oversample <= 32
+            && preserves_ym2612_musical_surface(realization);
     }
 
     [[nodiscard]] constexpr bool automatic_enhanced_safe_shape() const noexcept {
         return valid()
             && mode == ym2612_enhanced_fm_mode::high_fidelity_opn_descendant
+            && realization == ym2612_enhanced_realization::ymf276_opn2l
             && preserve_operator_count
             && preserve_algorithm_topology
             && preserve_operator_ratios
@@ -79,6 +91,7 @@ struct ym2612_hq_fm_profile {
 constexpr ym2612_hq_fm_profile make_experimental_expanded_yamaha_fm_profile() noexcept {
     ym2612_hq_fm_profile profile;
     profile.mode = ym2612_enhanced_fm_mode::experimental_expanded_yamaha_fm;
+    profile.realization = ym2612_enhanced_realization::studio_precision_opn2;
     profile.preserve_operator_count = false;
     profile.preserve_algorithm_topology = false;
     return profile;
