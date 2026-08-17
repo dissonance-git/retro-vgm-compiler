@@ -130,6 +130,10 @@ Write-Host '== 1. Compile the private source-transport frontier tests =='
 Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\private_components'), '-B', $FrontierBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64')
 Run 'cmake' @('--build', $FrontierBuild, '--config', 'Release', '--parallel')
 Run 'ctest' @('--test-dir', $FrontierBuild, '-C', 'Release', '--output-on-failure')
+$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()
+if ($LASTEXITCODE -ne 0 -or $retroCommit -notmatch '^[0-9a-f]{40}$') {
+    throw "Could not capture exact Retro VGM Compiler source commit after preflight: $retroCommit"
+}
 
 Write-Host '== 2. Reconstruct external build dependencies from immutable public sources =='
 Clone-Pin 'https://github.com/ValleyBell/libvgm.git' $Libvgm $LibvgmCommit
@@ -273,8 +277,7 @@ Move-Item $VgmZip $VgmComponentPackage -Force
 Move-Item $SpcZip $SpcComponentPackage -Force
 Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_packages.py'), $VgmComponentPackage, $SpcComponentPackage)
 
-$retroCommit = 'unversioned'
-try { $retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim() } catch {}
+Run 'python' @((Join-Path $RetroRoot 'tools\verify_build_source_provenance.py'), $RetroRoot, '--expected-commit', $retroCommit)
 $manifest = [ordered]@{
     built_utc = [DateTime]::UtcNow.ToString('o')
     retro_vgm_compiler = $retroCommit
