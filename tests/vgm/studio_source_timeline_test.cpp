@@ -57,23 +57,26 @@ int main() {
     assert(upsample.source_position(2) < 1.0);
     assert(!upsample.has_history(2));
 
+    // libvgm pregenerates source sample zero for linear upsampling but does not
+    // increment smpNext. The capture observer has already promoted that real
+    // sample, so newly-captured native_base is one while the pre-execution
+    // timing snapshot still owns smpNext == 0. Those facts place destination
+    // frame zero exactly at source sample zero, not one sample before it.
     studio_linear_timing_snapshot up{};
     up.source_rate_hz = 53267;
     up.destination_rate_hz = 96000;
     up.sample_p = 0;
-    up.sample_next = 1;
+    up.sample_next = 0;
     const auto up0 = studio_linear_source_position(up, 1, 0);
     assert(up0.valid);
-    assert(up0.phase_units == -static_cast<std::int64_t>(
-        studio_source_resampler_kernel::phase_count));
+    assert(up0.phase_units == 0);
 
     const auto up1 = studio_linear_source_position(up, 1, 1);
     assert(up1.valid);
     const std::uint64_t up_fp =
         (static_cast<std::uint64_t>(1) * (1u << 11) * up.source_rate_hz)
         / up.destination_rate_hz;
-    assert(up1.phase_units == static_cast<std::int64_t>(up_fp * 2u)
-        - static_cast<std::int64_t>(studio_source_resampler_kernel::phase_count));
+    assert(up1.phase_units == static_cast<std::int64_t>(up_fp * 2u));
 
     constexpr std::uint64_t split = 50;
     const std::uint64_t split_fp =
