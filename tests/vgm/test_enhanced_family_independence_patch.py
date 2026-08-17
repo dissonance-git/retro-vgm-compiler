@@ -17,14 +17,14 @@ class EnhancedFamilyIndependencePatchTest(unittest.TestCase):
             root = Path(tmp)
             shadow = root / "input_vgm_shadow.cpp"
             shadow.write_text(
-                """void fixture()\n"
+                "void fixture()\n"
                 "{\n"
                 "\tauto* source_player = static_cast<SourceAwareVGMPlayer*>(m_vgm_player);\n"
                 "\tif (source_player == nullptr || !source_player->source_topology_supported()\n"
                 "\t\t|| !source_player->source_block_complete()\n"
                 "\t\t|| source_player->source_output_count() != sample_count)\n"
                 "\t\treturn;\n"
-                "}\n""",
+                "}\n",
                 encoding="utf-8",
             )
 
