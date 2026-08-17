@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import sys
 import unittest
@@ -8,6 +9,7 @@ from collections import defaultdict
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "spc" / "evaluate_cube_calibration.py"
+ADMISSIONS = ROOT / "research" / "projects" / "sonic3" / "attribution-control-admissions.jsonl"
 SPEC = importlib.util.spec_from_file_location("evaluate_cube_cross_soundtrack_test", TOOL)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"could not load {TOOL}")
@@ -26,6 +28,14 @@ def control(cue_id: str, candidate: str, soundtrack: str):
         confidence=1.0,
         status="exact",
     )
+
+
+def current_cube_admissions() -> list[dict]:
+    return [
+        json.loads(line)
+        for line in ADMISSIONS.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 class CubeCrossSoundtrackCoverageTest(unittest.TestCase):
@@ -86,6 +96,49 @@ class CubeCrossSoundtrackCoverageTest(unittest.TestCase):
         self.assertTrue(ranked["complete_candidate_coverage"])
         self.assertEqual(ranked["winner"], "Hikichi")
         self.assertTrue(ranked["decisive"])
+
+    def test_current_admissions_have_exactly_three_strict_complete_queries(self):
+        admissions = [
+            entry
+            for entry in current_cube_admissions()
+            if entry.get("role") == "composer"
+            and entry.get("status") in {"exact", "derived"}
+            and entry.get("candidate") in {"Miyoko Takaoka", "Masanori Hikichi"}
+        ]
+        self.assertEqual(len(admissions), 15)
+
+        candidate_worlds: dict[str, set[str]] = defaultdict(set)
+        query_rows: list[tuple[str, str, str]] = []
+        for entry in admissions:
+            soundtrack = pathlib.PurePosixPath(entry["fixture_path"]).parts[2]
+            candidate_worlds[entry["candidate"]].add(soundtrack)
+            query_rows.append((entry["fixture_path"], entry["candidate"], soundtrack))
+
+        candidates = {"Miyoko Takaoka", "Masanori Hikichi"}
+        complete = []
+        incomplete = []
+        for fixture_path, candidate, query_soundtrack in query_rows:
+            has_all_candidates_after_exclusion = all(
+                any(world != query_soundtrack for world in candidate_worlds[other_candidate])
+                for other_candidate in candidates
+            )
+            bucket = complete if has_all_candidates_after_exclusion else incomplete
+            bucket.append((fixture_path, candidate, query_soundtrack))
+
+        self.assertEqual(len(complete), 3)
+        self.assertEqual(len(incomplete), 12)
+        self.assertEqual(
+            {row[2] for row in complete},
+            {"ancient-magic-spc"},
+        )
+        self.assertEqual(
+            {row[1] for row in complete},
+            {"Miyoko Takaoka"},
+        )
+        self.assertEqual(
+            {row[2] for row in incomplete},
+            {"terranigma-spc"},
+        )
 
     def test_soundtrack_worlds_are_equal_weight_not_raw_cue_count(self):
         controls = [
