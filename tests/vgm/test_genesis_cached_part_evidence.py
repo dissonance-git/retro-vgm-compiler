@@ -59,9 +59,6 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
         self.assertEqual([item.end_gate_event_index for item in episodes], [1, None])
 
     def test_cache_hypotheses_match_cpp_strong_and_overlap_controls(self):
-        # Mirrors tests/vgm/genesis_part_evidence_test.cpp:
-        # first = [0,1000] ch0, overlap = [800,1600] ch1,
-        # second = [1100,2000] ch0, all with the same program fingerprint.
         data = capsule(
             events=[
                 (0, 0, 0x300, 3, 0, 0),
@@ -161,8 +158,6 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
         self.assertEqual(result["strands"][0]["episode_ids"], [0, 1, 2])
         self.assertAlmostEqual(result["strands"][0]["confidence"], 0.94)
         self.assertEqual(result["unresolved"], [])
-        # 0 -> 2 has identity/pitch/slot support but no temporal-adjacency evidence,
-        # so it cannot leap over the nearer successor.
         self.assertEqual(
             [(link["first_episode_id"], link["second_episode_id"]) for link in result["strands"][0]["links"]],
             [(0, 1), (1, 2)],
@@ -173,12 +168,8 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
         overlap = cached.Episode(1, 800, 1600, 1, 0x320, 3, 0, 2, 3)
         changed = cached.Episode(2, 1100, 2000, 0, 0x360, 3, 1, 4, 5)
         hypotheses = [
-            cached.infer_continuity(
-                first, overlap, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
-            cached.infer_continuity(
-                first, changed, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
+            cached.infer_continuity(first, overlap, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
+            cached.infer_continuity(first, changed, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
         ]
         result = cached.assemble_strand_hypotheses([first, overlap, changed], hypotheses)
         self.assertEqual(result["strands"], [])
@@ -197,13 +188,11 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
             "cross_domain_grounded": False,
             "strong_conflict_present": False,
             "gap_ticks": 100,
-            "evidence": [
-                {
-                    "kind": "physical_slot_continuity",
-                    "polarity": "supports",
-                    "confidence": 0.55,
-                }
-            ],
+            "evidence": [{
+                "kind": "physical_slot_continuity",
+                "polarity": "supports",
+                "confidence": 0.55,
+            }],
         }
         result = cached.assemble_strand_hypotheses(episodes, [slot_only])
         self.assertEqual(result["strands"], [])
@@ -213,58 +202,39 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
         branch_a = cached.Episode(1, 1100, 1800, 0, 0x330, 3, 0, 2, 4)
         branch_b = cached.Episode(2, 1100, 1900, 1, 0x340, 3, 0, 3, 5)
         hypotheses = [
-            cached.infer_continuity(
-                first, branch_a, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
-            cached.infer_continuity(
-                first, branch_b, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
+            cached.infer_continuity(first, branch_a, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
+            cached.infer_continuity(first, branch_b, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
         ]
         result = cached.assemble_strand_hypotheses([first, branch_a, branch_b], hypotheses)
         self.assertEqual(result["strands"], [])
-        self.assertEqual(
-            result["unresolved"],
-            [{
-                "kind": "ambiguous_successor",
-                "episode_id": 0,
-                "candidate_episode_ids": [1, 2],
-            }],
-        )
+        self.assertEqual(result["unresolved"], [{
+            "kind": "ambiguous_successor",
+            "episode_id": 0,
+            "candidate_episode_ids": [1, 2],
+        }])
 
     def test_competing_predecessors_stay_unresolved(self):
         first_a = cached.Episode(0, 0, 900, 0, 0x300, 3, 0, 0, 2)
         first_b = cached.Episode(1, 100, 900, 1, 0x300, 3, 0, 1, 3)
         target = cached.Episode(2, 1000, 1800, 0, 0x330, 3, 0, 4, 5)
         hypotheses = [
-            cached.infer_continuity(
-                first_a, target, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
-            cached.infer_continuity(
-                first_b, target, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-            ),
+            cached.infer_continuity(first_a, target, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
+            cached.infer_continuity(first_b, target, max_gap_ticks=500, max_pitch_interval_octaves=1.5),
         ]
         result = cached.assemble_strand_hypotheses([first_a, first_b, target], hypotheses)
         self.assertEqual(result["strands"], [])
-        self.assertEqual(
-            result["unresolved"],
-            [{
-                "kind": "ambiguous_predecessor",
-                "episode_id": 2,
-                "candidate_episode_ids": [0, 1],
-            }],
-        )
+        self.assertEqual(result["unresolved"], [{
+            "kind": "ambiguous_predecessor",
+            "episode_id": 2,
+            "candidate_episode_ids": [0, 1],
+        }])
 
     def test_strand_projection_remains_creator_and_source_blind(self):
         first = cached.Episode(0, 0, 1000, 0, 0x300, 3, 0, 0, 1)
         second = cached.Episode(1, 1100, 2000, 0, 0x330, 3, 0, 2, 3)
-        hypothesis = cached.infer_continuity(
-            first, second, max_gap_ticks=500, max_pitch_interval_octaves=1.5
-        )
+        hypothesis = cached.infer_continuity(first, second, max_gap_ticks=500, max_pitch_interval_octaves=1.5)
         result = cached.assemble_strand_hypotheses([first, second], [hypothesis])
-        payload_text = str({
-            "strands": result["strands"],
-            "unresolved": result["unresolved"],
-        }).lower()
+        payload_text = str({"strands": result["strands"], "unresolved": result["unresolved"]}).lower()
         self.assertNotIn("composer", payload_text)
         self.assertNotIn("creator", payload_text)
         self.assertNotIn("source", payload_text)
@@ -284,6 +254,34 @@ class GenesisCachedPartEvidenceTests(unittest.TestCase):
                 [],
                 min_confidence=cached.SINGLE_DOMAIN_CEILING,
             )
+
+    def test_strand_assembly_rejects_forged_identity_summary(self):
+        first = cached.Episode(0, 0, 1000, 0, 0x300, 3, 0, 0, 1)
+        second = cached.Episode(1, 1100, 2000, 0, 0x330, 3, 0, 2, 3)
+        hypothesis = cached.infer_continuity(
+            first, second, max_gap_ticks=500, max_pitch_interval_octaves=1.5
+        )
+        hypothesis["evidence"] = [
+            item
+            for item in hypothesis["evidence"]
+            if item["kind"] != "instrument_program_identity"
+        ]
+        with self.assertRaisesRegex(ValueError, "identity-bearing summary"):
+            cached.assemble_strand_hypotheses([first, second], [hypothesis])
+
+    def test_strand_assembly_rejects_forged_conflict_summary(self):
+        first = cached.Episode(0, 0, 1000, 0, 0x300, 3, 0, 0, 1)
+        second = cached.Episode(1, 1100, 2000, 0, 0x330, 3, 0, 2, 3)
+        hypothesis = cached.infer_continuity(
+            first, second, max_gap_ticks=500, max_pitch_interval_octaves=1.5
+        )
+        hypothesis["evidence"].append({
+            "kind": "simultaneous_conflict",
+            "polarity": "counters",
+            "confidence": 0.88,
+        })
+        with self.assertRaisesRegex(ValueError, "conflict summary"):
+            cached.assemble_strand_hypotheses([first, second], [hypothesis])
 
 
 if __name__ == "__main__":
