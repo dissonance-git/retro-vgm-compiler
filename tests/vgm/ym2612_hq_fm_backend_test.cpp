@@ -8,9 +8,10 @@ namespace {
 
 using gameaudio::vgm::ym2612_timed_write;
 
-std::array<ym2612_timed_write, 24> make_basic_patch(std::size_t& count) {
-    std::array<ym2612_timed_write, 24> writes{};
+std::array<ym2612_timed_write, 32> make_basic_patch(std::size_t& count) {
+    std::array<ym2612_timed_write, 32> writes{};
     auto push = [&](std::uint8_t port, std::uint8_t reg, std::uint8_t data) {
+        assert(count < writes.size());
         writes[count++] = {0, port, reg, data};
     };
 
@@ -48,6 +49,7 @@ int main() {
 
     std::size_t write_count = 0;
     auto writes = make_basic_patch(write_count);
+    assert(write_count == 29);
 
     constexpr std::size_t frames = 1024;
     std::array<std::array<float, frames>, ym2612_fm_backend::channel_count> storage{};
