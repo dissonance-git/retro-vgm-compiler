@@ -165,6 +165,20 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# The outer release ZIP is also evidence: its manifest, checksums and component
+# bytes must agree exactly, and its README must preserve the descriptive naming
+# contract. Portable synthetic bundles exercise those metadata failures here.
+add_test(
+    NAME private_component_bundle_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_private_component_bundle_contract.py
+)
+set_tests_properties(
+    private_component_bundle_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Keep the executable Omniphony version gate synchronized with the compiler's
 # transport constants. The real Windows package verifier then loads the archived
 # DLL copies and executes these same zero-argument ABI functions.
