@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Wire the first audible SNESAPU enhanced synthesis path.
+"""Wire the private SNESAPU 48 kHz host contract and enhanced synthesis path.
 
-The audited parent stores the user's reference sample-rate and interpolation
-preferences. While enhanced is active the playback contract instead uses one
-48 kHz source/DSP/output rate plus SNESAPU's sinc interpolator. Verified
-upstream sources may still replace that BRR reconstruction at the stronger
-source-restoration rung. Spatial remains independent.
+All private x64 playback uses one 48 kHz final source/DSP/output timeline,
+regardless of source-quality or Spatial settings. The audited parent still keeps
+its stored sample-rate preference, but this private build does not expose that
+preference to the runtime clock.
+
+Enhanced remains independent: only while enhanced is active do we select
+SNESAPU's sinc source interpolator (and any stronger verified source-restoration
+rung layered above it). Spatial remains presentation-only.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-ENHANCED_PLAYBACK_RATE = 48000
+PRIVATE_PLAYBACK_RATE = 48000
 
 
 def decode_source(raw: bytes) -> tuple[str, str, bool]:
@@ -62,19 +65,20 @@ def main() -> int:
 \tm_CnfInterpolation\t         = cfg_interpolation;
 \tm_CnfOptions\t\t         = cfg_dsp_option;
 #ifdef _WIN64
+\t// Private playback has one final host clock in every combination. Source
+\t// quality and Spatial remain independent decisions above/below this clock.
+\tm_CnfSampleRate = {PRIVATE_PLAYBACK_RATE};
 \tif (cfg_enhanced_enabled)
 \t{{
-\t\t// Preserve the stored reference preferences but use one source/DSP/output
-\t\t// rate while enhanced playback is active.
-\t\tm_CnfSampleRate = {ENHANCED_PLAYBACK_RATE};
+\t\t// Enhanced changes source realization, not the host-rate contract.
 \t\tm_CnfInterpolation = INT_SINC;
 \t}}
 #endif
 """,
-        "SNES enhanced 48 kHz source-domain policy",
+        "SNES private 48 kHz host and enhanced source policy",
     )
 
-    print("SNESAPU 48 kHz source-domain enhanced runtime applied successfully")
+    print("SNESAPU private 48 kHz runtime applied successfully")
     return 0
 
 
