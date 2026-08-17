@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Build creator-blind song capsules for every admitted composer in a credit index.
+"""Build creator-blind song capsules for all canonically admitted composers.
 
-The role-credit index is intentionally source-format agnostic. The current song
-capsule backend is not: ``creator_blind_song_cache`` parses Genesis VGM/VGZ.
-This helper therefore preserves every admitted creator in its report while
-routing only compatible fixtures into that backend. Unsupported source-family
-controls remain visible for later capsule backends instead of being dropped or
-misparsed.
+Historical/evidential ownership stays in the files that already own it. The
+Genesis routing index supplies established VGM/VGZ controls; the Sonic 3
+attribution admissions supply grounded cross-format controls such as CUBE SPC
+cues. This helper joins those sources at runtime, normalizes only the fields the
+cache router needs, and sends compatible fixtures to the current Genesis
+capsule backend.
+
+Unsupported formats remain visible in the report for future capsule backends.
+No second composer-credit truth is written.
 """
 from __future__ import annotations
 
@@ -23,6 +26,9 @@ from creator_blind_song_cache import (
 )
 
 DEFAULT_CREDITS = pathlib.Path("research/projects/sonic3/role-credit-index.jsonl")
+DEFAULT_ADMISSIONS = pathlib.Path(
+    "research/projects/sonic3/attribution-control-admissions.jsonl"
+)
 DEFAULT_ROLE = "composer"
 DEFAULT_ADMITTED_STATUSES = frozenset({"exact", "derived", "whole_soundtrack"})
 GENESIS_VGM_SUFFIXES = frozenset({".vgm", ".vgz"})
@@ -37,6 +43,79 @@ def read_jsonl(path: pathlib.Path) -> list[dict[str, object]]:
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+
+
+def _corpus_id_from_fixture(fixture_path: str) -> str | None:
+    parts = pathlib.PurePosixPath(fixture_path).parts
+    if len(parts) >= 4 and parts[:2] == ("tests", "corpus"):
+        return parts[2]
+    return None
+
+
+def normalize_admission_records(
+    records: Iterable[dict[str, object]],
+    *,
+    admissions_path: pathlib.Path = DEFAULT_ADMISSIONS,
+) -> list[dict[str, object]]:
+    """Project canonical admission rows into the small cache-routing schema."""
+    normalized: list[dict[str, object]] = []
+    for record in records:
+        candidate = record.get("candidate")
+        fixture = record.get("fixture_path")
+        if not isinstance(candidate, str) or not candidate:
+            continue
+        if not isinstance(fixture, str) or not fixture:
+            continue
+        projected = dict(record)
+        projected["creator"] = candidate
+        projected.setdefault("mapping_state", "canonical_attribution_control_admission")
+        projected.setdefault("source_policy", admissions_path.as_posix())
+        corpus_id = _corpus_id_from_fixture(fixture)
+        if corpus_id is not None:
+            projected.setdefault("corpus_id", corpus_id)
+        projected["control_source"] = "canonical_attribution_admission"
+        normalized.append(projected)
+    return normalized
+
+
+def combined_control_records(
+    *,
+    credit_index: pathlib.Path,
+    admissions_path: pathlib.Path | None,
+) -> list[dict[str, object]]:
+    """Join routing rows and canonical admissions without duplicating controls."""
+    routing = read_jsonl(credit_index)
+    admissions = (
+        normalize_admission_records(
+            read_jsonl(admissions_path), admissions_path=admissions_path
+        )
+        if admissions_path is not None
+        else []
+    )
+
+    merged: dict[tuple[str, str, str], dict[str, object]] = {}
+    for record in routing:
+        key = (
+            str(record.get("creator", "")),
+            str(record.get("role", "")),
+            str(record.get("fixture_path", "")),
+        )
+        merged[key] = record
+    # Canonical admission rows override a routing duplicate if one ever appears.
+    for record in admissions:
+        key = (
+            str(record.get("creator", "")),
+            str(record.get("role", "")),
+            str(record.get("fixture_path", "")),
+        )
+        merged[key] = record
+    return sorted(
+        merged.values(),
+        key=lambda record: (
+            str(record.get("creator", "")),
+            str(record.get("fixture_path", "")),
+        ),
+    )
 
 
 def admitted_records(
@@ -95,6 +174,7 @@ def _write_jsonl(path: pathlib.Path, records: Iterable[dict[str, object]]) -> No
 def build_all(
     *,
     credit_index: pathlib.Path,
+    admissions_path: pathlib.Path | None,
     role: str,
     repo_root: pathlib.Path,
     cache_root: pathlib.Path,
@@ -102,7 +182,10 @@ def build_all(
     refresh: bool,
     admitted_statuses: set[str],
 ) -> dict[str, object]:
-    records = read_jsonl(credit_index)
+    records = combined_control_records(
+        credit_index=credit_index,
+        admissions_path=admissions_path,
+    )
     admitted = admitted_records(
         records,
         role=role,
@@ -168,9 +251,14 @@ def build_all(
         "creator_count": len(creators),
         "creators": creators,
         "cache_backend": CACHE_BACKEND,
+        "control_sources": [
+            credit_index.as_posix(),
+            admissions_path.as_posix() if admissions_path is not None else None,
+        ],
         "role_selected_tracks": len(admitted),
         "cacheable_tracks": cacheable_total,
         "unsupported_tracks": sum(int(result["unsupported_tracks"]) for result in results),
+        # Compatibility projection retained for existing consumers.
         "selected_tracks": cacheable_total,
         "built": sum(int(result["built"]) for result in results),
         "reused": sum(int(result["reused"]) for result in results),
@@ -181,6 +269,7 @@ def build_all(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credits", type=pathlib.Path, default=DEFAULT_CREDITS)
+    parser.add_argument("--admissions", type=pathlib.Path, default=DEFAULT_ADMISSIONS)
     parser.add_argument("--role", default=DEFAULT_ROLE)
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path("."))
     parser.add_argument("--cache-root", type=pathlib.Path, default=DEFAULT_CACHE_ROOT)
@@ -196,6 +285,7 @@ def main() -> None:
     statuses = set(args.statuses) if args.statuses else set(DEFAULT_ADMITTED_STATUSES)
     result = build_all(
         credit_index=args.credits,
+        admissions_path=args.admissions,
         role=args.role,
         repo_root=args.repo_root,
         cache_root=args.cache_root,
