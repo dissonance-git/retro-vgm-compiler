@@ -113,6 +113,29 @@ def main() -> int:
     {
         return m_studio_hq_fm_active && m_studio_hq_fm_observer.valid();
     }
+    bool studio_hq_fm_domain_started() const noexcept
+    {
+        return studio_hq_fm_observer_valid()
+            && m_studio_hq_fm_observer.studio_domain_started();
+    }
+    std::uint64_t studio_hq_fm_first_destination_ordinal() const noexcept
+    {
+        return studio_hq_fm_domain_started()
+            ? m_studio_hq_fm_observer.first_studio_destination_ordinal()
+            : 0;
+    }
+    std::uint64_t studio_hq_fm_next_destination_ordinal() const noexcept
+    {
+        return studio_hq_fm_observer_valid()
+            ? m_studio_hq_fm_observer.next_destination_ordinal()
+            : 0;
+    }
+    std::uint64_t studio_hq_fm_next_release_ordinal() const noexcept
+    {
+        return studio_hq_fm_observer_valid()
+            ? m_studio_hq_fm_observer.next_release_ordinal()
+            : 0;
+    }
     const foobar_vgm::source_audio::studio_hq_fm_observation&
     studio_hq_fm_last_observation() const noexcept
     {
