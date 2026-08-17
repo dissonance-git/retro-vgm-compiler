@@ -7,36 +7,39 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $RetroRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-if ([string]::IsNullOrWhiteSpace($WorkRoot)) {
-    $WorkRoot = Join-Path $RetroRoot '.private-component-build'
-}
-if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
-    $OutputRoot = Join-Path $RetroRoot 'dist\private-components'
-}
+if ([string]::IsNullOrWhiteSpace($WorkRoot)) { $WorkRoot = Join-Path $RetroRoot '.private-component-build' }
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RetroRoot 'dist\private-components' }
 
-$VgmSpcCommit = '2b7ec8bbd7326eabee3ba39bb91130b9b128e74b'
+$LibvgmCommit = '64e1de284e9a4305c54dd162ee8c33539a9bc0d1'
+$WtlCommit = 'd1cd80e9ce76c4d79da4cf556401ad7a970ce46f'
 $SpcPlayCommit = 'fc770e268ecacb4523699e2edc5c0efdf80957d6'
 $OmniphonyCommit = '0fabccb165e6d957cefecc6eeb1264467e7406a4'
 $RustToolchain = '1.88.0'
+$FoobarSdkDate = '2025-03-07'
+$FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
+$ExpectedSdkProjectBlob = 'a1074e4aa8b2fc03cbc1738c9cddd912158bff67'
+$ExpectedPfcProjectBlob = '57cbc91551935cd6f12c13a0e41c4c6bf601ac94'
+$ExpectedLibvgmCmakeBlob = '1f8fb7f99ec45e1d2af12231f624498e6e252732'
+$ExpectedWtlAtlappBlob = '4b3fe38dfd930dfedf1fe642d5a2fe7d167ac099'
 
-$Scaffold = Join-Path $WorkRoot 'vgmspc-scaffold'
+$Libvgm = Join-Path $WorkRoot 'libvgm'
+$Wtl = Join-Path $WorkRoot 'WTL'
+$SpcPlay = Join-Path $WorkRoot 'spcplay'
 $Omniphony = Join-Path $WorkRoot 'omniphony'
+$SdkExtract = Join-Path $WorkRoot 'foobar-sdk'
 $VgmTree = Join-Path $WorkRoot 'vgm-current'
+$SpcRoot = Join-Path $WorkRoot 'foo-snesapu-current'
 $FrontierBuild = Join-Path $WorkRoot 'frontier-tests'
 
 function Need-Command([string]$Name) {
-    if (!(Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Required command is not on PATH: $Name"
-    }
+    if (!(Get-Command $Name -ErrorAction SilentlyContinue)) { throw "Required command is not on PATH: $Name" }
 }
 
 function Run([string]$Exe, [string[]]$Args, [string]$WorkingDirectory = '') {
     if ($WorkingDirectory) { Push-Location $WorkingDirectory }
     try {
         & $Exe @Args
-        if ($LASTEXITCODE -ne 0) {
-            throw "$Exe failed with exit code $LASTEXITCODE: $($Args -join ' ')"
-        }
+        if ($LASTEXITCODE -ne 0) { throw "$Exe failed with exit code $LASTEXITCODE: $($Args -join ' ')" }
     } finally {
         if ($WorkingDirectory) { Pop-Location }
     }
@@ -53,19 +56,37 @@ function Junction([string]$Link, [string]$Target) {
 
 function Find-ReleaseFile([string]$Filter, [string]$Root) {
     $found = Get-ChildItem -Recurse -File -Filter $Filter -Path $Root -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.FullName -notlike '*\Debug\*' -and
-            $_.FullName -notlike '*\CMakeFiles\*' -and
-            $_.FullName -notlike '*\dist\*'
-        } |
+        Where-Object { $_.FullName -notlike '*\Debug\*' -and $_.FullName -notlike '*\CMakeFiles\*' -and $_.FullName -notlike '*\dist\*' } |
         Select-Object -First 1
     if (!$found) { throw "$Filter not found under $Root" }
     return $found.FullName
 }
 
-foreach ($command in @('git', 'python', 'cmake', 'rustup', 'cargo', 'nasm')) {
-    Need-Command $command
+function Get-GitBlobSha([string]$Path) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $header = [Text.Encoding]::ASCII.GetBytes("blob $($bytes.Length)`0")
+    $payload = New-Object byte[] ($header.Length + $bytes.Length)
+    [Array]::Copy($header, 0, $payload, 0, $header.Length)
+    [Array]::Copy($bytes, 0, $payload, $header.Length, $bytes.Length)
+    $sha = [Security.Cryptography.SHA1]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($payload))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
 }
+
+function Assert-GitBlob([string]$Path, [string]$Expected, [string]$Label) {
+    if (!(Test-Path $Path)) { throw "$Label missing: $Path" }
+    $actual = Get-GitBlobSha $Path
+    if ($actual -ne $Expected) { throw "$Label source drift: expected $Expected, got $actual" }
+}
+
+function Clone-Pin([string]$Url, [string]$Path, [string]$Commit) {
+    Run 'git' @('clone', '--filter=blob:none', '--no-checkout', $Url, $Path)
+    Run 'git' @('-C', $Path, 'checkout', '--detach', $Commit)
+    $actual = (& git -C $Path rev-parse HEAD).Trim()
+    if ($actual -ne $Commit) { throw "revision drift for $Path: expected $Commit, got $actual" }
+}
+
+foreach ($command in @('git', 'python', 'cmake', 'ctest', 'rustup', 'cargo', 'nasm', '7z')) { Need-Command $command }
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (!(Test-Path $vswhere)) { throw 'Visual Studio 2022 / vswhere.exe not found' }
@@ -85,18 +106,26 @@ Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\private_components'), '-B', $Fr
 Run 'cmake' @('--build', $FrontierBuild, '--config', 'Release', '--parallel')
 Run 'ctest' @('--test-dir', $FrontierBuild, '-C', 'Release', '--output-on-failure')
 
-Write-Host '== 2. Checkout the proven Windows project scaffold and exact SPCPlay source =='
-Run 'git' @('clone', '--recurse-submodules', 'https://github.com/dissonance-git/vgmspc.git', $Scaffold)
-Run 'git' @('-C', $Scaffold, 'checkout', '--detach', $VgmSpcCommit)
-Run 'git' @('-C', $Scaffold, 'submodule', 'update', '--init', '--recursive')
-$actualSpc = (& git -C (Join-Path $Scaffold 'third_party\spcplay') rev-parse HEAD).Trim()
-if ($actualSpc -ne $SpcPlayCommit) {
-    throw "SPCPlay revision drift: expected $SpcPlayCommit, got $actualSpc"
-}
+Write-Host '== 2. Reconstruct external build dependencies from immutable public sources =='
+Clone-Pin 'https://github.com/ValleyBell/libvgm.git' $Libvgm $LibvgmCommit
+Clone-Pin 'https://github.com/Win32-WTL/WTL.git' $Wtl $WtlCommit
+Clone-Pin 'https://github.com/dgrfactory/spcplay.git' $SpcPlay $SpcPlayCommit
+Assert-GitBlob (Join-Path $Libvgm 'CMakeLists.txt') $ExpectedLibvgmCmakeBlob 'libvgm pin'
+Assert-GitBlob (Join-Path $Wtl 'Include\atlapp.h') $ExpectedWtlAtlappBlob 'WTL pin'
+
+$SdkArchive = Join-Path $WorkRoot "SDK-$FoobarSdkDate.7z"
+Invoke-WebRequest -Uri $FoobarSdkUrl -OutFile $SdkArchive -UseBasicParsing
+New-Item -ItemType Directory $SdkExtract -Force | Out-Null
+Run '7z' @('x', $SdkArchive, "-o$SdkExtract", '-y')
+$sdkProject = Get-ChildItem -Recurse -File -Filter 'foobar2000_SDK.vcxproj' -Path $SdkExtract | Select-Object -First 1
+if (!$sdkProject) { throw 'Official foobar SDK archive did not contain foobar2000_SDK.vcxproj' }
+$fb2k = Split-Path (Split-Path $sdkProject.FullName -Parent) -Parent
+$sdkRoot = Split-Path $fb2k -Parent
+Assert-GitBlob $sdkProject.FullName $ExpectedSdkProjectBlob 'foobar SDK project'
+Assert-GitBlob (Join-Path $sdkRoot 'pfc\pfc.vcxproj') $ExpectedPfcProjectBlob 'foobar pfc project'
 
 Write-Host '== 3. Checkout and validate the Omniphony source renderer =='
-Run 'git' @('clone', 'https://github.com/dissonance-git/Omniphony-Headphones.git', $Omniphony)
-Run 'git' @('-C', $Omniphony, 'checkout', '--detach', $OmniphonyCommit)
+Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git' $Omniphony $OmniphonyCommit
 Run 'rustup' @('toolchain', 'install', $RustToolchain, '--profile', 'minimal')
 $OmniRenderer = Join-Path $Omniphony 'omniphony-renderer'
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi') $OmniRenderer
@@ -104,47 +133,27 @@ Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', '
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
 if (!(Test-Path $OmniDll)) { throw "Omniphony source DLL missing: $OmniDll" }
 
-Write-Host '== 4. Patch and build libvgm for exact source observation/replacement =='
-$Libvgm = Join-Path $Scaffold 'libvgm-master'
+Write-Host '== 4. Patch and build pinned libvgm for exact source observation/replacement =='
 Run 'python' @((Join-Path $RetroRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
-Run 'cmake' @(
-    '-S', $Libvgm,
-    '-B', (Join-Path $Libvgm 'build_x64'),
-    '-G', 'Visual Studio 17 2022', '-A', 'x64',
-    '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_PLAYER=OFF', '-DBUILD_VGM2WAV=OFF',
-    '-DCMAKE_CONFIGURATION_TYPES=Release',
-    '-DUTIL_CHARCNV_ICONV=OFF', '-DUTIL_CHARCNV_WINAPI=ON'
-)
+Run 'cmake' @('-S', $Libvgm, '-B', (Join-Path $Libvgm 'build_x64'), '-G', 'Visual Studio 17 2022', '-A', 'x64', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_PLAYER=OFF', '-DBUILD_VGM2WAV=OFF', '-DCMAKE_CONFIGURATION_TYPES=Release', '-DUTIL_CHARCNV_ICONV=OFF', '-DUTIL_CHARCNV_WINAPI=ON')
 Run 'cmake' @('--build', (Join-Path $Libvgm 'build_x64'), '--config', 'Release', '--parallel')
 
-Write-Host '== 5. Stage the current VGM source geometry into the proven VS project =='
-New-Item -ItemType Directory (Join-Path $VgmTree 'components') -Force | Out-Null
+Write-Host '== 5. Materialize and build the VGM component from this repository =='
+$VgmSdkRoot = Join-Path $VgmTree 'components\vgm'
+New-Item -ItemType Directory $VgmSdkRoot -Force | Out-Null
 Copy-Item (Join-Path $RetroRoot 'model') (Join-Path $VgmTree 'model') -Recurse -Force
-Copy-Item (Join-Path $RetroRoot 'components\vgm') (Join-Path $VgmTree 'components\vgm') -Recurse -Force
-$VgmComponent = Join-Path $VgmTree 'components\vgm\foo_input_vgm'
-Get-ChildItem (Join-Path $Scaffold 'foo_input_vgm') -File | ForEach-Object {
-    Copy-Item $_.FullName (Join-Path $VgmComponent $_.Name) -Force
-}
-
-# The modern runtime is split into its own translation unit; the historical
-# project predates that file, so add exactly one compile item without changing
-# any source include paths.
+Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_input_vgm.py'), '--sdk-root', $VgmSdkRoot)
+$VgmComponent = Join-Path $VgmSdkRoot 'foo_input_vgm'
 $vgmProject = Join-Path $VgmComponent 'foo_input_vgm.vcxproj'
 $projectText = Get-Content $vgmProject -Raw
 if ($projectText -notmatch 'input_vgm_shadow\.cpp') {
     $needle = '    <ClCompile Include="src\input_vgm.cpp" />'
     if (!$projectText.Contains($needle)) { throw 'Could not locate input_vgm.cpp project item' }
-    $projectText = $projectText.Replace(
-        $needle,
-        $needle + "`r`n    <ClCompile Include=`"src\input_vgm_shadow.cpp`" />"
-    )
+    $projectText = $projectText.Replace($needle, $needle + "`r`n    <ClCompile Include=`"src\input_vgm_shadow.cpp`" />")
     Set-Content $vgmProject $projectText -Encoding UTF8
 }
-
-$fb2k = Join-Path $Scaffold 'SDK-2025-03-07\foobar2000'
-$sdkRoot = Join-Path $Scaffold 'SDK-2025-03-07'
-$vgmBase = Join-Path $VgmTree 'components\vgm'
-$componentBase = Join-Path $VgmTree 'components'
+$vgmBase = $VgmSdkRoot
+$componentBase = Split-Path $vgmBase -Parent
 Junction (Join-Path $vgmBase 'SDK') (Join-Path $fb2k 'SDK')
 Junction (Join-Path $vgmBase 'helpers') (Join-Path $fb2k 'helpers')
 Junction (Join-Path $vgmBase 'shared') (Join-Path $fb2k 'shared')
@@ -152,27 +161,22 @@ Junction (Join-Path $vgmBase 'foobar2000_component_client') (Join-Path $fb2k 'fo
 Junction (Join-Path $componentBase 'pfc') (Join-Path $sdkRoot 'pfc')
 Junction (Join-Path $componentBase 'libPPUI') (Join-Path $sdkRoot 'libPPUI')
 Junction (Join-Path $componentBase 'libvgm') $Libvgm
-Junction (Join-Path $componentBase 'WTL') (Join-Path $Scaffold 'WTL')
+Junction (Join-Path $componentBase 'WTL') $Wtl
 Junction (Join-Path $componentBase 'zlib') (Join-Path $Libvgm 'libs\include')
+$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'
+$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }
+Run $msbuild @($vgmBuildTarget, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
 
-Run 'python' @((Join-Path $RetroRoot 'patches\foo_input_vgm\apply_enhanced_component.py'), (Join-Path $VgmComponent 'src'))
-Run $msbuild @((Join-Path $VgmComponent 'foo_input_vgm.sln'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
-
-Write-Host '== 6. Patch the exact editable SNESAPU source and private SPC parent =='
-$SpcPlay = Join-Path $Scaffold 'third_party\spcplay'
+Write-Host '== 6. Materialize the SPC parent/child and patch the pinned editable SNESAPU =='
+Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_snesapu.py'), $SpcRoot, '--force')
 Run 'python' @((Join-Path $RetroRoot 'patches\snesapu\apply_private_snesapu.py'), $SpcPlay)
-Run 'python' @((Join-Path $RetroRoot 'patches\snesapu\apply_private_component.py'), (Join-Path $Scaffold 'foo_snesapu'))
-
-# Historical project junctions retained exactly where the pinned foo_snesapu
-# solutions expect them.
-$SpcRoot = Join-Path $Scaffold 'foo_snesapu'
 Junction (Join-Path $SpcRoot 'foobar2000\SDK') (Join-Path $fb2k 'SDK')
 Junction (Join-Path $SpcRoot 'foobar2000\helpers') (Join-Path $fb2k 'helpers')
 Junction (Join-Path $SpcRoot 'foobar2000\shared') (Join-Path $fb2k 'shared')
 Junction (Join-Path $SpcRoot 'foobar2000\foobar2000_component_client') (Join-Path $fb2k 'foobar2000_component_client')
 Junction (Join-Path $SpcRoot 'pfc') (Join-Path $sdkRoot 'pfc')
 Junction (Join-Path $SpcRoot 'libPPUI') (Join-Path $sdkRoot 'libPPUI')
-Junction (Join-Path $SpcRoot 'WTL') (Join-Path $Scaffold 'WTL')
+Junction (Join-Path $SpcRoot 'WTL') $Wtl
 
 Write-Host '== 7. Build patched 32-bit SNESAPU =='
 $SnesapuSource = Join-Path $SpcPlay 'snesapu.dll'
@@ -189,26 +193,24 @@ for %%U in (APU DSP SPC700) do (
 rc /nologo /fo Release\version.res version.rc || exit /b 1
 cl /nologo /Gz /MT /W3 /O2 /Ob0 /D NDEBUG /D _USRDLL /c SNESAPU.cpp /FoRelease\SNESAPU.obj || exit /b 1
 link /nologo /dll /machine:I386 /nodefaultlib /def:SNESAPU.def /out:Release\SNESAPU.dll /implib:Release\snesapu.lib Release\SNESAPU.obj Release\version.res Release\APU.obj Release\DSP.obj Release\SPC700.obj || exit /b 1
-dumpbin /exports Release\SNESAPU.dll | findstr /c:"SetDSPSourceCapture" >nul || exit /b 1
-dumpbin /exports Release\SNESAPU.dll | findstr /c:"GetDSPSourceData" >nul || exit /b 1
+for %%E in (SetDSPSourceCapture GetDSPSourceData SetDSPPreBrrProvider SetDSPStudioSourceProvider) do (
+  dumpbin /exports Release\SNESAPU.dll | findstr /c:"%%E" >nul || exit /b 1
+)
 exit /b 0
 "@ | Set-Content $SnesapuCmd -Encoding ASCII
 Run 'cmd.exe' @('/d', '/c', $SnesapuCmd)
-
-$SnesapuLib = Join-Path $SnesapuSource 'Release\snesapu.lib'
-$SnesapuDll = Join-Path $SnesapuSource 'Release\SNESAPU.dll'
-if (!(Test-Path $SnesapuLib) -or !(Test-Path $SnesapuDll)) { throw 'Patched SNESAPU outputs are missing' }
-Copy-Item $SnesapuLib (Join-Path $SpcRoot 'spcplayer\lib\Win32\snesapu.lib') -Force
+$SnesapuLibDir = Join-Path $SnesapuSource 'Release'
+$SnesapuDll = Join-Path $SnesapuLibDir 'SNESAPU.dll'
+if (!(Test-Path (Join-Path $SnesapuLibDir 'snesapu.lib')) -or !(Test-Path $SnesapuDll)) { throw 'Patched SNESAPU outputs are missing' }
 
 Write-Host '== 8. Build source-aware spcplayer and x64 foo_snesapu =='
-Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.sln'), '/p:Configuration=Release', '/p:Platform=x86', '/p:PlatformToolset=v143', '/m', '/v:m')
-Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.sln'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
+Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', "/p:SNESAPUIncludeDir=$SnesapuSource", "/p:SNESAPULibDir=$SnesapuLibDir", '/m', '/v:m')
+Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/m', '/v:m')
 
 Write-Host '== 9. Package the two private foobar components =='
 $FooVgm = Find-ReleaseFile 'foo_input_vgm.dll' $VgmComponent
 $FooSpc = Find-ReleaseFile 'foo_snesapu.dll' $SpcRoot
 $SpcPlayer = Find-ReleaseFile 'spcplayer.exe' $SpcRoot
-
 $VgmPackage = Join-Path $WorkRoot 'package-vgm'
 $SpcPackage = Join-Path $WorkRoot 'package-spc'
 New-Item -ItemType Directory $VgmPackage, $SpcPackage -Force | Out-Null
@@ -233,15 +235,16 @@ try { $retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim() } catch {}
 $manifest = [ordered]@{
     built_utc = [DateTime]::UtcNow.ToString('o')
     retro_vgm_compiler = $retroCommit
-    vgmspc_build_scaffold = $VgmSpcCommit
+    foobar_sdk = $FoobarSdkDate
+    foobar_sdk_source = $FoobarSdkUrl
+    wtl = $WtlCommit
+    libvgm = $LibvgmCommit
     spcplay = $SpcPlayCommit
     omniphony = $OmniphonyCommit
     rust_toolchain = $RustToolchain
+    foo_snesapu_parent_provenance = 'dissonance-git/vgmspc@2b7ec8bbd7326eabee3ba39bb91130b9b128e74b (internal bootstrap only; no live dependency)'
     final_playback_contract_hz = 48000
-    packages = @(
-        (Split-Path $VgmComponentPackage -Leaf),
-        (Split-Path $SpcComponentPackage -Leaf)
-    )
+    packages = @((Split-Path $VgmComponentPackage -Leaf), (Split-Path $SpcComponentPackage -Leaf))
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutputRoot 'build-manifest.json') -Encoding UTF8
 
@@ -259,19 +262,13 @@ Install by opening:
   $(Split-Path $SpcComponentPackage -Leaf)
 
 Each component carries its own omniphony_source.dll. The SPC package also carries
-its exact x86 spcplayer.exe and patched SNESAPU.dll. Enhanced and Spatial remain
+its exact x86 spcplayer.exe and patched SNESAPU.dll. enhanced and Spatial remain
 independent controls; failed source/renderer evidence falls back to the ordinary
 stereo path.
 "@ | Set-Content (Join-Path $OutputRoot 'README.txt') -Encoding UTF8
 
 $Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'
-Compress-Archive -Path @(
-    $VgmComponentPackage,
-    $SpcComponentPackage,
-    (Join-Path $OutputRoot 'build-manifest.json'),
-    (Join-Path $OutputRoot 'SHA256SUMS.txt'),
-    (Join-Path $OutputRoot 'README.txt')
-) -DestinationPath $Bundle -CompressionLevel Optimal
+Compress-Archive -Path @($VgmComponentPackage, $SpcComponentPackage, (Join-Path $OutputRoot 'build-manifest.json'), (Join-Path $OutputRoot 'SHA256SUMS.txt'), (Join-Path $OutputRoot 'README.txt')) -DestinationPath $Bundle -CompressionLevel Optimal
 
 Write-Host ''
 Write-Host 'Private components built successfully:'
