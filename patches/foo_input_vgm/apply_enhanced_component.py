@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Apply the independent Enhanced + source-aware VGM foobar shell patches.
+"""Apply the independent enhanced + source-aware VGM foobar shell patches.
 
-Enhanced is the sole source-native quality option. A few patch filenames still
-carry a legacy ``studio_*`` development prefix; they are implementation names,
-not a separate mode or tier.
+The enhanced option is the sole source-native quality option. A few patch
+filenames still carry a legacy ``studio_*`` development prefix; they are
+implementation names, not a separate mode, tier, or proper name.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def main() -> int:
     run(here / "apply_source_aware_player.py", source)
     run(here / "apply_source_aware_shadow_include.py", source)
     run(here / "apply_hq_nuked_fm_lift.py", source)
-    # Legacy filenames below are all part of the one Enhanced option.
+    # Legacy filenames below are all part of the one enhanced option.
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
     run(here / "apply_studio_hq_fm_runtime.py", source)
@@ -44,7 +44,7 @@ def main() -> int:
     run(here / "apply_studio_deferred_family_independence.py", source)
     run(here / "apply_studio_deferred_psg_fail_closed.py", source)
     run(here / "apply_studio_deferred_psg_session_reset.py", source)
-    print("foo_input_vgm Enhanced component patch set applied")
+    print("foo_input_vgm enhanced component patch set applied")
     return 0
 
 
