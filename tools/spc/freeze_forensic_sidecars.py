@@ -101,7 +101,19 @@ def _validate_profile(profile: dict[str, Any]) -> None:
         raise ValueError("pitch contour values must be -1, 0, or 1")
 
 
-def load_sidecar(cue_id: str, path: pathlib.Path) -> CueSidecar:
+def load_sidecar(
+    cue_id: str,
+    path: pathlib.Path,
+    *,
+    require_profiles: bool = True,
+) -> CueSidecar:
+    """Validate a creator-blind forensic capture.
+
+    ``require_profiles`` belongs to the experiment-admission layer, not the raw
+    capture layer. The reusable cache may preserve a complete zero-profile
+    capture as a negative result; frozen similarity corpora continue to require
+    at least one admissible persistent-part profile by default.
+    """
     if not cue_id or not cue_id.startswith("cue-"):
         raise ValueError("cue ids must be opaque ids beginning with 'cue-'")
     raw = path.read_bytes()
@@ -139,7 +151,7 @@ def load_sidecar(cue_id: str, path: pathlib.Path) -> CueSidecar:
         raise ValueError("part_profile_count does not match emitted profile list")
     if _require_int(features, "emitted_part_count") != len(profiles):
         raise ValueError("emitted_part_count does not match emitted profile list")
-    if not profiles:
+    if require_profiles and not profiles:
         raise ValueError("cue produced no admissible persistent-part motif profiles")
     for profile in profiles:
         if not isinstance(profile, dict):
