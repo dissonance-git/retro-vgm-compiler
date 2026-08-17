@@ -99,6 +99,8 @@ int main() {
     assert(observations[0].source_node != 0);
     assert(observations[0].part_id == part);
     assert(observations[0].pitch_basis == "genesis_ym2612_relative_frequency_code");
+    assert(observations[0].status == evidence_status::hypothesis);
+    assert(std::fabs(observations[0].confidence - trajectory.confidence) < 1e-12);
 
     const auto profile = make_genesis_part_motif_profile(graph, part);
     assert(profile.has_value());
@@ -111,6 +113,15 @@ int main() {
     assert(profile->pitch_basis == "genesis_ym2612_relative_frequency_code");
     assert(profile->pitch_range_octaves.has_value());
     assert(*profile->pitch_range_octaves > 0.0);
+    assert(profile->status == evidence_status::hypothesis);
+    assert(std::fabs(profile->evidence_confidence - trajectory.confidence) < 1e-12);
+
+    // A perfect structural self-match cannot outrank the evidence that these
+    // physical episodes actually belong to one persistent musical line.
+    const auto self = compare_part_motif_profiles(*profile, *profile);
+    assert(std::fabs(self.combined_similarity - 1.0) < 1e-12);
+    assert(std::fabs(self.evidence_confidence - trajectory.confidence) < 1e-12);
+    assert(std::fabs(self.identity_confidence - trajectory.confidence) < 1e-12);
 
     // The adapter preserves the frequency-code relation instead of rounding to
     // a MIDI note. Check the first source-relative interval directly.
