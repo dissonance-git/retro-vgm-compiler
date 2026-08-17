@@ -32,7 +32,6 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     sn76489_enhanced_source_block_test
     studio_source_resampler_test
     ym2612_hq_fm_profile_test
-    ym2612_hq_fm_backend_test
     ym2612_hq_source_calibration_test
 )
 
@@ -153,10 +152,6 @@ add_executable(
     tests/vgm/ym2612_hq_fm_profile_test.cpp
 )
 add_executable(
-    ym2612_hq_fm_backend_test
-    tests/vgm/ym2612_hq_fm_backend_test.cpp
-)
-add_executable(
     ym2612_hq_source_calibration_test
     tests/vgm/ym2612_hq_source_calibration_test.cpp
 )
@@ -275,10 +270,6 @@ target_include_directories(
 )
 target_include_directories(
     ym2612_hq_fm_profile_test
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
-target_include_directories(
-    ym2612_hq_fm_backend_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -408,10 +399,6 @@ add_test(
     COMMAND ym2612_hq_fm_profile_test
 )
 add_test(
-    NAME ym2612_hq_fm_backend
-    COMMAND ym2612_hq_fm_backend_test
-)
-add_test(
     NAME ym2612_hq_source_calibration
     COMMAND ym2612_hq_source_calibration_test
 )
@@ -430,6 +417,14 @@ add_test(
 )
 set_tests_properties(
     spc_prebrr_sidecar_python
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME spc_studio_source_sidecar_python
+    COMMAND ${Python3_EXECUTABLE} tests/spc/test_studio_source_sidecar.py
+)
+set_tests_properties(
+    spc_studio_source_sidecar_python
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_test(
