@@ -2,10 +2,9 @@
 """Attach the non-audible Studio FIR readiness observer to the HQ Nuked FM lift.
 
 This patch deliberately does not change PlayerA output. It turns the live six-lane
-HQ native producer into evidence for exact Studio source ordinals, startup
-reference fallback, future-support latency, and EOF-safe scheduling. Audible
-promotion remains a separate step after these transport invariants are proven in
-the generated component.
+HQ native producer into exact ordinal-tagged Studio FM frames plus explicit
+startup/tail reference evidence. Audible promotion remains a separate transport
+step so whole protected source-family bundles can be delayed together.
 """
 
 from __future__ import annotations
@@ -108,6 +107,8 @@ def main() -> int:
 """,
         """    bool ym_source_block_valid() const noexcept { return m_ym_block_valid; }
     bool hq_fm_source_block_valid() const noexcept { return m_hq_fm_block_valid; }
+    using studio_hq_fm_ready_frame = foobar_vgm::source_audio::studio_hq_fm_ready_frame<
+        kHqFmLaneCount>;
     bool studio_hq_fm_observer_valid() const noexcept
     {
         return m_studio_hq_fm_active && m_studio_hq_fm_observer.valid();
@@ -116,6 +117,21 @@ def main() -> int:
     studio_hq_fm_last_observation() const noexcept
     {
         return m_studio_hq_fm_last;
+    }
+    std::size_t studio_hq_fm_ready_frames() const noexcept
+    {
+        return studio_hq_fm_observer_valid() ? m_studio_hq_fm_observer.ready_frames() : 0;
+    }
+    bool pop_studio_hq_fm_ready_frame(studio_hq_fm_ready_frame& out) noexcept
+    {
+        return studio_hq_fm_observer_valid()
+            && m_studio_hq_fm_observer.pop_ready_frame(out);
+    }
+    std::size_t finish_studio_hq_fm_reference_tail() noexcept
+    {
+        return studio_hq_fm_observer_valid()
+            ? m_studio_hq_fm_observer.finish_reference_tail()
+            : 0;
     }
     bool psg_source_block_valid() const noexcept { return m_psg_block_valid; }
 """,
@@ -247,11 +263,16 @@ def main() -> int:
         for (std::size_t lane = 0; lane < kHqFmLaneCount; ++lane)
             lanes[lane] = family.hq_native[lane].data();
 
+        const foobar_vgm::source_audio::studio_hq_fm_gain gain{
+            static_cast<std::int32_t>(family.before.volumeL),
+            static_cast<std::int32_t>(family.before.volumeR)
+        };
         m_studio_hq_fm_last = m_studio_hq_fm_observer.observe_segment(
             timing,
             lanes,
             family.native_count,
-            outputCount);
+            outputCount,
+            gain);
         return m_studio_hq_fm_last.valid;
     }
 
