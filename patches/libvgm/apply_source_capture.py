@@ -29,7 +29,8 @@ def main() -> int:
     run(here / "apply_source_resampler_hooks.py", root)
     run(here / "apply_sn76496_source_tap.py", root)
     run(here / "apply_playera_gain_view.py", root)
-    print("libvgm source-aware VGM capture patches applied")
+    run(here / "apply_playera_postrender_hook.py", root)
+    print("libvgm source-aware VGM capture/replacement patches applied")
     return 0
 
 
