@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extend the deferred PlayerA session reset to the Enhanced PSG queue."""
+"""Extend the deferred PlayerA session reset to the enhanced PSG queue."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def main() -> int:
         "decode-session deferred PSG reset",
     )
 
-    print("foo_input_vgm deferred Enhanced PSG session reset applied")
+    print("foo_input_vgm deferred enhanced PSG session reset applied")
     return 0
 
 
