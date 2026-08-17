@@ -72,7 +72,8 @@ int main() {
         assert(expected.valid);
 
         float rendered = 0.0f;
-        assert(provider.render_voice(0, rate, 0x3c, 0, &rendered));
+        assert(provider.render_voice(
+            0, rate, 7, 0x4212, 0x3c, 0, &rendered));
         assert(near(rendered, expected.sample));
         assert(reference.advance(rate));
     }
@@ -85,7 +86,8 @@ int main() {
         candidate, playback, projection);
     assert(expected.valid);
     float rendered = 0.0f;
-    assert(provider.render_voice(0, 0x00010000u, 0x3c, 3, &rendered));
+    assert(provider.render_voice(
+        0, 0x00010000u, 7, 0x4212, 0x3c, 3, &rendered));
     assert(near(rendered, expected.sample));
     assert(reference.advance(0x00010000u));
 
@@ -94,9 +96,11 @@ int main() {
     // advances, so it cannot become permanently stuck at the startup boundary.
     assert(provider.begin_voice(1, 7, 0x4200, 0x4212, 0x3c, 1));
     rendered = 123.0f;
-    assert(provider.render_voice(1, 0x00010000u, 0x3c, 1, &rendered));
+    assert(provider.render_voice(
+        1, 0x00010000u, 7, 0x4212, 0x3c, 1, &rendered));
     assert(rendered == 0.0f);
-    assert(provider.render_voice(1, 0x00010000u, 0x3c, 1, &rendered));
+    assert(provider.render_voice(
+        1, 0x00010000u, 7, 0x4212, 0x3c, 1, &rendered));
     snesapu_source_trajectory_tracker linear_reference;
     linear_reference.key_on(snesapu_source_interpolation::linear);
     assert(linear_reference.advance(0x00010000u));
@@ -108,13 +112,30 @@ int main() {
     // SNESAPU consults DIR again when an END+LOOP is followed. A live DIR change
     // therefore forfeits our authority before the restored trajectory can
     // diverge from the renderer's actual loop target.
-    assert(!provider.render_voice(1, 0x00010000u, 0x3d, 1, &rendered));
+    assert(!provider.render_voice(
+        1, 0x00010000u, 7, 0x4212, 0x3d, 1, &rendered));
+    assert(!provider.voice_active(1));
+
+    // More subtly, the pinned loop-restart code can refresh mSrc from the live
+    // DSP SRCN and then apply Script700 NoteChange without changing DIR. The
+    // sample callback must reject that effective-source remap immediately.
+    assert(provider.begin_voice(1, 7, 0x4200, 0x4212, 0x3c, 1));
+    assert(!provider.render_voice(
+        1, 0x00010000u, 8, 0x4212, 0x3c, 1, &rendered));
+    assert(!provider.voice_active(1));
+
+    // The directory entry itself can also change under the same page/SRCN. A
+    // different live loop pointer is enough to invalidate the authored topology.
+    assert(provider.begin_voice(1, 7, 0x4200, 0x4212, 0x3c, 1));
+    assert(!provider.render_voice(
+        1, 0x00010000u, 7, 0x421b, 0x3c, 1, &rendered));
     assert(!provider.voice_active(1));
 
     // An impossible rate is also a permanent loss of phase authority for this
     // key-on, so Enhanced substitution deactivates rather than drifting.
     assert(provider.begin_voice(1, 7, 0x4200, 0x4212, 0x3c, 1));
-    assert(!provider.render_voice(1, 0x01000000u, 0x3c, 1, &rendered));
+    assert(!provider.render_voice(
+        1, 0x01000000u, 7, 0x4212, 0x3c, 1, &rendered));
     assert(!provider.voice_active(1));
 
     // A loop locator that disagrees with its 16-sample BRR topology is rejected
@@ -141,7 +162,7 @@ int main() {
     assert(snesapu_studio_source_provider<4>::begin_callback(
         nullptr, 0, 7, 0x4200, 0x4212, 0x3c, 0) == 0u);
     assert(snesapu_studio_source_provider<4>::sample_callback(
-        nullptr, 0, 0x00010000u, 0x3c, 0, &rendered) == 0u);
+        nullptr, 0, 0x00010000u, 7, 0x4212, 0x3c, 0, &rendered) == 0u);
 
     provider.stop_voice(0);
     assert(!provider.voice_active(0));
