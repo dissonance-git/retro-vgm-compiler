@@ -38,6 +38,29 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
         for query in result["queries"]:
             self.assertTrue(query["top"][0]["is_positive"])
 
+    def test_incomplete_sonic_3d_panel_is_rejected(self):
+        policy = {
+            "sonic_3d_blast_exact_track_world": {
+                "corpus_id": "sonic-3d-blast-genesis-vgm",
+                "partition_complete_for_candidate": True,
+                "corpus_fixture_count": 3,
+                "maeda_fixtures": [
+                    "tests/corpus/sonic-3d-blast-genesis-vgm/Maeda.vgm"
+                ],
+            }
+        }
+        tracks = {
+            "sonic-3d-blast-genesis-vgm::Maeda.vgm": {
+                "soundtrack_id": "sonic-3d-blast-genesis-vgm"
+            },
+            "sonic-3d-blast-genesis-vgm::Other.vgm": {
+                "soundtrack_id": "sonic-3d-blast-genesis-vgm"
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "frozen audit is incomplete"):
+            evaluator._sonic_3d_partition(policy, tracks)
+
     def test_evaluate_quarantines_conflict_and_separates_platform_stress(self):
         policy = {
             "candidate": "Tatsuyuki Maeda",
