@@ -184,13 +184,30 @@ public:
             return false;
         if (!tracker_.advance_block(input.frame_count, sample_rate))
             return false;
-        if (!observer_.process(input, sample_rate))
+
+        // Omniphony accepts events at frame_offset == frame_count as a
+        // zero-length terminal transition and expects that state to become the
+        // next block's initial evidence. There is no completed PCM under those
+        // events, so they must not be paired with the just-finished block's
+        // acoustic observation or role proposal. Since prepare_block already
+        // validates nondecreasing offsets, terminal events form a trailing run.
+        std::size_t learning_event_count = input.evidence_event_count;
+        if (input.evidence_events != nullptr) {
+            while (learning_event_count != 0 &&
+                   input.evidence_events[learning_event_count - 1].frame_offset == input.frame_count) {
+                --learning_event_count;
+            }
+        }
+
+        spatial_source_block_view learning_view = input;
+        learning_view.evidence_event_count = learning_event_count;
+        if (!observer_.process(learning_view, sample_rate))
             return false;
 
         std::array<spatial_source_evidence, MaxLanes> final_evidence{};
         for (std::size_t lane_index = 0; lane_index < input.lane_count; ++lane_index)
             final_evidence[lane_index] = input.lanes[lane_index].evidence;
-        for (std::size_t event_index = 0; event_index < input.evidence_event_count; ++event_index) {
+        for (std::size_t event_index = 0; event_index < learning_event_count; ++event_index) {
             const spatial_source_evidence_event& event = input.evidence_events[event_index];
             final_evidence[event.lane_index] = event.evidence;
         }
