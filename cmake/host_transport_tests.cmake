@@ -105,7 +105,6 @@ add_executable(
 add_executable(
     ym2612_hq_fm_backend_test
     tests/vgm/ym2612_hq_fm_backend_test.cpp
-    components/vgm/enhancement/ym2612_hq_fm_backend.cpp
 )
 add_executable(
     ym2612_hq_source_calibration_test
