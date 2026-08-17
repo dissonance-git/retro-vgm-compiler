@@ -2,6 +2,7 @@
 
 #include "snes_spc_native_source_hook_bridge.h"
 #include "spc_enhanced_reconstruction.h"
+#include "spc_upstream_sample_reconstruction.h"
 
 #include <array>
 #include <cstddef>
@@ -17,6 +18,14 @@ struct spc_enhanced_voice_input {
     std::uint16_t envelope = 0;
     bool noise_enabled = false;
     std::int16_t noise_sample = 0;
+
+    // Optional evidence-approved upstream source replacement. The producer owns
+    // exact game-sample traversal and supplies its current decoded-sample
+    // coordinate after the game's pitch/loop logic. If a candidate is supplied,
+    // failure to reconstruct it is a hard Enhanced-source failure rather than a
+    // silent fallback to BRR for that frame.
+    const spc_sample_restoration_candidate* restoration = nullptr;
+    double game_sample_position = 0.0;
 };
 
 enum class snes_spc_enhanced_source_hook_error : std::uint8_t {
@@ -24,19 +33,21 @@ enum class snes_spc_enhanced_source_hook_error : std::uint8_t {
     inactive,
     invalid_voice_count,
     reconstruction_rejected,
+    restoration_rejected,
     downstream_rejected,
 };
 
 // Adapter for an instrumented libgme/snes_spc DSP loop. The dependency exposes
 // decoded BRR neighborhoods and q12 source phase before its native Gaussian
 // interpolation. This bridge reconstructs sampled voices with the bounded
-// enhanced filter, deliberately retains native envelope quantization for the
-// first experiment, and feeds the resulting pre-pan source frame into the same
-// exact source transport already used by the reference hook.
+// enhanced filter or an independently proven upstream source, deliberately
+// retains native envelope quantization for the first experiment, and feeds the
+// resulting pre-pan source frame into the same exact source transport already
+// used by the reference hook.
 //
 // This keeps the rest of the realtime pipeline agnostic to whether the source
-// sample came from the protected reference DSP or the independently enabled
-// Enhanced path. Spatial presentation therefore remains orthogonal.
+// sample came from protected BRR evidence or the independently enabled Enhanced
+// path. Spatial presentation therefore remains orthogonal.
 class snes_spc_enhanced_source_hook_bridge {
 public:
     void reset(
@@ -79,13 +90,19 @@ public:
         for (std::size_t voice = 0; voice < spc_native_voice_count; ++voice) {
             double pre_envelope = static_cast<double>(voices[voice].noise_sample);
             if (!voices[voice].noise_enabled) {
-                const auto reconstructed = reconstruct_spc_lanczos4(voices[voice].decoded);
-                if (!reconstructed.valid) {
-                    active_ = false;
-                    output_bridge_.deactivate();
-                    return fail(snes_spc_enhanced_source_hook_error::reconstruction_rejected);
+                if (voices[voice].restoration != nullptr) {
+                    const auto restored = reconstruct_spc_upstream_sample(
+                        *voices[voice].restoration,
+                        voices[voice].game_sample_position);
+                    if (!restored.valid)
+                        return stop(snes_spc_enhanced_source_hook_error::restoration_rejected);
+                    pre_envelope = restored.sample;
+                } else {
+                    const auto reconstructed = reconstruct_spc_lanczos4(voices[voice].decoded);
+                    if (!reconstructed.valid)
+                        return stop(snes_spc_enhanced_source_hook_error::reconstruction_rejected);
+                    pre_envelope = reconstructed.sample;
                 }
-                pre_envelope = reconstructed.sample;
             }
 
             source[voice] = apply_spc_reference_envelope_quantization(
@@ -109,6 +126,12 @@ public:
     }
 
 private:
+    bool stop(snes_spc_enhanced_source_hook_error error) noexcept {
+        active_ = false;
+        output_bridge_.deactivate();
+        return fail(error);
+    }
+
     bool fail(snes_spc_enhanced_source_hook_error error) noexcept {
         last_error_ = error;
         return false;
