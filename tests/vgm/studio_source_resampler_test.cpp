@@ -1,4 +1,5 @@
 #include "components/vgm/foo_input_vgm/src/studio_alignment_queue.h"
+#include "components/vgm/foo_input_vgm/src/studio_frame_transport.h"
 #include "components/vgm/foo_input_vgm/src/studio_hq_fm_observer.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_resampler.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_stream.h"
@@ -57,9 +58,6 @@ int main() {
     const double rms = std::sqrt(energy / static_cast<double>(count));
     assert(rms < 1.0e-3);
 
-    // Exact timing adapter: one upsampling pregeneration lives in history.next,
-    // so the first newly captured native frame has ordinal one. Studio mirrors
-    // libvgm's fixed-point phase instead of restarting time at each host block.
     studio_linear_timing_snapshot exact_up{};
     exact_up.source_rate_hz = 53267;
     exact_up.destination_rate_hz = 96000;
@@ -87,8 +85,6 @@ int main() {
     assert(unsplit_position.valid && split_position.valid);
     assert(unsplit_position.phase_units == split_position.phase_units);
 
-    // Native Studio history is bounded and block-shape invariant. A future FIR
-    // support sample must exist before the corresponding destination is valid.
     studio_source_stream<2048> whole_stream;
     studio_source_stream<2048> split_stream;
     assert(whole_stream.append(0, passband.data(), passband.size()));
@@ -121,8 +117,6 @@ int main() {
         1));
     assert(future_stream.reconstruct(kernel, stream_position).valid);
 
-    // Whole authored host frames stay queued until FM's complete future FIR
-    // window exists. Protected DAC/PSG/reference payloads are delayed together.
     struct protected_frame {
         std::int32_t reference = 0;
         std::int32_t dac = 0;
@@ -155,9 +149,6 @@ int main() {
     assert(aligned_out.payload.dac == 7);
     assert(aligned_out.payload.psg == 11);
 
-    // Live observer: startup without synthetic past is explicit reference,
-    // ordinary block boundaries retain future-dependent frames, and the next
-    // native segment releases them before admitting its own ready frames.
     struct native_integer_sample {
         std::int32_t left = 0;
         std::int32_t right = 0;
@@ -185,7 +176,7 @@ int main() {
         live0.data(), live1.data()
     }};
     const auto observed_first = observer.observe_segment(
-        same_rate, live_first, 80, 80);
+        same_rate, live_first, 80, 80, studio_hq_fm_gain{2, 3});
     assert(observed_first.valid);
     assert(observed_first.native_base == 0);
     assert(observed_first.destination_base == 0);
@@ -194,14 +185,23 @@ int main() {
     assert(observed_first.newly_ready_studio_frames == 17);
     assert(observed_first.pending_future_frames
         == studio_source_resampler_kernel::post_roll);
-    assert(observer.next_native_ordinal() == 80);
-    assert(observer.next_destination_ordinal() == 80);
+    assert(observer.ready_frames() == 17);
+
+    studio_hq_fm_observer<2, 512, 256>::ready_frame ready{};
+    for (std::uint64_t ordinal = 31; ordinal <= 47; ++ordinal) {
+        assert(observer.pop_ready_frame(ready));
+        assert(ready.valid);
+        assert(ready.destination_ordinal == ordinal);
+        assert(std::isfinite(ready.lane[0].left));
+        assert(std::isfinite(ready.lane[0].right));
+    }
+    assert(observer.ready_frames() == 0);
 
     std::array<const native_integer_sample*, 2> live_second{{
         live0.data() + 80, live1.data() + 80
     }};
     const auto observed_second = observer.observe_segment(
-        same_rate, live_second, 80, 80);
+        same_rate, live_second, 80, 80, studio_hq_fm_gain{2, 3});
     assert(observed_second.valid);
     assert(observed_second.native_base == 80);
     assert(observed_second.destination_base == 80);
@@ -209,17 +209,75 @@ int main() {
     assert(observed_second.newly_ready_studio_frames == 80);
     assert(observed_second.pending_future_frames
         == studio_source_resampler_kernel::post_roll);
+    assert(observer.ready_frames() == 80);
+    for (std::uint64_t ordinal = 48; ordinal <= 127; ++ordinal) {
+        assert(observer.pop_ready_frame(ready));
+        assert(ready.destination_ordinal == ordinal);
+    }
+    assert(observer.ready_frames() == 0);
     assert(observer.next_native_ordinal() == 160);
     assert(observer.next_destination_ordinal() == 160);
     assert(observer.finish_reference_tail()
         == studio_source_resampler_kernel::post_roll);
     assert(observer.pending_frames() == 0);
 
+    // Whole-frame transport can receive Studio ordinals out of immediate head
+    // order, but cannot emit past an unresolved earlier source-time frame.
+    studio_frame_transport<8> transport;
+    transport.reset();
+    assert(transport.push({0, 100, -100, 10, -10, false}));
+    assert(transport.push({1, 200, -200, 20, -20, true}));
+    assert(transport.push({2, 300, -300, 30, -30, true}));
+    assert(transport.contiguous_final_frames() == 1);
+    assert(transport.apply_studio_fm(2, 3000, -3000));
+    assert(transport.contiguous_final_frames() == 1);
+
+    studio_transport_output_frame transport_out{};
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 0);
+    assert(!transport_out.used_studio_fm);
+    assert(!transport.pop_final(transport_out));
+
+    assert(transport.apply_studio_fm(1, 2000, -2000));
+    assert(transport.contiguous_final_frames() == 2);
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 1);
+    assert(transport_out.used_studio_fm);
+    assert(transport_out.left == 2180);
+    assert(transport_out.right == -2180);
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 2);
+    assert(transport_out.left == 3270);
+    assert(transport_out.right == -3270);
+    assert(transport.empty());
+
+    assert(transport.push({3, 400, -400, 40, -40, true}));
+    assert(transport.push({4, 500, -500, 50, -50, true}));
+    assert(!transport.finish_reference_tail(1));
+    assert(transport.finish_reference_tail(2));
+    assert(transport.contiguous_final_frames() == 2);
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 3);
+    assert(!transport_out.used_studio_fm);
+    assert(transport_out.left == 400);
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 4);
+    assert(transport_out.left == 500);
+
+    transport.reset();
+    assert(transport.push({10, 700, -700, 70, -70, true}));
+    transport.fail_closed_reference();
+    assert(transport.pop_final(transport_out));
+    assert(transport_out.destination_ordinal == 10);
+    assert(!transport_out.used_studio_fm);
+    assert(transport_out.left == 700);
+
     observer.reset();
     assert(observer.valid());
     assert(observer.next_native_ordinal() == 0);
     assert(observer.next_destination_ordinal() == 0);
     assert(observer.pending_frames() == 0);
+    assert(observer.ready_frames() == 0);
 
     assert(!kernel.reconstruct(constant.data(), constant.size(), 12.0).valid);
     assert(!kernel.reconstruct(constant.data(), constant.size(), 1000.0).valid);
