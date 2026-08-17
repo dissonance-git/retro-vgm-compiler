@@ -2,6 +2,12 @@
 
 The foobar shell keeps synthesis enhancement and Omniphony presentation as two independent user choices.
 
+## Naming contract
+
+`Enhanced` is the one and only source-native quality-improvement option. There is no separate Studio mode, Studio tier, or Studio product identity. `Reference` is the protected accuracy/control path.
+
+Some recently introduced implementation files and symbols still carry a `studio_*` prefix from development. Treat that prefix as legacy internal naming only. It does **not** define another user-facing mode or quality level, and new work should use `enhanced_*` or a neutral algorithmic name instead.
+
 Apply the complete shell set with:
 
 ```text
@@ -40,7 +46,7 @@ no optional MD1 output low-pass
 six HQ FM source lanes
 ```
 
-Those lanes currently traverse the same outer libvgm `RSMODE_LINEAR` timing and device-volume coordinate as the six exact reference FM lanes. PlayerA can therefore perform the source-native replacement directly:
+Those lanes originate from the same live Nuked OPN2 state and authoritative source timing as the six exact reference FM lanes. The Enhanced deferred reconstruction path can therefore perform the source-native replacement without creating a second musical timeline:
 
 ```text
 protected reference mix
@@ -52,38 +58,35 @@ DAC is a separate seventh YM2612 source identity and is not subtracted by the FM
 
 This first automatic FM rung deliberately keeps the original quantized OPN modulation history as its teacher. That preserves difficult semantics while improving the final carrier/channel/output ceiling. The separate `ym2612_hq_fm_backend` explores a deeper all-floating OPN descendant, but it is not required for this safer automatic path.
 
-### The next FM ceiling: source-rate conversion
+### Enhanced FM source-rate reconstruction
 
-libvgm's `RSMODE_LINEAR` is a useful exact timing control, but linear interpolation/box-like downsampling is not the intended quality ceiling for a studio-grade Enhanced source.
+libvgm's `RSMODE_LINEAR` remains the useful exact timing control, but linear interpolation/box-like downsampling is not the intended quality ceiling for the Enhanced source.
 
-The repository now contains:
+The repository currently contains the 64-tap Kaiser-windowed polyphase FIR implementation under the legacy internal filename:
 
 ```text
 components/vgm/foo_input_vgm/src/studio_source_resampler.h
 ```
 
-This is an Enhanced-only 64-tap Kaiser-windowed polyphase FIR kernel. It is rate-aware: when the destination rate is lower than the source rate, the kernel lowers its cutoff before the destination Nyquist boundary instead of letting high-frequency source energy alias into the output. Coefficients are prepared outside the realtime callback; reconstruction itself is a bounded dot product.
+This is an **Enhanced-only** reconstruction primitive, not a separate mode. It is rate-aware: when the destination rate is lower than the source rate, the kernel lowers its cutoff before the destination Nyquist boundary instead of letting high-frequency source energy alias into the output. Coefficients are prepared outside the realtime callback; reconstruction itself is a bounded dot product.
 
-It is **not yet substituted into the audible PlayerA FM path**. A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. Applying it to FM alone without compensating the whole Enhanced candidate would shift FM relative to DAC, PSG and untouched chips. That would violate musical timing to improve frequency response, which is not an acceptable trade.
+A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. The Enhanced integration therefore treats that latency as explicit scheduling state rather than shifting FM relative to DAC, PSG, or untouched chips. Whole protected frames retain their authoritative output ordinals until the matching Enhanced FM reconstruction is available; unsupported or unavailable regions fall back to Reference.
 
-The integration obligation is therefore explicit:
+The invariant is:
 
 ```text
 capture exact source-rate HQ FM
         ↓
-bandlimited FIR SRC
+bandlimited FIR reconstruction + explicit lookahead
         +
-known FIR latency
+protected Reference/DAC/PSG frame at the same output ordinal
         ↓
-delay/align the whole Enhanced candidate by the same amount
+release only when the matching Enhanced FM frame is reconstructable
         ↓
-subtract aligned exact FM
-+ add aligned HQ FM
-        ↓
-verify FM/DAC/PSG transient and phase relationships
+protected reference - exact FM + enhanced FM
 ```
 
-Until that alignment is implemented and tested, the audible path retains the current linear timing bridge. The new FIR kernel is executable/tested infrastructure for the next rung, not a claim that the audible foobar DLL has already crossed it.
+Seek/session discontinuities start a fresh native-history epoch while output ordinals remain authoritative. This prevents FIR history from crossing a discontinuity without inventing a second playback clock.
 
 ### SN76489/96 PSG
 
@@ -111,7 +114,7 @@ Enhancement is transactional per source family. FM can succeed while PSG remains
 
 Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an Enhanced renderer before already-proven source families can improve.
 
-## Four modes
+## Four combinations
 
 ```text
 Enhanced OFF + Spatial OFF -> protected reference stereo
