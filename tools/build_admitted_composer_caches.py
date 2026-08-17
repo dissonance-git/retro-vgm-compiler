@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Build creator-blind song capsules for every admitted composer in a credit index.
 
-The role-credit index owns historical labels. The song cache stays creator-blind.
-This helper simply fans the existing ``build_creator`` operation across every
-admitted composer so a research world can be parsed once and reused thereafter.
+The role-credit index is intentionally source-format agnostic. The current song
+capsule backend is not: ``creator_blind_song_cache`` parses Genesis VGM/VGZ.
+This helper therefore preserves every admitted creator in its report while
+routing only compatible fixtures into that backend. Unsupported source-family
+controls remain visible for later capsule backends instead of being dropped or
+misparsed.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import pathlib
+import tempfile
 from typing import Iterable
 
 from creator_blind_song_cache import (
@@ -21,6 +25,8 @@ from creator_blind_song_cache import (
 DEFAULT_CREDITS = pathlib.Path("research/projects/sonic3/role-credit-index.jsonl")
 DEFAULT_ROLE = "composer"
 DEFAULT_ADMITTED_STATUSES = frozenset({"exact", "derived", "whole_soundtrack"})
+GENESIS_VGM_SUFFIXES = frozenset({".vgm", ".vgz"})
+CACHE_BACKEND = "creator-blind-genesis-song-capsule"
 
 
 def read_jsonl(path: pathlib.Path) -> list[dict[str, object]]:
@@ -33,6 +39,29 @@ def read_jsonl(path: pathlib.Path) -> list[dict[str, object]]:
     ]
 
 
+def admitted_records(
+    records: Iterable[dict[str, object]],
+    *,
+    role: str = DEFAULT_ROLE,
+    admitted_statuses: set[str] | frozenset[str] = DEFAULT_ADMITTED_STATUSES,
+) -> list[dict[str, object]]:
+    admitted = [
+        record
+        for record in records
+        if record.get("role") == role
+        and record.get("status") in admitted_statuses
+        and isinstance(record.get("creator"), str)
+        and bool(record.get("creator"))
+    ]
+    admitted.sort(
+        key=lambda record: (
+            str(record.get("creator", "")),
+            str(record.get("fixture_path", "")),
+        )
+    )
+    return admitted
+
+
 def admitted_creators(
     records: Iterable[dict[str, object]],
     *,
@@ -40,13 +69,27 @@ def admitted_creators(
     admitted_statuses: set[str] | frozenset[str] = DEFAULT_ADMITTED_STATUSES,
 ) -> list[str]:
     return sorted({
-        creator
-        for record in records
-        if record.get("role") == role
-        and record.get("status") in admitted_statuses
-        and isinstance((creator := record.get("creator")), str)
-        and creator
+        str(record["creator"])
+        for record in admitted_records(
+            records,
+            role=role,
+            admitted_statuses=admitted_statuses,
+        )
     })
+
+
+def cacheable_by_current_backend(record: dict[str, object]) -> bool:
+    fixture = record.get("fixture_path")
+    if not isinstance(fixture, str):
+        return False
+    return pathlib.PurePosixPath(fixture).suffix.lower() in GENESIS_VGM_SUFFIXES
+
+
+def _write_jsonl(path: pathlib.Path, records: Iterable[dict[str, object]]) -> None:
+    path.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
 
 
 def build_all(
@@ -59,29 +102,74 @@ def build_all(
     refresh: bool,
     admitted_statuses: set[str],
 ) -> dict[str, object]:
-    creators = admitted_creators(
-        read_jsonl(credit_index),
+    records = read_jsonl(credit_index)
+    admitted = admitted_records(
+        records,
         role=role,
         admitted_statuses=admitted_statuses,
     )
-    results = [
-        build_creator(
-            credit_index=credit_index,
-            creator=creator,
-            role=role,
-            repo_root=repo_root,
-            cache_root=cache_root,
-            cache_index=cache_index,
-            refresh=refresh,
-            admitted_statuses=admitted_statuses,
-        )
-        for creator in creators
-    ]
+    creators = sorted({str(record["creator"]) for record in admitted})
+
+    results: list[dict[str, object]] = []
+    with tempfile.TemporaryDirectory(prefix="rvc-composer-cache-") as temp_dir:
+        temporary_root = pathlib.Path(temp_dir)
+        for creator in creators:
+            creator_records = [
+                record for record in admitted if record.get("creator") == creator
+            ]
+            compatible = [
+                record for record in creator_records if cacheable_by_current_backend(record)
+            ]
+            unsupported = [
+                record for record in creator_records if not cacheable_by_current_backend(record)
+            ]
+
+            backend_result: dict[str, object]
+            if compatible:
+                filtered_index = temporary_root / f"credits-{len(results):04d}.jsonl"
+                _write_jsonl(filtered_index, compatible)
+                backend_result = build_creator(
+                    credit_index=filtered_index,
+                    creator=creator,
+                    role=role,
+                    repo_root=repo_root,
+                    cache_root=cache_root,
+                    cache_index=cache_index,
+                    refresh=refresh,
+                    admitted_statuses=admitted_statuses,
+                )
+            else:
+                backend_result = {
+                    "creator": creator,
+                    "role": role,
+                    "selected_tracks": 0,
+                    "built": 0,
+                    "reused": 0,
+                    "cache_root": cache_root.as_posix(),
+                    "cache_index": cache_index.as_posix(),
+                }
+
+            result = dict(backend_result)
+            result.update(
+                {
+                    "role_selected_tracks": len(creator_records),
+                    "cacheable_tracks": len(compatible),
+                    "unsupported_tracks": len(unsupported),
+                    "unsupported_fixtures": [
+                        str(record.get("fixture_path", "")) for record in unsupported
+                    ],
+                }
+            )
+            results.append(result)
+
     return {
         "role": role,
         "creator_count": len(creators),
         "creators": creators,
-        "selected_tracks": sum(int(result["selected_tracks"]) for result in results),
+        "cache_backend": CACHE_BACKEND,
+        "role_selected_tracks": len(admitted),
+        "cacheable_tracks": sum(int(result["cacheable_tracks"]) for result in results),
+        "unsupported_tracks": sum(int(result["unsupported_tracks"]) for result in results),
         "built": sum(int(result["built"]) for result in results),
         "reused": sum(int(result["reused"]) for result in results),
         "results": results,
