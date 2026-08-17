@@ -60,8 +60,8 @@ struct snesapu_studio_source_binding {
 // Discovery, file I/O, hashing, provenance work and allocations happen before
 // this object is populated. The hot callback is fixed-capacity lookup performed
 // once at key-on, followed by one trajectory projection + FIR evaluation per
-// mixed voice sample. Immutable upstream start/end/loop geometry is resolved at
-// admission and stored beside the binding rather than recalculated at 48 kHz.
+// mixed voice sample. Immutable upstream geometry and PCM finiteness are proven
+// at admission rather than recalculated/rechecked at 48 kHz.
 template <std::size_t MaxSources = 256>
 class snesapu_studio_source_provider {
     static_assert(MaxSources > 0, "MaxSources must be non-zero");
@@ -74,7 +74,8 @@ public:
             || !snesapu_studio_brr_topology_valid(
                     binding.first_brr_block_address,
                     binding.loop_brr_block_address,
-                    binding.playback))
+                    binding.playback)
+            || !detail::spc_upstream_pcm_all_finite(binding.restoration->upstream))
             return false;
 
         const auto upstream_boundaries = detail::resolve_spc_upstream_playback_boundaries(
@@ -199,11 +200,12 @@ public:
 
         double sample = 0.0;
         if (!projection.before_key_on) {
-            // add() already established automatic source permission and froze the
-            // exact upstream boundary geometry. Do not rerun the evidence
-            // classifier or boundary resolver in the 48 kHz callback.
+            // add() already established automatic source permission, froze the
+            // exact upstream boundary geometry and scanned every upstream PCM
+            // frame for finiteness. Keep those immutable checks off the audio
+            // path while retaining trajectory/live-source validation above.
             const auto reconstructed =
-                detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
+                detail::reconstruct_spc_upstream_candidate_playback_sample_resolved<true>(
                     *state.source->restoration,
                     state.source->playback,
                     projection,
