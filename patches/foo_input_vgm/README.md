@@ -72,6 +72,20 @@ This is an **Enhanced-only** reconstruction primitive, not a separate mode. It i
 
 A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. The Enhanced integration therefore treats that latency as explicit scheduling state rather than shifting FM relative to DAC, PSG, or untouched chips. Whole protected frames retain their authoritative output ordinals until the matching Enhanced FM reconstruction is available; unsupported or unavailable regions fall back to Reference.
 
+The protected frame is itself compositional. When the engine-clock PSG descendant is admitted, its exact four-channel replacement is committed to that frame **before** the deferred FM exchange. Thus render-ahead does not force a choice between better FM and better PSG:
+
+```text
+reference frame
+- exact PSG + enhanced PSG
+        ↓
+PSG-enhanced protected frame
+- exact FM + enhanced FM
+        ↓
+final Enhanced frame
+```
+
+DAC and unrelated chips remain untouched through both exchanges. If PSG loses exact source authority, only PSG falls back to its protected reference contribution; valid FM reconstruction remains eligible. If FM loses reconstruction authority, an already-valid PSG-enhanced protected frame can still survive.
+
 The invariant is:
 
 ```text
@@ -79,11 +93,11 @@ capture exact source-rate HQ FM
         ↓
 bandlimited FIR reconstruction + explicit lookahead
         +
-protected Reference/DAC/PSG frame at the same output ordinal
+whole protected frame at the same absolute output ordinal
         ↓
 release only when the matching Enhanced FM frame is reconstructable
         ↓
-protected reference - exact FM + enhanced FM
+protected frame - exact FM + enhanced FM
 ```
 
 Seek/session discontinuities start a fresh native-history epoch while output ordinals remain authoritative. This prevents FIR history from crossing a discontinuity without inventing a second playback clock.
@@ -108,9 +122,15 @@ reference mix
 + enhanced PSG sources
 ```
 
+During ordinary non-deferred playback, the established block renderer consumes the captured timed-write block. When Enhanced FM needs PlayerA render-ahead, that host-block clock is no longer authoritative for PSG. The runtime therefore seeds a private PSG descendant from the continuous shadow, advances it between writes on **absolute engine-sample ordinals**, and stores one bounded replacement contribution per rendered frame. The resulting PSG-enhanced protected frame is then handed to the deferred FM transport.
+
+This is a timing representation change, not a second PSG synthesizer design. A regression feeds the same timed write stream through both the established block renderer and the engine-ordinal queue and requires sample-for-sample left/right agreement under the same libvgm source-volume scaling.
+
 ## Transaction and fallback policy
 
-Enhancement is transactional per source family. FM can succeed while PSG remains reference, or vice versa. Within a family, incomplete capture, source-timing failure, missing source lanes, non-finite arithmetic, or output overflow keeps that entire family on the protected reference for the block.
+Enhancement is transactional per source family. FM can succeed while PSG remains reference, or vice versa. Within a family, incomplete capture, source-timing failure, missing source lanes, non-finite arithmetic, output overflow, or ordinal discontinuity keeps that family on the protected reference.
+
+Dynamic family admission is deliberately independent. The deferred FM path checks current YM/FM evidence rather than the all-family `source_block_complete()` convenience predicate, while deferred PSG requires its own exact four-lane source block. One family's current block failure cannot demote another family's otherwise-valid candidate.
 
 Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an Enhanced renderer before already-proven source families can improve.
 
