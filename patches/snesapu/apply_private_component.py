@@ -71,6 +71,7 @@ def main() -> int:
     run(here / "apply_prebrr_transport_complete.py", root)
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
     run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)
+    run(here / "apply_private_child_launch_path.py", root)
     remove_obsolete_enhancer_seek_reset(parent / "input_snesapu.cpp")
     add_algorithm_include(parent / "stdafx.h")
 
