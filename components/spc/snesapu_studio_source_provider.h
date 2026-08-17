@@ -60,7 +60,8 @@ struct snesapu_studio_source_binding {
 // Discovery, file I/O, hashing, provenance work and allocations happen before
 // this object is populated. The hot callback is fixed-capacity lookup performed
 // once at key-on, followed by one trajectory projection + FIR evaluation per
-// mixed voice sample.
+// mixed voice sample. Immutable upstream start/end/loop geometry is resolved at
+// admission and stored beside the binding rather than recalculated at 48 kHz.
 template <std::size_t MaxSources = 256>
 class snesapu_studio_source_provider {
     static_assert(MaxSources > 0, "MaxSources must be non-zero");
@@ -73,9 +74,12 @@ public:
             || !snesapu_studio_brr_topology_valid(
                     binding.first_brr_block_address,
                     binding.loop_brr_block_address,
-                    binding.playback)
-            || !detail::resolve_spc_upstream_playback_boundaries(
-                    *binding.restoration, binding.playback).valid)
+                    binding.playback))
+            return false;
+
+        const auto upstream_boundaries = detail::resolve_spc_upstream_playback_boundaries(
+            *binding.restoration, binding.playback);
+        if (!upstream_boundaries.valid)
             return false;
 
         // A concrete runtime source identity must resolve exactly once. If the
@@ -87,7 +91,14 @@ public:
                 return false;
         }
 
-        sources_[count_++] = binding;
+        sources_[count_++] = {
+            binding.source_number,
+            binding.first_brr_block_address,
+            binding.loop_brr_block_address,
+            binding.restoration,
+            binding.playback,
+            upstream_boundaries,
+        };
         return true;
     }
 
@@ -118,7 +129,7 @@ public:
         if (!snesapu_source_interpolation_from_raw(interpolation_raw, interpolation))
             return false;
 
-        const snesapu_studio_source_binding* selected = nullptr;
+        const stored_binding* selected = nullptr;
         for (std::size_t index = 0; index < count_; ++index) {
             const auto& candidate = sources_[index];
             if (candidate.source_number == static_cast<std::uint8_t>(source_number)
@@ -188,10 +199,11 @@ public:
 
         double sample = 0.0;
         if (!projection.before_key_on) {
-            const auto reconstructed = reconstruct_spc_upstream_playback_sample(
+            const auto reconstructed = reconstruct_spc_upstream_playback_sample_resolved(
                 *state.source->restoration,
                 state.source->playback,
-                projection);
+                projection,
+                state.source->upstream_boundaries);
             if (!reconstructed.valid || !std::isfinite(reconstructed.sample))
                 return stop_and_fail(voice);
             sample = reconstructed.sample;
@@ -266,8 +278,17 @@ public:
     }
 
 private:
+    struct stored_binding {
+        std::uint8_t source_number = 0;
+        std::uint16_t first_brr_block_address = 0;
+        std::uint16_t loop_brr_block_address = 0;
+        const spc_sample_restoration_candidate* restoration = nullptr;
+        spc_game_sample_playback_span playback{};
+        detail::spc_upstream_playback_boundaries upstream_boundaries{};
+    };
+
     struct voice_state {
-        const snesapu_studio_source_binding* source = nullptr;
+        const stored_binding* source = nullptr;
         snesapu_source_trajectory_tracker trajectory{};
         std::uint8_t directory_page = 0;
         bool active = false;
@@ -278,7 +299,7 @@ private:
         return false;
     }
 
-    std::array<snesapu_studio_source_binding, MaxSources> sources_{};
+    std::array<stored_binding, MaxSources> sources_{};
     std::array<voice_state, snesapu_studio_voice_count> voices_{};
     std::size_t count_ = 0;
 };
