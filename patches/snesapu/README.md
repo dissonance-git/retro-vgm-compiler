@@ -105,9 +105,23 @@ BRR encoder
 SPC RAM
 ```
 
-When that upstream identity and preparation chain are proven, Retro VGM Compiler prepares the original waveform onto the **exact game sample grid before BRR quantization**, then replaces only the sixteen decoded samples that one 9-byte BRR block would have produced.
+When that upstream identity and preparation chain are proven, Retro VGM Compiler can use the highest-supported source representation while leaving the live game trajectory and downstream S-DSP performance machinery authoritative.
 
-The patched SNESAPU path becomes:
+There are two verified-source rungs:
+
+```text
+exact upstream/original waveform
+    -> 64-tap source-domain reconstruction at the live game phase
+
+exact prepared pre-BRR game-grid PCM
+    -> replace the sixteen decoded samples of the matching BRR block
+```
+
+The first preserves more upstream information when the original production waveform and exact preparation map are proven. The second is the safer lower rung when only the exact post-preparation/pre-BRR game-grid source is known.
+
+### Pre-BRR block path
+
+The patched lower source path becomes:
 
 ```text
 SPC execution
@@ -128,11 +142,9 @@ MVOL
 output
 ```
 
-This is the desired form of "the original samples before the hardware compressed them." It removes BRR loss while leaving the later S-DSP performance machinery authoritative.
+This removes BRR loss while leaving the later S-DSP performance machinery authoritative. The block provider is deliberately low-frequency: the callback runs once per BRR block, not for every output sample.
 
-The block provider is deliberately low-frequency: the callback runs once per BRR block, not for every output sample.
-
-### Parent/child transport
+### Pre-BRR parent/child transport
 
 The historical x64 foobar component runs the 32-bit SNESAPU code in `spcplayer.exe`, so verified replacement data has to cross that process boundary at setup time.
 
@@ -157,13 +169,7 @@ This patch:
 - installs a fixed realtime BRR-block callback;
 - never sends archival paths or corpus metadata to the child.
 
-For a local track named:
-
-```text
-music.spc
-```
-
-Enhanced optionally looks for:
+For a local track named `music.spc`, Enhanced optionally looks for:
 
 ```text
 music.spc.prebrr
@@ -171,17 +177,77 @@ music.spc.prebrr
 
 A missing sidecar is normal. Playback simply uses the 48 kHz/Sinc BRR reconstruction rung. An invalid sidecar is not silently accepted as historical evidence.
 
-The sidecar format is defined by:
+The sidecar format is defined by `components/spc/snesapu_prebrr_packet.h`, and contains only already-approved prepared game-grid PCM plus the SRCN / first-BRR-block mapping needed for playback.
+
+## Highest rung: verified upstream waveform at the live phase
+
+The studio-source seam replaces only the historical `pInter` waveform value when one exact upstream source is admitted. Everything downstream stays SNESAPU truth: NON/noise, envelope, PMON feedback, voice routing, echo/FIR/feedback and master volume.
+
+Apply the SNESAPU-side hot-loop seam after the pre-BRR provider:
 
 ```text
-components/spc/snesapu_prebrr_packet.h
+python patches/snesapu/apply_studio_source_provider.py <spcplay-root>
 ```
 
-and contains only already-approved prepared game-grid PCM plus the SRCN / first-BRR-block mapping needed for playback.
+Then, after the pre-BRR parent/child transport has been applied to the foobar tree, upgrade that transport to SPCP v3:
+
+```text
+python patches/snesapu/apply_studio_source_transport.py <foo_snesapu-root>
+```
+
+The roots differ intentionally: the first patch targets the editable SPCPlay/SNESAPU DLL source, while the second targets the x64 foobar parent plus 32-bit `spcplayer` child.
+
+SPCP v3 appends one optional `.studiosrc` packet after the lower-rung pre-BRR packet. The child:
+
+- validates the packet once before audio starts;
+- byte-compares its exact compressed BRR witness with the actual 64 KiB SPC RAM image;
+- reconstructs only already-approved upstream PCM and coordinate-map objects;
+- prepares the 64-tap / 16,384-phase FIR table before playback;
+- installs child-local callbacks, never per-sample IPC.
+
+The mixer callback also carries the live effective SRCN, live loop BRR pointer and DIR page on every restored sample. This matters because pinned SNESAPU can refresh DSP SRCN, reapply Script700 NoteChange, and re-read the loop pointer at END+LOOP without changing the DIR page. Any such live remap invalidates the top rung immediately and falls back to historical interpolation for the remainder of that key-on.
+
+NON/noise voices bypass the studio FIR because the pinned mixer discards the interpolated waveform and substitutes noise immediately afterward. Ordinary long source interiors use the same 64-tap reconstruction law through a contiguous dot-product fast path; startup, END and loop-seam neighborhoods retain explicit virtual topology handling.
+
+For `music.spc`, Enhanced optionally looks for:
+
+```text
+music.spc.studiosrc
+```
+
+### Authoring `.studiosrc` without hand-entered playback geometry
+
+Use:
+
+```text
+python tools/spc_studio_source_sidecar.py \
+  music.spc.studiosrc.json \
+  music.spc.studiosrc
+```
+
+This tool is deliberately a **freezer, not a discoverer**. It does not search sample libraries, resample audio, fit gains, infer loop points, or promote provenance. Its manifest must already contain the exact top-rung admission state, the approved source coordinate map, content hashes and nonzero source identities.
+
+The upstream PCM input is raw little-endian IEEE-754 float32. It is copied byte-for-byte into the packet after finite-value validation, so the final evidence boundary performs no hidden decode, normalization, resampling or bit-depth conversion.
+
+Crucially, these fields are **not accepted from hand-authored manifest geometry**:
+
+```text
+first BRR address
+first..END BRR extent
+terminal END/LOOP state
+loop BRR block ordinal
+compressed BRR witness
+```
+
+They are derived from the actual SPC snapshot using the selected/current DIR page and SRCN, including 16-bit RAM wrap. A live loop pointer that is not exactly one of the witnessed BRR block starts rejects authoring. The manifest's source-coordinate map must then close exactly over that snapshot-derived game extent and loop.
+
+The manifest also pins SHA-256 for both the snapshot BRR witness and raw upstream float PCM. These hashes are authoring assertions. Runtime content binding remains the exact BRR witness comparison in the child; `.studiosrc` is a trusted evidence packet, not a hostile-input cryptographic signature format.
+
+A missing `.studiosrc` file is normal. The ladder falls through to exact pre-BRR data when available, then topology-aware BRR reconstruction, then SNESAPU's 48 kHz 8-point Sinc path, then the protected historical reference.
 
 ## Finding and approving original samples
 
-The search pipeline is intentionally split from playback:
+Discovery remains separate from playback and from sidecar freezing:
 
 ```text
 BRR sample
@@ -192,15 +258,26 @@ possible original sample(s)
 ↓
 fit explicit historical preparation transform
 ↓
-waveform/loop/trim validation
+waveform / trim / gain / resample / loop validation
 ↓
 independent lineage evidence
 ↓
-approved pre-BRR source
-↓
-prepared game-grid PCM
-↓
-.prebrr sidecar
+what exact representation is proven?
+├─ exact upstream/original + exact coordinate map
+│    ↓
+│  approved top-rung source
+│    ↓
+│  tools/spc_studio_source_sidecar.py
+│    ↓
+│  .studiosrc
+│
+└─ exact prepared game-grid/pre-BRR PCM only
+     ↓
+   approved pre-BRR source
+     ↓
+   tools/spc_prebrr_sidecar.py
+     ↓
+   .prebrr
 ```
 
 Current pieces:
@@ -215,16 +292,25 @@ components/spc/spc_sample_lineage_verification.h
 components/spc/spc_original_sample_bank.h
     ambiguity-safe approved-source lookup
 
+components/spc/snesapu_brr_playback_topology.h
+    snapshot-derived DIR / BRR END / loop topology and witness
+
+components/spc/snesapu_studio_source_packet_builder.h
+    C++ packet builder from already-approved restoration candidates
+
+tools/spc_studio_source_sidecar.py
+    strict snapshot-bound .studiosrc freezer
+
 components/spc/snesapu_prebrr_provider.h
     exact BRR-block -> prepared original PCM mapping
 
 components/spc/snesapu_prebrr_packet.h
-    setup-time parent/child transport
+    setup-time lower-rung parent/child transport
 ```
 
 The SciSpace literature pass is the reason candidate retrieval and historical admission stay separate. Robust fingerprints can survive filtering, resampling and compression well enough to find plausible ancestors. Generative audio super-resolution can synthesize plausible missing bandwidth. Neither fact establishes that invented or merely similar high-frequency content was present in the original production sample.
 
-So normal Enhanced uses a pre-BRR source only when identity and preparation are evidenced. Generative bandwidth extension remains an optional research/listening experiment, not source truth.
+So normal Enhanced uses an upstream/pre-BRR source only when identity and preparation are evidenced. Generative bandwidth extension remains an optional research/listening experiment, not source truth.
 
 ## Deeper reconstruction fallback
 
