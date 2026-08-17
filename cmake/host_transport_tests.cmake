@@ -21,6 +21,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     genesis_enhanced_recomposition_test
     sn76489_enhanced_source_block_test
     ym2612_hq_fm_profile_test
+    ym2612_hq_fm_backend_test
 )
 
 add_executable(
@@ -95,6 +96,11 @@ add_executable(
     ym2612_hq_fm_profile_test
     tests/vgm/ym2612_hq_fm_profile_test.cpp
 )
+add_executable(
+    ym2612_hq_fm_backend_test
+    tests/vgm/ym2612_hq_fm_backend_test.cpp
+    components/vgm/enhancement/ym2612_hq_fm_backend.cpp
+)
 
 target_include_directories(
     spatial_source_host_session_test
@@ -166,6 +172,10 @@ target_include_directories(
 )
 target_include_directories(
     ym2612_hq_fm_profile_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    ym2612_hq_fm_backend_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -245,4 +255,8 @@ add_test(
 add_test(
     NAME ym2612_hq_fm_profile
     COMMAND ym2612_hq_fm_profile_test
+)
+add_test(
+    NAME ym2612_hq_fm_backend
+    COMMAND ym2612_hq_fm_backend_test
 )
