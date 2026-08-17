@@ -125,6 +125,14 @@ class StudioSourceSidecarTests(unittest.TestCase):
             self.assertEqual(entry["pcm_frame_count"], 96)
             self.assertEqual(entry["sample_rate_hz"], 48000.0)
             self.assertEqual(entry["upstream_loop_start"], 32.0)
+            self.assertEqual(
+                entry["game_brr_identity"],
+                {"high": 0x1111222233334444, "low": 0x5555666677778888},
+            )
+            self.assertEqual(
+                entry["upstream_identity"],
+                {"high": 0x9999AAAABBBBCCCC, "low": 0xDDDDEEEEFFFF0001},
+            )
 
             brr_offset = int(entry["brr_offset_bytes"])
             pcm_offset = int(entry["pcm_offset_bytes"])
@@ -136,7 +144,7 @@ class StudioSourceSidecarTests(unittest.TestCase):
             # position expected by the C++ packet parser.
             self.assertEqual(brr_offset, HEADER_SIZE + ENTRY_SIZE)
             self.assertEqual(pcm_offset, (brr_offset + len(witness) + 3) & ~3)
-            self.assertEqual(packet[brr_offset + len(witness) : pcm_offset], b"" )
+            self.assertEqual(packet[brr_offset + len(witness) : pcm_offset], b"")
 
     def test_hashes_and_admission_are_assertions_not_hints(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -222,6 +230,30 @@ class StudioSourceSidecarTests(unittest.TestCase):
 
             packet = bytearray(build_sidecar(manifest, root))
             packet[12] ^= 1  # corrupt declared packet size
+            with self.assertRaises(ValueError):
+                parse_sidecar(bytes(packet))
+
+            packet = bytearray(build_sidecar(manifest, root))
+            # Zero both halves of the game identity. C++ packet admission also
+            # rejects an absent content identity before constructing a source.
+            packet[HEADER_SIZE + 24 : HEADER_SIZE + 40] = b"\x00" * 16
+            with self.assertRaises(ValueError):
+                parse_sidecar(bytes(packet))
+
+            packet = bytearray(build_sidecar(manifest, root))
+            parsed = parse_sidecar(bytes(packet))[0]
+            brr_offset = int(parsed["brr_offset_bytes"])
+            # A premature END inside the witness contradicts block_count.
+            packet[brr_offset] |= 0x01
+            with self.assertRaises(ValueError):
+                parse_sidecar(bytes(packet))
+
+            packet = bytearray(build_sidecar(manifest, root))
+            parsed = parse_sidecar(bytes(packet))[0]
+            brr_offset = int(parsed["brr_offset_bytes"])
+            # The packet claims a loop, so its terminal BRR header must carry
+            # END+LOOP, not merely END.
+            packet[brr_offset + 3 * 9] &= ~0x02
             with self.assertRaises(ValueError):
                 parse_sidecar(bytes(packet))
 
