@@ -6,7 +6,7 @@ regardless of source-quality or Spatial settings. The audited parent still keeps
 its stored sample-rate preference, but this private build does not expose that
 preference to the runtime clock.
 
-Enhanced remains independent: only while enhanced is active do we select
+enhanced remains independent: only while enhanced is active do we select
 SNESAPU's sinc source interpolator (and any stronger verified source-restoration
 rung layered above it). Spatial remains presentation-only.
 """
@@ -70,7 +70,7 @@ def main() -> int:
 \tm_CnfSampleRate = {PRIVATE_PLAYBACK_RATE};
 \tif (cfg_enhanced_enabled)
 \t{{
-\t\t// Enhanced changes source realization, not the host-rate contract.
+\t\t// enhanced changes source realization, not the host-rate contract.
 \t\tm_CnfInterpolation = INT_SINC;
 \t}}
 #endif
