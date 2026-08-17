@@ -21,15 +21,14 @@ int main() {
     CHECK(block.valid());
     CHECK(block.frames() == 8);
 
-    // 0x80 is exact zero. One frame into the 0x80 -> 0xC0 ramp is 0.125
-    // normalized source level, then converted into the ideal no-ladder OPN2
-    // source coordinate and libvgm device gain.
-    CHECK(block.left()[0] == 0.0);
-    CHECK(std::abs(block.left()[1] - 0.125 * 8448.0 * 2.0) < 1.0e-9);
-    CHECK(block.right()[1] == 0.0);
-
-    // 0xC0 is +0.5 in the preserved asymmetric 8-bit DAC code mapping.
+    // Direct writes retain their exact hold semantics. The first code is zero
+    // through frame 3; the new +0.5 code begins exactly at frame 4.
+    for (std::size_t frame = 0; frame < 4; ++frame) {
+        CHECK(block.left()[frame] == 0.0);
+        CHECK(block.right()[frame] == 0.0);
+    }
     CHECK(std::abs(block.left()[4] - 0.5 * 8448.0 * 2.0) < 1.0e-9);
+    CHECK(block.right()[4] == 0.0);
 
     // Stereo routing is explicit source evidence, not inferred from the
     // distorted reference lane.
