@@ -1,7 +1,7 @@
 #pragma once
 
-#include "genesis_spatial_evidence_queue.h"
 #include "genesis_spatial_source.h"
+#include "spatial_route_transport.h"
 #include "vgm_command_event.h"
 
 #include <array>
@@ -10,92 +10,53 @@
 
 namespace gameaudio::vgm {
 
-enum class genesis_spatial_route_transport_error : std::uint8_t {
-    none = 0,
-    queue_invalid,
-    queue_overflow_or_order,
-    invalid_block,
-    missing_initial_route,
-};
+using genesis_spatial_route_transport_error = spatial_route_transport_error;
 
-// Exact command->delivered-block transport for Genesis native stereo routing.
-//
-// The producer side observes route-defining VGM commands and records them at
-// their absolute output-sample ordinal. The consumer side advances on the
-// foobar delivery clock. This matters when PlayerA renders ahead: a YM2612 B4-B6
-// write or Game Gear PSG stereo-mask write must reach Omniphony in the block the
-// listener actually hears, not the block in which the engine happened to run.
-//
-// Reset routes are admitted only when they are part of the pinned exact renderer
-// state. The source-aware VGM path requires Nuked OPN2; its reset initializes all
-// six pan_l/pan_r entries to one. libvgm's SN76496 core likewise resets
-// stereo_mask to 0xFF. FM1..6, the DAC route on channel 6, and all four PSG lanes
-// therefore begin with exact both-output evidence. Later authored writes replace
-// that state at their exact output ordinal.
+// Genesis owns only the device semantics: exact reset state, YM2612 B4-B6
+// routing and Game Gear PSG stereo-mask writes. Absolute-ordinal evidence
+// delivery is delegated to the generic VGM route transport.
 template <std::size_t QueueCapacity = 1024, std::size_t MaxBlockEvents = 256>
 class genesis_spatial_route_transport {
 public:
     static constexpr std::size_t source_count = genesis_recomposition_source_count;
-    using evidence_array =
-        std::array<vgmtooling::model::spatial_source_evidence, source_count>;
-    using presence_array = std::array<bool, source_count>;
-    using event_array =
-        std::array<vgmtooling::model::spatial_source_evidence_event, MaxBlockEvents>;
-
-    struct delivered_block {
-        evidence_array initial_evidence{};
-        event_array events{};
-        std::size_t event_count = 0;
-        bool routes_complete = false;
-    };
+    using delivery_type = spatial_route_delivery_transport<
+        source_count, QueueCapacity, MaxBlockEvents>;
+    using evidence_array = typename delivery_type::evidence_array;
+    using presence_array = typename delivery_type::presence_array;
+    using event_array = typename delivery_type::event_array;
+    using delivered_block = typename delivery_type::delivered_block;
 
     void reset() noexcept {
-        queue_.reset();
-        producer_evidence_ = {};
-        delivered_evidence_ = {};
-        producer_known_.fill(false);
-        delivered_known_.fill(false);
-        valid_ = true;
-        last_error_ = genesis_spatial_route_transport_error::none;
+        delivery_.reset();
 
         // Pinned Nuked OPN2 reset semantics: all six channel pan_l/pan_r values
-        // are one. DAC shares channel 6's authored output route but keeps its
-        // distinct source identity.
+        // are one. DAC shares channel 6's authored output route while retaining
+        // its own source identity.
         constexpr auto ym_reset_route = ym2612_authored_route(true, true);
         for (std::size_t channel = 0; channel < 6u; ++channel) {
             const std::size_t source_index =
                 static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1)
                 + channel;
-            const auto evidence = make_genesis_spatial_source(
-                genesis_spatial_device::ym2612_fm,
-                0,
-                static_cast<std::uint8_t>(channel),
-                1,
-                ym_reset_route);
-            producer_evidence_[source_index] = evidence;
-            delivered_evidence_[source_index] = evidence;
-            producer_known_[source_index] = true;
-            delivered_known_[source_index] = true;
+            (void)delivery_.seed(
+                source_index,
+                make_genesis_spatial_source(
+                    genesis_spatial_device::ym2612_fm,
+                    0,
+                    static_cast<std::uint8_t>(channel),
+                    1,
+                    ym_reset_route));
         }
-        {
-            const std::size_t source_index =
-                static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac);
-            const auto evidence = make_genesis_spatial_source(
+        (void)delivery_.seed(
+            static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac),
+            make_genesis_spatial_source(
                 genesis_spatial_device::ym2612_dac,
                 0,
                 0,
                 1,
-                ym_reset_route);
-            producer_evidence_[source_index] = evidence;
-            delivered_evidence_[source_index] = evidence;
-            producer_known_[source_index] = true;
-            delivered_known_[source_index] = true;
-        }
+                ym_reset_route));
 
-        // Pinned libvgm SN76496 reset semantics: stereo_mask = 0xFF. For a
-        // mono Sega PSG the core ignores the mask and emits both outputs, which
-        // is the same route represented here. This is renderer state, not a
-        // guessed musical pan.
+        // Pinned libvgm SN76496 reset semantics: stereo_mask = 0xFF. For mono
+        // Sega PSG the core emits both outputs, represented by the same route.
         constexpr std::uint8_t psg_reset_mask = 0xFFu;
         for (std::size_t channel = 0; channel < 4u; ++channel) {
             const std::size_t source_index =
@@ -104,46 +65,36 @@ public:
             const auto device = channel < 3u
                 ? genesis_spatial_device::sn76489_tone
                 : genesis_spatial_device::sn76489_noise;
-            const auto evidence = make_genesis_spatial_source(
-                device,
-                0,
-                static_cast<std::uint8_t>(channel),
-                1,
-                sn76489_authored_route(psg_reset_mask, channel));
-            producer_evidence_[source_index] = evidence;
-            delivered_evidence_[source_index] = evidence;
-            producer_known_[source_index] = true;
-            delivered_known_[source_index] = true;
+            (void)delivery_.seed(
+                source_index,
+                make_genesis_spatial_source(
+                    device,
+                    0,
+                    static_cast<std::uint8_t>(channel),
+                    1,
+                    sn76489_authored_route(psg_reset_mask, channel)));
         }
     }
 
-    bool valid() const noexcept { return valid_ && queue_.valid(); }
-    genesis_spatial_route_transport_error last_error() const noexcept { return last_error_; }
+    bool valid() const noexcept { return delivery_.valid(); }
+    genesis_spatial_route_transport_error last_error() const noexcept {
+        return delivery_.last_error();
+    }
 
-    // Seed a proven current route without inventing a past output ordinal. This
-    // is for seek/state-replay boundaries: the VGM replay has already rebuilt
-    // the device state at the destination, and old route writes must not be
-    // queued as future audible events.
+    // Seek/state replay may seed exact current device state without inventing
+    // old route writes as future audible events.
     bool seed(
         std::size_t source_index,
         const vgmtooling::model::spatial_source_evidence& evidence) noexcept
     {
-        if (!valid() || source_index >= source_count
-            || evidence.family != vgmtooling::model::spatial_source_family::vgm
-            || evidence.source_id == 0 || !evidence.stereo_route.present)
-            return false;
-        producer_evidence_[source_index] = evidence;
-        delivered_evidence_[source_index] = evidence;
-        producer_known_[source_index] = true;
-        delivered_known_[source_index] = true;
-        return true;
+        return delivery_.seed(source_index, evidence);
     }
 
     // Observe one exact VGM command at its already-resolved output ordinal.
-    // Non-route commands are a no-op and remain valid.
+    // Non-route commands remain a no-op.
     bool observe(const command_event& event, std::uint64_t absolute_sample) noexcept {
         if (!valid())
-            return fail(genesis_spatial_route_transport_error::queue_invalid);
+            return false;
         if (event.kind != command_event_kind::command || event.payload == nullptr)
             return true;
 
@@ -156,13 +107,15 @@ public:
                 const auto device = channel < 3u
                     ? genesis_spatial_device::sn76489_tone
                     : genesis_spatial_device::sn76489_noise;
-                const auto evidence = make_genesis_spatial_source(
-                    device,
-                    0,
-                    static_cast<std::uint8_t>(channel),
-                    1,
-                    sn76489_authored_route(mask, channel));
-                if (!publish(absolute_sample, static_cast<std::size_t>(source), evidence))
+                if (!delivery_.publish(
+                        absolute_sample,
+                        static_cast<std::size_t>(source),
+                        make_genesis_spatial_source(
+                            device,
+                            0,
+                            static_cast<std::uint8_t>(channel),
+                            1,
+                            sn76489_authored_route(mask, channel))))
                     return false;
             }
             return true;
@@ -181,10 +134,10 @@ public:
             const bool left = (event.payload[1] & 0x80u) != 0u;
             const bool right = (event.payload[1] & 0x40u) != 0u;
             const auto route = ym2612_authored_route(left, right);
-            const auto fm_source = static_cast<std::size_t>(
+            const std::size_t fm_source = static_cast<std::size_t>(
                 static_cast<std::uint8_t>(genesis_recomposition_source::ym2612_fm1)
                 + static_cast<std::uint8_t>(channel));
-            if (!publish(
+            if (!delivery_.publish(
                     absolute_sample,
                     fm_source,
                     make_genesis_spatial_source(
@@ -195,10 +148,10 @@ public:
                         route)))
                 return false;
 
-            // YM2612 DAC occupies channel 6's authored output route. Keep a
-            // distinct source identity while sharing that exact device route.
+            // YM2612 DAC occupies channel 6's authored route but stays a distinct
+            // source identity in the selected-source transport.
             if (channel == 5u) {
-                if (!publish(
+                if (!delivery_.publish(
                         absolute_sample,
                         static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac),
                         make_genesis_spatial_source(
@@ -209,110 +162,23 @@ public:
                             route)))
                     return false;
             }
-            return true;
         }
 
         return true;
     }
 
-    // Advance route evidence with the delivered audio clock. `present` describes
-    // the exact selected source topology for this block. Route events for absent
-    // sources still update future delivered state but are not sent to Omniphony.
     bool prepare_delivered_block(
         std::uint64_t block_start,
         std::size_t frame_count,
         const presence_array& present,
         delivered_block& output) noexcept
     {
-        output = {};
-        if (!valid())
-            return fail(genesis_spatial_route_transport_error::queue_invalid);
-        if (frame_count == 0)
-            return fail(genesis_spatial_route_transport_error::invalid_block);
-
-        event_array drained{};
-        std::size_t drained_count = 0;
-        if (!queue_.drain_block(block_start, frame_count, drained, drained_count))
-            return fail(genesis_spatial_route_transport_error::queue_invalid);
-
-        output.initial_evidence = delivered_evidence_;
-        auto initial_known = delivered_known_;
-
-        // A route established at the first audible sample is valid initial
-        // evidence. Apply all same-offset events in order; the last one is the
-        // state actually used by that sample after command processing.
-        for (std::size_t index = 0; index < drained_count; ++index) {
-            const auto& event = drained[index];
-            if (event.frame_offset != 0u)
-                continue;
-            output.initial_evidence[event.lane_index] = event.evidence;
-            initial_known[event.lane_index] = true;
-        }
-
-        for (std::size_t source = 0; source < source_count; ++source) {
-            if (present[source] && !initial_known[source]) {
-                output.routes_complete = false;
-                last_error_ = genesis_spatial_route_transport_error::missing_initial_route;
-                advance_delivered_state(drained, drained_count);
-                return true;
-            }
-        }
-
-        // Frame-0 events were folded into initial state above. Preserve every
-        // later event in exact order, but only for lanes present in this block.
-        for (std::size_t index = 0; index < drained_count; ++index) {
-            const auto& event = drained[index];
-            if (event.frame_offset == 0u || !present[event.lane_index])
-                continue;
-            if (output.event_count >= output.events.size())
-                return fail(genesis_spatial_route_transport_error::queue_overflow_or_order);
-            output.events[output.event_count++] = event;
-        }
-
-        output.routes_complete = true;
-        advance_delivered_state(drained, drained_count);
-        last_error_ = genesis_spatial_route_transport_error::none;
-        return true;
+        return delivery_.prepare_delivered_block(
+            block_start, frame_count, present, output);
     }
 
 private:
-    bool publish(
-        std::uint64_t ordinal,
-        std::size_t source_index,
-        const vgmtooling::model::spatial_source_evidence& evidence) noexcept
-    {
-        if (source_index >= source_count)
-            return fail(genesis_spatial_route_transport_error::queue_overflow_or_order);
-        producer_evidence_[source_index] = evidence;
-        producer_known_[source_index] = true;
-        if (!queue_.push({ordinal, source_index, evidence}))
-            return fail(genesis_spatial_route_transport_error::queue_overflow_or_order);
-        return true;
-    }
-
-    void advance_delivered_state(const event_array& events, std::size_t count) noexcept {
-        for (std::size_t index = 0; index < count; ++index) {
-            const auto& event = events[index];
-            delivered_evidence_[event.lane_index] = event.evidence;
-            delivered_known_[event.lane_index] = true;
-        }
-    }
-
-    bool fail(genesis_spatial_route_transport_error error) noexcept {
-        valid_ = false;
-        queue_.fail_closed_state();
-        last_error_ = error;
-        return false;
-    }
-
-    genesis_spatial_evidence_queue<QueueCapacity> queue_{};
-    evidence_array producer_evidence_{};
-    evidence_array delivered_evidence_{};
-    presence_array producer_known_{};
-    presence_array delivered_known_{};
-    bool valid_ = true;
-    genesis_spatial_route_transport_error last_error_ =
-        genesis_spatial_route_transport_error::none;
+    delivery_type delivery_{};
 };
 
 } // namespace gameaudio::vgm
