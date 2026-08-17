@@ -31,7 +31,7 @@ int main() {
     using namespace gameaudio::vgm;
 
     genesis_selected_source_queue<8> queue;
-    queue.reset();
+    queue.reset(100u);
     assert(queue.push_reference(reference_frame(100u, 1.0, -2.0, 0.25, 0.5)));
     assert(queue.push_reference(reference_frame(101u, 3.0, -4.0, 0.75, 1.0)));
 
@@ -50,7 +50,7 @@ int main() {
 
     // Quality replacement happens before delivery; the block therefore exposes
     // exactly the already-selected lane without knowing why it was selected.
-    queue.reset();
+    queue.reset(200u);
     assert(queue.push_reference(reference_frame(200u, 1.0, 1.0, 2.0, 2.0)));
     assert(queue.replace_source(200u, fm1, 9.0, 8.0, true));
     assert(block.consume(queue, 200u, 1u));
@@ -59,7 +59,7 @@ int main() {
 
     // A topology change inside one delivered block is not silently represented
     // as a lane appearing/disappearing halfway through the Omniphony block.
-    queue.reset();
+    queue.reset(300u);
     auto first = reference_frame(300u, 1.0, 1.0, 2.0, 2.0);
     auto second = reference_frame(301u, 3.0, 3.0, 4.0, 4.0);
     second.source[psg0] = {};
@@ -70,7 +70,7 @@ int main() {
     assert(!queue.valid());
 
     // Exactness and output ordinals are identity constraints, not advisory data.
-    queue.reset();
+    queue.reset(400u);
     auto inexact = reference_frame(400u, 1.0, 1.0, 2.0, 2.0);
     inexact.source[fm1].exact = false;
     assert(queue.push_reference(inexact));
@@ -78,7 +78,7 @@ int main() {
     assert(block.last_error() == genesis_selected_source_block_error::inexact_source);
     assert(!queue.valid());
 
-    queue.reset();
+    queue.reset(501u);
     assert(queue.push_reference(reference_frame(501u, 1.0, 1.0, 2.0, 2.0)));
     assert(!block.consume(queue, 500u, 1u));
     assert(block.last_error() == genesis_selected_source_block_error::ordinal_mismatch);
@@ -86,7 +86,7 @@ int main() {
 
     // Bad call parameters do not corrupt a coherent queue that has not been
     // consumed yet.
-    queue.reset();
+    queue.reset(600u);
     assert(queue.push_reference(reference_frame(600u, 1.0, 1.0, 2.0, 2.0)));
     assert(!block.consume(queue, 600u, 0u));
     assert(block.last_error() == genesis_selected_source_block_error::invalid_frames);
