@@ -1,0 +1,122 @@
+name: Sonic 3 mixed-source attribution probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sonic3-target-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify mixed-source attribution contracts
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests/spc -p 'test_capture_blind_panel_mixed_sources.py'
+          python3 -B -m unittest discover -s tests/spc -p 'test_cube_cross_soundtrack_coverage.py'
+          python3 -B -m unittest discover -s tests/spc -p 'test_cube_blind_panel_coverage.py'
+
+      - name: Configure forensic SPC runtime
+        run: cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build forensic SPC runtime
+        run: cmake --build build-spc-forensic --parallel 2
+
+      - name: Build opaque mixed panel with all Sonic 3 targets
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          base = pathlib.Path('research/projects/sonic3/spc-cube-blind-panel.json')
+          panel = json.loads(base.read_text(encoding='utf-8'))
+          target_dir = pathlib.Path('tests/corpus/sonic-3-knuckles')
+          targets = sorted(p for p in target_dir.iterdir() if p.is_file() and p.suffix.lower() in {'.vgm','.vgz'})
+          start = len(panel['cues']) + 1
+          panel['purpose'] = 'One-shot creator-blind mixed-source calibration plus held-out Sonic 3 target panel.'
+          panel['claim_boundary'] = 'Opaque fixture identity and creator-blind motif evidence only; labels are revealed only by the evaluator.'
+          for offset, path in enumerate(targets):
+              panel['cues'].append({
+                  'cue_id': f'cue-{start + offset:03d}',
+                  'fixture_path': path.as_posix(),
+              })
+          out = pathlib.Path('sonic3-probe/panel.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(panel, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps({'base_controls': start-1, 'sonic3_targets': len(targets), 'total_cues': len(panel['cues'])}, sort_keys=True))
+          if len(targets) != 58:
+              raise SystemExit(f'expected immutable 58-target Sonic 3 set, found {len(targets)}')
+          PY
+
+      - name: Capture and score continuity grid
+        run: |
+          set -euo pipefail
+          for SPEC in '500 1.0 tight' '2205 1.5 medium' '8820 2.0 wide'; do
+            set -- $SPEC
+            GAP="$1"; PITCH="$2"; NAME="$3"
+            mkdir -p "sonic3-probe/$NAME/sidecars" "sonic3-probe/$NAME/reveal"
+            python3 -B tools/spc/capture_blind_panel.py \
+              --panel sonic3-probe/panel.json \
+              --extractor build-spc-forensic/spc_forensic_features \
+              --output-dir "sonic3-probe/$NAME/sidecars" \
+              --freeze-output "sonic3-probe/$NAME/frozen-matrix.json" \
+              --seconds 5 \
+              --genesis-max-gap-ticks "$GAP" \
+              --genesis-max-pitch-interval-octaves "$PITCH"
+            python3 -B tools/spc/evaluate_cube_calibration.py \
+              --freeze "sonic3-probe/$NAME/frozen-matrix.json" \
+              --panel sonic3-probe/panel.json \
+              --admissions research/projects/sonic3/attribution-control-admissions.jsonl \
+              --policy research/projects/sonic3/cube-calibration-policy.json \
+              --output "sonic3-probe/$NAME/reveal/cube-calibration.json"
+          done
+
+      - name: Print compact Sonic 3 score table and stability
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          names = ['tight','medium','wide']
+          by_name = {}
+          for name in names:
+              data = json.loads(pathlib.Path(f'sonic3-probe/{name}/reveal/cube-calibration.json').read_text(encoding='utf-8'))
+              world = data['validation_worlds']['sonic-3-knuckles']
+              rows = []
+              for item in world['cues']:
+                  scores = item['candidate_scores']
+                  rows.append({
+                      'file': pathlib.PurePosixPath(item['fixture_path']).name,
+                      'takaoka': scores.get('Miyoko Takaoka'),
+                      'hikichi': scores.get('Masanori Hikichi'),
+                      'winner': item.get('winner'),
+                      'margin': item.get('winner_margin'),
+                      'decisive': item.get('decisive'),
+                  })
+              by_name[name] = {'mean': world.get('mean_candidate_affinity'), 'rows': rows}
+
+          print('SONIC3_PROBE_JSON_BEGIN')
+          print(json.dumps(by_name, separators=(',', ':'), sort_keys=True))
+          print('SONIC3_PROBE_JSON_END')
+          print('STABILITY_BEGIN')
+          keyed = {name: {r['file']: r for r in value['rows']} for name, value in by_name.items()}
+          for file in sorted(keyed['medium']):
+              winners = [keyed[name][file]['winner'] for name in names]
+              decisive = [keyed[name][file]['decisive'] for name in names]
+              margins = [keyed[name][file]['margin'] for name in names]
+              stable = len(set(winners)) == 1
+              print(json.dumps({'file': file, 'winners': winners, 'decisive': decisive, 'margins': margins, 'stable_winner': stable}, separators=(',', ':'), sort_keys=True))
+          print('STABILITY_END')
+          PY
+
+      - name: Upload exact probe artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic3-mixed-source-attribution-probe
+          retention-days: 30
+          path: sonic3-probe/
+          if-no-files-found: warn
