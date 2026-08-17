@@ -81,9 +81,16 @@ inline spc_upstream_playback_boundaries resolve_spc_upstream_playback_boundaries
         || out.end > static_cast<std::int64_t>(candidate.upstream.frame_count))
         return out;
 
+    // Exact automatic restoration has one authored game-domain topology. A
+    // caller cannot silently turn a one-shot coordinate map into a looping
+    // playback span, drop a mapped loop, or supply a different game-loop start
+    // merely because both descriptions happen to land on usable upstream PCM.
+    if (map.loop_present != playback.loop.present)
+        return {};
+
     out.loop_present = playback.loop.present;
     if (out.loop_present) {
-        if (!map.loop_present)
+        if (std::abs(map.game_loop_start - playback.loop.start_sample) > 1.0e-9)
             return {};
 
         const double mapped_loop_from_linear = map.map_position(playback.loop.start_sample);
