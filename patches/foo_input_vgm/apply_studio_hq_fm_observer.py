@@ -64,7 +64,7 @@ def main() -> int:
     {
         if (!m_starting) {
             m_studio_hq_fm_observer.reset();
-            m_studio_hq_fm_active = false;
+            m_studio_hq_fm_active = m_studio_hq_fm_observer.configured();
             m_studio_hq_fm_last = {};
         }
         if (m_starting) {
@@ -89,14 +89,16 @@ def main() -> int:
         """    UINT8 Seek(UINT8 unit, UINT32 pos) override
     {
         const UINT8 result = VGMPlayer::Seek(unit, pos);
-        m_studio_hq_fm_observer.reset();
-        m_studio_hq_fm_active = false;
+        const std::uint64_t destination_base = static_cast<std::uint64_t>(
+            VGMPlayer::GetCurPos(PLAYPOS_SAMPLE));
+        m_studio_hq_fm_observer.reset(destination_base);
+        m_studio_hq_fm_active = m_studio_hq_fm_observer.configured();
         m_studio_hq_fm_last = {};
         invalidate_output_block();
         return result;
     }
 """,
-        "Studio HQ FM seek fail closed",
+        "Studio HQ FM seek rebase",
     )
 
     replace_once(
