@@ -99,11 +99,36 @@ class StudioSourceProviderPatchTest(unittest.TestCase):
             self.assertLess(callback_rate, historical)
             self.assertIn("JNZ     %%HistoricalInterpolation", asm)
 
+            # The pinned END+LOOP path can refresh live DSP SRCN, reapply
+            # Script700 NoteChange, and read a new loop pointer without changing
+            # DIR. The studio callback must reconstruct exactly those two live
+            # locators before it renders the current verified-source sample.
+            mix_start = asm.index("%macro MixSample 0")
+            live_src = asm.index("MovZX   EDX,byte [EBX+mSrc]", mix_start)
+            live_notechange = asm.index(
+                "MovZX   EDX,byte [scr700chg+EDX]", live_src
+            )
+            live_ram = asm.index("Mov     ESI,[pAPURAM]", live_notechange)
+            live_loop = asm.index("MovZX   ESI,word [EAX+ESI+2]", live_ram)
+            push_loop = asm.index("Push    ESI", live_loop)
+            push_source = asm.index("Push    EDX", push_loop)
+            callback_rate = asm.index("Push    dword [EBX+mRate]", push_source)
+            callback_call = asm.index("Call    EDX", callback_rate)
+            self.assertLess(live_src, live_notechange)
+            self.assertLess(live_notechange, live_loop)
+            self.assertLess(live_loop, push_loop)
+            self.assertLess(push_loop, push_source)
+            self.assertLess(push_source, callback_rate)
+            self.assertLess(callback_rate, callback_call)
+            self.assertIn("stdcall callback cleans eight arguments", asm)
+
             dsp_h = (dll / "DSP.h").read_text(encoding="utf-8")
             self.assertIn("DSPStudioSourceBeginProvider", dsp_h)
             self.assertIn("u32 loopBrrAddr", dsp_h)
             self.assertIn("u32 directoryPage", dsp_h)
             self.assertIn("DSPStudioSourceSampleProvider", dsp_h)
+            self.assertIn("u32 effectiveSrcn", dsp_h)
+            self.assertIn("u32 liveLoopBrrAddr", dsp_h)
             self.assertIn("float *outSample", dsp_h)
 
             # Guarded patching is intentionally non-idempotent. A second run no
