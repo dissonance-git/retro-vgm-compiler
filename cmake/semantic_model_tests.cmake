@@ -323,3 +323,22 @@ set_tests_properties(
     spc_snapshot_state_correlation_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    spatial_source_host_assembler_test
+)
+
+add_executable(
+    spatial_source_host_assembler_test
+    tests/model/spatial_source_host_assembler_test.cpp
+)
+
+target_include_directories(
+    spatial_source_host_assembler_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME spatial_source_host_assembler
+    COMMAND spatial_source_host_assembler_test
+)
