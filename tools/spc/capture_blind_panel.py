@@ -4,6 +4,10 @@
 The panel contract intentionally permits only opaque cue ids and fixture paths for
 individual cues. Creator, candidate, role, soundtrack-label, and attribution data
 belong to the later reveal/evaluation stage.
+
+Expensive controlled SPC execution is song-centered and persistent. Panel-specific
+cue ids are attached only after a creator-blind cached sidecar has been produced or
+reused.
 """
 
 from __future__ import annotations
@@ -12,9 +16,16 @@ import argparse
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+
+THIS_DIR = pathlib.Path(__file__).resolve().parent
+if str(THIS_DIR) not in sys.path:
+    sys.path.insert(0, str(THIS_DIR))
+
+import creator_blind_spc_cache as spc_cache
 
 
 CUE_ID_RE = re.compile(r"^cue-\d{3}$")
@@ -91,11 +102,15 @@ def capture_panel(
     seconds: int,
     freeze_tool: pathlib.Path,
     freeze_output: pathlib.Path,
+    cache_root: pathlib.Path = spc_cache.DEFAULT_CACHE_ROOT,
+    refresh_cache: bool = False,
 ) -> None:
     if seconds <= 0:
         raise ValueError("seconds must be positive")
+    repo_root = repo_root.resolve()
     extractor = extractor.resolve()
     freeze_tool = freeze_tool.resolve()
+    cache_root = cache_root if cache_root.is_absolute() else repo_root / cache_root
     if not extractor.is_file():
         raise FileNotFoundError(f"SPC forensic extractor not found: {extractor}")
     if not freeze_tool.is_file():
@@ -107,18 +122,27 @@ def capture_panel(
     for cue in cues:
         fixture = (repo_root / pathlib.Path(*cue.fixture_path.parts)).resolve()
         try:
-            fixture.relative_to(repo_root.resolve())
+            fixture.relative_to(repo_root)
         except ValueError as exc:
             raise ValueError("fixture escaped repository root") from exc
         if not fixture.is_file():
             raise FileNotFoundError(f"SPC fixture not found: {cue.fixture_path}")
 
-        sidecar = (output_dir / f"{cue.cue_id}.json").resolve()
-        subprocess.run(
-            [str(extractor), str(fixture), str(sidecar), str(seconds)],
-            cwd=repo_root,
-            check=True,
+        corpus_id = cue.fixture_path.parts[2]
+        cached_sidecar, _changed = spc_cache.build_one(
+            fixture,
+            corpus_id=corpus_id,
+            extractor=extractor,
+            cache_root=cache_root,
+            seconds=seconds,
+            refresh=refresh_cache,
         )
+
+        # Panel outputs remain opaque and self-contained for freezing/artifact upload,
+        # but they are cheap copies of one persistent song-centered cache object.
+        sidecar = (output_dir / f"{cue.cue_id}.json").resolve()
+        if sidecar != cached_sidecar.resolve():
+            shutil.copyfile(cached_sidecar, sidecar)
         cue_args.extend(["--cue", f"{cue.cue_id}={sidecar}"])
 
     subprocess.run(
@@ -136,6 +160,17 @@ def main() -> None:
     parser.add_argument("--freeze-output", type=pathlib.Path, required=True)
     parser.add_argument("--seconds", type=int, default=5)
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path.cwd())
+    parser.add_argument(
+        "--cache-root",
+        type=pathlib.Path,
+        default=spc_cache.DEFAULT_CACHE_ROOT,
+        help="Persistent creator-blind SPC sidecar cache.",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Force controlled SPC execution even when a compatible song cache exists.",
+    )
     parser.add_argument(
         "--freeze-tool",
         type=pathlib.Path,
@@ -159,6 +194,8 @@ def main() -> None:
         seconds=args.seconds,
         freeze_tool=freeze_tool,
         freeze_output=freeze_output,
+        cache_root=args.cache_root,
+        refresh_cache=args.refresh_cache,
     )
 
 
