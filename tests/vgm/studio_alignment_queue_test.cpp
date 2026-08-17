@@ -91,5 +91,19 @@ int main() {
     assert(released.payload.right == first.right);
     assert(queue.empty());
 
+    // Richer readiness proofs, such as a fresh chip's verified silent negative
+    // source-time prefix, may dequeue without pretending NativeStream::contains
+    // knows about that evidence. A failed proof must leave the queue untouched.
+    queue.reset();
+    assert(queue.push(700, position(0), second));
+    assert(!queue.pop_ready_when(false, released));
+    assert(queue.size() == 1);
+    assert(queue.front() != nullptr);
+    assert(queue.front()->destination_ordinal == 700);
+    assert(queue.pop_ready_when(true, released));
+    assert(released.destination_ordinal == 700);
+    assert(released.payload.psg == second.psg);
+    assert(queue.empty());
+
     return 0;
 }
