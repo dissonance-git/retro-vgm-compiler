@@ -211,6 +211,17 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+add_test(
+    NAME sonic3_cube_target_panel_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/model
+        -p test_sonic3_cube_target_panel.py
+)
+set_tests_properties(
+    sonic3_cube_target_panel_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_label_blind_corpus_features_test
     part_motif_attribution_bridge_test
