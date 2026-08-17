@@ -89,6 +89,20 @@ public:
         return true;
     }
 
+    // Explicit producer provenance form used by generated host glue. A source
+    // family may only replace an exact isolated lane. Refusing `exact=false`
+    // without mutating queue state makes that assumption executable rather than
+    // a comment at the caller.
+    bool replace_source(
+        std::uint64_t ordinal,
+        std::size_t source_index,
+        double left,
+        double right,
+        bool exact) noexcept
+    {
+        return exact && replace_source(ordinal, source_index, left, right);
+    }
+
     bool pop_expected(
         std::uint64_t ordinal,
         genesis_selected_source_frame& output) noexcept
