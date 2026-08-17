@@ -83,16 +83,43 @@ public:
         return source;
     }
 
-    // Some producer seams expose the final shared wet contribution after the
-    // current EVOL trajectory has already been applied. Keep the signed EVOL
-    // value as native route/polarity evidence, but mark the arithmetic as
-    // preapplied so Omniphony or another consumer cannot multiply it twice.
+    // Producer seam where the exact EVOL scalar is still separately known even
+    // though that gain trajectory has already been applied to the emitted PCM.
+    // Preserve the signed scalar as native route/polarity evidence, but never
+    // multiply it into the source a second time downstream.
     static vgmtooling::model::spatial_source_evidence make_preapplied_echo_source(
         echo_side side,
         std::uint32_t generation,
         std::int8_t echo_volume) noexcept {
         auto source = make_echo_source(side, generation, echo_volume);
         source.stereo_route.gain_preapplied = true;
+        return source;
+    }
+
+    // Producer seam where only the final post-EVOL wet contribution survives.
+    // The PCM already contains EVOL amplitude and polarity, so manufacturing a
+    // scalar EVOL value here would create false evidence. Keep only the exact
+    // channel-side topology as route evidence and mark all route arithmetic as
+    // preapplied. Any actual EVOL register evidence belongs in a parallel timed
+    // control stream when the producer can expose it.
+    static vgmtooling::model::spatial_source_evidence make_post_evol_echo_source(
+        echo_side side,
+        std::uint32_t generation) noexcept {
+        vgmtooling::model::spatial_source_evidence source;
+        source.source_id = echo_lane_id(side, generation);
+        source.generation = generation;
+        source.family = vgmtooling::model::spatial_source_family::spc;
+        source.persistent_part_present = true;
+        source.persistent_part_id = echo_field_id(generation);
+        source.stereo_route.present = true;
+        source.stereo_route.authority =
+            vgmtooling::model::spatial_evidence_authority::device_authored;
+        source.stereo_route.left_gain = side == echo_side::left ? 1.0f : 0.0f;
+        source.stereo_route.right_gain = side == echo_side::right ? 1.0f : 0.0f;
+        source.stereo_route.gain_preapplied = true;
+        source.presentation.diffuse = 1.0f;
+        source.presentation.width = 1.0f;
+        source.presentation.confidence = 1.0f;
         return source;
     }
 };
