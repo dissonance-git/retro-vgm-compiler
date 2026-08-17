@@ -106,11 +106,11 @@ constexpr std::uint64_t omniphony_transport_source_episode_id(
 inline bool make_omniphony_source_evidence(
     spatial_audio_lane_kind lane_kind,
     const spatial_source_evidence& source,
-    bool route_gain_preapplied,
+    bool force_route_gain_preapplied,
     omniphony_source_evidence_v1_transport& out,
     float persistent_part_min_confidence = 0.75f) noexcept
 {
-    if (lane_kind == spatial_audio_lane_kind::reference_mix)
+    if (!spatial_audio_lane_is_object_renderable(lane_kind))
         return false;
 
     out = {};
@@ -138,7 +138,11 @@ inline bool make_omniphony_source_evidence(
         out.authored_z = source.authored_position[2];
     }
 
-    if (route_gain_preapplied)
+    // The source model is now authoritative for this arithmetic fact, including
+    // timed changes. The explicit boolean remains only as a host-side override
+    // for legacy/current producers that already applied the exact route before
+    // they were upgraded to annotate spatial_source_evidence directly.
+    if (source.stereo_route.gain_preapplied || force_route_gain_preapplied)
         out.flags |= omniphony_source_flag_route_gain_preapplied;
 
     out.foundation = clamp_unit_interval(source.presentation.foundation);
@@ -162,7 +166,7 @@ public:
 
     bool build(
         const spatial_source_block_view& block,
-        const std::uint8_t* route_gain_preapplied = nullptr,
+        const std::uint8_t* force_route_gain_preapplied = nullptr,
         float persistent_part_min_confidence = 0.75f) noexcept
     {
         reset();
@@ -175,17 +179,22 @@ public:
         bool have_previous = false;
         for (std::size_t lane_index = 0; lane_index < block.lane_count; ++lane_index) {
             const spatial_audio_lane_view& lane = block.lanes[lane_index];
-            if (lane.kind == spatial_audio_lane_kind::reference_mix || lane.mono_pcm == nullptr)
+            if (!spatial_audio_lane_is_object_renderable(lane.kind) || lane.mono_pcm == nullptr)
                 return false;
             if (!make_omniphony_source_evidence(
                     lane.kind,
                     lane.evidence,
-                    route_gain_preapplied != nullptr && route_gain_preapplied[lane_index] != 0,
+                    force_route_gain_preapplied != nullptr &&
+                        force_route_gain_preapplied[lane_index] != 0,
                     lanes_[lane_index],
                     persistent_part_min_confidence))
                 return false;
         }
 
+        // Validate and materialize the complete event sequence before any PCM is
+        // exposed to the renderer. This matches Omniphony's transactional event
+        // contract: malformed timed evidence must fail the whole block before
+        // presentation state can advance.
         for (std::size_t event_index = 0; event_index < block.evidence_event_count; ++event_index) {
             const spatial_source_evidence_event& event = block.evidence_events[event_index];
             if (event.lane_index >= block.lane_count || event.frame_offset > block.frame_count ||
@@ -202,7 +211,8 @@ public:
             if (!make_omniphony_source_evidence(
                     block.lanes[event.lane_index].kind,
                     event.evidence,
-                    route_gain_preapplied != nullptr && route_gain_preapplied[event.lane_index] != 0,
+                    force_route_gain_preapplied != nullptr &&
+                        force_route_gain_preapplied[event.lane_index] != 0,
                     destination.evidence,
                     persistent_part_min_confidence))
                 return false;
