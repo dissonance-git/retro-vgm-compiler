@@ -139,8 +139,18 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
-# This regression is script-style rather than unittest.TestCase-based; execute
-# it directly so a discovery run cannot silently report "Ran 0 tests".
+# These regressions are script-style rather than unittest.TestCase-based;
+# execute them directly so a discovery run cannot silently report "Ran 0 tests".
+add_test(
+    NAME vgm_materializer_contract
+    COMMAND ${Python3_EXECUTABLE} -B
+        ${RETRO_ROOT}/tests/vgm/test_materialize_foo_input_vgm.py
+)
+set_tests_properties(
+    vgm_materializer_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 add_test(
     NAME spc_materializer_contract
     COMMAND ${Python3_EXECUTABLE} -B
