@@ -179,6 +179,20 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# Packaging only works if each plugin resolves omniphony_source.dll relative to
+# the embedding component, not merely foobar2000.exe or PATH. Pin sibling-first
+# lookup and the post-load ABI guard as a portable source contract.
+add_test(
+    NAME omniphony_sibling_loader_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_omniphony_sibling_loader_contract.py
+)
+set_tests_properties(
+    omniphony_sibling_loader_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # The private builder itself is part of the product contract. Keep outputs
 # deterministic and prove every packaged executable's bitness before archive
 # creation so a stale or wrong-architecture artifact cannot be selected.
