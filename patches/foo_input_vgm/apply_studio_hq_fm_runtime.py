@@ -51,42 +51,10 @@ def main() -> int:
     root = args.source_dir.resolve()
     header = root / "input_vgm.h"
     shadow = root / "input_vgm_shadow.cpp"
-    source_player = root / "source_aware_vgm_player.h"
 
-    replace_once(
-        source_player,
-        """    std::size_t finish_studio_hq_fm_reference_tail() noexcept
-    {
-        return studio_hq_fm_observer_valid()
-            ? m_studio_hq_fm_observer.finish_reference_tail()
-            : 0;
-    }
-    bool psg_source_block_valid() const noexcept { return m_psg_block_valid; }
-""",
-        """    std::size_t finish_studio_hq_fm_reference_tail() noexcept
-    {
-        return studio_hq_fm_observer_valid()
-            ? m_studio_hq_fm_observer.finish_reference_tail()
-            : 0;
-    }
-    bool studio_hq_fm_domain_started() const noexcept
-    {
-        return studio_hq_fm_observer_valid()
-            && m_studio_hq_fm_observer.studio_domain_started();
-    }
-    std::uint64_t studio_hq_fm_first_destination_ordinal() const noexcept
-    {
-        return m_studio_hq_fm_observer.first_studio_destination_ordinal();
-    }
-    std::uint64_t studio_hq_fm_next_destination_ordinal() const noexcept
-    {
-        return m_studio_hq_fm_observer.next_destination_ordinal();
-    }
-    bool psg_source_block_valid() const noexcept { return m_psg_block_valid; }
-""",
-        "Studio HQ FM ordinal diagnostics",
-    )
-
+    # SourceAware's Studio observer owns every source-ordinal diagnostic. This
+    # runtime consumes that public contract rather than patching observer API a
+    # second time.
     replace_once(
         header,
         """#include "input_base.h"
