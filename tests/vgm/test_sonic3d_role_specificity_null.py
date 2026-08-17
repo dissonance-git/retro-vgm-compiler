@@ -88,7 +88,11 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
                         "fixture_path": f"s3d/{name}.vgm",
                         "composer": composer[name],
                         "arranger_programmer": arranger[name],
-                        "mapping_state": "direct_title",
+                        "mapping_state": (
+                            "derived_audio_correspondence"
+                            if name == "m3"
+                            else "direct_title"
+                        ),
                     }
                     for name in names
                 ],
@@ -163,6 +167,14 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
             second = null_model.permutation_null(
                 audit, policy, family_policy, permutations=20, seed=23
             )
+            sensitivity = null_model.permutation_null(
+                audit,
+                policy,
+                family_policy,
+                permutations=20,
+                seed=23,
+                excluded_mapping_states={"derived_audio_correspondence"},
+            )
         finally:
             maeda.base.structural_similarity = old_structural
             maeda.structural_pitch_similarity = old_pitch
@@ -211,6 +223,34 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
                 self.assertEqual(statistic["permutations"], 20)
                 self.assertGreater(statistic["empirical_p_greater_or_equal"], 0.0)
                 self.assertLessEqual(statistic["empirical_p_greater_or_equal"], 1.0)
+
+        self.assertEqual(
+            sensitivity["excluded_mapping_states"],
+            ["derived_audio_correspondence"],
+        )
+        self.assertEqual(sensitivity["excluded_tracks"], ["s3d::m3.vgm"])
+        self.assertEqual(sensitivity["included_track_count"], 7)
+        self.assertEqual(
+            sensitivity["views"]["structural"]["observed_label_counts"],
+            {
+                "Jun Senoue": 3,
+                "Masaru Setsumaru": 1,
+                "Seirou Okamoto": 1,
+                "Tatsuyuki Maeda": 2,
+            },
+        )
+        self.assertEqual(
+            sensitivity["views"]["realization"]["observed_label_counts"],
+            {
+                "Jun Senoue": 2,
+                "Masaru Setsumaru": 3,
+                "Tatsuyuki Maeda": 2,
+            },
+        )
+        for view in sensitivity["views"].values():
+            self.assertTrue(view["same_family_candidates_excluded"])
+            for statistic in view["statistics"].values():
+                self.assertEqual(statistic["permutations"], 20)
 
 
 if __name__ == "__main__":
