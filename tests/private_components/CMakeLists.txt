@@ -38,7 +38,7 @@ endforeach()
 # Guard the high-risk generated-host seams before the expensive Windows build.
 # These tests operate only on temporary files and assert exact guarded patch
 # composition/order, including family-local fallback, the one 48 kHz private
-# host clock, and rate-specific Omniphony processor lifetime.
+# host clock, companion launch geometry, and rate-specific Omniphony lifetime.
 add_test(
     NAME vgm_deferred_family_independence_patch
     COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
@@ -91,6 +91,17 @@ add_test(
 )
 set_tests_properties(
     spc_spatial_omniphony_rate_lifecycle_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME spc_private_child_launch_path_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/spc
+        -p test_private_child_launch_path.py
+)
+set_tests_properties(
+    spc_private_child_launch_path_patch
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
