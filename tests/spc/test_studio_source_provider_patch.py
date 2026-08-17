@@ -86,18 +86,24 @@ class StudioSourceProviderPatchTest(unittest.TestCase):
             self.assertIn("FLd     dword [ESP]", asm)
             self.assertIn("Call    [pInter]", asm)
 
-            # NON/noise replaces the interpolated waveform in the pinned mixer.
-            # It must reach the historical pInter branch before the expensive
-            # verified-source callback is considered, rather than spending the
-            # 64-tap studio FIR on a value that will immediately be discarded.
+            # NON/noise replaces the sampled waveform downstream. Skipping the
+            # expensive 64-tap callback is valid only if the still-bound Studio
+            # trajectory cannot later resume from the stale phase it missed while
+            # NON was active. The noise branch therefore clears this voice's
+            # admission before historical interpolation and before any callback.
             noise_guard = asm.index("Test    [dspNoise],CH")
-            studio_guard = asm.index("Test    byte [studioSourceVoices],CH")
-            callback_rate = asm.index("Push    dword [EBX+mRate]")
+            noise_clear = asm.index("And     [studioSourceVoices],EDX", noise_guard)
+            check_studio = asm.index("%%CheckStudioSource:", noise_clear)
+            studio_guard = asm.index("Test    byte [studioSourceVoices],CH", check_studio)
+            callback_rate = asm.index("Push    dword [EBX+mRate]", studio_guard)
             historical = asm.index("%%HistoricalInterpolation:")
-            self.assertLess(noise_guard, studio_guard)
+            self.assertLess(noise_guard, noise_clear)
+            self.assertLess(noise_clear, check_studio)
+            self.assertLess(check_studio, studio_guard)
             self.assertLess(studio_guard, callback_rate)
             self.assertLess(callback_rate, historical)
-            self.assertIn("JNZ     %%HistoricalInterpolation", asm)
+            self.assertIn("JZ      %%CheckStudioSource", asm)
+            self.assertIn("Jmp     %%HistoricalInterpolation", asm)
 
             # The pinned END+LOOP path can refresh live DSP SRCN, reapply
             # Script700 NoteChange, and read a new loop pointer without changing
