@@ -223,11 +223,195 @@ def infer_continuity(
     }
 
 
+DEFAULT_STRAND_MIN_CONFIDENCE = 0.75
+
+
+def _has_supporting_kind(hypothesis: dict[str, Any], kind: str) -> bool:
+    evidence = hypothesis.get("evidence")
+    if not isinstance(evidence, list):
+        return False
+    return any(
+        isinstance(item, dict)
+        and item.get("kind") == kind
+        and item.get("polarity") == "supports"
+        for item in evidence
+    )
+
+
+def assemble_strand_hypotheses(
+    episodes: list[Episode],
+    hypotheses: list[dict[str, Any]],
+    *,
+    min_confidence: float = DEFAULT_STRAND_MIN_CONFIDENCE,
+) -> dict[str, Any]:
+    """Conservatively assemble pairwise continuity into non-overlapping strands.
+
+    This is intentionally not graph connected-components. A link must be
+    identity-bearing, cross-domain grounded, temporally adjacent, conflict-free,
+    and above the single-domain confidence ceiling. For each episode only the
+    earliest admissible successor may be considered. Ambiguous successor or
+    predecessor forks remain unresolved instead of being collapsed.
+    """
+    if (
+        not math.isfinite(min_confidence)
+        or min_confidence <= SINGLE_DOMAIN_CEILING
+        or min_confidence > 1.0
+    ):
+        raise ValueError(
+            "strand min_confidence must be finite, greater than the "
+            "single-domain ceiling, and at most 1.0"
+        )
+
+    by_id = {episode.episode_id: episode for episode in episodes}
+    if len(by_id) != len(episodes):
+        raise ValueError("episode ids must be unique for strand assembly")
+
+    candidates_by_first: dict[int, list[dict[str, Any]]] = {}
+    for hypothesis in hypotheses:
+        first_id = hypothesis.get("first_episode_id")
+        second_id = hypothesis.get("second_episode_id")
+        if not isinstance(first_id, int) or not isinstance(second_id, int):
+            raise ValueError("strand hypothesis edge is missing integer episode ids")
+        if first_id not in by_id or second_id not in by_id:
+            raise ValueError("strand hypothesis edge references an unknown episode")
+        if first_id == second_id:
+            continue
+
+        first = by_id[first_id]
+        second = by_id[second_id]
+        confidence = hypothesis.get("confidence")
+        if not isinstance(confidence, (int, float)) or not math.isfinite(float(confidence)):
+            raise ValueError("strand hypothesis edge has invalid confidence")
+
+        # Strict forward time rejects zero-time cycles and simultaneous starts.
+        if second.start_tick <= first.start_tick:
+            continue
+        if first.end_tick > second.start_tick:
+            continue
+        if float(confidence) < min_confidence:
+            continue
+        if hypothesis.get("identity_bearing_support") is not True:
+            continue
+        if hypothesis.get("cross_domain_grounded") is not True:
+            continue
+        if hypothesis.get("strong_conflict_present") is True:
+            continue
+        if not _has_supporting_kind(hypothesis, "temporal_adjacency"):
+            continue
+
+        candidates_by_first.setdefault(first_id, []).append(hypothesis)
+
+    unresolved: list[dict[str, Any]] = []
+    provisional: dict[int, dict[str, Any]] = {}
+    for first_id, candidates in sorted(candidates_by_first.items()):
+        earliest_tick = min(by_id[int(item["second_episode_id"])].start_tick for item in candidates)
+        earliest = [
+            item
+            for item in candidates
+            if by_id[int(item["second_episode_id"])].start_tick == earliest_tick
+        ]
+        if len(earliest) != 1:
+            unresolved.append({
+                "kind": "ambiguous_successor",
+                "episode_id": first_id,
+                "candidate_episode_ids": sorted(
+                    int(item["second_episode_id"]) for item in earliest
+                ),
+            })
+            continue
+        provisional[first_id] = earliest[0]
+
+    incoming: dict[int, list[tuple[int, dict[str, Any]]]] = {}
+    for first_id, hypothesis in provisional.items():
+        incoming.setdefault(int(hypothesis["second_episode_id"]), []).append(
+            (first_id, hypothesis)
+        )
+
+    accepted: dict[int, dict[str, Any]] = {}
+    for second_id, incoming_edges in sorted(incoming.items()):
+        if len(incoming_edges) != 1:
+            unresolved.append({
+                "kind": "ambiguous_predecessor",
+                "episode_id": second_id,
+                "candidate_episode_ids": sorted(first_id for first_id, _ in incoming_edges),
+            })
+            continue
+        first_id, hypothesis = incoming_edges[0]
+        accepted[first_id] = hypothesis
+
+    target_ids = {int(item["second_episode_id"]) for item in accepted.values()}
+    starts = sorted(
+        (first_id for first_id in accepted if first_id not in target_ids),
+        key=lambda episode_id: (
+            by_id[episode_id].start_tick,
+            episode_id,
+        ),
+    )
+
+    strands: list[dict[str, Any]] = []
+    visited_edges: set[tuple[int, int]] = set()
+    for start_id in starts:
+        episode_ids = [start_id]
+        links: list[dict[str, Any]] = []
+        current = start_id
+        seen = {start_id}
+        while current in accepted:
+            hypothesis = accepted[current]
+            next_id = int(hypothesis["second_episode_id"])
+            edge = (current, next_id)
+            if edge in visited_edges or next_id in seen:
+                raise ValueError("strand assembly encountered a non-forward cycle")
+            visited_edges.add(edge)
+            links.append({
+                "first_episode_id": current,
+                "second_episode_id": next_id,
+                "confidence": float(hypothesis["confidence"]),
+            })
+            episode_ids.append(next_id)
+            seen.add(next_id)
+            current = next_id
+
+        if len(episode_ids) < 2:
+            continue
+        strand_episodes = [by_id[episode_id] for episode_id in episode_ids]
+        strands.append({
+            "episode_ids": episode_ids,
+            "start_tick": strand_episodes[0].start_tick,
+            "end_tick": strand_episodes[-1].end_tick,
+            "confidence": min(link["confidence"] for link in links),
+            "links": links,
+        })
+
+    # Strict forward time should make all accepted links reachable from a start.
+    if len(visited_edges) != len(accepted):
+        raise ValueError("strand assembly left accepted links unreachable")
+
+    return {
+        "model": "conservative creator-blind Genesis persistent-part strand hypotheses",
+        "claim_boundary": (
+            "Each strand is a conservative grouping hypothesis over bounded "
+            "episodes. It is not a finalized musical-part identity and contains "
+            "no creator or source-path labels."
+        ),
+        "policy": {
+            "min_confidence": min_confidence,
+            "requires_identity_bearing_support": True,
+            "requires_cross_domain_grounding": True,
+            "requires_temporal_adjacency": True,
+            "rejects_strong_conflict": True,
+            "fork_policy": "preserve_as_unresolved",
+        },
+        "strands": strands,
+        "unresolved": unresolved,
+    }
+
+
 def project(
     capsule: dict[str, Any],
     *,
     max_gap_ticks: int,
     max_pitch_interval_octaves: float,
+    strand_min_confidence: float | None = None,
 ) -> dict[str, Any]:
     episodes = reconstruct_episodes(capsule)
     hypotheses: list[dict[str, Any]] = []
@@ -245,7 +429,7 @@ def project(
             except ValueError as error:
                 if "enough positive evidence" not in str(error):
                     raise
-    return {
+    payload = {
         "model": MODEL,
         "claim_boundary": (
             "Cache-only YM2612 physical episodes and pairwise persistent-part hypotheses. "
@@ -258,6 +442,13 @@ def project(
         "episodes": [episode.__dict__ for episode in episodes],
         "hypotheses": hypotheses,
     }
+    if strand_min_confidence is not None:
+        payload["strand_projection"] = assemble_strand_hypotheses(
+            episodes,
+            hypotheses,
+            min_confidence=strand_min_confidence,
+        )
+    return payload
 
 
 def main() -> int:
@@ -265,6 +456,7 @@ def main() -> int:
     parser.add_argument("capsule", type=pathlib.Path)
     parser.add_argument("--max-gap-ticks", type=int, required=True)
     parser.add_argument("--max-pitch-interval-octaves", type=float, default=2.0)
+    parser.add_argument("--strand-min-confidence", type=float)
     parser.add_argument("--json", type=pathlib.Path)
     args = parser.parse_args()
 
@@ -273,6 +465,7 @@ def main() -> int:
         capsule,
         max_gap_ticks=args.max_gap_ticks,
         max_pitch_interval_octaves=args.max_pitch_interval_octaves,
+        strand_min_confidence=args.strand_min_confidence,
     )
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if args.json:
