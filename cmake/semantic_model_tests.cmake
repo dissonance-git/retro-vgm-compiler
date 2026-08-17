@@ -352,6 +352,10 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     ym2612_hq_fm_backend_test
     spc_sample_restoration_policy_test
     ym2612_hq_algorithm_test
+    studio_alignment_queue_test
+    studio_source_stream_test
+    studio_source_timeline_test
+    studio_source_resampler_test
 )
 
 add_executable(
@@ -366,6 +370,22 @@ add_executable(
     ym2612_hq_algorithm_test
     tests/vgm/ym2612_hq_algorithm_test.cpp
 )
+add_executable(
+    studio_alignment_queue_test
+    tests/vgm/studio_alignment_queue_test.cpp
+)
+add_executable(
+    studio_source_stream_test
+    tests/vgm/studio_source_stream_test.cpp
+)
+add_executable(
+    studio_source_timeline_test
+    tests/vgm/studio_source_timeline_test.cpp
+)
+add_executable(
+    studio_source_resampler_test
+    tests/vgm/studio_source_resampler_test.cpp
+)
 
 target_include_directories(
     ym2612_hq_fm_backend_test
@@ -377,6 +397,22 @@ target_include_directories(
 )
 target_include_directories(
     ym2612_hq_algorithm_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_alignment_queue_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_source_stream_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_source_timeline_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_source_resampler_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -391,4 +427,20 @@ add_test(
 add_test(
     NAME ym2612_hq_algorithm
     COMMAND ym2612_hq_algorithm_test
+)
+add_test(
+    NAME studio_alignment_queue
+    COMMAND studio_alignment_queue_test
+)
+add_test(
+    NAME studio_source_stream
+    COMMAND studio_source_stream_test
+)
+add_test(
+    NAME studio_source_timeline
+    COMMAND studio_source_timeline_test
+)
+add_test(
+    NAME studio_source_resampler
+    COMMAND studio_source_resampler_test
 )
