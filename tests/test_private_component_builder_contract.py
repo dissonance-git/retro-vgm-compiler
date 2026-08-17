@@ -55,10 +55,22 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
                 self.assertIn(marker, self.text)
                 self.assertLess(self.text.index(marker), package)
 
-    def test_sdk_shared_library_and_package_verifier_are_required(self) -> None:
+    def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
         self.assertIn("verify_private_component_packages.py", self.text)
         self.assertIn("final_playback_contract_hz = 48000", self.text)
+
+    def test_final_bundle_is_verified_after_creation(self) -> None:
+        create = self.text.index("Compress-Archive -Path @($VgmComponentPackage")
+        verifier = self.text.index("verify_private_component_bundle.py")
+        self.assertGreater(verifier, create)
+        self.assertIn("$Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'", self.text)
+
+    def test_generated_readme_keeps_enhanced_descriptive(self) -> None:
+        self.assertIn("every enhanced/Spatial", self.text)
+        self.assertIn("enhanced and Spatial remain independent controls", self.text)
+        self.assertNotIn("every Enhanced/Spatial", self.text)
+        self.assertNotIn("Enhanced and Spatial remain independent controls", self.text)
 
 
 if __name__ == "__main__":
