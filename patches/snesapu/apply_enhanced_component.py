@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the independent Enhanced preference and first audible SNESAPU path."""
+"""Apply the independent enhanced preference and first audible SNESAPU path."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def main() -> int:
 
     run(here / "apply_enhanced_ui.py", source)
     run(here / "apply_enhanced_runtime.py", source)
-    print("SNESAPU Enhanced component patch set applied")
+    print("SNESAPU enhanced component patch set applied")
     return 0
 
 
