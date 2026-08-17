@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "status": "pre-data_method_frozen",
+  "candidate": "Tatsuyuki Maeda",
+  "method_tree_commit": "47fa9fbc3ef0f5b1c2a5e91a7ab22efb7088d43c",
+  "method_tree_note": "This commit is the complete repository tree immediately before this freeze declaration was added. Any material change to the listed method paths requires a new preregistration and a new frozen blind audit.",
+  "held_out_target": "tests/corpus/sonic-3-knuckles",
+  "sonic3_access_rule": "Unresolved Sonic 3 cues remain excluded from Maeda scoring until every primary structural gate in maeda-calibration-runbook.md passes.",
+  "method_paths": [
+    "tools/vgm_creator_feature_audit.py",
+    "tools/cross_soundtrack_vgm_audit.py",
+    "tools/maeda_calibration_eval.py",
+    "tools/maeda_calibration_null.py",
+    "tools/sonic3d_role_specificity_eval.py",
+    "tools/sonic3d_role_specificity_null.py",
+    "research/projects/sonic3/maeda-calibration-policy.json",
+    "research/projects/sonic3/sonic3d-role-family-policy.json",
+    "research/projects/sonic3/maeda-calibration-runbook.md"
+  ],
+  "primary_parameters": {
+    "retrieval_k": 3,
+    "permutations": 5000,
+    "seed": 20260816,
+    "role_null_permutation_unit": "family-block",
+    "role_null_secondary_sensitivity_unit": "track",
+    "empirical_p_rule": "(1 + null_statistic_greater_or_equal_to_observed) / (1 + permutations)",
+    "primary_alpha": 0.05
+  },
+  "control_worlds": {
+    "golden_axe_iii": {
+      "corpus_id": "golden-axe-iii-genesis-vgz",
+      "maeda": 10,
+      "hataya": 4,
+      "oguro": 5,
+      "uncontested_sawada": 1,
+      "quarantined_conflicts": 1
+    },
+    "sonic_3d_blast_complete": {
+      "corpus_id": "sonic-3d-blast-genesis-vgm",
+      "track_count": 24,
+      "composition": {
+        "Tatsuyuki Maeda": 10,
+        "Jun Senoue": 12,
+        "Masaru Setsumaru": 1,
+        "Seirou Okamoto": 1
+      },
+      "arrangement_programming": {
+        "Tatsuyuki Maeda": 10,
+        "Jun Senoue": 10,
+        "Masaru Setsumaru": 4
+      },
+      "composition_learnable_classes": [
+        "Tatsuyuki Maeda",
+        "Jun Senoue"
+      ],
+      "composition_singleton_sentinels": [
+        "Masaru Setsumaru",
+        "Seirou Okamoto"
+      ]
+    },
+    "sonic_3d_blast_direct_mapping_replication": {
+      "track_count": 22,
+      "excluded_mapping_states": [
+        "derived_audio_correspondence"
+      ],
+      "composition": {
+        "Tatsuyuki Maeda": 10,
+        "Jun Senoue": 10,
+        "Masaru Setsumaru": 1,
+        "Seirou Okamoto": 1
+      },
+      "arrangement_programming": {
+        "Tatsuyuki Maeda": 10,
+        "Jun Senoue": 9,
+        "Masaru Setsumaru": 3
+      }
+    },
+    "j_league_pro_striker_2": {
+      "corpus_id": "j-league-pro-striker-2-vgz",
+      "whole_soundtrack_maeda_controls": 6
+    },
+    "super_columns": {
+      "corpus_id": "super-columns-vgm",
+      "status": "future_cross_platform_stress_only"
+    }
+  },
+  "primary_null_policy": {
+    "maeda_binary": "Count-matched label permutation within mixed-composer control worlds; J.League remains a fixed whole-soundtrack Maeda-positive world.",
+    "sonic3d_role_specificity": "Family-block permutation. Feature vectors and family IDs stay fixed. Complete label packages move only among selected families with the same track count; same-family candidates remain excluded.",
+    "track_level_role_shuffle": "Secondary sensitivity only. It cannot replace or rescue failed family-block significance and is not an independent evidence multiplier."
+  },
+  "primary_gates": {
+    "maeda_vs_rest": {
+      "structural_precision_lift_positive_in": [
+        "golden_axe_iii_within_soundtrack",
+        "sonic_3d_blast_within_soundtrack",
+        "genesis_cross_soundtrack"
+      ],
+      "structural_precision_lift_empirical_p_at_most": 0.05,
+      "same_game_mean_best_positive_minus_best_negative_positive": true,
+      "cross_soundtrack_each_query_world_positive_lift": true,
+      "quarantined_scorching_sand_excluded": true
+    },
+    "sonic3d_complete_role_specificity": {
+      "same_family_candidates_excluded": true,
+      "structural_balanced_top1_accuracy_strictly_greater_than": 0.5,
+      "maeda_recall_strictly_greater_than": 0.5,
+      "senoue_recall_strictly_greater_than": 0.5,
+      "structural_mean_best_same_minus_best_other_strictly_greater_than": 0.0,
+      "family_block_empirical_p_at_most_for": [
+        "structural_balanced_top1_accuracy",
+        "structural_mean_best_same_minus_best_other"
+      ],
+      "family_block_empirical_p_at_most": 0.05
+    },
+    "sonic3d_direct_mapping_replication": {
+      "required": true,
+      "included_track_count": 22,
+      "must_satisfy_same_directional_and_family_block_significance_gates": true,
+      "failure_overrides_complete_panel_success": true
+    }
+  },
+  "evidence_separation": {
+    "structural": "composition-facing primary lane",
+    "structural_pitch": "diagnostic subview; not independent evidence",
+    "structural_rhythm": "diagnostic subview; not independent evidence",
+    "realization": "arrangement/programming/implementation-facing lane; cannot satisfy a composition gate"
+  },
+  "known_representation_limit": "Current musical trajectories follow physical YM2612 channels rather than recovered persistent compositional parts. A material persistent-part model change requires a new frozen method and rerun of all controls.",
+  "result_status": "No real calibration result is declared by this preregistration artifact."
+}
