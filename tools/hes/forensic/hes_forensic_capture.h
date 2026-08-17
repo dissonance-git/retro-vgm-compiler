@@ -23,9 +23,15 @@ public:
     scoped_apu_write_capture& operator=(const scoped_apu_write_capture&) = delete;
 
 private:
-    std::vector<apu_write_observation>* previous_ = nullptr;
+    std::vector<apu_write_observation>* previous_output_ = nullptr;
+    std::int64_t previous_epoch_ = 0;
 };
 
-void record_apu_write(std::int64_t clock, int register_offset, int data) noexcept;
+// Hes_Cpu::time() is local to the current run_clocks() frame because libgme
+// rebases CPU time after every frame. The forensic driver owns the exact frame
+// duration and sets this epoch before execution, so recorded clocks remain
+// absolute without guessing from timestamp rollbacks.
+void set_apu_write_epoch(std::int64_t epoch) noexcept;
+void record_apu_write(std::int64_t local_clock, int register_offset, int data) noexcept;
 
 } // namespace vgmtooling::hes
