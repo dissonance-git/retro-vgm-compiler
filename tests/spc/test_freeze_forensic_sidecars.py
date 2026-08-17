@@ -147,6 +147,49 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
         self.assertAlmostEqual(result["combined_similarity"], 1.0)
         self.assertAlmostEqual(result["identity_confidence"], 0.55)
 
+    def test_profile_set_matching_is_order_invariant_and_globally_optimal(self):
+        query = [
+            profile(
+                [1.0, 1.0], [0.25, -0.5], [1, -1],
+                semantics="log2_frequency_ratio_octaves", confidence=1.0,
+            ),
+            profile(
+                [2.0], [-0.25], [-1],
+                semantics="log2_frequency_ratio_octaves", confidence=0.8,
+            ),
+            profile(
+                [2.0, 1.5], [0.25, 0.25], [1, 1],
+                semantics="log2_frequency_ratio_octaves", confidence=0.8,
+            ),
+            profile(
+                [1.5, 1.5, 1.5], [-0.5, 0.0, -0.5], [-1, 0, -1],
+                semantics="log2_frequency_ratio_octaves", confidence=0.9,
+            ),
+        ]
+        control = [
+            profile(
+                [1.0, 2.0], [0.0, -0.25], [0, -1],
+                semantics="log2_frequency_ratio_octaves", confidence=0.9,
+            ),
+            profile(
+                [2.0], [0.0], [0],
+                semantics="log2_frequency_ratio_octaves", confidence=0.75,
+            ),
+            profile(
+                [1.5, 1.5], [0.0, -0.25], [0, -1],
+                semantics="log2_frequency_ratio_octaves", confidence=1.0,
+            ),
+        ]
+
+        optimal = freeze.compare_profile_sets(query, control)
+        self.assertAlmostEqual(optimal["similarity"], 0.3983333333333333)
+
+        permuted = freeze.compare_profile_sets(
+            list(reversed(query)),
+            [control[1], control[2], control[0]],
+        )
+        self.assertAlmostEqual(permuted["similarity"], optimal["similarity"])
+
     def test_unmatched_parts_are_zero_weight_not_discarded(self):
         common = profile([1.0, 1.0], [0.0, 0.0], [0, 0])
         unrelated = profile([0.2, 1.8], [0.5, 0.5], [1, 1])
