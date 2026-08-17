@@ -60,6 +60,8 @@ The old copied dependency trees were fingerprinted before replacement:
 
 The live build verifies these identities instead of assuming that a similarly named dependency is equivalent.
 
+The Omniphony compatibility seam is also pinned at source level. Retro VGM Compiler requires source ABI major `0`, minor `3`; `dissonance-git/Omniphony-Headphones@0fabccb165e6d957cefecc6eeb1264467e7406a4` defines `ABI_MAJOR = 0` and `ABI_MINOR = 3` in `omniphony-renderer/source_ffi/src/lib.rs`. Its exported `omniphony_source_abi_major()` and `omniphony_source_abi_minor()` functions are zero-argument C ABI functions returning `u32`, matching the dynamic loader contract.
+
 ## Current safeguards
 
 The deletion gate is intentionally layered so a late Windows build is confirming binary integration, not discovering basic migration mistakes:
@@ -68,21 +70,23 @@ The deletion gate is intentionally layered so a late Windows build is confirming
 - `tests/spc/test_active_spc_patch_contract.py` pins the active current-parent/current-child graph and the real four-argument pre-BRR `__stdcall` ABI; stale migration helpers cannot silently return to the live chain.
 - `tests/spc/test_materialize_foo_snesapu.py` invokes the complete materializer in a temporary directory and inspects the composed result: SPCP v3, both provider exports, studio reconstruction preparation, source transport, native sibling `spcplayer.exe` launch geometry, current Spatial runtime, removal of the dead `m_Enhancer.reset()` state, and lowercase `enhanced` UI wording.
 - `tests/vgm/test_enhanced_wording.py` enforces lowercase descriptive `enhanced` across VGM and explicitly selected maintained SPC surfaces while excluding historical anchor literals that guarded patchers must preserve exactly.
-- `tools/verify_private_component_packages.py` reopens the final `.fb2k-component` files and accepts only the exact flat sibling payload required by each runtime. It rejects missing/extra entries, nested or traversal paths, case-colliding names, and zero-byte runtime files. `tests/test_private_component_package_contract.py` exercises those failure modes with synthetic archives.
+- `tools/verify_private_component_packages.py` reopens the final `.fb2k-component` files and accepts only the exact flat sibling payload required by each runtime. It rejects missing/extra entries, nested or traversal paths, case-colliding names, zero-byte runtime files, wrong PE architectures, and missing named exports. On Windows it additionally extracts and loads the exact packaged Omniphony DLL from each component archive and executes its ABI version functions.
+- `tools/verify_omniphony_runtime_abi.py` resolves all six symbols used by `omniphony_dynamic_backend_loader`, executes the version functions, and requires ABI major `0` with minor `3` or newer within that major. `tests/test_omniphony_runtime_abi_contract.py` pins those values back to `model/omniphony_source_transport.h` and exercises compatible/incompatible fake runtimes portably.
+- `tests/test_private_component_package_contract.py` exercises archive and PE failure modes with synthetic fixtures, including malformed images, wrong architecture, and missing runtime exports.
 - `tests/test_private_component_builder_contract.py` pins deterministic output paths and asserts pre-package PE machine checks for x64 Omniphony/VGM/SPC component binaries and x86 SNESAPU/spcplayer binaries. It also requires the final archive verifier.
-- `tests/private_components/CMakeLists.txt` carries these retirement, wording, materialization, package, builder, 48 kHz, source-transport, and Spatial lifecycle contracts in the same cheap preflight that runs before external dependency compilation.
+- `tests/private_components/CMakeLists.txt` carries these retirement, wording, materialization, package, Omniphony ABI, builder, 48 kHz, source-transport, and Spatial lifecycle contracts in the same cheap preflight that runs before external dependency compilation.
 - `tools/build_private_foobar_components.ps1` contains no `vgmspc` checkout. Historical provenance appears only in its output manifest.
 
 ## Destructive deletion gate
 
 The old repository/directory may be deleted after one clean Windows run proves all of the following from a fresh Retro VGM Compiler checkout:
 
-- core/private-component tests pass, including retirement, wording, builder, and package contracts;
+- core/private-component tests pass, including retirement, wording, builder, package, and Omniphony ABI contracts;
 - both materializers succeed;
 - pinned libvgm source-capture tests pass, including linear resampler parity;
 - patched x86 SNESAPU exports `SetDSPSourceCapture`, `GetDSPSourceData`, `SetDSPPreBrrProvider`, and `SetDSPStudioSourceProvider`;
 - canonical `spcplayer.exe`, `foo_snesapu.dll`, and `foo_input_vgm.dll` build with the asserted x86/x64 identities;
-- Omniphony ABI validation succeeds;
+- the exact packaged Omniphony DLLs load and report a compatible 0.3+ ABI within major 0;
 - reference/enhanced and stereo/Spatial fallbacks remain independent and fail closed;
 - both `.fb2k-component` archives pass the final payload verifier with their required sibling runtime dependencies;
 - `tests/test_no_live_vgmspc_dependency.py` passes.
