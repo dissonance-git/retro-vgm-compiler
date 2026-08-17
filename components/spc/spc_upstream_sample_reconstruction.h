@@ -1,9 +1,9 @@
 #pragma once
 
 #include "spc_sample_restoration.h"
+#include "spc_studio_sample_reconstruction.h"
 
 #include <cmath>
-#include <cstddef>
 
 namespace gameaudio::spc {
 
@@ -12,28 +12,16 @@ struct spc_upstream_reconstruction_result {
     bool valid = false;
 };
 
-constexpr double spc_upstream_pi = 3.141592653589793238462643383279502884;
-
-inline double spc_upstream_sinc(double x) noexcept {
-    if (std::abs(x) < 1.0e-12)
-        return 1.0;
-    const double pix = spc_upstream_pi * x;
-    return std::sin(pix) / pix;
-}
-
-inline double spc_upstream_lanczos4(double distance) noexcept {
-    constexpr double radius = 4.0;
-    if (std::abs(distance) >= radius)
-        return 0.0;
-    return spc_upstream_sinc(distance)
-        * spc_upstream_sinc(distance / radius);
-}
-
 // Reconstruct a proposed upstream source at the historical game-sample
 // coordinate without yet deciding whether the candidate is allowed into normal
 // Enhanced playback. This is the comparison primitive used by lineage
 // verification: admission must not be required before the evidence test that
 // establishes admission can run.
+//
+// The proven/upstream PCM itself is sampled with the same studio-grade
+// bandlimited reconstruction intended for normal Enhanced playback. This keeps
+// candidate validation and eventual playback on one reconstruction model rather
+// than validating an 8-point approximation and later rendering something else.
 inline spc_upstream_reconstruction_result reconstruct_spc_upstream_candidate_sample(
     const spc_sample_restoration_candidate& candidate,
     double game_sample_position) noexcept
@@ -48,32 +36,15 @@ inline spc_upstream_reconstruction_result reconstruct_spc_upstream_candidate_sam
     if (!std::isfinite(position))
         return result;
 
-    const double base = std::floor(position);
-    const std::ptrdiff_t center = static_cast<std::ptrdiff_t>(base);
-    double weighted = 0.0;
-    double weight_sum = 0.0;
-
-    // Eight taps spanning integer coordinates center-3 ... center+4.
-    for (std::ptrdiff_t offset = -3; offset <= 4; ++offset) {
-        const std::ptrdiff_t index = center + offset;
-        if (index < 0 || static_cast<std::size_t>(index) >= candidate.upstream.frame_count)
-            continue;
-
-        const float source = candidate.upstream.mono_pcm[static_cast<std::size_t>(index)];
-        if (!std::isfinite(source))
-            return result;
-        const double distance = static_cast<double>(index) - position;
-        const double weight = spc_upstream_lanczos4(distance);
-        weighted += static_cast<double>(source) * weight;
-        weight_sum += weight;
-    }
-
-    if (!std::isfinite(weighted) || !std::isfinite(weight_sum)
-        || std::abs(weight_sum) < 1.0e-12)
+    const auto reconstructed = reconstruct_spc_studio_sample(
+        candidate.upstream.mono_pcm,
+        candidate.upstream.frame_count,
+        position);
+    if (!reconstructed.valid || !std::isfinite(reconstructed.sample))
         return result;
 
-    const double reconstructed = weighted / weight_sum;
-    const double scaled = reconstructed * candidate.upstream.game_pcm_units_per_source_unit;
+    const double scaled = reconstructed.sample
+        * candidate.upstream.game_pcm_units_per_source_unit;
     if (!std::isfinite(scaled))
         return result;
 
