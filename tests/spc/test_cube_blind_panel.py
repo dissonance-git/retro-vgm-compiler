@@ -6,6 +6,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -69,6 +70,50 @@ class CubeBlindPanelTest(unittest.TestCase):
             }
             with self.assertRaises(ValueError):
                 capture.load_panel(self.write_json(root, "bad-suffix.json", bad_suffix))
+
+    def test_panel_ids_are_downstream_of_song_cache_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            repo = pathlib.Path(temp)
+            fixture_rel = pathlib.PurePosixPath("tests/corpus/world-spc/01 - Cue.spc")
+            fixture = repo / pathlib.Path(*fixture_rel.parts)
+            fixture.parent.mkdir(parents=True)
+            fixture.write_bytes(b"spc")
+
+            extractor = repo / "spc_forensic_features"
+            extractor.write_bytes(b"extractor")
+            freeze_tool = repo / "freeze.py"
+            freeze_tool.write_text("# placeholder\n", encoding="utf-8")
+            cache_root = repo / "research/cache/spc-song-capsules"
+            cached = cache_root / "world-spc/5s/01 - Cue.spc.json"
+            cached.parent.mkdir(parents=True)
+            cached.write_text('{"model":"cached"}', encoding="utf-8")
+
+            with mock.patch.object(
+                capture.spc_cache,
+                "build_one",
+                return_value=(cached, False),
+            ) as build_one, mock.patch.object(capture.subprocess, "run") as run:
+                for cue_id in ("cue-001", "cue-999"):
+                    output = repo / f"panel-{cue_id}"
+                    capture.capture_panel(
+                        [capture.PanelCue(cue_id=cue_id, fixture_path=fixture_rel)],
+                        repo_root=repo,
+                        extractor=extractor,
+                        output_dir=output,
+                        seconds=5,
+                        freeze_tool=freeze_tool,
+                        freeze_output=repo / f"freeze-{cue_id}.json",
+                        cache_root=cache_root,
+                    )
+                    self.assertEqual(
+                        (output / f"{cue_id}.json").read_text(encoding="utf-8"),
+                        cached.read_text(encoding="utf-8"),
+                    )
+
+            self.assertEqual(build_one.call_count, 2)
+            destinations = [call.args[0] for call in build_one.call_args_list]
+            self.assertEqual(destinations, [fixture.resolve(), fixture.resolve()])
+            self.assertEqual(run.call_count, 2)
 
     def synthetic_fixture(self):
         fixture_by_cue = {
