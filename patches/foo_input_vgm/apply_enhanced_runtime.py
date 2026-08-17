@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Wire source-native Enhanced VGM replacement into the foobar shell.
+"""Wire source-native enhanced VGM replacement into the foobar shell.
 
 Prerequisites are composed by apply_enhanced_component.py:
   * guarded libvgm source capture + PlayerA pre-volume hook;
-  * the independent Enhanced preference;
+  * the independent enhanced preference;
   * SourceAwareVGMPlayer selection;
   * exact-state Nuked OPN2 HQ FM lift.
 
@@ -63,7 +63,7 @@ def main() -> int:
         """extern cfg_int cfg_vgm_enhanced_enabled;
 #define FOO_INPUT_VGM_GAMEAUDIO_ENHANCED_UI_ABI 1
 """,
-        "Enhanced UI ABI tag",
+        "enhanced UI ABI tag",
     )
 
     # The HQ-lift patch has already inserted hq_fm_source_output between the
@@ -355,7 +355,7 @@ void input_vgm::apply_enhanced_post_render(WAVE_32BS* samples, UINT32 sample_cou
 \tm_main_player.SetPostRenderProcessor(&input_vgm::enhanced_post_render_callback, this);
 #endif
 """,
-        "PlayerA Enhanced callback activation",
+        "PlayerA enhanced callback activation",
     )
 
     replace_once(
@@ -376,7 +376,7 @@ void input_vgm::apply_enhanced_post_render(WAVE_32BS* samples, UINT32 sample_cou
         "avoid double-advancing enhanced PSG state",
     )
 
-    print("foo_input_vgm Enhanced six-channel FM + PSG runtime applied")
+    print("foo_input_vgm enhanced six-channel FM + PSG runtime applied")
     return 0
 
 
