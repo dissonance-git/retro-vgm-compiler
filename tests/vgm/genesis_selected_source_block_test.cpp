@@ -70,13 +70,22 @@ int main() {
     assert(block.source_present(psg0));
     assert(block.sources()[psg0].present());
 
-    // If every exact source is silent, the presentation sidecar has no source
-    // objects to render and fails closed without inventing one.
+    // An all-silent block is not source-clock corruption. It declines Spatial
+    // for that block, consumes the matching ordinal, and keeps the queue alive
+    // so the very next audible block can resume normally.
     queue.reset(240u);
     assert(queue.push_reference(reference_frame(240u, 0.0, 0.0, 0.0, 0.0)));
+    assert(queue.push_reference(reference_frame(241u, 1.0, -1.0, 2.0, -2.0)));
     assert(!block.consume(queue, 240u, 1u));
     assert(block.last_error() == genesis_selected_source_block_error::no_sources);
-    assert(!queue.valid());
+    assert(queue.valid());
+    assert(queue.size() == 1u);
+    assert(block.consume(queue, 241u, 1u));
+    assert(block.valid());
+    assert(block.source_present(fm1));
+    assert(block.source_present(psg0));
+    assert(queue.valid());
+    assert(queue.size() == 0u);
 
     // The generated host may carry an explicit provenance bit. Inexact
     // replacement is rejected without mutating or invalidating the reference
