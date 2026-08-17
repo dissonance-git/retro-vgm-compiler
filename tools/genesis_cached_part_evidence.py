@@ -225,16 +225,71 @@ def infer_continuity(
 
 DEFAULT_STRAND_MIN_CONFIDENCE = 0.75
 
+_IDENTITY_BEARING_KINDS = {
+    "source_identity",
+    "instrument_program_identity",
+    "authored_track_identity",
+    "driver_track_identity",
+    "external_identity",
+}
+_SUPPORT_DOMAIN = {
+    "physical_slot_continuity": 0,
+    "source_identity": 1,
+    "instrument_program_identity": 1,
+    "authored_track_identity": 1,
+    "driver_track_identity": 1,
+    "external_identity": 1,
+    "pitch_trajectory_continuity": 2,
+    "temporal_adjacency": 3,
+    "articulation_continuity": 4,
+    "rhythmic_role_continuity": 4,
+}
 
-def _has_supporting_kind(hypothesis: dict[str, Any], kind: str) -> bool:
+
+def _strand_evidence_summary(
+    hypothesis: dict[str, Any],
+) -> tuple[set[str], bool, bool, bool]:
     evidence = hypothesis.get("evidence")
     if not isinstance(evidence, list):
-        return False
-    return any(
-        isinstance(item, dict)
-        and item.get("kind") == kind
-        and item.get("polarity") == "supports"
-        for item in evidence
+        raise ValueError("strand hypothesis edge requires an evidence array")
+
+    support_kinds: set[str] = set()
+    support_domains: set[int] = set()
+    identity_support = False
+    strong_conflict = False
+    for item in evidence:
+        if not isinstance(item, dict):
+            raise ValueError("strand hypothesis evidence item must be an object")
+        kind = item.get("kind")
+        polarity = item.get("polarity")
+        confidence = item.get("confidence")
+        if not isinstance(kind, str) or polarity not in {"supports", "counters"}:
+            raise ValueError("strand hypothesis evidence item has invalid semantics")
+        if (
+            not isinstance(confidence, (int, float))
+            or not math.isfinite(float(confidence))
+            or float(confidence) < 0.0
+            or float(confidence) > 1.0
+        ):
+            raise ValueError("strand hypothesis evidence item has invalid confidence")
+        if polarity == "supports":
+            support_kinds.add(kind)
+            domain = _SUPPORT_DOMAIN.get(kind)
+            if domain is not None:
+                support_domains.add(domain)
+            if kind in _IDENTITY_BEARING_KINDS:
+                identity_support = True
+        elif (
+            float(confidence) >= 0.80
+            and kind in {"simultaneous_conflict", "identity_discontinuity"}
+        ):
+            strong_conflict = True
+
+    return (
+        support_kinds,
+        identity_support,
+        len(support_domains) >= 2,
+        strong_conflict,
     )
 
 
@@ -283,20 +338,35 @@ def assemble_strand_hypotheses(
         if not isinstance(confidence, (int, float)) or not math.isfinite(float(confidence)):
             raise ValueError("strand hypothesis edge has invalid confidence")
 
-        # Strict forward time rejects zero-time cycles and simultaneous starts.
         if second.start_tick <= first.start_tick:
             continue
         if first.end_tick > second.start_tick:
             continue
+        support_kinds, identity_support, cross_domain, strong_conflict = (
+            _strand_evidence_summary(hypothesis)
+        )
+        if hypothesis.get("identity_bearing_support") is not identity_support:
+            raise ValueError(
+                "strand hypothesis identity-bearing summary disagrees with evidence"
+            )
+        if hypothesis.get("cross_domain_grounded") is not cross_domain:
+            raise ValueError(
+                "strand hypothesis cross-domain summary disagrees with evidence"
+            )
+        if hypothesis.get("strong_conflict_present") is not strong_conflict:
+            raise ValueError(
+                "strand hypothesis conflict summary disagrees with evidence"
+            )
+
         if float(confidence) < min_confidence:
             continue
-        if hypothesis.get("identity_bearing_support") is not True:
+        if not identity_support:
             continue
-        if hypothesis.get("cross_domain_grounded") is not True:
+        if not cross_domain:
             continue
-        if hypothesis.get("strong_conflict_present") is True:
+        if strong_conflict:
             continue
-        if not _has_supporting_kind(hypothesis, "temporal_adjacency"):
+        if "temporal_adjacency" not in support_kinds:
             continue
 
         candidates_by_first.setdefault(first_id, []).append(hypothesis)
@@ -382,7 +452,6 @@ def assemble_strand_hypotheses(
             "links": links,
         })
 
-    # Strict forward time should make all accepted links reachable from a start.
     if len(visited_edges) != len(accepted):
         raise ValueError("strand assembly left accepted links unreachable")
 
