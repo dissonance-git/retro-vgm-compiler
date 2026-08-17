@@ -229,6 +229,7 @@ $VgmComponentPackage = Join-Path $OutputRoot 'foo_input_vgm.private.fb2k-compone
 $SpcComponentPackage = Join-Path $OutputRoot 'foo_snesapu.private.fb2k-component'
 Move-Item $VgmZip $VgmComponentPackage -Force
 Move-Item $SpcZip $SpcComponentPackage -Force
+Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_packages.py'), $VgmComponentPackage, $SpcComponentPackage)
 
 $retroCommit = 'unversioned'
 try { $retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim() } catch {}
