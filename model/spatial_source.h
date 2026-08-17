@@ -40,11 +40,27 @@ enum class spatial_audio_lane_kind : std::uint8_t {
     reference_mix = 2,
 };
 
+// The protected reference mix is a control and audible authority, not another
+// spatial object lane. It may travel beside object lanes at a host boundary but
+// must never be assigned object geometry or folded into object-memory state.
+constexpr bool spatial_audio_lane_is_object_renderable(
+    spatial_audio_lane_kind kind) noexcept
+{
+    return kind != spatial_audio_lane_kind::reference_mix;
+}
+
 struct stereo_route_evidence {
     bool present = false;
     float left_gain = 0.0f;
     float right_gain = 0.0f;
     spatial_evidence_authority authority = spatial_evidence_authority::unknown;
+
+    // Arithmetic provenance, not geometry. When true, mono_pcm already carries
+    // the native sample-accurate route-gain trajectory. Consumers may still use
+    // the signed gains as native pose/polarity evidence, but must not multiply
+    // them into the PCM again. This mirrors the downstream Omniphony transport
+    // contract while keeping the compiler independent of that renderer.
+    bool gain_preapplied = false;
 };
 
 // Higher musical/perceptual evidence that may inform a renderer's presentation
@@ -177,14 +193,14 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
         };
     case spatial_source_family::spc:
         return {
-            spatial_source_readiness::evidence_only,
+            spatial_source_readiness::isolated_audio_partial,
             true,  // bounded runtime voice episodes exist
             true,  // signed per-voice S-DSP routing is captured
             true,  // echo-send state is captured
-            false, // per-voice dry PCM taps are still the render frontier
+            true,  // exact pre-pan dry PCM exists on the native 32 kHz path
             false, // shared echo return is not exposed as a source-bus lane yet
             false, // PMON/shared echo/finite arithmetic forbid a blanket sum-of-stems claim
-            true,  // SNESAPU/reference playback remains the control
+            true,  // protected reference playback remains the control
             false,
         };
     case spatial_source_family::psf1:
