@@ -178,6 +178,17 @@ def _sonic_3d_partition(
     corpus_ids = {
         key for key, value in tracks.items() if str(value["soundtrack_id"]) == soundtrack_id
     }
+    expected_count = world.get("corpus_fixture_count")
+    if isinstance(expected_count, int) and len(corpus_ids) != expected_count:
+        raise ValueError(
+            "Sonic 3D Blast frozen audit is incomplete: "
+            f"expected {expected_count} fixtures, found {len(corpus_ids)}"
+        )
+    missing_positives = sorted(positives - corpus_ids)
+    if missing_positives:
+        raise ValueError(
+            f"Sonic 3D Blast Maeda fixtures missing from frozen audit: {missing_positives}"
+        )
     negatives = corpus_ids - positives
     return positives, negatives
 
