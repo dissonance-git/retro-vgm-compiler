@@ -57,23 +57,35 @@ int main() {
     assert(!vgmtooling::model::spatial_audio_lane_is_object_renderable(
         vgmtooling::model::spatial_audio_lane_kind::reference_mix));
 
-    // Both foobar components share the same UI semantics: the existing
-    // Surround checkbox is the hard reference/source-aware switch. Full sphere
-    // and externalization are the intended defaults behind Surround ON.
+    // Both foobar components expose enhancement and spatialization as separate
+    // user choices. Toggling one must not silently toggle the other.
     vgmtooling::model::spatial_playback_options playback{};
     assert(!playback.surround);
+    assert(!playback.enhanced);
     assert(playback.externalization);
     assert(playback.depth == vgmtooling::model::spatial_depth_mode::full);
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::reference_stereo);
     assert(!vgmtooling::model::uses_source_renderer(playback));
+    assert(!vgmtooling::model::uses_enhanced_renderer(playback));
     assert(!vgmtooling::model::uses_externalization(playback));
+
+    playback.enhanced = true;
+    assert(vgmtooling::model::uses_enhanced_renderer(playback));
+    assert(vgmtooling::model::resolve_spatial_playback(playback)
+        == vgmtooling::model::spatial_playback_path::reference_stereo);
+    assert(!vgmtooling::model::uses_source_renderer(playback));
 
     playback.surround = true;
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::source_full_sphere);
     assert(vgmtooling::model::uses_source_renderer(playback));
+    assert(vgmtooling::model::uses_enhanced_renderer(playback));
     assert(vgmtooling::model::uses_externalization(playback));
+
+    playback.enhanced = false;
+    assert(!vgmtooling::model::uses_enhanced_renderer(playback));
+    assert(vgmtooling::model::uses_source_renderer(playback));
 
     playback.depth = vgmtooling::model::spatial_depth_mode::native;
     assert(vgmtooling::model::resolve_spatial_playback(playback)
