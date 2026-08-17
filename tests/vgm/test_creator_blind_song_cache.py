@@ -42,6 +42,24 @@ def synthetic_vgm() -> bytes:
     return bytes(raw)
 
 
+def same_tick_rearticulation_vgm() -> bytes:
+    raw = bytearray(0x40)
+    raw[:4] = b"Vgm "
+    struct.pack_into("<I", raw, 8, 0x150)
+    struct.pack_into("<I", raw, 0x34, 0)
+    raw += bytes([
+        0x52, 0xA0, 0x00,
+        0x52, 0xA4, 0x22,
+        0x52, 0x28, 0xF0,
+        0x61, 0x64, 0x00,
+        0x52, 0x28, 0x00,
+        0x52, 0xA0, 0x20,
+        0x52, 0x28, 0xF0,
+        0x66,
+    ])
+    return bytes(raw)
+
+
 class CreatorBlindSongCacheTests(unittest.TestCase):
     def test_capsule_is_creator_blind_and_preserves_reusable_events(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -53,6 +71,7 @@ class CreatorBlindSongCacheTests(unittest.TestCase):
         self.assertNotIn("creator", capsule)
         self.assertEqual(capsule["ym2612"]["ordinary_full_key_ons"], 2)
         self.assertEqual(capsule["ym2612"]["events"]["tick"], [0, 100])
+        self.assertEqual(capsule["ym2612"]["events"]["key_gate_event_index"], [0, 3])
         self.assertEqual(capsule["ym2612"]["channels"][0]["interval_tokens"], ["1"])
         self.assertEqual(capsule["psg"]["values"], [0x90])
         self.assertEqual(capsule["ym2612"]["events"]["algorithm"], [5, 5])
@@ -77,6 +96,17 @@ class CreatorBlindSongCacheTests(unittest.TestCase):
         self.assertEqual(capsule["ym2612"]["ordinary_full_key_ons"], 2)
         self.assertEqual(capsule["ym2612"]["events"]["tick"], [0, 100])
         self.assertEqual(capsule["ym2612"]["key_gate_events"]["operator_mask"], [0xF0, 0x70, 0x00, 0xF0])
+
+    def test_same_tick_off_then_on_order_is_not_lost(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = pathlib.Path(temp_dir) / "track.vgm"
+            source.write_bytes(same_tick_rearticulation_vgm())
+            capsule = cache.extract_capsule(source, corpus_id="synthetic")
+
+        self.assertEqual(capsule["ym2612"]["key_gate_events"]["tick"], [0, 100, 100])
+        self.assertEqual(capsule["ym2612"]["key_gate_events"]["operator_mask"], [0xF0, 0x00, 0xF0])
+        self.assertEqual(capsule["ym2612"]["events"]["tick"], [0, 100])
+        self.assertEqual(capsule["ym2612"]["events"]["key_gate_event_index"], [0, 2])
 
     def test_second_build_reuses_capsule_without_parsing_source_again(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -140,8 +170,8 @@ class CreatorBlindSongCacheTests(unittest.TestCase):
             destination.parent.mkdir(parents=True)
             destination.write_text(
                 json.dumps({
-                    "schema_version": 1,
-                    "extractor": {"name": cache.EXTRACTOR_NAME, "version": 1},
+                    "schema_version": 2,
+                    "extractor": {"name": cache.EXTRACTOR_NAME, "version": 2},
                     "source": {"size_bytes": source.stat().st_size},
                 }),
                 encoding="utf-8",
