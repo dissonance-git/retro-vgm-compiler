@@ -268,3 +268,36 @@ add_test(
     NAME spc_runtime_trace_recorder
     COMMAND spc_runtime_trace_recorder_test
 )
+
+add_test(
+    NAME spc_freeze_forensic_sidecars_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_freeze_forensic_sidecars.py
+)
+set_tests_properties(
+    spc_freeze_forensic_sidecars_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME cube_blind_panel_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_cube_blind_panel.py
+)
+set_tests_properties(
+    cube_blind_panel_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME cube_panel_repository_contract_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_cube_panel_repository_contract.py
+)
+set_tests_properties(
+    cube_panel_repository_contract_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
