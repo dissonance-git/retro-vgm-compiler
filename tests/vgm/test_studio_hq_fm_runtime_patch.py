@@ -42,6 +42,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
             )
 
             for script in (
+                "apply_source_aware_shadow_include.py",
                 "apply_hq_nuked_fm_lift.py",
                 "apply_studio_hq_fm_observer.py",
                 "apply_enhanced_runtime.py",
@@ -57,6 +58,8 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
             source_player = (generated / "source_aware_vgm_player.h").read_text(
                 encoding="utf-8-sig"
             )
+
+        self.assertIn('#include "source_aware_vgm_player.h"', shadow)
 
         # Observer owns source-time diagnostics exactly once. The audible
         # transport consumes these methods but must not define a competing copy.
@@ -174,9 +177,12 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         self.assertIn("m_studio_deferred_active = false;", seek)
         self.assertIn("m_studio_deferred_failed = false;", seek)
 
-    def test_component_chain_orders_observer_runtime_deferred_and_session_reset(self) -> None:
+    def test_component_chain_orders_shared_include_observer_runtime_and_session_reset(self) -> None:
         chain = (self.patches / "apply_enhanced_component.py").read_text(
             encoding="utf-8"
+        )
+        shared_include = chain.index(
+            'run(here / "apply_source_aware_shadow_include.py", source)'
         )
         hq = chain.index('run(here / "apply_hq_nuked_fm_lift.py", source)')
         observer = chain.index(
@@ -189,6 +195,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         session = chain.index(
             'run(here / "apply_studio_hq_fm_session_reset.py", source)'
         )
+        self.assertLess(shared_include, hq)
         self.assertLess(hq, observer)
         self.assertLess(observer, enhanced)
         self.assertLess(enhanced, deferred)
