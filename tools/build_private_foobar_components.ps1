@@ -171,6 +171,8 @@ Copy-Item (Join-Path $RetroRoot 'model') (Join-Path $VgmTree 'model') -Recurse -
 Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_input_vgm.py'), '--sdk-root', $VgmSdkRoot)
 $VgmComponent = Join-Path $VgmSdkRoot 'foo_input_vgm'
 $vgmProject = Join-Path $VgmComponent 'foo_input_vgm.vcxproj'
+$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'
+$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }
 Require-File (Join-Path $VgmComponent 'Directory.Build.targets') 'VGM project-owned MSBuild overlay'
 $vgmBase = $VgmSdkRoot
 $componentBase = Split-Path $vgmBase -Parent
@@ -184,7 +186,7 @@ Junction (Join-Path $componentBase 'libvgm') $Libvgm
 Junction (Join-Path $componentBase 'WTL') $Wtl
 Junction (Join-Path $componentBase 'zlib') (Join-Path $Libvgm 'libs\include')
 $vgmOutArg = '/p:OutDir=' + $VgmOutDir + '\'
-Run $msbuild @($vgmProject, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $vgmOutArg, '/m', '/v:m')
+Run $msbuild @($vgmBuildTarget, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $vgmOutArg, '/m', '/v:m')
 $FooVgm = Join-Path $VgmOutDir 'foo_input_vgm.dll'
 Require-File $FooVgm 'private VGM component'
 Assert-PEMachine $FooVgm 0x8664 'private VGM component'
