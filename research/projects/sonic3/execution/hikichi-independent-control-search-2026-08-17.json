@@ -1,0 +1,105 @@
+{
+  "model": "bounded Hikichi independent composer-control search",
+  "date": "2026-08-17",
+  "question": "Which independent soundtrack world can make strict cross-soundtrack Masanori Hikichi composer calibration testable without laundering team, arrangement, programming, or implementation credits into composition evidence?",
+  "baseline": {
+    "grounded_hikichi_composer_cues": 4,
+    "grounded_hikichi_soundtracks": ["terranigma-spc"],
+    "strict_cross_soundtrack_status": "underdetermined"
+  },
+  "claim_boundary": "This is an execution/search record, not canonical composer admission. A candidate may become training evidence only after exact cue-level role evidence and immutable source bytes are both admitted through the normal corpus and attribution-control machinery.",
+  "candidates": [
+    {
+      "work": "Gleylancer",
+      "priority": 1,
+      "status": "evidence_ready_bytes_missing",
+      "source_representation": "Mega Drive VGM/VGZ",
+      "role_result": "licensed 2022 arrangement release gives cue-level composition partition",
+      "prospective_controls": [
+        {"cue": "Opening / Story Begin", "composer": "Masanori Hikichi", "mapping": "derived"},
+        {"cue": "Stage 1 / Asteroid Field", "composer": "Masanori Hikichi", "mapping": "exact"},
+        {"cue": "Stage 2 / Purple Sea", "composer": "Noriyuki Iwadare", "usage": "same-game non-Hikichi composer decoy"}
+      ],
+      "operational_blocker": "The public VGMRips/Project2612 ZIP endpoint is visible but binary transfer is unavailable in the present execution environment. Do not synthesize or recreate the VGM bytes.",
+      "sources": [
+        "https://vgmrips.net/forum/viewtopic.php?t=4010",
+        "https://vgmrips.net/packs/pack/gleylancer-mega-drive-genesis",
+        "https://vgmdb.net/album/8610",
+        "https://sonixgvn.net/gleylancer-arrange-sound-track/"
+      ]
+    },
+    {
+      "work": "Langrisser: Hikari no Matsuei",
+      "priority": 2,
+      "status": "exact_composer_cue_source_adapter_missing",
+      "source_representation": "PC Engine HES",
+      "exact_control": {
+        "cue": "Your Army BGM 4 [With Light]",
+        "commercial_soundtrack_title": "With Light",
+        "composer": "Masanori Hikichi",
+        "arranger": "Masanori Hikichi",
+        "evidence": "TOCT-8181 credits the in-game original-version cue to Hikichi as composer and arranger; SRIN-1129 independently assigns PC Engine disc-1 track 22 to Hikichi."
+      },
+      "negative_role_controls": [
+        {"cue": "Your Army BGM 1 [Kingdom Knight]", "composer": "Hiroshi Fujioka", "arranger": "Masanori Hikichi"},
+        {"cue": "Your Army BGM 3 [Sword of Holy]", "composer": "Noriyuki Iwadare", "arranger": "Masanori Hikichi"},
+        {"cue": "Enemy Army BGM 2 [Hard Battle]", "composer": "Isao Mizoguchi", "arranger": "Masanori Hikichi"}
+      ],
+      "operational_blocker": "A public HES preservation exists, but retro-vgm-compiler currently has no HES execution/cache adapter. These cues are valuable precisely because they separate Hikichi composition from Hikichi arrangement inside one source world; do not reduce them to a team label.",
+      "sources": [
+        "https://vgmdb.net/album/2522",
+        "https://vgmdb.net/album/55398",
+        "https://vgmdb.net/forums/showthread.php?t=15737",
+        "https://www.zophar.net/music/letter/L"
+      ]
+    },
+    {
+      "work": "The Granstream Saga",
+      "priority": 3,
+      "status": "exact_track_partition_source_adapter_missing_cross_era",
+      "source_representation": "PlayStation PSF",
+      "role_result": "original soundtrack partitions Hikichi composition to tracks 7, 10, 15, 26, 28, 30, and 37",
+      "operational_blocker": "No Granstream corpus or PSF source adapter is present in this repository. Later Quintet-era production makes this a useful hard transfer world, but less direct than Gleylancer or 1993 Langrisser.",
+      "sources": ["https://sonixgvn.net/the-granstream-saga-original-sound-track/"]
+    },
+    {
+      "work": "Battle Master: Kyukyoku no Senshitachi",
+      "status": "rejected_as_individual_hikichi_composer_control_current_evidence",
+      "source_representation": "SNES SPC",
+      "reason": "The soundtrack has multiple sound contributors. Recovered TOCT-8252 cue-level evidence assigns composition of M-4 and M-8 to J.S.P and arrangement to Masanori Hikichi. Those cues are arrangement controls, not Hikichi composition controls.",
+      "reuse": "Keep as team/arrangement/implementation validation; do not promote the whole committed battle-master-spc corpus to Hikichi composer supervision."
+    },
+    {
+      "work": "Human Sports Festival",
+      "status": "cue_partition_not_recovered",
+      "reason": "Four named Sound Composers include Hikichi, but the surviving rip exposes anonymous BGM numbers and no defensible cue-level ownership partition was recovered.",
+      "reuse": "Team-level validation only until exact cue ownership is documented."
+    },
+    {
+      "work": "Power of the Hired",
+      "status": "cue_partition_not_recovered",
+      "reason": "Five people are credited for Music. The 2008 EGG MUSIC original soundtrack preserves the same five at album scope, but no per-track composer partition was recovered.",
+      "reuse": "Do not reinterpret album-level composer participation as cue-level Hikichi supervision."
+    },
+    {
+      "work": "Dr. Robotnik's Mean Bean Machine",
+      "status": "joint_composer_world_not_individual_hikichi_control",
+      "source_representation": "Mega Drive VGM/VGZ",
+      "reason": "Genesis credits assign Music and FX jointly to Masanori Hikichi and Masayuki Nagao, while David Javelosa later identified his own additions. Current evidence does not partition the Japanese-authored cues between Hikichi and Nagao.",
+      "reuse": "Useful shared-author and implementation control; not an individual Hikichi composer anchor."
+    },
+    {
+      "work": "Galaxy Force II (Mega Drive)",
+      "status": "rejected_as_composer_control_arrangement_implementation_confound",
+      "reason": "The port credits Hikichi for S.E. / Music, while inherited musical works are credited to Koichi Namiki and/or Katsuhiro Hayashi.",
+      "reuse": "Implementation/port-realization control only."
+    }
+  ],
+  "result": {
+    "primary_next_world": "Gleylancer",
+    "best_alternate_world": "Langrisser: Hikari no Matsuei",
+    "best_alternate_exact_cue": "Your Army BGM 4 [With Light]",
+    "why": "Gleylancer already matches the existing Genesis ingestion stack and supplies two Hikichi positives plus a same-game Iwadare decoy. Langrisser supplies unusually clean composer-versus-arranger role separation but requires an HES adapter.",
+    "sonic3_target_state": "sealed"
+  }
+}
