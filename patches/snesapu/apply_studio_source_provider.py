@@ -16,9 +16,11 @@ without changing DIR. Any such remap therefore fails closed before a stale studi
 trajectory can render a sample.
 
 When NON/noise is active for a voice, the original mixer replaces pInter's
-waveform immediately afterward. The studio callback is therefore bypassed for
-that sample and historical pInter runs normally; this avoids a 64-tap source FIR
-whose result would be discarded without changing the original mixer sequence.
+waveform immediately afterward. The 64-tap studio FIR is therefore skipped, but
+its provider trajectory would also stop advancing if the callback were merely
+bypassed. To prevent a later NON-off transition from resuming at a stale source
+phase, the studio binding is failed closed for the remainder of that key-on and
+historical pInter runs normally. The next key-on may bind a fresh trajectory.
 
 The callback never crosses process IPC. A zero callback result falls through to
 exact historical pInter for that sample and disables substitution until the next
@@ -295,10 +297,19 @@ ENDP
     ;Recompute the same effective source + loop locator for every restored sample
     ;so a dynamic remap fails closed before stale source topology reaches output.
     ;
-    ;NON/noise immediately discards this waveform in the historical code below,
-    ;so do not spend a 64-tap studio FIR on a value that cannot reach the mix.
+    ;NON/noise immediately discards this waveform in the historical code below.
+    ;The provider advances its logical source phase only inside the sample
+    ;callback, so bypassing that callback while leaving the binding live would
+    ;make a later NON-off sample resume from stale source time. Fail the studio
+    ;binding closed for the rest of this key-on, then use historical pInter.
     Test    [dspNoise],CH
-    JNZ     %%HistoricalInterpolation
+    JZ      %%CheckStudioSource
+        MovZX   EDX,CH
+        Not     EDX
+        And     [studioSourceVoices],EDX
+        Jmp     %%HistoricalInterpolation
+
+    %%CheckStudioSource:
     Test    byte [studioSourceVoices],CH
     JZ      %%HistoricalInterpolation
     Mov     EAX,[studioSourceSample]
