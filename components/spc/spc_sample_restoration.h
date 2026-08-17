@@ -54,11 +54,20 @@ struct spc_upstream_sample_view {
     std::size_t frame_count = 0;
     double sample_rate_hz = 0.0;
 
+    // Converts one upstream PCM unit into the decoded-game-sample amplitude
+    // domain expected by the historical envelope/control path. For normalized
+    // [-1,1] source audio this may be near 32767; for already-integer-like PCM
+    // it can remain 1. This is part of the proven preparation chain, not an
+    // automatic loudness match guessed from the rendered track.
+    double game_pcm_units_per_source_unit = 1.0;
+
     bool valid() const noexcept {
         return mono_pcm != nullptr
             && frame_count != 0
             && std::isfinite(sample_rate_hz)
-            && sample_rate_hz > 0.0;
+            && sample_rate_hz > 0.0
+            && std::isfinite(game_pcm_units_per_source_unit)
+            && game_pcm_units_per_source_unit > 0.0;
     }
 };
 
@@ -78,7 +87,8 @@ struct spc_sample_coordinate_map {
 
     // True only when every identity-bearing preparation between upstream source
     // and game instrument that the enhanced path intends to retain is either
-    // represented here or replayed elsewhere by an exact transform.
+    // represented here or replayed elsewhere by an exact transform. Amplitude
+    // preparation is represented by spc_upstream_sample_view's explicit scale.
     bool preparation_chain_exact = false;
 
     bool valid() const noexcept {
