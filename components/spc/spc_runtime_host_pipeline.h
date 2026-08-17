@@ -118,7 +118,7 @@ public:
         // trace ordinals or increment physical-voice generations.
         if (!native_storage_.build(
                 native_capture,
-                static_cast<std::uint32_t>(sample_rate),
+                sample_rate,
                 reference_frame_start,
                 expected_native_sample_start,
                 reference_frame_count)) {
