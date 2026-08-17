@@ -4,7 +4,7 @@ The foobar shell keeps synthesis enhancement and Omniphony presentation as two i
 
 ## Naming contract
 
-`Enhanced` is the one and only source-native quality-improvement option. There is no separate Studio mode, Studio tier, or Studio product identity. `Reference` is the protected accuracy/control path.
+The **enhanced** option is the one source-native quality-improvement option. `enhanced` is descriptive, not a proper name, brand, product identity, or quality tier. The protected **reference** path is the accuracy/control renderer, likewise not a brand name.
 
 Some recently introduced implementation files and symbols still carry a `studio_*` prefix from development. Treat that prefix as legacy internal naming only. It does **not** define another user-facing mode or quality level, and new work should use `enhanced_*` or a neutral algorithmic name instead.
 
@@ -20,11 +20,11 @@ Before building the component, its libvgm checkout must also receive:
 python patches/libvgm/apply_source_capture.py <libvgm-root>
 ```
 
-## Audible Enhanced paths
+## Audible enhanced paths
 
 ### YM2612 FM: six channels stay six channels
 
-The normal Enhanced FM path is now an **exact-state lift**, not a MIDI conversion and not a modern preset substitution.
+The normal enhanced FM path is now an **exact-state lift**, not a MIDI conversion and not a modern preset substitution.
 
 ```text
 one authoritative Nuked OPN2 state
@@ -46,7 +46,7 @@ no optional MD1 output low-pass
 six HQ FM source lanes
 ```
 
-Those lanes originate from the same live Nuked OPN2 state and authoritative source timing as the six exact reference FM lanes. The Enhanced deferred reconstruction path can therefore perform the source-native replacement without creating a second musical timeline:
+Those lanes originate from the same live Nuked OPN2 state and authoritative source timing as the six exact reference FM lanes. The enhanced deferred reconstruction path can therefore perform the source-native replacement without creating a second musical timeline:
 
 ```text
 protected reference mix
@@ -60,7 +60,7 @@ This first automatic FM rung deliberately keeps the original quantized OPN modul
 
 ### Enhanced FM source-rate reconstruction
 
-libvgm's `RSMODE_LINEAR` remains the useful exact timing control, but linear interpolation/box-like downsampling is not the intended quality ceiling for the Enhanced source.
+libvgm's `RSMODE_LINEAR` remains the useful exact timing control, but linear interpolation/box-like downsampling is not the intended quality ceiling for the enhanced source.
 
 The repository currently contains the 64-tap Kaiser-windowed polyphase FIR implementation under the legacy internal filename:
 
@@ -68,9 +68,11 @@ The repository currently contains the 64-tap Kaiser-windowed polyphase FIR imple
 components/vgm/foo_input_vgm/src/studio_source_resampler.h
 ```
 
-This is an **Enhanced-only** reconstruction primitive, not a separate mode. It is rate-aware: when the destination rate is lower than the source rate, the kernel lowers its cutoff before the destination Nyquist boundary instead of letting high-frequency source energy alias into the output. Coefficients are prepared outside the realtime callback; reconstruction itself is a bounded dot product.
+This is an **enhanced-only** reconstruction primitive, not a separate mode. It is rate-aware: when the destination rate is lower than the source rate, the kernel lowers its cutoff before the destination Nyquist boundary instead of letting high-frequency source energy alias into the output. Coefficients are prepared outside the realtime callback; reconstruction itself is a bounded dot product.
 
-A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. The Enhanced integration therefore treats that latency as explicit scheduling state rather than shifting FM relative to DAC, PSG, or untouched chips. Whole protected frames retain their authoritative output ordinals until the matching Enhanced FM reconstruction is available; unsupported or unavailable regions fall back to Reference.
+A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. The enhanced integration therefore treats that latency as explicit scheduling state rather than shifting FM relative to DAC, PSG, or untouched chips. Whole protected frames retain their authoritative output ordinals until the matching enhanced FM reconstruction is available; unsupported or unavailable regions fall back to reference.
+
+A true playback start and a seek are intentionally different. At initial chip attachment, the reset state proves that negative-time FM is silent, so the FIR may use that known-zero prefix and own destination frame 0 once its real future support has arrived. A seek or later reset does **not** inherit that permission: pre-seek history is musical material, so the observer falls back to reference until enough true post-discontinuity history exists. No hidden zero padding crosses a seek.
 
 The protected frame is itself compositional. When the engine-clock PSG descendant is admitted, its exact four-channel replacement is committed to that frame **before** the deferred FM exchange. Thus render-ahead does not force a choice between better FM and better PSG:
 
@@ -81,7 +83,7 @@ reference frame
 PSG-enhanced protected frame
 - exact FM + enhanced FM
         ↓
-final Enhanced frame
+final enhanced frame
 ```
 
 DAC and unrelated chips remain untouched through both exchanges. If PSG loses exact source authority, only PSG falls back to its protected reference contribution; valid FM reconstruction remains eligible. If FM loses reconstruction authority, an already-valid PSG-enhanced protected frame can still survive.
@@ -95,7 +97,7 @@ bandlimited FIR reconstruction + explicit lookahead
         +
 whole protected frame at the same absolute output ordinal
         ↓
-release only when the matching Enhanced FM frame is reconstructable
+release only when the matching enhanced FM frame is reconstructable
         ↓
 protected frame - exact FM + enhanced FM
 ```
@@ -122,7 +124,7 @@ reference mix
 + enhanced PSG sources
 ```
 
-During ordinary non-deferred playback, the established block renderer consumes the captured timed-write block. When Enhanced FM needs PlayerA render-ahead, that host-block clock is no longer authoritative for PSG. The runtime therefore seeds a private PSG descendant from the continuous shadow, advances it between writes on **absolute engine-sample ordinals**, and stores one bounded replacement contribution per rendered frame. The resulting PSG-enhanced protected frame is then handed to the deferred FM transport.
+During ordinary non-deferred playback, the established block renderer consumes the captured timed-write block. When enhanced FM needs PlayerA render-ahead, that host-block clock is no longer authoritative for PSG. The runtime therefore seeds a private PSG descendant from the continuous shadow, advances it between writes on **absolute engine-sample ordinals**, and stores one bounded replacement contribution per rendered frame. The resulting PSG-enhanced protected frame is then handed to the deferred FM transport.
 
 This is a timing representation change, not a second PSG synthesizer design. A regression feeds the same timed write stream through both the established block renderer and the engine-ordinal queue and requires sample-for-sample left/right agreement under the same libvgm source-volume scaling.
 
@@ -132,15 +134,15 @@ Enhancement is transactional per source family. FM can succeed while PSG remains
 
 Dynamic family admission is deliberately independent. The deferred FM path checks current YM/FM evidence rather than the all-family `source_block_complete()` convenience predicate, while deferred PSG requires its own exact four-lane source block. One family's current block failure cannot demote another family's otherwise-valid candidate.
 
-Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an Enhanced renderer before already-proven source families can improve.
+Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an enhanced renderer before already-proven source families can improve.
 
 ## Four combinations
 
 ```text
-Enhanced OFF + Spatial OFF -> protected reference stereo
-Enhanced OFF + Spatial ON  -> source-aware Omniphony presentation
-Enhanced ON  + Spatial OFF -> admitted source replacements in stereo
-Enhanced ON  + Spatial ON  -> same enhanced sources through Omniphony
+enhanced off + spatial off -> protected reference stereo
+enhanced off + spatial on  -> source-aware Omniphony presentation
+enhanced on  + spatial off -> admitted source replacements in stereo
+enhanced on  + spatial on  -> same enhanced sources through Omniphony
 ```
 
-The old VGM output-resampling and chip-sample-rate controls remain separate from `Enhanced`.
+The old VGM output-resampling and chip-sample-rate controls remain separate from the enhanced option.
