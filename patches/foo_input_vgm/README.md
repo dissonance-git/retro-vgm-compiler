@@ -58,7 +58,7 @@ DAC is a separate seventh YM2612 source identity and is not subtracted by the FM
 
 This first automatic FM rung deliberately keeps the original quantized OPN modulation history as its teacher. That preserves difficult semantics while improving the final carrier/channel/output ceiling. The separate `ym2612_hq_fm_backend` explores a deeper all-floating OPN descendant, but it is not required for this safer automatic path.
 
-### Enhanced FM source-rate reconstruction
+### enhanced FM source-rate reconstruction
 
 libvgm's `RSMODE_LINEAR` remains the useful exact timing control, but linear interpolation/box-like downsampling is not the intended quality ceiling for the enhanced source.
 
@@ -74,21 +74,24 @@ A symmetric 64-tap FIR needs 31 source samples of history and 32 of lookahead. T
 
 A true playback start and a seek are intentionally different. At initial chip attachment, the reset state proves that negative-time FM is silent, so the FIR may use that known-zero prefix and own destination frame 0 once its real future support has arrived. A seek or later reset does **not** inherit that permission: pre-seek history is musical material, so the observer falls back to reference until enough true post-discontinuity history exists. No hidden zero padding crosses a seek.
 
-The protected frame is itself compositional. When the engine-clock PSG descendant is admitted, its exact four-channel replacement is committed to that frame **before** the deferred FM exchange. Thus render-ahead does not force a choice between better FM and better PSG:
+The protected frame is itself compositional. When the engine-clock PSG descendant is admitted, its exact four-channel replacement is committed to that frame **before** the deferred FM exchange. Source-bank DAC replacement is then committed on the same absolute engine ordinal before FM as well. Thus render-ahead does not force a choice among independently proven source families:
 
 ```text
 reference frame
 - exact PSG + enhanced PSG
         ↓
-PSG-enhanced protected frame
+PSG-selected protected frame
+- exact DAC + enhanced source-bank DAC   (only on proven stream-owned frames)
+        ↓
+source-selected protected frame
 - exact FM + enhanced FM
         ↓
 final enhanced frame
 ```
 
-DAC and unrelated chips remain untouched through both exchanges. If PSG loses exact source authority, only PSG falls back to its protected reference contribution; valid FM reconstruction remains eligible. If FM loses reconstruction authority, an already-valid PSG-enhanced protected frame can still survive.
+If PSG loses exact source authority, only PSG falls back to its protected reference contribution. If source-bank DAC ownership or timing becomes ambiguous, only that DAC route falls back to reference. If FM loses reconstruction authority, already-valid PSG/DAC changes in the protected frame can still survive.
 
-The invariant is:
+The FM invariant is:
 
 ```text
 capture exact source-rate HQ FM
@@ -124,15 +127,43 @@ reference mix
 + enhanced PSG sources
 ```
 
-During ordinary non-deferred playback, the established block renderer consumes the captured timed-write block. When enhanced FM needs PlayerA render-ahead, that host-block clock is no longer authoritative for PSG. The runtime therefore seeds a private PSG descendant from the continuous shadow, advances it between writes on **absolute engine-sample ordinals**, and stores one bounded replacement contribution per rendered frame. The resulting PSG-enhanced protected frame is then handed to the deferred FM transport.
+During ordinary non-deferred playback, the established block renderer consumes the captured timed-write block. When enhanced FM needs PlayerA render-ahead, that host-block clock is no longer authoritative for PSG. The runtime therefore seeds a private PSG descendant from the continuous shadow, advances it between writes on **absolute engine-sample ordinals**, and stores one bounded replacement contribution per rendered frame. The resulting PSG-selected protected frame is then handed onward to the source-bank DAC and deferred FM composition stages.
 
 This is a timing representation change, not a second PSG synthesizer design. A regression feeds the same timed write stream through both the established block renderer and the engine-ordinal queue and requires sample-for-sample left/right agreement under the same libvgm source-volume scaling.
 
+### YM2612 source-bank DAC
+
+VGM `dac_control` streams can feed YM2612 register `$2A` from source PCM banks. That path is not treated as a sequence of unrelated direct DAC writes when the source observer proves the underlying bank semantics. libvgm supplies the authoritative bank pointer, authored frequency, step size/base, start/stop, reverse, loop, and absolute tick for each stream event.
+
+The component maps those events onto one bounded **PlayerA engine-ordinal queue** shared by ordinary rendering and deferred FM render-ahead:
+
+```text
+libvgm dac_control source event at ordinal H
+        ↓
+materialize source-bank interval [previous, H)
+        ↓
+apply event exactly at H
+        ↓
+per-frame ownership record
+        ↓
+protected frame - exact DAC + bandlimited source-bank DAC
+```
+
+The source-bank renderer preserves the encoded bytes and authored stream stepping while reconstructing the staircase with its windowed-sinc source model. It uses the same normalized DAC byte law and the same outer libvgm device-volume/authored-pan coordinate as the direct DAC descendant, so admission does not invent a new gain interpretation.
+
+Ownership is deliberately strict. Zero active streams means the protected DAC remains unchanged. Exactly one active valid stream targeting primary YM2612 `$2A` may own that frame. Two simultaneous streams claiming the same DAC identity are not guessed, summed, or arbitrated: the source-bank DAC family fails closed to reference. Secondary YM2612 instances and other stream destinations remain reference until independently admitted.
+
+DAC enable and channel-6 pan are sampled on the same command boundary as the stream timeline. Because the source event tap runs before the YM control mutation, the interval ending at a command uses the old state and the interval beginning at that ordinal uses the new state. A seek or reused decode session resets and rebases the source-bank queue rather than carrying old ordinals into the new playback epoch.
+
+The older direct/resolved DAC descendant remains independently useful for ordinary `$2A` writes. Proven source-bank ownership takes precedence on its own frames; if source-bank evidence fails, the runtime does not silently substitute the direct descendant for those ambiguous frames.
+
 ## Transaction and fallback policy
 
-Enhancement is transactional per source family. FM can succeed while PSG remains reference, or vice versa. Within a family, incomplete capture, source-timing failure, missing source lanes, non-finite arithmetic, output overflow, or ordinal discontinuity keeps that family on the protected reference.
+Enhancement is transactional per source family. FM, PSG, direct DAC, and source-bank DAC each require their own evidence. A valid family may remain enhanced while another stays reference.
 
-Dynamic family admission is deliberately independent. The deferred FM path checks current YM/FM evidence rather than the all-family `source_block_complete()` convenience predicate, while deferred PSG requires its own exact four-lane source block. One family's current block failure cannot demote another family's otherwise-valid candidate.
+Within a family, incomplete capture, source-timing failure, missing source lanes, non-finite arithmetic, output overflow, ordinal discontinuity, or ambiguous ownership keeps that family on the protected reference.
+
+Dynamic family admission is deliberately independent. The deferred FM path checks current YM/FM evidence rather than the all-family `source_block_complete()` convenience predicate, while deferred PSG requires its own exact four-lane source block and source-bank DAC requires exact DAC subtraction authority plus an unambiguous engine-clock owner. One family's current block failure cannot demote another family's otherwise-valid candidate.
 
 Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an enhanced renderer before already-proven source families can improve.
 
