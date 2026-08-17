@@ -141,5 +141,41 @@ int main()
     assert(std::fabs(
         frontend.tracker().stream_seconds() - before_failed_completion - 0.10) < 1.0e-9);
 
+    // Omniphony's terminal-event rule is stricter: an event at exactly `frames`
+    // is a zero-length next-block state transition. No current audio belongs to
+    // replacement source 777, so completion must succeed for the old source and
+    // must not train source 777 from the old source's PCM.
+    frontend_type terminal_frontend{};
+    auto terminal_lane = make_lane(low.data(), 70);
+    spatial_source_evidence terminal_replacement = terminal_lane.evidence;
+    terminal_replacement.source_id = 777;
+    terminal_replacement.generation = 2;
+    const spatial_source_evidence_event terminal_event{
+        frame_count,
+        0,
+        terminal_replacement,
+    };
+    const spatial_source_block_view terminal_block{
+        &terminal_lane,
+        1,
+        frame_count,
+        &terminal_event,
+        1,
+    };
+    assert(terminal_frontend.prepare_block(terminal_block, handoff));
+    assert(handoff.event_count() == 1);
+    assert(handoff.event(0).frame_offset == frame_count);
+    assert(terminal_frontend.complete_block(terminal_block, sample_rate));
+
+    auto next_lane = make_lane(low.data(), 777);
+    next_lane.evidence.generation = 2;
+    const spatial_source_block_view next_block{&next_lane, 1, frame_count};
+    assert(terminal_frontend.prepare_block(next_block, handoff));
+    assert(!handoff.lane(0).roles_available);
+
+    // The actually heard source did earn memory from the completed block.
+    assert(terminal_frontend.prepare_block(terminal_block, handoff));
+    assert(handoff.lane(0).roles_available);
+
     return 0;
 }
