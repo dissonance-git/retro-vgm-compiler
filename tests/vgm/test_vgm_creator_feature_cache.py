@@ -23,11 +23,16 @@ def _part(channel: int, intervals: dict[str, int], bigrams: dict[str, int]) -> d
 def _capsule(soundtrack: str, filename: str, part: dict[str, object]) -> dict[str, object]:
     motion = feature_cache._motion_part(part)
     return {
-        "schema_version": 1,
+        "schema_version": feature_cache.SCHEMA_VERSION,
         "model": feature_cache.MODEL,
         "label_policy": "No composer/artist metadata is stored in this capsule.",
         "source": {"soundtrack_id": soundtrack, "file": filename, "source_path": filename},
         "views": {
+            "canonical_events": {
+                "duration_vgm_samples": 0,
+                "ordinary_full_fm_key_on_count": 0,
+                "ordinary_full_fm_key_ons": [],
+            },
             "gen1": {
                 "musical_trajectory": {
                     "interval_histogram_semitones": dict(part["interval_histogram_semitones"]),
@@ -78,9 +83,10 @@ def test_cached_similarity_reads_capsules_without_source_music(tmp_path: pathlib
     assert "no VGM/VGZ" in matrix["source_policy"]
 
 
-def test_capsule_contract_is_creator_blind() -> None:
+def test_capsule_contract_is_creator_blind_and_event_first() -> None:
+    assert feature_cache.SCHEMA_VERSION >= 2
     assert "composer" in feature_cache.__doc__.lower()
-    assert "excluded" in feature_cache.__doc__.lower()
+    assert "canonical" in feature_cache.__doc__.lower()
     assert "creator-blind" in feature_cache.MODEL
 
 
