@@ -23,9 +23,9 @@ import struct
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 EXTRACTOR_NAME = "creator-blind-genesis-song-capsule"
-EXTRACTOR_VERSION = 1
+EXTRACTOR_VERSION = 2
 DEFAULT_CACHE_ROOT = pathlib.Path("research/cache/vgm-song-capsules")
 DEFAULT_CACHE_INDEX = DEFAULT_CACHE_ROOT / "index.jsonl"
 
@@ -261,6 +261,9 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
     raw = _source_bytes(path)
     state = _GenesisState()
     onsets: list[FmOnset] = []
+    key_gate_ticks: list[int] = []
+    key_gate_channels: list[int] = []
+    key_gate_masks: list[int] = []
     psg_ticks: list[int] = []
     psg_values: list[int] = []
     stereo_ticks: list[int] = []
@@ -309,9 +312,16 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
         state.update(port, register, value)
         if port == 0 and register == 0x28:
             encoded_channel = value & 0x07
-            if (value & 0xF0) != 0xF0 or encoded_channel not in channel_map:
+            if encoded_channel not in channel_map:
                 continue
-            onset = state.onset(command.tick, channel_map[encoded_channel])
+            channel = channel_map[encoded_channel]
+            key_gate_ticks.append(command.tick)
+            key_gate_channels.append(channel)
+            key_gate_masks.append(value & 0xF0)
+            counters["fm_key_gate_writes"] += 1
+            if (value & 0xF0) != 0xF0:
+                continue
+            onset = state.onset(command.tick, channel)
             if onset is not None:
                 onsets.append(onset)
 
@@ -359,7 +369,8 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
         "label_policy": "Creator, composer, artist, arranger, and programmer metadata are never read by this extractor.",
         "claim_boundary": (
             "This is cached execution evidence from Genesis VGM/VGZ. Physical YM2612 channels are observations, "
-            "not persistent musical-part identity; creator roles live in a separate index."
+            "not persistent musical-part identity. Raw YM2612 key-gate transitions preserve episode-boundary evidence; "
+            "they are not notes or musical parts. Creator roles live in a separate index."
         ),
         "source": {
             "path": path.as_posix(),
@@ -373,6 +384,11 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
             "patch_core_dictionary": core_dict,
             "patch_full_dictionary": full_dict,
             "events": event_columns,
+            "key_gate_events": {
+                "tick": key_gate_ticks,
+                "channel": key_gate_channels,
+                "operator_mask": key_gate_masks,
+            },
             "channels": channels,
         },
         "psg": {"ticks": psg_ticks, "values": psg_values},
