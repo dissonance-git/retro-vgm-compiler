@@ -9,15 +9,26 @@ ROOT = Path(__file__).resolve().parents[2]
 FORBIDDEN_PROPER_NOUN = re.compile(r"\b(?:Enhanced|ENHANCED)\b")
 TEXT_SUFFIXES = {".c", ".cc", ".cpp", ".h", ".hpp", ".md", ".py", ".txt"}
 
-# These are the project-owned surfaces that define and expose source-native
+# These are project-owned surfaces that define and expose source-native
 # enhancement. Code identifiers such as cfg_vgm_enhanced_enabled and
 # FOO_INPUT_VGM_GAMEAUDIO_ENHANCED_UI_ABI are intentionally legal: underscores
 # keep the uppercase fragment from matching the standalone-word rule.
+#
+# SPC is listed file-by-file because some historical migration patchers retain
+# exact old source strings as guarded anchors. Those immutable anchor literals
+# are not current naming/UI and must not be rewritten merely to satisfy prose
+# style; only the maintained active surfaces belong in this wording contract.
 SCAN_ROOTS = (
     ROOT / "patches" / "foo_input_vgm",
     ROOT / "docs" / "source-native-enhanced-rendering.md",
     ROOT / "research" / "enhancement",
     ROOT / "components" / "vgm" / "enhancement" / "genesis_enhanced_recomposition.h",
+    ROOT / "patches" / "snesapu" / "apply_enhanced_component.py",
+    ROOT / "patches" / "snesapu" / "apply_enhanced_ui.py",
+    ROOT / "patches" / "snesapu" / "apply_enhanced_runtime.py",
+    ROOT / "patches" / "snesapu" / "apply_current_parent_source_transport.py",
+    ROOT / "patches" / "snesapu" / "apply_current_child_source_transport.py",
+    ROOT / "patches" / "snesapu" / "apply_private_component.py",
 )
 
 
