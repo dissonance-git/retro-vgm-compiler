@@ -1,0 +1,44 @@
+name: vgmspc retirement execution gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-retirement:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Ensure NASM is available
+        shell: pwsh
+        run: |
+          if (!(Get-Command nasm -ErrorAction SilentlyContinue)) {
+            choco install nasm -y --no-progress
+          }
+          nasm -v
+
+      - name: Run complete non-destructive retirement gate
+        shell: pwsh
+        run: |
+          .\tools\run_vgmspc_retirement_gate.ps1
+
+      - name: Upload proven private bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vgmspc-retirement-proof-${{ github.sha }}
+          path: |
+            dist/private-components/private-foobar-vgm-spc.zip
+            dist/private-components/build-manifest.json
+            dist/private-components/SHA256SUMS.txt
+            dist/private-components/README.txt
+          if-no-files-found: error
+          retention-days: 14
