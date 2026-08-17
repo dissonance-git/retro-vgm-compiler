@@ -15,14 +15,22 @@ void assert_same(
     const auto boundaries = detail::resolve_spc_upstream_playback_boundaries(
         candidate, playback);
     assert(boundaries.valid);
+    assert(detail::spc_upstream_pcm_all_finite(candidate.upstream));
 
     const auto ordinary = reconstruct_spc_upstream_playback_sample(
         candidate, playback, trajectory);
     const auto resolved = detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
         candidate, playback, trajectory, boundaries);
+    const auto verified =
+        detail::reconstruct_spc_upstream_candidate_playback_sample_resolved<true>(
+            candidate, playback, trajectory, boundaries);
+
     assert(ordinary.valid == resolved.valid);
-    if (ordinary.valid)
+    assert(ordinary.valid == verified.valid);
+    if (ordinary.valid) {
         assert(std::abs(ordinary.sample - resolved.sample) < 1.0e-12);
+        assert(std::abs(ordinary.sample - verified.sample) < 1.0e-12);
+    }
 }
 
 spc_sample_restoration_candidate make_candidate(
