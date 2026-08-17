@@ -213,7 +213,8 @@ reconstruct_spc_upstream_candidate_playback_sample(
         ++center;
     }
 
-    const auto& coefficients = spc_studio_table().phase(phase);
+    const auto& table = spc_studio_table();
+    const auto& coefficients = table.phase(phase);
     constexpr std::int64_t first_offset =
         -static_cast<std::int64_t>(spc_studio_tap_count / 2 - 1);
     const std::int64_t first_virtual_index = center + first_offset;
@@ -228,21 +229,22 @@ reconstruct_spc_upstream_candidate_playback_sample(
             end_virtual_index,
             boundaries,
             trajectory.loop_cycle)) {
-        // Steady-state fast path. Preserve the exact 64-tap law and summation
-        // order, but avoid 64 virtual-index branches/modulos per output sample.
+        // Steady-state fast path. Preserve the exact 64-tap law and weighted
+        // summation order, but avoid both per-tap topology work and rebuilding
+        // the phase's identical float-coefficient normalization sum each sample.
         if (first_virtual_index < 0
             || end_virtual_index
                 > static_cast<std::int64_t>(candidate.upstream.frame_count))
             return result;
         const float* source = candidate.upstream.mono_pcm
             + static_cast<std::size_t>(first_virtual_index);
+        weight_sum = table.phase_weight_sum(phase);
         for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
             const float sample = source[tap];
             if (!std::isfinite(sample))
                 return result;
             const double coefficient = static_cast<double>(coefficients[tap]);
             weighted += static_cast<double>(sample) * coefficient;
-            weight_sum += coefficient;
         }
     } else {
         // Boundary path. Preserve exact authored topology: zero before key-on /
