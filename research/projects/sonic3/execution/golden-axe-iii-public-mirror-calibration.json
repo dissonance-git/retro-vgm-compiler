@@ -1,0 +1,77 @@
+{
+  "diagnostics": {
+    "structural_pitch": {
+      "chance_precision": 0.47368421052631576,
+      "lift_empirical_p_greater_or_equal": 0.032993401319736056,
+      "margin_empirical_p_greater_or_equal": 0.5924815036992601,
+      "mean_best_positive_minus_best_negative": -0.007111056849772856,
+      "mean_reciprocal_rank": 0.7916666666666666,
+      "precision_at_3": 0.7,
+      "precision_lift_over_chance": 0.22631578947368428
+    },
+    "structural_rhythm": {
+      "chance_precision": 0.47368421052631576,
+      "lift_empirical_p_greater_or_equal": 0.6790641871625674,
+      "margin_empirical_p_greater_or_equal": 0.8574285142971406,
+      "mean_best_positive_minus_best_negative": -0.01432559457564785,
+      "mean_reciprocal_rank": 0.5616666666666666,
+      "precision_at_3": 0.4333333333333333,
+      "precision_lift_over_chance": -0.04035087719298246
+    }
+  },
+  "execution_source": {
+    "kind": "public_transport_mirror",
+    "note": "Current public soundtrack pack mapped to the repository control identities. Result is not a byte-identity claim for the private fixtures.",
+    "provider": "VGMRips"
+  },
+  "experiment": "Tatsuyuki Maeda Golden Axe III control",
+  "held_out_target_status": "Sonic 3 remains sealed.",
+  "interpretation": "Golden Axe III does not pass the preregistered primary structural control. Pitch diagnostics show above-chance retrieval alignment, but pitch margin is negative and rhythm is below chance. Diagnostic views cannot rescue the failed primary gate.",
+  "k": 3,
+  "method_tree_commit": "47fa9fbc3ef0f5b1c2a5e91a7ab22efb7088d43c",
+  "negative_count": 10,
+  "permutations": 5000,
+  "positive_count": 10,
+  "primary_gate": {
+    "passes": false,
+    "positive_mean_margin": false,
+    "positive_structural_lift": true,
+    "structural_lift_p_at_most_0_05": false
+  },
+  "quarantined": [
+    "11 - The Scorching Sand"
+  ],
+  "schema_version": 1,
+  "scored_track_count": 20,
+  "seed": 20260816,
+  "structural": {
+    "chance_precision": 0.47368421052631576,
+    "mean_best_positive_minus_best_negative": -0.0034336725139974987,
+    "mean_reciprocal_rank": 0.7333333333333333,
+    "null": {
+      "mean_best_positive_minus_best_negative": {
+        "empirical_p_greater_or_equal": 0.5538892221555689,
+        "ge": 2769,
+        "null_mean": -0.0018187560364268586,
+        "null_population_stdev": 0.009048525621767509,
+        "observed": -0.0034336725139974987
+      },
+      "mean_reciprocal_rank": {
+        "empirical_p_greater_or_equal": 0.3179364127174565,
+        "ge": 1589,
+        "null_mean": 0.6781648282828283,
+        "null_population_stdev": 0.1044360462582461,
+        "observed": 0.7333333333333333
+      },
+      "precision_lift_over_chance": {
+        "empirical_p_greater_or_equal": 0.1817636472705459,
+        "ge": 908,
+        "null_mean": -0.0014508771929824466,
+        "null_population_stdev": 0.11799016437351416,
+        "observed": 0.12631578947368421
+      }
+    },
+    "precision_at_3": 0.6,
+    "precision_lift_over_chance": 0.12631578947368421
+  }
+}
