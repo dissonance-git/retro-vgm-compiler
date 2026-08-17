@@ -26,6 +26,13 @@ enum class genesis_selected_source_block_error : std::uint8_t {
 // adapter is consulted; failure therefore disables source-aware Spatial for the
 // affected transport generation without damaging audible reference/enhanced
 // stereo fallback.
+//
+// Exact source topology is validated before any presentation filtering. Once a
+// complete block is known, a lane which is identically zero on both channels is
+// omitted from the Spatial source set. Such a lane has no audible contribution
+// and therefore must not require authored route evidence merely to present the
+// other active lanes. This never changes source-quality selection or the stereo
+// mix; it only removes provably silent passengers at the presentation boundary.
 template <std::size_t MaxFrames = 8192>
 class genesis_selected_source_block_storage {
     static_assert(MaxFrames > 0, "selected source block capacity must be non-zero");
@@ -60,7 +67,6 @@ public:
 
         std::array<bool, source_count> topology{};
         bool topology_initialized = false;
-        bool any_source = false;
 
         for (std::size_t frame = 0; frame < frame_count; ++frame) {
             const std::uint64_t ordinal = first_ordinal + static_cast<std::uint64_t>(frame);
@@ -74,7 +80,6 @@ public:
                 frame_topology[source_index] = source.present;
                 if (!source.present)
                     continue;
-                any_source = true;
                 if (!source.exact)
                     return fail(genesis_selected_source_block_error::inexact_source, &queue);
                 if (!store_sample(source_index, frame, source.left, source.right))
@@ -89,19 +94,25 @@ public:
             }
         }
 
-        if (!any_source)
-            return fail(genesis_selected_source_block_error::no_sources, &queue);
-
+        bool any_signal = false;
         present_ = topology;
         for (std::size_t source_index = 0; source_index < source_count; ++source_index) {
             if (!present_[source_index])
                 continue;
+            if (!source_has_signal(source_index, frame_count)) {
+                present_[source_index] = false;
+                continue;
+            }
             sources_[source_index] = {
                 left_[source_index].data(),
                 right_[source_index].data(),
                 true,
             };
+            any_signal = true;
         }
+
+        if (!any_signal)
+            return fail(genesis_selected_source_block_error::no_sources, &queue);
 
         first_ordinal_ = first_ordinal;
         frame_count_ = frame_count;
@@ -142,6 +153,14 @@ private:
         left_[source_index][frame] = left_value;
         right_[source_index][frame] = right_value;
         return true;
+    }
+
+    bool source_has_signal(std::size_t source_index, std::size_t frame_count) const noexcept {
+        for (std::size_t frame = 0; frame < frame_count; ++frame) {
+            if (left_[source_index][frame] != 0.0f || right_[source_index][frame] != 0.0f)
+                return true;
+        }
+        return false;
     }
 
     template <std::size_t QueueCapacity>
