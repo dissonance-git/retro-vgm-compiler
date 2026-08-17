@@ -1,117 +1,101 @@
 # Retro VGM Compiler catalog
 
-This is the **fast navigation projection** for the repository. It is deliberately smaller than the repository and does not own technical truth.
+Fast repository orientation. **This is a map, not source truth.**
 
-> **One canonical home per object. Many useful routes to it.**
+> One canonical home per object. Many routes to it.
 
-> **More capability, fewer conceptual shelves.**
+Use this file to answer **“do we already have this, and where does it live?”** before a repository-wide search.
 
-Use this file to answer **“do we already have this, and where does it live?”** before doing a repository-wide search.
-
-Canonical files, source objects, tests, manifests, and research records remain authoritative. This catalog only makes them easier to reach.
-
-## Fresh-agent entry
+## Entry
 
 ```text
 current main
-→ README.md            project identity and objective
-→ AGENTS.md            operating law
-→ CATALOG.md           what exists and where to look
+→ README.md                         project identity
+→ AGENTS.md                         operating law
+→ CATALOG.md                        this map
 → docs/retro-vgm-compiler-roadmap.md
-→ relevant canonical owner
-→ recent commits only for the active surface
+→ smallest canonical owner below
+→ recent commits for that surface
 ```
 
-Do not reread the whole repository to start ordinary work. Enter through the smallest route below that preserves the distinctions needed for the task.
+Do not reread or broadly search the whole repository for ordinary work.
 
-## Repository shape
+## Shelves
 
 ```text
-README.md               declares the project
-AGENTS.md               governs work
-CATALOG.md              navigates the current repository
-
-model/                  shared provenance-aware musical semantics
-components/             source-family and device-specific machinery
-tests/                   executable regressions + immutable real corpus
-research/                bounded investigations and named testbeds
-docs/                    durable architecture and musical reasoning contracts
-tools/                   corpus, audit, extraction, evaluation, and maintenance utilities
-imports/                 preserved upstream/import provenance
-patches/                 maintained downstream/upstream patch material
-cmake/                   build/test registration support
-.github/                 CI and bounded workflows
+model/          shared musical/evidence semantics that earned sharing
+components/     source-family and device-specific machinery
+tests/          regressions + immutable real corpus
+research/       bounded investigations and named testbeds
+docs/           current architecture / reasoning contracts
+tools/          reusable executable operations
+imports/        preserved upstream/import provenance
+patches/        maintained patch material
 ```
 
-This is **one architecture**. VGM, SPC, xSF, composer attribution, rendering, and corpus work are capabilities inside it, not peer projects.
+Dense shelves have their own `README.md`. Descend there before searching globally.
 
-## Canonical ownership
+## Canonical routes
 
-| Question | Start here | Then descend to |
-| --- | --- | --- |
-| What is the project trying to understand? | `README.md` | `docs/holistic-soundtrack-understanding.md` |
-| What rules govern changes? | `AGENTS.md` | task-specific test/research owner |
-| What is the current build/research frontier? | `docs/retro-vgm-compiler-roadmap.md` | relevant component/research project |
-| What source families are implemented? | `components/` | family README/module/tests |
-| What musical semantics are shared? | `model/` | semantic tests in `tests/` |
-| What real music do we already have? | `tests/corpus/README.md` | `tests/corpus/manifest.json`, exact corpus directory |
-| What research programs already exist? | `research/README.md` | the owning research trunk/project |
-| What reusable command already exists? | `tools/` | tool tests / owning research doc |
-| Where is Sonic 3 work? | `research/projects/sonic3/` | project README, role-credit index, preregistrations, execution artifacts |
-| Where is creator-blind cached analysis? | `research/cache/` | `tools/creator_blind_song_cache.py` |
-| Where are historical bootstrap/lineage docs? | `docs/history/` | exact historical document |
+| Need | Route |
+| --- | --- |
+| project objective | `README.md` |
+| working rules | `AGENTS.md` |
+| current frontier | `docs/retro-vgm-compiler-roadmap.md` |
+| implemented source family | `components/README.md` → family |
+| shared musical semantics | `model/README.md` → exact model header/test |
+| existing corpus / soundtrack | `tests/corpus/README.md` → `manifest.json` → set |
+| research program | `research/README.md` → owning trunk/project |
+| existing utility | `tools/README.md` → exact tool |
+| current documentation | `docs/README.md` |
+| historical project prose | `docs/history/` |
+| mechanical repository inventory | `tools/repository_catalog.py` |
 
-## Source-family shelf
+## Source families
 
-Current first-class component families:
+First-class components currently exist for:
 
 ```text
-components/
-├── vgm/      VGM/VGZ logged execution and device state
-├── spc/      SPC/SNES snapshot, S-DSP, BRR, Studio/source-aware reconstruction
-├── psf/      PSF1 / PlayStation effective-object and SPU work
-├── gsf/      GSF / Game Boy Advance xSF-derived objects
-├── usf/      USF / Nintendo 64 objects
-├── twosf/    2SF / Nintendo DS objects
-├── ncsf/     NCSF / Nintendo DS selected-SDAT objects
-└── xsf/      shared xSF envelope/dependency semantics only
+VGM/VGZ • SPC • PSF1 • GSF • USF • 2SF • NCSF • shared xSF envelope semantics
 ```
 
-Other executable-rip and chip families may currently live primarily in corpus/audit tooling until they earn a dedicated component. **A corpus family is not automatically an implemented semantic frontend.**
+A corpus family is not automatically an implemented semantic frontend. Shared xSF packaging does not make platform execution models equivalent.
 
 ## Research geography
 
-`research/` is intentionally compressed into durable programs:
-
 ```text
 research/
-├── projects/     integrative named testbeds, currently led by Sonic 3
-├── music/        musical understanding, composer grammar, attribution methods
-├── runtime/      execution, state, synthesis, sample, and control semantics
-├── formats/      source/driver/chip/platform investigations
-├── validation/   observatories, controls, external comparisons, pressure tests
-├── rendering/    fidelity, reconstruction, equivalence, counterfactual rendering
+├── projects/     integrative named testbeds
+├── music/        musical understanding / creator grammar / attribution methods
+├── runtime/      execution / synthesis / state
+├── formats/      source / driver / chip / platform investigations
+├── validation/   controls / observatories / pressure tests
+├── rendering/    fidelity / reconstruction / equivalence
 ├── enhancement/  bounded enhanced-rendering experiments
-└── cache/        reusable derived analysis objects; never source truth
+└── cache/        reusable derived analysis, never source truth
 ```
 
-Placement rule: extend an existing trunk before creating another peer-level document. A game gets a project folder only when it is itself an integrative testbed.
-
-## Sonic 3 / creator-attribution route
-
-Use this route instead of searching the repo from scratch:
+## Sonic 3 route
 
 ```text
 research/projects/sonic3/README.md
-→ role-credit-index.jsonl
-→ relevant frozen preregistration
-→ research/cache/README.md
-→ tools/creator_blind_song_cache.py
-→ tools/build_admitted_composer_caches.py
-→ execution/ artifacts for the exact generation
+→ canonical policy / admission file for the question
+→ frozen preregistration for the exact generation
+→ creator-blind cache only when reusable parsed analysis is needed
+→ execution/ result for that generation
 ```
 
-Role firewall always survives navigation compression:
+Important distinctions:
+
+```text
+attribution-control-admissions.jsonl   grounded role evidence
+cube-calibration-policy.json           CUBE calibration rules / holdouts
+role-credit-index.jsonl                Genesis cache-routing controls, not master history
+research/cache/                        derived creator-blind song analysis
+tools/build_admitted_composer_caches.py runtime join + backend routing
+```
+
+Never reconstruct creator labels from corpus tags when a canonical admission/policy already exists.
 
 ```text
 composition
@@ -122,73 +106,9 @@ composition
 != final realization
 ```
 
-External tags can route candidates without proving any of those roles.
-
-## Corpus shelf
-
-`tests/corpus/` is permanent experimental apparatus, not miscellaneous test data.
-
-As documented in `tests/corpus/README.md`, the current corpus contains **63 sets, 1,019 runnable fixtures, and 70 playlist sidecars**. It spans VGM/VGZ, SPC, NSF/NSFe, KSS/SGC, PSF1, GSF, USF, 2SF, NCSF, Genesis/SN76489/YM2612 controls, many Yamaha/arcade chips, Nintendo families, and cross-soundtrack composer controls.
-
-Before acquiring another soundtrack or format, check:
-
-1. `tests/corpus/README.md`
-2. `tests/corpus/manifest.json`
-3. generated inventory from `tools/repository_catalog.py`
-
-The repository already contains high-value composer/control worlds including Golden Axe III, Sonic 3D Blast, J.League Pro Striker 1/2, Dr. Robotnik's Mean Bean Machine, Ancient Magic, Battle Master, Terranigma, Ghox, several Miyoko Takaoka controls, several Masayuki Nagao controls, several Masaru Setsumaru controls, and the sealed Sonic 3 & Knuckles set.
-
-## Tool shelf
-
-Prefer an existing tool over a new one. Tool names are intentionally descriptive enough to route by job.
-
-### Corpus and inventory
-
-```text
-tools/corpus_import.py
-tools/repository_catalog.py
-tools/inspect_spc_collection.py
-```
-
-### Creator / attribution
-
-```text
-tools/attribution_control_registry.py
-tools/blind_attribution_match_manifest.py
-tools/creator_blind_song_cache.py
-tools/build_admitted_composer_caches.py
-tools/cross_soundtrack_vgm_audit.py
-tools/maeda_calibration_*.py
-tools/vgm_creator_feature_audit.py
-```
-
-### Source-family audits and semantics
-
-Use the family/tool prefix first: `vgm_*`, `genesis_*`, `spc_*`, `nsf_*`, `xsf_*`, `z80_*`, etc. The generated catalog enumerates the exact current filenames.
-
-### Build / maintenance
-
-```text
-tools/run_core_tests.py
-tools/check_project_identity.py
-tools/check_libvgm_patches.py
-```
-
-## Documentation compression law
-
-Top-level `docs/` is for **current durable contracts and active orientation**.
-
-```text
-docs/<active-contract>.md     current architecture / semantics / roadmap
-docs/history/                 superseded bootstrap and lineage material
-docs/generated/               rebuildable inventory projections
-```
-
-Do not keep a historical handoff beside current contracts merely because it used to be important. Preserve it under `docs/history/` and point to the current owner.
-
 ## Generated inventory
 
-`tools/repository_catalog.py` creates deterministic, read-only repository inventory projections from the checked-out tree:
+For exact mechanical enumeration:
 
 ```text
 python tools/repository_catalog.py
@@ -197,26 +117,14 @@ python tools/repository_catalog.py
 → docs/generated/repository-catalog.json
 ```
 
-The generated catalog answers mechanical questions such as:
+Generated projections never become writable truth and intentionally do not hash the repository again.
 
-- which component families exist;
-- which corpus IDs exist;
-- which research trunks/projects exist;
-- which tools already exist;
-- how many tracked files occupy each major shelf.
-
-It deliberately does **not** hash every file or duplicate corpus provenance. Corpus identity remains owned by `tests/corpus/manifest.json` and adjacent inventories.
-
-## Addition rule
-
-Before adding a file or abstraction:
+## Addition law
 
 ```text
-Does a canonical owner already exist?
-    yes → extend it
-    no  → identify the smallest existing shelf that owns the new distinction
-            ↓
-         create a new object only if the distinction genuinely needs one
+canonical owner exists? → extend it
+otherwise               → choose the smallest existing shelf
+new peer object          → only when a real new distinction needs an owner
 ```
 
-A useful repository refactor leaves fewer places an agent must search, not more names for the same thing.
+**A successful refactor leaves fewer places an agent must search.**
