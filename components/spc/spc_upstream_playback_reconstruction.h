@@ -135,6 +135,25 @@ inline std::int64_t map_spc_virtual_source_index(
         + spc_positive_mod(index - boundaries.loop_start, loop_length);
 }
 
+// True when the complete symmetric FIR neighborhood maps to one physically
+// contiguous run of upstream PCM. Most steady-state samples satisfy this. Only
+// key-on/END/loop-seam neighborhoods need the more expensive per-tap virtual
+// topology mapping below.
+inline bool spc_upstream_window_is_contiguous(
+    std::int64_t first_index,
+    std::int64_t end_index,
+    const spc_upstream_playback_boundaries& boundaries,
+    std::uint64_t loop_cycle) noexcept
+{
+    if (!boundaries.valid || end_index <= first_index)
+        return false;
+
+    if (!boundaries.loop_present || loop_cycle == 0)
+        return first_index >= boundaries.start && end_index <= boundaries.end;
+
+    return first_index >= boundaries.loop_start && end_index <= boundaries.loop_end;
+}
+
 } // namespace detail
 
 // Highest-confidence source sampler with authored key-on/END/LOOP topology.
@@ -190,28 +209,57 @@ reconstruct_spc_upstream_candidate_playback_sample(
     const auto& coefficients = spc_studio_table().phase(phase);
     constexpr std::int64_t first_offset =
         -static_cast<std::int64_t>(spc_studio_tap_count / 2 - 1);
+    const std::int64_t first_virtual_index = center + first_offset;
+    const std::int64_t end_virtual_index = first_virtual_index
+        + static_cast<std::int64_t>(spc_studio_tap_count);
 
     double weighted = 0.0;
     double weight_sum = 0.0;
-    for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
-        const std::int64_t virtual_index = center + first_offset
-            + static_cast<std::int64_t>(tap);
-        bool zero = false;
-        const std::int64_t source_index = detail::map_spc_virtual_source_index(
-            virtual_index, boundaries, trajectory.loop_cycle, zero);
-        const double coefficient = static_cast<double>(coefficients[tap]);
-        weight_sum += coefficient;
-        if (zero)
-            continue;
-        if (source_index < 0
-            || source_index >= static_cast<std::int64_t>(candidate.upstream.frame_count))
-            return result;
 
-        const float sample = candidate.upstream.mono_pcm[
-            static_cast<std::size_t>(source_index)];
-        if (!std::isfinite(sample))
+    if (detail::spc_upstream_window_is_contiguous(
+            first_virtual_index,
+            end_virtual_index,
+            boundaries,
+            trajectory.loop_cycle)) {
+        // Steady-state fast path. Preserve the exact 64-tap law and summation
+        // order, but avoid 64 virtual-index branches/modulos per output sample.
+        if (first_virtual_index < 0
+            || end_virtual_index
+                > static_cast<std::int64_t>(candidate.upstream.frame_count))
             return result;
-        weighted += static_cast<double>(sample) * coefficient;
+        const float* source = candidate.upstream.mono_pcm
+            + static_cast<std::size_t>(first_virtual_index);
+        for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
+            const float sample = source[tap];
+            if (!std::isfinite(sample))
+                return result;
+            const double coefficient = static_cast<double>(coefficients[tap]);
+            weighted += static_cast<double>(sample) * coefficient;
+            weight_sum += coefficient;
+        }
+    } else {
+        // Boundary path. Preserve exact authored topology: zero before key-on /
+        // after one-shot END and wrap only where the live sample loop says to.
+        for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
+            const std::int64_t virtual_index = first_virtual_index
+                + static_cast<std::int64_t>(tap);
+            bool zero = false;
+            const std::int64_t source_index = detail::map_spc_virtual_source_index(
+                virtual_index, boundaries, trajectory.loop_cycle, zero);
+            const double coefficient = static_cast<double>(coefficients[tap]);
+            weight_sum += coefficient;
+            if (zero)
+                continue;
+            if (source_index < 0
+                || source_index >= static_cast<std::int64_t>(candidate.upstream.frame_count))
+                return result;
+
+            const float sample = candidate.upstream.mono_pcm[
+                static_cast<std::size_t>(source_index)];
+            if (!std::isfinite(sample))
+                return result;
+            weighted += static_cast<double>(sample) * coefficient;
+        }
     }
 
     if (!std::isfinite(weighted) || !std::isfinite(weight_sum)
