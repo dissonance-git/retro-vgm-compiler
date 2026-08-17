@@ -1,0 +1,163 @@
+{
+  "development_world": "golden-axe-iii-genesis-vgz",
+  "direct_mapping_22_track": {
+    "excluded_tracks": [
+      "19",
+      "22"
+    ],
+    "family_block_null": {
+      "balanced_top1_accuracy": {
+        "ge": 1504,
+        "null_mean": 0.46202,
+        "null_stdev": 0.12006881193715545,
+        "observed": 0.55,
+        "p": 0.30093981203759246
+      },
+      "mean_best_same_minus_best_other": {
+        "ge": 459,
+        "null_mean": -0.007893747375648866,
+        "null_stdev": 0.02820716814599826,
+        "observed": 0.03505168847434014,
+        "p": 0.09198160367926415
+      },
+      "mean_reciprocal_rank": {
+        "ge": 1316,
+        "null_mean": 0.659452072982573,
+        "null_stdev": 0.0775081186618732,
+        "observed": 0.7116666666666667,
+        "p": 0.2633473305338932
+      },
+      "minimum_learnable_class_recall": {
+        "ge": 1116,
+        "null_mean": 0.253,
+        "null_stdev": 0.12519984025548914,
+        "observed": 0.4,
+        "p": 0.22335532893421317
+      }
+    },
+    "observed": {
+      "balanced_top1_accuracy": 0.55,
+      "confusion": {
+        "Jun Senoue": {
+          "Jun Senoue": 7,
+          "Tatsuyuki Maeda": 3
+        },
+        "Tatsuyuki Maeda": {
+          "Jun Senoue": 6,
+          "Tatsuyuki Maeda": 4
+        }
+      },
+      "excluded_same_family_candidate_instances": 14,
+      "mean_best_same_minus_best_other": 0.03505168847434014,
+      "mean_reciprocal_rank": 0.7116666666666667,
+      "per_class_recall": {
+        "Jun Senoue": 0.7,
+        "Tatsuyuki Maeda": 0.4
+      },
+      "query_count": 20,
+      "sentinel_top1_intrusions": 0,
+      "top1_accuracy": 0.55
+    },
+    "primary_gate": {
+      "balanced_top1_gt_0_5": true,
+      "balanced_top1_p_le_0_05": false,
+      "maeda_recall_gt_0_5": false,
+      "margin_p_le_0_05": false,
+      "mean_margin_gt_0": true,
+      "senoue_recall_gt_0_5": true
+    }
+  },
+  "experiment": "Tatsuyuki Maeda Gen-2 Sonic 3D Blast held-out validation",
+  "generation": 2,
+  "held_out_target_status": "Sonic 3 remains sealed.",
+  "interpretation": "Gen-2 improves creator separation relative to Gen-1 but fails frozen held-out validation: Maeda recall is 0.40 in both panels, balanced-accuracy family-block significance fails in both, and the 22-track margin significance also fails. The 24-track margin alone is significant and cannot rescue the failed composite gate. No Gen-2 tuning is permitted on this validation result.",
+  "next_generation_rule": "Any representation change now requires a Gen-3 preregistration. Sonic 3 remains excluded.",
+  "parameters": {
+    "permutation_unit": "family-block",
+    "permutations": 5000,
+    "seed": 20260816
+  },
+  "result": "failed_validation",
+  "schema_version": 1,
+  "source": {
+    "kind": "public_transport_mirror",
+    "note": "Logical control identities mapped to public pack; no byte-identity claim for private fixtures.",
+    "provider": "VGMRips"
+  },
+  "complete_24_track": {
+    "family_block_null": {
+      "balanced_top1_accuracy": {
+        "ge": 818,
+        "null_mean": 0.449,
+        "null_stdev": 0.1277629097630103,
+        "observed": 0.575,
+        "p": 0.16376724655068986
+      },
+      "mean_best_same_minus_best_other": {
+        "ge": 126,
+        "null_mean": -0.009904888557531046,
+        "null_stdev": 0.025650620802937944,
+        "observed": 0.04014751959751189,
+        "p": 0.02539492101579684
+      },
+      "mean_reciprocal_rank": {
+        "ge": 844,
+        "null_mean": 0.6562599625879171,
+        "null_stdev": 0.08542399947497893,
+        "observed": 0.7401515151515151,
+        "p": 0.16896620675864826
+      },
+      "minimum_learnable_class_recall": {
+        "ge": 1608,
+        "null_mean": 0.2983266666666667,
+        "null_stdev": 0.14696363858678332,
+        "observed": 0.4,
+        "p": 0.3217356528694261
+      }
+    },
+    "observed": {
+      "balanced_top1_accuracy": 0.575,
+      "confusion": {
+        "Jun Senoue": {
+          "Jun Senoue": 9,
+          "Tatsuyuki Maeda": 3
+        },
+        "Tatsuyuki Maeda": {
+          "Jun Senoue": 6,
+          "Tatsuyuki Maeda": 4
+        }
+      },
+      "excluded_same_family_candidate_instances": 16,
+      "mean_best_same_minus_best_other": 0.04014751959751189,
+      "mean_reciprocal_rank": 0.7401515151515151,
+      "per_class_recall": {
+        "Jun Senoue": 0.75,
+        "Tatsuyuki Maeda": 0.4
+      },
+      "query_count": 22,
+      "sentinel_top1_intrusions": 0,
+      "top1_accuracy": 0.5909090909090909
+    },
+    "primary_gate": {
+      "balanced_top1_gt_0_5": true,
+      "balanced_top1_p_le_0_05": false,
+      "maeda_recall_gt_0_5": false,
+      "margin_p_le_0_05": true,
+      "mean_margin_gt_0": true,
+      "senoue_recall_gt_0_5": true
+    },
+    "maeda_queries": [
+      {"q":"05","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"03","score":0.7012558809070293,"rank":2,"margin":-0.02083788385055685},
+      {"q":"06","truth":"Tatsuyuki Maeda","pred":"Tatsuyuki Maeda","top":"09","score":0.6730133392936966,"rank":1,"margin":0.040013903125041494},
+      {"q":"09","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"03","score":0.7574535672595756,"rank":2,"margin":-0.03459721853991082},
+      {"q":"10","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"03","score":0.673952216100655,"rank":2,"margin":-0.028965023130636647},
+      {"q":"11","truth":"Tatsuyuki Maeda","pred":"Tatsuyuki Maeda","top":"09","score":0.663733183594706,"rank":1,"margin":0.007849336905805138},
+      {"q":"12","truth":"Tatsuyuki Maeda","pred":"Tatsuyuki Maeda","top":"16","score":0.7281864481921523,"rank":1,"margin":0.020566385149674016},
+      {"q":"13","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"03","score":0.7200588869669202,"rank":4,"margin":-0.08451343549147838},
+      {"q":"14","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"03","score":0.7664566920279938,"rank":3,"margin":-0.06359206967681252},
+      {"q":"16","truth":"Tatsuyuki Maeda","pred":"Tatsuyuki Maeda","top":"12","score":0.7281864481921523,"rank":1,"margin":0.05338904008876377},
+      {"q":"20","truth":"Tatsuyuki Maeda","pred":"Jun Senoue","top":"19","score":0.5751780971330769,"rank":6,"margin":-0.08639511760583607}
+    ]
+  },
+  "validation_world": "sonic-3d-blast-genesis-vgm"
+}
