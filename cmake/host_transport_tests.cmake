@@ -6,6 +6,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spatial_source_host_session_test
     spc_runtime_spatial_adapter_test
     spc_runtime_spatial_end_boundary_test
+    spc_runtime_host_pipeline_test
 )
 
 add_executable(
@@ -20,6 +21,10 @@ add_executable(
     spc_runtime_spatial_end_boundary_test
     tests/spc/spc_runtime_spatial_end_boundary_test.cpp
 )
+add_executable(
+    spc_runtime_host_pipeline_test
+    tests/spc/spc_runtime_host_pipeline_test.cpp
+)
 
 target_include_directories(
     spatial_source_host_session_test
@@ -31,6 +36,10 @@ target_include_directories(
 )
 target_include_directories(
     spc_runtime_spatial_end_boundary_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_runtime_host_pipeline_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -45,4 +54,8 @@ add_test(
 add_test(
     NAME spc_runtime_spatial_end_boundary
     COMMAND spc_runtime_spatial_end_boundary_test
+)
+add_test(
+    NAME spc_runtime_host_pipeline
+    COMMAND spc_runtime_host_pipeline_test
 )
