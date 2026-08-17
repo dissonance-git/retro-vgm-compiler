@@ -57,11 +57,10 @@ struct snesapu_studio_source_binding {
 };
 
 // Child-process realtime owner for the highest-confidence sampled-source path.
-// Discovery, file I/O, hashing, provenance work and allocations happen before
-// this object is populated. The hot callback is fixed-capacity lookup performed
-// once at key-on, followed by one trajectory projection + FIR evaluation per
-// mixed voice sample. Immutable upstream geometry and PCM finiteness are proven
-// at admission rather than recalculated/rechecked at 48 kHz.
+// Discovery, provenance/evidence admission, PCM validation and playback-geometry
+// compilation happen before this object becomes audible. The hot callback keeps
+// only the compact immutable reconstruction plan plus live source/trajectory
+// checks; it never re-walks restoration metadata at 48 kHz.
 template <std::size_t MaxSources = 256>
 class snesapu_studio_source_provider {
     static_assert(MaxSources > 0, "MaxSources must be non-zero");
@@ -69,18 +68,16 @@ class snesapu_studio_source_provider {
 public:
     bool add(const snesapu_studio_source_binding& binding) noexcept {
         if (count_ >= sources_.size() || binding.restoration == nullptr
-            || !may_use_spc_sample_restoration_automatically(*binding.restoration)
             || !binding.playback.valid()
             || !snesapu_studio_brr_topology_valid(
                     binding.first_brr_block_address,
                     binding.loop_brr_block_address,
-                    binding.playback)
-            || !detail::spc_upstream_pcm_all_finite(binding.restoration->upstream))
+                    binding.playback))
             return false;
 
-        const auto upstream_boundaries = detail::resolve_spc_upstream_playback_boundaries(
+        const auto plan = detail::compile_spc_upstream_playback_reconstruction_plan(
             *binding.restoration, binding.playback);
-        if (!upstream_boundaries.valid)
+        if (!plan.valid)
             return false;
 
         // A concrete runtime source identity must resolve exactly once. If the
@@ -96,9 +93,7 @@ public:
             binding.source_number,
             binding.first_brr_block_address,
             binding.loop_brr_block_address,
-            binding.restoration,
-            binding.playback,
-            upstream_boundaries,
+            plan,
         };
         return true;
     }
@@ -141,7 +136,7 @@ public:
             }
         }
         if (selected == nullptr
-            || (selected->playback.loop.present
+            || (selected->plan.game_loop.present
                 && selected->loop_brr_block_address
                     != static_cast<std::uint16_t>(loop_brr_block_address)))
             return false;
@@ -175,7 +170,7 @@ public:
             || directory_page > 0xffu
             || static_cast<std::uint8_t>(effective_source_number)
                 != state.source->source_number
-            || (state.source->playback.loop.present
+            || (state.source->plan.game_loop.present
                 && static_cast<std::uint16_t>(live_loop_brr_block_address)
                     != state.source->loop_brr_block_address)
             || static_cast<std::uint8_t>(directory_page) != state.directory_page
@@ -194,22 +189,14 @@ public:
         // voice is alive. That changes only the pInter timing center, so keep the
         // accumulated source phase and update the center without resetting it.
         state.trajectory.set_interpolation(interpolation);
-        const auto projection = state.trajectory.project(state.source->playback.loop);
+        const auto projection = state.trajectory.project(state.source->plan.game_loop);
         if (!projection.valid)
             return stop_and_fail(voice);
 
         double sample = 0.0;
         if (!projection.before_key_on) {
-            // add() already established automatic source permission, froze the
-            // exact upstream boundary geometry and scanned every upstream PCM
-            // frame for finiteness. Keep those immutable checks off the audio
-            // path while retaining trajectory/live-source validation above.
-            const auto reconstructed =
-                detail::reconstruct_spc_upstream_candidate_playback_sample_resolved<true>(
-                    *state.source->restoration,
-                    state.source->playback,
-                    projection,
-                    state.source->upstream_boundaries);
+            const auto reconstructed = detail::reconstruct_spc_upstream_playback_plan_sample(
+                state.source->plan, projection);
             if (!reconstructed.valid || !std::isfinite(reconstructed.sample))
                 return stop_and_fail(voice);
             sample = reconstructed.sample;
@@ -288,9 +275,7 @@ private:
         std::uint8_t source_number = 0;
         std::uint16_t first_brr_block_address = 0;
         std::uint16_t loop_brr_block_address = 0;
-        const spc_sample_restoration_candidate* restoration = nullptr;
-        spc_game_sample_playback_span playback{};
-        detail::spc_upstream_playback_boundaries upstream_boundaries{};
+        detail::spc_upstream_playback_reconstruction_plan plan{};
     };
 
     struct voice_state {
