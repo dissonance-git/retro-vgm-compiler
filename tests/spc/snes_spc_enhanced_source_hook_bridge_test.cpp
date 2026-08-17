@@ -65,7 +65,7 @@ int main() {
         assert(capture.frames()[0].source[voice] == 0);
     assert(bridge.next_native_sample() == 42);
 
-    // A supplied restoration is a committed Enhanced source choice. If its
+    // A supplied restoration is a committed enhanced source choice. If its
     // evidence gate becomes invalid, do not silently fall back to the BRR voice
     // for just that frame.
     bridge.reset(&capture, 42);
