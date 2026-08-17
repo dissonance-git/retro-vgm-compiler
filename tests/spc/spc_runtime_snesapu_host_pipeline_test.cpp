@@ -1,4 +1,5 @@
 #include "components/spc/spc_runtime_host_pipeline.h"
+#include "model/spatial_playback_options.h"
 
 #include <array>
 #include <cmath>
@@ -45,9 +46,21 @@ int main() {
     const snesapu_source_transport_v2::view source{&header, planes.data()};
     CHECK(source.valid());
 
+    // A second producer block stands in for a source realization selected by
+    // the independent quality layer. The host/spatial pipeline must not care why
+    // this exact source waveform was selected.
+    auto higher_quality_planes = planes;
+    for (std::size_t frame = 0; frame < frames; ++frame)
+        higher_quality_planes[snesapu_source_transport_v2::dry_base * frames + frame] *= 2.0f;
+    const snesapu_source_transport_v2::view higher_quality_source{
+        &header,
+        higher_quality_planes.data(),
+    };
+    CHECK(higher_quality_source.valid());
+
     // SRCE v2 is already at the protected host render rate, so unlike the exact
-    // native libgme hook it is valid at 96 kHz without pretending a 32 kHz lane
-    // is magically full-band. The producer did the source-rate realization.
+    // native libgme hook it remains valid if an offline/research producer uses a
+    // higher host rate. Normal component playback is standardized at 48 kHz.
     spc_runtime_host_pipeline<8, 4, 8, 32> pipeline;
     pipeline.reset(spatial_source_host_discontinuity::initialize, 200);
     CHECK(pipeline.consume_snesapu_reference_window(
@@ -93,6 +106,50 @@ int main() {
     CHECK(std::abs(second.sources.lanes[8].mono_pcm[0] - 0.3f) < 1.0e-6f);
     CHECK(std::abs(second.sources.lanes[9].mono_pcm[1] + 0.4f) < 1.0e-6f);
     CHECK(pipeline.buffered_frames() == 0);
+
+    // Exercise the real SNESAPU source transport at the normal 48 kHz playback
+    // rate for all four independent user-option combinations. Source selection
+    // depends only on the quality switch. Presentation depends only on surround.
+    for (int quality = 0; quality != 2; ++quality) {
+        for (int surround = 0; surround != 2; ++surround) {
+            spatial_playback_options options;
+            options.enhanced = quality != 0;
+            options.surround = surround != 0;
+
+            const auto selected_source = uses_enhanced_renderer(options)
+                ? higher_quality_source
+                : source;
+            spc_runtime_host_pipeline<8, 4, 8, 32> combination;
+            combination.reset(spatial_source_host_discontinuity::initialize, 1000);
+            CHECK(combination.consume_snesapu_reference_window(
+                1000,
+                frames,
+                0,
+                48000,
+                48000,
+                {nullptr, 0, false},
+                selected_source));
+
+            const auto chunk = combination.pull(frames);
+            CHECK(chunk.sources.frame_count == frames);
+            CHECK(chunk.sources.lane_count == 10);
+            const float quality_scale = quality != 0 ? 2.0f : 1.0f;
+            CHECK(std::abs(
+                chunk.sources.lanes[0].mono_pcm[0] - quality_scale * sqrt_half) < 1.0e-6f);
+            CHECK(chunk.sources.lanes[8].mono_pcm[0] == 0.1f);
+            CHECK(chunk.sources.lanes[9].mono_pcm[0] == -0.1f);
+
+            if (surround != 0) {
+                CHECK(resolve_spatial_playback(options) ==
+                    spatial_playback_path::source_full_sphere);
+                CHECK(uses_source_renderer(options));
+            } else {
+                CHECK(resolve_spatial_playback(options) ==
+                    spatial_playback_path::reference_stereo);
+                CHECK(!uses_source_renderer(options));
+            }
+        }
+    }
 
     // Producer/header mismatch is rejected before runtime evidence can mutate.
     auto bad_header = header;
