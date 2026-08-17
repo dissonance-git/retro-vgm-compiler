@@ -18,7 +18,7 @@ struct studio_source_window {
 };
 
 // Exact source coordinate on the same 1/4096-sample phase grid used by the
-// Studio FIR. Negative values are valid during startup planning and fail closed
+// FIR. Negative values are valid during startup planning and fail closed
 // later when their required source history does not exist.
 struct studio_source_phase_position {
     std::int64_t phase_units = 0;
@@ -34,7 +34,7 @@ struct studio_source_phase_position {
 
 // Project-owned copy of the timing fields that matter from libvgm's
 // pre-Resmpl_Execute RESMPL_STATE. Keeping the adapter POD here lets the exact
-// Studio scheduler be tested without linking libvgm into the core test suite.
+// enhanced scheduler be tested without linking libvgm into the core test suite.
 struct studio_linear_timing_snapshot {
     std::uint32_t source_rate_hz = 0;
     std::uint32_t destination_rate_hz = 0;
@@ -160,14 +160,17 @@ inline studio_source_window plan_studio_source_window(double source_position) no
     return result;
 }
 
-// Mirror the exact source-time coordinate represented by one destination frame
-// from libvgm's pre-execution linear timing snapshot. native_base is the
+// Source-time coordinate used by the enhanced FIR scheduler. native_base is the
 // absolute ordinal of newly_captured[0] for this Resmpl_Execute segment.
 //
-// Upsampling uses the exact interpolation instant. Downsampling's historical
-// linear path averages an input interval, so Studio uses that interval's exact
-// midpoint. Because libvgm's fixed-point grid is 1/2048 sample and Studio has
-// 4096 phases, both coordinates land exactly on the Studio phase grid.
+// Equal-rate and upsampling coordinates follow libvgm exactly. For downsampling,
+// the segment origin still comes from libvgm's exact pre-execution state, but the
+// two box boundaries are evaluated in one cumulative fixed-point coordinate.
+// libvgm's historical downsampler evaluates the local offset separately and is
+// documented upstream as block-size-sensitive by an occasional off-by-one.
+// Carrying the fixed-point remainder across the boundary calculation keeps host
+// block partitioning out of enhanced FM source time while reference audio stays
+// untouched.
 inline studio_source_phase_position studio_linear_source_position(
     const studio_linear_timing_snapshot& before,
     std::uint64_t native_base,
@@ -224,6 +227,83 @@ inline studio_source_phase_position studio_linear_source_position(
                 history_samples * static_cast<std::uint64_t>(studio_phase));
         return detail::combine_native_base(native_base, local);
     }
+
+    std::uint64_t begin_product = 0;
+    if (!detail::checked_mul(before.sample_p, chip_rate_fp, begin_product))
+        return invalid;
+    const std::uint64_t begin_position_fp =
+        begin_product / before.destination_rate_hz;
+    const std::uint64_t last_fp =
+        static_cast<std::uint64_t>(before.sample_last) * fixed;
+    std::uint64_t begin_with_history = 0;
+    if (!detail::checked_add(begin_position_fp, fixed, begin_with_history)
+        || begin_with_history < last_fp)
+        return invalid;
+    const std::uint64_t input_base_fp = begin_with_history - last_fp;
+
+    std::uint64_t sample0 = 0;
+    std::uint64_t sample1 = 0;
+    if (!detail::checked_add(before.sample_p, destination_offset, sample0)
+        || !detail::checked_add(sample0, 1u, sample1))
+        return invalid;
+
+    std::uint64_t boundary0_product = 0;
+    std::uint64_t boundary1_product = 0;
+    if (!detail::checked_mul(sample0, chip_rate_fp, boundary0_product)
+        || !detail::checked_mul(sample1, chip_rate_fp, boundary1_product))
+        return invalid;
+
+    const std::uint64_t absolute_boundary0 =
+        boundary0_product / before.destination_rate_hz;
+    const std::uint64_t absolute_boundary1 =
+        boundary1_product / before.destination_rate_hz;
+    if (absolute_boundary0 < begin_position_fp
+        || absolute_boundary1 < begin_position_fp)
+        return invalid;
+
+    std::uint64_t boundary0 = 0;
+    std::uint64_t boundary1 = 0;
+    if (!detail::checked_add(
+            input_base_fp,
+            absolute_boundary0 - begin_position_fp,
+            boundary0)
+        || !detail::checked_add(
+            input_base_fp,
+            absolute_boundary1 - begin_position_fp,
+            boundary1))
+        return invalid;
+
+    std::uint64_t midpoint_phase_units = 0;
+    if (!detail::checked_add(boundary0, boundary1, midpoint_phase_units)
+        || midpoint_phase_units > static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max()))
+        return invalid;
+
+    const std::int64_t local =
+        static_cast<std::int64_t>(midpoint_phase_units) - studio_phase;
+    return detail::combine_native_base(native_base, local);
+}
+
+// Diagnostic oracle for libvgm's historical segmented linear-down timing. This
+// deliberately preserves the local floor(k * rate) behavior that can move an
+// interval midpoint by one or two 1/4096 source-sample phase units when the same
+// output is partitioned into different Resmpl_Execute block sizes. The enhanced
+// scheduler above must not inherit that host-block dependency.
+inline studio_source_phase_position reference_linear_downsample_source_position(
+    const studio_linear_timing_snapshot& before,
+    std::uint64_t native_base,
+    std::uint64_t destination_offset) noexcept {
+    studio_source_phase_position invalid;
+    if (!before.valid() || before.source_rate_hz <= before.destination_rate_hz)
+        return invalid;
+
+    constexpr std::uint64_t fixed = detail::linear_fixed_factor;
+    constexpr std::int64_t studio_phase = static_cast<std::int64_t>(
+        studio_source_resampler_kernel::phase_count);
+
+    std::uint64_t chip_rate_fp = 0;
+    if (!detail::checked_mul(fixed, before.source_rate_hz, chip_rate_fp))
+        return invalid;
 
     std::uint64_t begin_product = 0;
     if (!detail::checked_mul(before.sample_p, chip_rate_fp, begin_product))
