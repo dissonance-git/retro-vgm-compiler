@@ -6,12 +6,15 @@ only then loads documentary Sonic 3D Blast composer/arranger labels. Structural
 views calibrate composition-facing identity; realization calibrates the
 arrangement/programming lane. Same work/source families are excluded from the
 candidate set so act siblings and near-duplicate variants cannot manufacture a
-creator signal. Those lanes are never collapsed.
+creator signal. Optional mapping-state exclusions support sensitivity tests for
+role mappings that are derived rather than direct. Those lanes are never
+collapsed.
 """
 
 from __future__ import annotations
 
 import argparse
+import collections
 import importlib.util
 import json
 import pathlib
@@ -100,6 +103,43 @@ def _family_map(
         extra = sorted(set(families) - expected_tracks)
         raise ValueError(f"role-family map mismatch; missing={missing}, extra={extra}")
     return families
+
+
+def _filter_mapping_states(
+    mapped: dict[str, dict[str, str]],
+    families: dict[str, str],
+    tracks: dict[str, dict[str, object]],
+    excluded_mapping_states: set[str] | None,
+) -> tuple[
+    dict[str, dict[str, str]],
+    dict[str, str],
+    dict[str, dict[str, object]],
+    list[str],
+]:
+    excluded_mapping_states = excluded_mapping_states or set()
+    excluded_tracks = sorted(
+        key
+        for key, value in mapped.items()
+        if value["mapping_state"] in excluded_mapping_states
+    )
+    selected = set(mapped) - set(excluded_tracks)
+    if not selected:
+        raise ValueError("mapping-state sensitivity exclusion removed every role-mapped track")
+    return (
+        {key: mapped[key] for key in selected},
+        {key: families[key] for key in selected},
+        {key: tracks[key] for key in selected},
+        excluded_tracks,
+    )
+
+
+def _require_repeated_classes(labels: dict[str, str], classes: set[str], lane: str) -> None:
+    counts = collections.Counter(labels.values())
+    sparse = {name: counts[name] for name in classes if counts[name] < 2}
+    if sparse:
+        raise ValueError(
+            f"{lane} sensitivity panel needs at least two fixtures per learnable class: {sparse}"
+        )
 
 
 def _mean(values: list[float]) -> float:
@@ -229,23 +269,32 @@ def evaluate(
     audit: dict[str, object],
     policy: dict[str, object],
     family_policy: dict[str, object],
+    *,
+    excluded_mapping_states: set[str] | None = None,
 ) -> dict[str, object]:
     maeda._validate_blind_audit(audit, policy)
     tracks = maeda._index_tracks(audit)
     soundtrack_id, mapped, specificity = _role_map(policy)
     families = _family_map(family_policy, soundtrack_id, set(mapped))
 
-    s3d_tracks = {
+    all_s3d_tracks = {
         key: value
         for key, value in tracks.items()
         if str(value["soundtrack_id"]) == soundtrack_id
     }
-    if set(s3d_tracks) != set(mapped):
-        missing = sorted(set(mapped) - set(s3d_tracks))
-        extra = sorted(set(s3d_tracks) - set(mapped))
+    if set(all_s3d_tracks) != set(mapped):
+        missing = sorted(set(mapped) - set(all_s3d_tracks))
+        extra = sorted(set(all_s3d_tracks) - set(mapped))
         raise ValueError(
             f"Sonic 3D Blast audit/role map mismatch; missing={missing}, extra={extra}"
         )
+
+    mapped, families, s3d_tracks, excluded_tracks = _filter_mapping_states(
+        mapped,
+        families,
+        all_s3d_tracks,
+        excluded_mapping_states,
+    )
 
     composer_policy = specificity["composer"]
     arranger_policy = specificity["arranger_programmer"]
@@ -257,6 +306,8 @@ def evaluate(
     composer_classes = set(composer_policy["learnable_classes"])
     composer_sentinels = set(composer_policy.get("singleton_sentinels", {}))
     arranger_classes = set(arranger_policy["learnable_classes"])
+    _require_repeated_classes(composer_labels, composer_classes, "composition")
+    _require_repeated_classes(arranger_labels, arranger_classes, "arrangement/programming")
 
     composition = {
         "structural": _evaluate_role(
@@ -297,6 +348,9 @@ def evaluate(
     return {
         "model": "post-extraction Sonic 3D Blast role-specificity calibration",
         "soundtrack_id": soundtrack_id,
+        "excluded_mapping_states": sorted(excluded_mapping_states or set()),
+        "excluded_tracks": excluded_tracks,
+        "included_track_count": len(mapped),
         "label_policy": (
             "The frozen creator-blind audit is validated before documentary role labels are "
             "loaded. This tool never extracts VGM features."
@@ -304,6 +358,10 @@ def evaluate(
         "family_policy": (
             "Same zone/work/source-lineage family candidates are excluded for every query so "
             "act siblings and near-duplicate variants cannot create creator-specificity wins."
+        ),
+        "mapping_sensitivity_policy": (
+            "Optional mapping-state exclusions are applied only after the complete blind audit "
+            "and complete documentary role/family maps are validated."
         ),
         "claim_boundary": (
             "Composition-facing structural retrieval and implementation-facing realization "
@@ -328,13 +386,24 @@ def main() -> None:
         type=pathlib.Path,
         default=pathlib.Path("research/projects/sonic3/sonic3d-role-family-policy.json"),
     )
+    parser.add_argument(
+        "--exclude-mapping-state",
+        action="append",
+        default=[],
+        help="Exclude a documentary mapping state after the complete blind panel is validated.",
+    )
     parser.add_argument("--json", type=pathlib.Path)
     args = parser.parse_args()
 
     audit = json.loads(args.audit_json.read_text(encoding="utf-8"))
     policy = json.loads(args.policy.read_text(encoding="utf-8"))
     family_policy = json.loads(args.families.read_text(encoding="utf-8"))
-    result = evaluate(audit, policy, family_policy)
+    result = evaluate(
+        audit,
+        policy,
+        family_policy,
+        excluded_mapping_states=set(args.exclude_mapping_state),
+    )
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.json:
         args.json.write_text(text + "\n", encoding="utf-8")
