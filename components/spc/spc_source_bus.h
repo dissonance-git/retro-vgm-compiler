@@ -82,6 +82,19 @@ public:
         source.presentation.confidence = 1.0f;
         return source;
     }
+
+    // Some producer seams expose the final shared wet contribution after the
+    // current EVOL trajectory has already been applied. Keep the signed EVOL
+    // value as native route/polarity evidence, but mark the arithmetic as
+    // preapplied so Omniphony or another consumer cannot multiply it twice.
+    static vgmtooling::model::spatial_source_evidence make_preapplied_echo_source(
+        echo_side side,
+        std::uint32_t generation,
+        std::int8_t echo_volume) noexcept {
+        auto source = make_echo_source(side, generation, echo_volume);
+        source.stereo_route.gain_preapplied = true;
+        return source;
+    }
 };
 
 } // namespace gameaudio::spc
