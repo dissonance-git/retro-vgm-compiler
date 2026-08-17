@@ -105,6 +105,16 @@ public:
                     coefficient = static_cast<float>(
                         static_cast<double>(coefficient) * inverse);
             }
+
+            // Runtime coefficients are floats, so their exact double-precision
+            // sum can differ minutely from the pre-quantization value above.
+            // Cache the same left-to-right sum the hot loop previously rebuilt
+            // for every full 64-tap neighborhood. Boundary windows still sum
+            // only the taps that actually participate.
+            double runtime_sum = 0.0;
+            for (const float coefficient : m_coefficients[phase])
+                runtime_sum += static_cast<double>(coefficient);
+            m_phase_weight_sums[phase] = runtime_sum;
         }
     }
 
@@ -112,8 +122,13 @@ public:
         return m_coefficients[index];
     }
 
+    double phase_weight_sum(std::size_t index) const noexcept {
+        return m_phase_weight_sums[index];
+    }
+
 private:
     std::array<phase_coefficients, spc_studio_phase_count> m_coefficients{};
+    std::array<double, spc_studio_phase_count> m_phase_weight_sums{};
 };
 
 inline const spc_studio_sinc_table& spc_studio_table() noexcept {
