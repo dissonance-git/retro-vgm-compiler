@@ -1,34 +1,38 @@
 #pragma once
 
+#include "nuked_opn2_hq_lift.h"
+
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 extern "C" {
 #include <emu/cores/ym3438_int.h>
 }
 
-// Internal extension point for the pinned libvgm Nuked OPN2 core.
-//
-// This is a decomposition of the pinned NOPN2_GenerateResampled path, not a
-// second emulator. It advances the one authoritative ym3438_t exactly once,
-// preserves the write-buffer scheduler, mute behavior, 24-cycle output bus,
-// optional MD1 filter and native linear resampler, while accounting the same
-// output into six FM lanes plus DAC.
+// Decomposition of the pinned NOPN2_GenerateResampled path. The authoritative
+// ym3438_t advances exactly once. Alongside exact six-FM-plus-DAC reference
+// lanes, the same cycles can produce six identity-conservative HQ FM lanes from
+// exact live OPN phase/envelope/modulation state.
 namespace foobar_vgm::genesis {
 
 static constexpr std::size_t opn2_fm_channels = 6;
 static constexpr std::size_t opn2_source_count = 7; // FM1..FM6 + DAC
-
-// Pinned Nuked OPN2 MD1 model-1 filter constants from ym3438.c.
 static constexpr double opn2_md1_filter_cutoff = 0.512331301282628;
 static constexpr double opn2_md1_filter_remainder = 1.0 - opn2_md1_filter_cutoff;
 
 struct nuked_opn2_source_resampler {
-    // These sidecars mirror only source decomposition state. The authoritative
-    // mix resampler state remains chip->samplecnt/rateratio/oldsamples/samples.
     std::array<std::array<Bit32s, 2>, opn2_source_count> source_sample{};
     std::array<std::array<Bit32s, 2>, opn2_source_count> old_source_sample{};
+
+    // HQ FM deliberately bypasses the historical model-1 output low-pass and
+    // DAC-ladder/sign-leak ceiling, so its native history is separate from the
+    // exact reference lane history.
+    nuked_opn2_hq_lift_state hq_lift{};
+    std::array<std::array<double, 2>, opn2_fm_channels> hq_source_sample{};
+    std::array<std::array<double, 2>, opn2_fm_channels> old_hq_source_sample{};
 
     void reset() noexcept { *this = {}; }
 };
@@ -37,12 +41,12 @@ inline std::size_t opn2_output_cycle_channel(Bit32u cycles) noexcept
 {
     switch (cycles >> 2)
     {
-    case 0: return 1; // Ch 2
-    case 1: return 5; // Ch 6 / DAC
-    case 2: return 3; // Ch 4
-    case 3: return 0; // Ch 1
-    case 4: return 4; // Ch 5
-    case 5: return 2; // Ch 3
+    case 0: return 1;
+    case 1: return 5;
+    case 2: return 3;
+    case 3: return 0;
+    case 4: return 4;
+    case 5: return 2;
     default: return 0;
     }
 }
@@ -63,9 +67,6 @@ inline Bit32u opn2_output_cycle_mute(const ym3438_t& chip, Bit32u cycles) noexce
 
 inline void opn2_apply_due_buffered_writes(ym3438_t& chip) noexcept
 {
-    // Mirrors the exact scheduler in pinned NOPN2_GenerateResampled(). A custom
-    // StreamUpdate that omitted this step would silently stop register writes
-    // from reaching the chip, so it is part of audio correctness, not metadata.
     while (chip.writebuf[chip.writebuf_cur].time <= chip.writebuf_samplecnt)
     {
         if (!(chip.writebuf[chip.writebuf_cur].port & 0x04))
@@ -82,12 +83,16 @@ inline void opn2_apply_due_buffered_writes(ym3438_t& chip) noexcept
 
 inline void opn2_clock_native_source_frame(
     ym3438_t& chip,
+    nuked_opn2_source_resampler& state,
     Bit32s raw_mix[2],
-    Bit32s raw_lanes[opn2_source_count][2]) noexcept
+    Bit32s raw_lanes[opn2_source_count][2],
+    double raw_hq_lanes[opn2_fm_channels][2]) noexcept
 {
     raw_mix[0] = raw_mix[1] = 0;
     for (std::size_t lane = 0; lane < opn2_source_count; ++lane)
         raw_lanes[lane][0] = raw_lanes[lane][1] = 0;
+    for (std::size_t lane = 0; lane < opn2_fm_channels; ++lane)
+        raw_hq_lanes[lane][0] = raw_hq_lanes[lane][1] = 0.0;
 
     for (Bit32u step = 0; step < 24; ++step)
     {
@@ -98,8 +103,13 @@ inline void opn2_clock_native_source_frame(
         const std::size_t lane = dac_lane ? 6u : channel;
         const Bit32u mute = opn2_output_cycle_mute(chip, cycle);
 
+        const auto pending_hq = opn2_hq_prepare_cycle(
+            chip, state.hq_lift, raw_hq_lanes);
+
         Bit32s pins[2]{};
         NOPN2_Clock(&chip, pins);
+        opn2_hq_finish_cycle(pending_hq, state.hq_lift);
+
         if (!mute)
         {
             raw_mix[0] += pins[0];
@@ -115,12 +125,19 @@ inline void opn2_clock_native_source_frame(
 inline void opn2_finish_native_source_frame(
     ym3438_t& chip,
     nuked_opn2_source_resampler& state,
-    Bit32s raw_lanes[opn2_source_count][2]) noexcept
+    Bit32s raw_lanes[opn2_source_count][2],
+    double raw_hq_lanes[opn2_fm_channels][2]) noexcept
 {
+    // HQ FM uses the same broad output scale as Nuked's no-filter path while
+    // intentionally skipping the historical MD1 analog low-pass.
+    for (std::size_t lane = 0; lane < opn2_fm_channels; ++lane)
+    {
+        state.hq_source_sample[lane][0] = raw_hq_lanes[lane][0] * 11.0;
+        state.hq_source_sample[lane][1] = raw_hq_lanes[lane][1] * 11.0;
+    }
+
     if (!chip.use_filter)
     {
-        // Exact pinned Nuked source scales its 24-cycle accumulated bus by 11
-        // when the MD1 low-pass option is disabled.
         chip.samples[0] *= 11;
         chip.samples[1] *= 11;
         for (std::size_t lane = 0; lane < opn2_source_count; ++lane)
@@ -131,10 +148,6 @@ inline void opn2_finish_native_source_frame(
         return;
     }
 
-    // The historical optional MD1 filter is linear apart from integer rounding.
-    // Filter each source with the same recurrence. A tiny accounting residual is
-    // possible because per-source rounding is not algebraically identical to
-    // one rounded sum; the host validates that residual rather than hiding it.
     for (std::size_t side = 0; side < 2; ++side)
     {
         chip.samples[side] = chip.oldsamples[side] + static_cast<Bit32s>(
@@ -153,23 +166,34 @@ inline void opn2_finish_native_source_frame(
     }
 }
 
+inline Bit32s opn2_round_hq_to_source_unit(double value) noexcept
+{
+    if (!std::isfinite(value))
+        return 0;
+    const double lo = static_cast<double>(std::numeric_limits<Bit32s>::min());
+    const double hi = static_cast<double>(std::numeric_limits<Bit32s>::max());
+    if (value <= lo) return std::numeric_limits<Bit32s>::min();
+    if (value >= hi) return std::numeric_limits<Bit32s>::max();
+    return static_cast<Bit32s>(std::llround(value));
+}
+
 inline void generate_nuked_opn2_sources(
     ym3438_t& chip,
     nuked_opn2_source_resampler& state,
     Bit32s mix[2],
-    Bit32s lanes[opn2_source_count][2]) noexcept
+    Bit32s lanes[opn2_source_count][2],
+    Bit32s hq_fm_lanes[opn2_fm_channels][2]) noexcept
 {
     if (chip.rateratio <= 0)
     {
         mix[0] = mix[1] = 0;
         for (std::size_t lane = 0; lane < opn2_source_count; ++lane)
             lanes[lane][0] = lanes[lane][1] = 0;
+        for (std::size_t lane = 0; lane < opn2_fm_channels; ++lane)
+            hq_fm_lanes[lane][0] = hq_fm_lanes[lane][1] = 0;
         return;
     }
 
-    // This loop is intentionally the same orientation as pinned Nuked:
-    // rateratio = output_rate / native_rate in RSM_FRAC fixed point, while
-    // samplecnt advances by one output sample (1 << RSM_FRAC).
     while (chip.samplecnt >= chip.rateratio)
     {
         chip.oldsamples[0] = chip.samples[0];
@@ -181,13 +205,21 @@ inline void generate_nuked_opn2_sources(
             state.old_source_sample[lane] = state.source_sample[lane];
             state.source_sample[lane] = {0, 0};
         }
+        for (std::size_t lane = 0; lane < opn2_fm_channels; ++lane)
+        {
+            state.old_hq_source_sample[lane] = state.hq_source_sample[lane];
+            state.hq_source_sample[lane] = {0.0, 0.0};
+        }
 
         Bit32s raw_mix[2]{};
         Bit32s raw_lanes[opn2_source_count][2]{};
-        opn2_clock_native_source_frame(chip, raw_mix, raw_lanes);
+        double raw_hq_lanes[opn2_fm_channels][2]{};
+        opn2_clock_native_source_frame(
+            chip, state, raw_mix, raw_lanes, raw_hq_lanes);
         chip.samples[0] = raw_mix[0];
         chip.samples[1] = raw_mix[1];
-        opn2_finish_native_source_frame(chip, state, raw_lanes);
+        opn2_finish_native_source_frame(
+            chip, state, raw_lanes, raw_hq_lanes);
         chip.samplecnt -= chip.rateratio;
     }
 
@@ -213,7 +245,32 @@ inline void generate_nuked_opn2_sources(
         }
     }
 
+    for (std::size_t lane = 0; lane < opn2_fm_channels; ++lane)
+    {
+        for (std::size_t side = 0; side < 2; ++side)
+        {
+            const double value = (
+                state.old_hq_source_sample[lane][side]
+                    * static_cast<double>(chip.rateratio - frac)
+                + state.hq_source_sample[lane][side]
+                    * static_cast<double>(frac))
+                / static_cast<double>(chip.rateratio);
+            hq_fm_lanes[lane][side] = opn2_round_hq_to_source_unit(value);
+        }
+    }
+
     chip.samplecnt += 1 << RSM_FRAC;
+}
+
+// Compatibility overload for consumers that only need exact decomposition.
+inline void generate_nuked_opn2_sources(
+    ym3438_t& chip,
+    nuked_opn2_source_resampler& state,
+    Bit32s mix[2],
+    Bit32s lanes[opn2_source_count][2]) noexcept
+{
+    Bit32s ignored_hq[opn2_fm_channels][2]{};
+    generate_nuked_opn2_sources(chip, state, mix, lanes, ignored_hq);
 }
 
 inline Bit32s source_accounting_residual(
