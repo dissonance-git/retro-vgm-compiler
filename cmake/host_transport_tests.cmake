@@ -17,6 +17,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     snesapu_source_transport_v2_test
     snesapu_source_object_projection_test
     snesapu_prebrr_provider_test
+    snesapu_prebrr_packet_test
     spc_sample_restoration_test
     spc_sample_lineage_verification_test
     spc_original_sample_bank_test
@@ -82,6 +83,10 @@ add_executable(
 add_executable(
     snesapu_prebrr_provider_test
     tests/spc/snesapu_prebrr_provider_test.cpp
+)
+add_executable(
+    snesapu_prebrr_packet_test
+    tests/spc/snesapu_prebrr_packet_test.cpp
 )
 add_executable(
     spc_sample_restoration_test
@@ -170,6 +175,10 @@ target_include_directories(
 )
 target_include_directories(
     snesapu_prebrr_provider_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    snesapu_prebrr_packet_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -265,6 +274,10 @@ add_test(
 add_test(
     NAME snesapu_prebrr_provider
     COMMAND snesapu_prebrr_provider_test
+)
+add_test(
+    NAME snesapu_prebrr_packet
+    COMMAND snesapu_prebrr_packet_test
 )
 add_test(
     NAME spc_sample_restoration
