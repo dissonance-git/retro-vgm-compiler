@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "status": "development_frozen_before_validation",
+  "candidate": "Tatsuyuki Maeda",
+  "generation": 2,
+  "parent_method_tree_commit": "47fa9fbc3ef0f5b1c2a5e91a7ab22efb7088d43c",
+  "reason_for_new_generation": "Gen-1 failed Golden Axe III: structural lift was positive but nonsignificant and mean best-Maeda-minus-best-non-Maeda margin was negative. Post-failure diagnostics showed pitch/interval signal but rhythm dilution and persistent physical-channel ambiguity.",
+  "development_world": "golden-axe-iii-genesis-vgz",
+  "validation_worlds": [
+    "sonic-3d-blast-genesis-vgm",
+    "j-league-pro-striker-2-vgz"
+  ],
+  "held_out_target": "tests/corpus/sonic-3-knuckles",
+  "target_access_rule": "Sonic 3 remains excluded until the Gen-2 validation gates pass. Golden Axe III may not be used again to tune this frozen candidate after Sonic 3D structural validation begins.",
+  "primary_representation": {
+    "event_source": "ordinary full YM2612 key-ons using the same DAC and CH3-special exclusions as Gen-1",
+    "part_definition": "one active physical YM2612 channel with at least two ordinary full-FM key-ons",
+    "part_features": [
+      "relative_semitone_interval_histogram clipped to <-24 and >24 exactly as Gen-1",
+      "interval_bigram_histogram exactly as Gen-1"
+    ],
+    "excluded_from_primary": [
+      "absolute pitch",
+      "patch/voice realization",
+      "contour histogram",
+      "normalized onset-gap rhythm",
+      "physical channel number as correspondence"
+    ],
+    "part_similarity": "0.5 * cosine(interval_histogram) + 0.5 * cosine(interval_bigram_histogram)",
+    "part_correspondence": "maximum-weight one-to-one bipartite assignment across active channels",
+    "track_similarity": "arithmetic mean of the matched part similarities",
+    "unmatched_parts": "ignored; no unmatched-part penalty",
+    "weight_selection": "The 0.5/0.5 weighting is intentionally untuned. Exploratory Golden Axe sweeps showed other weights, including pure bigrams, could score slightly better; those are rejected to avoid selecting the numerical optimum on the development world."
+  },
+  "development_result": {
+    "scored_tracks": 20,
+    "maeda": 10,
+    "non_maeda": 10,
+    "quarantined": ["11 - The Scorching Sand"],
+    "retrieval_k": 3,
+    "precision_at_3": 0.7333333333333333,
+    "chance_precision": 0.47368421052631576,
+    "precision_lift": 0.2596491228070176,
+    "mean_reciprocal_rank": 0.875,
+    "mean_best_positive_minus_best_negative_margin": 0.05208685666982384,
+    "permutations": 5000,
+    "seed": 20260816,
+    "empirical_p": {
+      "precision_lift": 0.022395520895820836,
+      "mean_reciprocal_rank": 0.04559088182363527,
+      "margin": 0.01259748050389922
+    },
+    "known_negative_margin_maeda_queries": {
+      "09": -0.0789,
+      "21": -0.0750
+    },
+    "interpretation": "The untuned part matcher repairs the aggregate Gen-1 development failure, including flipping mean separation margin positive. This is development evidence only, not validation."
+  },
+  "validation_gates": {
+    "sonic3d_complete_24_track": {
+      "same_family_candidates_excluded": true,
+      "structural_balanced_top1_accuracy_strictly_greater_than": 0.5,
+      "maeda_recall_strictly_greater_than": 0.5,
+      "senoue_recall_strictly_greater_than": 0.5,
+      "mean_best_same_minus_best_other_strictly_greater_than": 0.0,
+      "family_block_permutation_p_at_most": 0.05,
+      "family_block_p_required_for": [
+        "balanced_top1_accuracy",
+        "mean_best_same_minus_best_other"
+      ],
+      "singleton_sentinels_remain_scored": true
+    },
+    "sonic3d_direct_mapping_22_track": {
+      "required": true,
+      "excluded_mapping_state": "derived_audio_correspondence",
+      "must_satisfy_same_directional_and_family_block_significance_gates": true,
+      "failure_overrides_24_track_success": true
+    },
+    "j_league_cross_soundtrack": {
+      "required": true,
+      "role": "independent all-Maeda cross-soundtrack positive control",
+      "require_positive_maeda_retrieval_lift": true
+    }
+  },
+  "no_rescue_rules": [
+    "Do not change the 0.5/0.5 weights after viewing Sonic 3D features.",
+    "Do not add rhythm, contour, patch, realization, or an unmatched-part penalty to rescue a failed validation.",
+    "Do not remove Sonic 3D singleton sentinels or difficult queries post hoc.",
+    "A failed validation requires a Gen-3 preregistration before further model changes.",
+    "Similarity can support only a calibrated candidate statement, never historical authorship by itself."
+  ]
+}
