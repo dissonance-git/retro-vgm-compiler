@@ -139,17 +139,12 @@ protected:
         "HQ FM public source view",
     )
 
-    replace_once(
-        header,
-        """        m_ym.nuked_state.reset();
-        reset_segment_capture(m_ym);
-""",
-        """        m_ym.nuked_state.reset();
-        reset_hq_fm_histories(m_ym);
-        reset_segment_capture(m_ym);
-""",
-        "HQ FM reset history",
-    )
+    # Do not clear hq_history after VGMPlayer::Reset(). During Start(), libvgm's
+    # linear upsampler has already pre-generated one real native sample and the
+    # block above promotes it into hq_history.next before the base Reset call.
+    # The exact mirror deliberately preserves its promoted history across that
+    # call, so HQ must do the same or its first host segment is one producer
+    # ordinal behind the protected reference.
 
     replace_once(
         header,
