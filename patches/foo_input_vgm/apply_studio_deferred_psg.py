@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Carry the Enhanced SN76489 descendant on PlayerA's engine clock.
+"""Carry the enhanced SN76489 descendant on PlayerA's engine clock.
 
 Run after apply_studio_hq_fm_runtime.py. Studio FM render-ahead deliberately
 bypasses the older decode-block PSG capture because rendered engine time can run
-ahead of delivered foobar time. This patch restores Enhanced PSG without
+ahead of delivered foobar time. This patch restores enhanced PSG without
 reintroducing that clock mismatch:
 
 * seed a private PSG synth copy from the continuous shadow when Studio engages;
@@ -283,7 +283,7 @@ UINT8 input_vgm::studio_deferred_post_render_callback(
 
 """ + psg_block + """\t\tfor (UINT32 frame = 0; frame < rendered_count; ++frame)
 """,
-        "compose engine-clock Enhanced PSG candidate block",
+        "compose engine-clock enhanced PSG candidate block",
     )
 
     replace_once(
@@ -355,7 +355,7 @@ UINT8 input_vgm::studio_deferred_post_render_callback(
 \t\t\tfail_studio_deferred_psg();
 \t}
 """,
-        "stop deferred PSG with disabled Enhanced transport",
+        "stop deferred PSG with disabled enhanced transport",
     )
 
     replace_once(
@@ -374,7 +374,7 @@ UINT8 input_vgm::studio_deferred_post_render_callback(
         "reset deferred PSG on seek",
     )
 
-    print("foo_input_vgm engine-clock deferred Enhanced PSG applied")
+    print("foo_input_vgm engine-clock deferred enhanced PSG applied")
     return 0
 
 
