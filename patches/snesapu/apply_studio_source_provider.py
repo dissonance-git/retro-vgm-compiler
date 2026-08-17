@@ -4,11 +4,15 @@
 Run after apply_prebrr_provider.py. The earlier provider still owns exact
 prepared game-grid / pre-BRR replacement. This later and more selective seam
 runs at MixSample where SNESAPU would call pInter. When one concrete SRCN + first
-BRR address was admitted at key-on, a child-local callback may provide the
-waveform value that pInter would otherwise leave on the x87 stack.
+BRR address + loop target was admitted at key-on, a child-local callback may
+provide the waveform value that pInter would otherwise leave on the x87 stack.
 
 Everything after that point remains SNESAPU truth: NON/noise replacement,
 envelope, mOut/PMON feedback, VxVOL, EON, echo/FIR/feedback, MVOL and timing.
+The current DIR page is also supplied on every sample because SNESAPU consults
+DIR again at END+LOOP; the provider can therefore fail closed immediately if a
+live directory remap would invalidate its playback trajectory.
+
 The callback never crosses process IPC. A zero callback result falls through to
 exact historical pInter for that sample and disables substitution until the next
 key-on so a failed provider cannot repeatedly perturb the hot loop.
@@ -66,19 +70,25 @@ void SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);
 // Verified Upstream / Studio Source Replacement
 //
 // Begin runs once at key-on. The source number is the effective source used by
-// StartSrc after Script700 NoteChange, and firstBrrAddr is the concrete 16-bit
-// source-directory address. Return non-zero only when that exact runtime source
-// object has an evidence-approved upstream waveform and exact playback map.
+// StartSrc after Script700 NoteChange. firstBrrAddr and loopBrrAddr are the
+// concrete live directory addresses, while directoryPage identifies the DIR
+// page whose loop pointer SNESAPU will consult again if END+LOOP is reached.
+// Return non-zero only when that exact runtime source object has an
+// evidence-approved upstream waveform and exact playback map.
 //
 // Sample runs at MixSample before historical pInter. mRateQ16_16 is the exact
-// current rate after PMON. Write one source sample in SNESAPU's decoded int16
-// amplitude units to outSample and return non-zero. Returning zero uses pInter
-// for the current sample and disables studio substitution until the next key-on.
+// current rate after PMON, and directoryPage is re-read live so a DIR change can
+// invalidate substitution before loop topology diverges. Write one source sample
+// in SNESAPU's decoded int16 amplitude units to outSample and return non-zero.
+// Returning zero uses pInter for the current sample and disables studio
+// substitution until the next key-on.
 
 typedef u32 (__stdcall *DSPStudioSourceBeginProvider)(
-    void *user, u32 voice, u32 srcn, u32 firstBrrAddr, u32 interpolation);
+    void *user, u32 voice, u32 srcn, u32 firstBrrAddr, u32 loopBrrAddr,
+    u32 directoryPage, u32 interpolation);
 typedef u32 (__stdcall *DSPStudioSourceSampleProvider)(
-    void *user, u32 voice, u32 mRateQ16_16, u32 interpolation, float *outSample);
+    void *user, u32 voice, u32 mRateQ16_16, u32 directoryPage,
+    u32 interpolation, float *outSample);
 void SetDSPStudioSourceProvider(
     DSPStudioSourceBeginProvider beginCallback,
     DSPStudioSourceSampleProvider sampleCallback,
@@ -190,6 +200,24 @@ ENDP
 
     replace_once(
         asm,
+        """    Mov     ESI,[pAPURAM]
+    ShL     EAX,2
+    Add     AH,[dsp+dir]                                                        ;EAX -> Source directory
+    Mov     SI,[EAX+ESI]                                                        ;ESI -> First block of waveform
+    LEA     EDI,[EBX+sBuf]                                                      ;EDI -> Uncompressed sample buffer
+""",
+        """    Mov     ESI,[pAPURAM]
+    ShL     EAX,2
+    Add     AH,[dsp+dir]                                                        ;EAX -> Source directory
+    MovZX   EBP,word [EAX+ESI+2]                                                ;capture live loop target before SI replaces APURAM low word
+    Mov     SI,[EAX+ESI]                                                        ;ESI -> First block of waveform
+    LEA     EDI,[EBX+sBuf]                                                      ;EDI -> Uncompressed sample buffer
+""",
+        "StartSrc live loop target capture",
+    )
+
+    replace_once(
+        asm,
         """    Mov     [EBX+bCur],ESI                                                      ;Save physical pointers to wave data
     Mov     [EBX+sIdx],EDI
 
@@ -203,17 +231,21 @@ ENDP
     MovZX   EDX,CH
     Not     EDX
     And     [studioSourceVoices],EDX                                           ;new key-on always invalidates stale binding first
-    Mov     EBP,[studioSourceBegin]
-    Test    EBP,EBP
-    JZ      short .NoStudioSource
-    Mov     EAX,[studioSourceSample]
+    Mov     EAX,[studioSourceBegin]
     Test    EAX,EAX
+    JZ      short .NoStudioSource
+    Mov     EDX,[studioSourceSample]
+    Test    EDX,EDX
     JZ      short .NoStudioSource
         Push    ECX                                                             ;stdcall may destroy EAX/ECX/EDX; preserve CH
         MovZX   EDX,CH
         BSF     EDX,EDX                                                         ;one-hot voice mask -> 0..7
         MovZX   EAX,byte [dspInter]
         Push    EAX                                                             ;interpolation
+        MovZX   EAX,byte [dsp+dir]
+        Push    EAX                                                             ;live directory page
+        MovZX   EAX,BP
+        Push    EAX                                                             ;live loop BRR address
         MovZX   EAX,SI
         Push    EAX                                                             ;concrete first BRR address
         MovZX   EAX,byte [EBX+mSrc]
@@ -221,7 +253,8 @@ ENDP
         Push    EAX                                                             ;SRCN after Script700 NoteChange
         Push    EDX                                                             ;voice index
         Push    dword [studioSourceUser]
-        Call    EBP                                                             ;stdcall callback cleans five arguments
+        Mov     EDX,[studioSourceBegin]
+        Call    EDX                                                             ;stdcall callback cleans seven arguments
         Pop     ECX
         Test    EAX,EAX
         JZ      short .NoStudioSource
@@ -247,7 +280,8 @@ ENDP
     ;Get sample ========================
     ;A verified studio source replaces only pInter's waveform value. The exact
     ;current PMON-adjusted mRate is consumed by the child-local provider after
-    ;rendering this phase, mirroring the UpdateSrc call below MixSample.
+    ;rendering this phase, mirroring the UpdateSrc call below MixSample. DIR is
+    ;also sampled live because SNESAPU may consult it again at END+LOOP.
     Test    byte [studioSourceVoices],CH
     JZ      %%HistoricalInterpolation
     Mov     EDX,[studioSourceSample]
@@ -259,12 +293,14 @@ ENDP
         Push    EAX                                                             ;outSample
         MovZX   EAX,byte [dspInter]
         Push    EAX                                                             ;interpolation timing contract
+        MovZX   EAX,byte [dsp+dir]
+        Push    EAX                                                             ;live DIR page
         Push    dword [EBX+mRate]                                               ;exact current rate after PMON
         MovZX   EAX,CH
         BSF     EAX,EAX
         Push    EAX                                                             ;voice index 0..7
         Push    dword [studioSourceUser]
-        Call    EDX                                                             ;stdcall callback cleans five arguments
+        Call    EDX                                                             ;stdcall callback cleans six arguments
         Pop     ECX
         Test    EAX,EAX
         JZ      %%StudioSourceFailed
