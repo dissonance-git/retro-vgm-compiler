@@ -89,7 +89,7 @@ def main() -> int:
 
     helpers = r'''void input_vgm::reset_genesis_spatial_transport(std::uint64_t delivered_ordinal) noexcept
 {
-	m_genesis_selected_sources.reset();
+	m_genesis_selected_sources.reset(delivered_ordinal);
 	m_genesis_delivered_sources.reset();
 	m_genesis_spatial_routes.reset();
 	m_genesis_spatial_route_block = {};
