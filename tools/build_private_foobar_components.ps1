@@ -305,15 +305,16 @@ Install by opening:
   $(Split-Path $VgmComponentPackage -Leaf)
   $(Split-Path $SpcComponentPackage -Leaf)
 
-Both components use one 48 kHz final playback timeline in every Enhanced/Spatial
+Both components use one 48 kHz final playback timeline in every enhanced/Spatial
 combination. Each component carries its exact omniphony_source.dll. The SPC
 package also carries its exact x86 spcplayer.exe and patched SNESAPU.dll.
-Enhanced and Spatial remain independent controls; failed source/renderer evidence
+enhanced and Spatial remain independent controls; failed source/renderer evidence
 falls back to the ordinary stereo path.
 "@ | Set-Content (Join-Path $OutputRoot 'README.txt') -Encoding UTF8
 
 $Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'
 Compress-Archive -Path @($VgmComponentPackage, $SpcComponentPackage, (Join-Path $OutputRoot 'build-manifest.json'), (Join-Path $OutputRoot 'SHA256SUMS.txt'), (Join-Path $OutputRoot 'README.txt')) -DestinationPath $Bundle -CompressionLevel Optimal
+Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_bundle.py'), $Bundle)
 
 Write-Host ''
 Write-Host 'Private components built and audited successfully:'
