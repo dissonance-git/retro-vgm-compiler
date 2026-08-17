@@ -34,8 +34,12 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
 
         self.assertEqual(result["positive_queries"], 2)
         self.assertEqual(result["precision_at_k"], 1.0)
+        self.assertEqual(result["chance_precision_at_k"], 0.5)
+        self.assertEqual(result["precision_lift_over_chance"], 0.5)
         self.assertEqual(result["mean_reciprocal_rank"], 1.0)
         for query in result["queries"]:
+            self.assertEqual(query["chance_positive_fraction"], 0.5)
+            self.assertEqual(query["precision_lift_over_chance"], 0.5)
             self.assertTrue(query["top"][0]["is_positive"])
 
     def test_incomplete_sonic_3d_panel_is_rejected(self):
@@ -170,9 +174,17 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
             result["views"]["structural"]["genesis_cross_soundtrack"]["precision_at_k"],
             1.0,
         )
+        self.assertGreater(
+            result["views"]["structural"]["genesis_cross_soundtrack"]["precision_lift_over_chance"],
+            0.0,
+        )
         self.assertEqual(
             result["views"]["realization"]["genesis_cross_soundtrack"]["precision_at_k"],
             1.0,
+        )
+        self.assertGreater(
+            result["views"]["realization"]["genesis_cross_soundtrack"]["precision_lift_over_chance"],
+            0.0,
         )
         self.assertIn("does not assign Sonic 3 authorship", result["claim_boundary"])
 
