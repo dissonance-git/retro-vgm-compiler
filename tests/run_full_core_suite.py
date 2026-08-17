@@ -4,9 +4,10 @@
 The private component deletion gate is intentionally a superset of ordinary core
 validation. This runner reuses the generator/platform that configured the private
 frontier, builds the root CMake project in an isolated temporary directory, runs
-every registered GAMEAUDIO_BUILD_CORE_TESTS test, then runs the four existing
-SNESAPU pre-BRR/studio provider contracts that historically lived outside the
-root registry. All of this finishes before external dependency checkout begins.
+every registered GAMEAUDIO_BUILD_CORE_TESTS test, then runs the nine existing
+SNESAPU causal-source contracts that historically lived outside the root registry.
+It also executes portable packaged-PE import-boundary falsifiers. All of this
+finishes before external dependency checkout begins.
 """
 
 from __future__ import annotations
@@ -90,7 +91,23 @@ def main() -> int:
             config=args.config,
         )
 
-    print("full dependency-free core and SPC provider contract suites passed")
+    run(
+        [
+            sys.executable,
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            str(ROOT / "tests"),
+            "-p",
+            "test_private_component_import_contract.py",
+        ]
+    )
+
+    print(
+        "full dependency-free core, SPC provider, and packaged import contract suites passed"
+    )
     return 0
 
 
