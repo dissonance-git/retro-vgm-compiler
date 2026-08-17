@@ -82,7 +82,7 @@ def cache_current(
     if controlled.get("requested_seconds") != seconds:
         return False
     try:
-        freeze.load_sidecar("cue-000", destination)
+        freeze.load_sidecar("cue-000", destination, require_profiles=False)
     except (OSError, ValueError, json.JSONDecodeError):
         return False
     return True
