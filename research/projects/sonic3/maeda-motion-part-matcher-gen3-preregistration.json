@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "status": "development_frozen_before_external_validation",
+  "candidate": "Tatsuyuki Maeda",
+  "generation": 3,
+  "parent_generation": 2,
+  "held_out_target": "tests/corpus/sonic-3-knuckles",
+  "target_access_rule": "Sonic 3 remains excluded until every Gen-3 external validation gate passes. No Gen-3 parameter may change after J.League Pro Striker 2 or Golden Axe II structural features are inspected.",
+  "reason_for_new_generation": "Gen-2 repaired physical-channel correspondence on Golden Axe III but failed held-out Sonic 3D validation because Maeda recall remained 0.40. Post-failure analysis rejected generic nearest-neighbor hubness as the main cause and found that repeated-note zero intervals dominate many part histograms. Removing repeated-note texture reveals substantially stronger creator separation in both exhausted development worlds.",
+  "development_worlds": [
+    "golden-axe-iii-genesis-vgz",
+    "sonic-3d-blast-genesis-vgm"
+  ],
+  "reference_bank": {
+    "worlds": [
+      "golden-axe-iii-genesis-vgz",
+      "sonic-3d-blast-genesis-vgm"
+    ],
+    "track_count": 44,
+    "maeda": 20,
+    "non_maeda": 24,
+    "golden_axe_iii_quarantined": [
+      "11 - The Scorching Sand"
+    ],
+    "rule": "Validation queries are compared only to this already-developed fixed reference bank. No validation track may become a reference exemplar during validation."
+  },
+  "primary_representation": {
+    "event_source": "ordinary full YM2612 key-ons with the same DAC and CH3-special exclusions as Gen-1 and Gen-2",
+    "part_definition": "one active physical YM2612 channel with at least two ordinary full-FM key-ons",
+    "motion_filter": {
+      "interval_histogram": "remove the exact zero-semitone interval bin; retain all nonzero relative-semitone intervals with the existing <-24 and >24 clipping",
+      "interval_bigram_histogram": "remove every bigram whose left or right interval token is exactly zero; retain only nonzero-to-nonzero pitch-motion bigrams",
+      "semantic_rule": "repeated-note texture does not contribute to the primary composition-facing similarity"
+    },
+    "part_similarity": "0.5 * cosine(nonzero interval histogram) + 0.5 * cosine(nonzero-to-nonzero interval-bigram histogram)",
+    "part_correspondence": "maximum-weight one-to-one assignment across active channels; physical channel number is not correspondence",
+    "track_similarity": "arithmetic mean of matched part similarities",
+    "unmatched_parts": "ignored",
+    "excluded_from_primary": [
+      "absolute pitch",
+      "zero-semitone repetitions",
+      "any interval bigram touching zero",
+      "normalized onset-gap rhythm",
+      "contour histogram",
+      "patch/voice realization",
+      "physical channel number as cross-track identity"
+    ],
+    "weights": "fixed untuned 0.5/0.5 interval/bigram weighting inherited from Gen-2"
+  },
+  "development_diagnostics": {
+    "golden_axe_iii": {
+      "precision_at_3": 0.7333333333333333,
+      "chance_precision": 0.47368421052631576,
+      "precision_lift": 0.2596491228070176,
+      "mean_reciprocal_rank": 0.8333333333333334,
+      "mean_best_positive_minus_best_negative_margin": 0.017522137693709406,
+      "count_matched_permutation_p_precision_lift": 0.02959408118376325,
+      "note": "Development-only diagnostic after Gen-2 failure; margin and MRR nulls are not significant and are not represented as validation evidence."
+    },
+    "sonic3d_complete_24_track": {
+      "balanced_top1_accuracy": 0.8,
+      "maeda_recall": 0.6,
+      "senoue_recall": 1.0,
+      "mean_best_same_minus_best_other_margin": 0.06721028814999745,
+      "family_block_p_balanced_top1": 0.00639872025594881,
+      "family_block_p_margin": 0.004799040191961607,
+      "note": "Development-only because Sonic 3D labels were already revealed by the failed Gen-2 validation."
+    },
+    "sonic3d_direct_mapping_22_track": {
+      "balanced_top1_accuracy": 0.8,
+      "maeda_recall": 0.7,
+      "senoue_recall": 0.9,
+      "mean_best_same_minus_best_other_margin": 0.0664295188714445,
+      "family_block_p_balanced_top1": 0.019596080783843232,
+      "family_block_p_margin": 0.007198560287942412,
+      "note": "Development-only because Sonic 3D labels were already revealed by the failed Gen-2 validation."
+    }
+  },
+  "external_validation_worlds": {
+    "positive": {
+      "corpus_id": "j-league-pro-striker-2-vgz",
+      "selected_tracks": [
+        "01 - Opening Theme.vgz",
+        "02 - Match Setup.vgz",
+        "03 - Opening Theme (Returning).vgz",
+        "04 - Unknown (Sound Test 86).vgz",
+        "05 - Unknown (Sound Test 87).vgz",
+        "06 - Unknown (Sound Test 8A).vgz"
+      ],
+      "track_count": 6,
+      "truth": "Tatsuyuki Maeda",
+      "role": "unseen positive cross-soundtrack transfer"
+    },
+    "hostile_negative": {
+      "corpus_id": "golden-axe-ii-public-vgmrips",
+      "selected_tracks": "all 16 tracks in the current public Mega Drive/Genesis pack",
+      "track_count": 16,
+      "truth": "non-Maeda",
+      "role": "unseen same-hardware, same-publisher, same-franchise-neighborhood negative control",
+      "credit_note": "Public pack credits Naofumi Hataya; the Golden Axe digital soundtrack breakdown also identifies two Masafumi Ogata tracks. Neither source assigns any Golden Axe II track to Tatsuyuki Maeda."
+    }
+  },
+  "external_validation_metric": {
+    "reference_neighbor_k": 3,
+    "reference_maeda_chance_fraction": 0.45454545454545453,
+    "per_query_margin": "best Maeda-reference similarity minus best non-Maeda-reference similarity",
+    "margin_sign_prediction": "Maeda if margin > 0, non-Maeda if margin < 0; exact zero counts as incorrect",
+    "positive_world_sensitivity": "fraction of J.League queries with positive margin",
+    "negative_world_specificity": "fraction of Golden Axe II queries with negative margin",
+    "balanced_margin_sign_accuracy": "mean of positive-world sensitivity and negative-world specificity",
+    "signed_margin": "J.League uses +margin; Golden Axe II uses -margin",
+    "mean_signed_margin": "mean signed margin across all 22 validation queries",
+    "top3_maeda_precision": "fraction of the three nearest fixed-reference tracks labeled Maeda",
+    "top3_precision_lift": "mean top3 Maeda precision minus fixed reference Maeda fraction"
+  },
+  "permutation_null": {
+    "permutations": 5000,
+    "seed": 20260816,
+    "unit": "reference-bank label permutation",
+    "preserve": "20 Maeda / 24 non-Maeda reference counts and all validation query features/truths",
+    "break": "creator-to-reference-feature alignment",
+    "empirical_p_rule_upper": "(1 + null_statistic_greater_or_equal_to_observed) / (1 + permutations)",
+    "empirical_p_rule_lower": "(1 + null_statistic_less_or_equal_to_observed) / (1 + permutations)"
+  },
+  "primary_validation_gates": {
+    "j_league_positive": {
+      "mean_top3_maeda_precision_lift_strictly_greater_than": 0.0,
+      "mean_best_maeda_minus_best_non_maeda_margin_strictly_greater_than": 0.0
+    },
+    "golden_axe_ii_negative": {
+      "mean_top3_maeda_precision_lift_strictly_less_than": 0.0,
+      "mean_best_maeda_minus_best_non_maeda_margin_strictly_less_than": 0.0
+    },
+    "combined": {
+      "balanced_margin_sign_accuracy_strictly_greater_than": 0.5,
+      "balanced_margin_sign_accuracy_upper_tail_p_at_most": 0.05,
+      "mean_signed_margin_strictly_greater_than": 0.0,
+      "mean_signed_margin_upper_tail_p_at_most": 0.05
+    }
+  },
+  "no_rescue_rules": [
+    "Do not change zero filtering, weights, assignment, k, thresholds, reference tracks, or validation track selection after inspecting either validation world's structural features.",
+    "Do not add a validation track to the reference bank.",
+    "Do not omit difficult J.League or Golden Axe II validation queries post hoc.",
+    "If any primary gate fails, Gen-3 fails and any further representation change requires Gen-4 preregistration.",
+    "Sonic 3 remains sealed on Gen-3 failure.",
+    "Even a passed Gen-3 supports only calibrated candidate similarity, never historical authorship without independent evidence."
+  ]
+}
