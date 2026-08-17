@@ -4,8 +4,9 @@
 The project-owned source-aware player already captures exact reference FM lanes.
 This guarded patch adds a second six-lane sidecar generated from the same live
 Nuked state. The chip still advances once. Both exact and HQ lanes use the same
-outer libvgm RSMODE_LINEAR timing snapshot, so PlayerA can transactionally replace
-one with the other without a shadow engine or timeline drift.
+outer libvgm RSMODE_LINEAR timing snapshot, including the initial upsampling
+pre-generation sample, so PlayerA can replace one with the other without a
+shadow engine or timeline drift.
 """
 
 from __future__ import annotations
@@ -54,6 +55,22 @@ def main() -> int:
     static constexpr std::size_t kPsgLaneCount = 4;
 """,
         "HQ FM lane count",
+    )
+
+    replace_once(
+        header,
+        """        if (m_starting) {
+            promote_initial_pregen(m_ym);
+            promote_initial_pregen(m_psg);
+        }
+""",
+        """        if (m_starting) {
+            promote_initial_pregen(m_ym);
+            promote_initial_hq_pregen(m_ym);
+            promote_initial_pregen(m_psg);
+        }
+""",
+        "HQ FM initial upsampling pre-generation",
     )
 
     replace_once(
@@ -242,6 +259,26 @@ protected:
         for (auto& history : family.hq_history) history = {};
     }
 
+    static void promote_initial_hq_pregen(YmCapture& family) noexcept
+    {
+        if (!family.attached || !family.resampler) return;
+        if (family.resampler->resampleMode != RSMODE_LINEAR
+            || family.resampler->smpRateSrc >= family.resampler->smpRateDst)
+            return;
+
+        // Resmpl_Init pre-generates one native source sample for linear
+        // upsampling. Exact and HQ histories must start from the same producer
+        // ordinal or their first host segment would be shifted by one sample.
+        if (family.overflow || family.reconstruction_error || family.native_count != 1) {
+            family.timing_valid = false;
+            return;
+        }
+        for (std::size_t lane = 0; lane < kHqFmLaneCount; ++lane) {
+            family.hq_history[lane].last = {};
+            family.hq_history[lane].next = family.hq_native[lane][0];
+        }
+    }
+
     bool mirror_hq_fm_segment(
         YmCapture& family,
         std::size_t outputOffset,
@@ -267,7 +304,7 @@ protected:
 
     template <typename Family>
 """,
-        "HQ FM resampler helper",
+        "HQ FM resampler helpers",
     )
 
     replace_once(
