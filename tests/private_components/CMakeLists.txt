@@ -49,6 +49,37 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# Exercise the provenance validator itself in disposable Git repositories. This
+# catches staged/unstaged drift and a clean HEAD switch during a long build.
+add_test(
+    NAME build_source_provenance_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_build_source_provenance_contract.py
+)
+set_tests_properties(
+    build_source_provenance_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+# The destructive deletion gate is a superset of ordinary repository testing.
+# Reconfigure the root project with the same generator/platform and run every
+# dependency-free GAMEAUDIO_BUILD_CORE_TESTS target in an isolated build tree.
+set(FULL_CORE_SUITE_COMMAND
+    ${Python3_EXECUTABLE} -B
+    ${RETRO_ROOT}/tests/run_full_core_suite.py
+    --generator "${CMAKE_GENERATOR}"
+    --config Release
+)
+if(CMAKE_GENERATOR_PLATFORM)
+    list(APPEND FULL_CORE_SUITE_COMMAND --platform "${CMAKE_GENERATOR_PLATFORM}")
+endif()
+add_test(NAME full_root_core_suite COMMAND ${FULL_CORE_SUITE_COMMAND})
+set_tests_properties(
+    full_root_core_suite
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Guard the high-risk generated-host seams before the expensive Windows build.
 # These tests operate only on temporary files and assert exact guarded patch
 # composition/order, including family-local fallback, the one 48 kHz private
