@@ -140,6 +140,20 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# Verify the archive contract independently of compilation. Synthetic ZIPs prove
+# that the final fb2k-component verifier accepts only the exact sibling runtime
+# payload and rejects nested, traversal, duplicate, extra, or empty entries.
+add_test(
+    NAME private_component_package_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_private_component_package_contract.py
+)
+set_tests_properties(
+    private_component_package_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Materialize both complete private components from their repository-owned
 # immutable seeds. This executes the canonical guarded Python patch chains in
 # the same order used by the packaging script, catching stale anchors before
