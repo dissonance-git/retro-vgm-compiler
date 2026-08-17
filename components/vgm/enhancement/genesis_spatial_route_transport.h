@@ -26,13 +26,12 @@ enum class genesis_spatial_route_transport_error : std::uint8_t {
 // write or Game Gear PSG stereo-mask write must reach Omniphony in the block the
 // listener actually hears, not the block in which the engine happened to run.
 //
-// Reset routes are admitted only when they are part of the pinned renderer's
-// exact reset state. libvgm's SN76496 core resets stereo_mask to 0xFF, so all
-// four PSG lanes begin with both outputs enabled. YM2612 pan is left unknown
-// until an exact register write (or seek-reconstructed state) establishes it.
-// A frame-0 route write is promoted into the block's initial evidence. Later
-// first-known routes cannot retroactively define earlier frames; that block
-// therefore stays on ordinary stereo while delivery state advances.
+// Reset routes are admitted only when they are part of the pinned exact renderer
+// state. The source-aware VGM path requires Nuked OPN2; its reset initializes all
+// six pan_l/pan_r entries to one. libvgm's SN76496 core likewise resets
+// stereo_mask to 0xFF. FM1..6, the DAC route on channel 6, and all four PSG lanes
+// therefore begin with exact both-output evidence. Later authored writes replace
+// that state at their exact output ordinal.
 template <std::size_t QueueCapacity = 1024, std::size_t MaxBlockEvents = 256>
 class genesis_spatial_route_transport {
 public:
@@ -58,6 +57,40 @@ public:
         delivered_known_.fill(false);
         valid_ = true;
         last_error_ = genesis_spatial_route_transport_error::none;
+
+        // Pinned Nuked OPN2 reset semantics: all six channel pan_l/pan_r values
+        // are one. DAC shares channel 6's authored output route but keeps its
+        // distinct source identity.
+        constexpr auto ym_reset_route = ym2612_authored_route(true, true);
+        for (std::size_t channel = 0; channel < 6u; ++channel) {
+            const std::size_t source_index =
+                static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1)
+                + channel;
+            const auto evidence = make_genesis_spatial_source(
+                genesis_spatial_device::ym2612_fm,
+                0,
+                static_cast<std::uint8_t>(channel),
+                1,
+                ym_reset_route);
+            producer_evidence_[source_index] = evidence;
+            delivered_evidence_[source_index] = evidence;
+            producer_known_[source_index] = true;
+            delivered_known_[source_index] = true;
+        }
+        {
+            const std::size_t source_index =
+                static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac);
+            const auto evidence = make_genesis_spatial_source(
+                genesis_spatial_device::ym2612_dac,
+                0,
+                0,
+                1,
+                ym_reset_route);
+            producer_evidence_[source_index] = evidence;
+            delivered_evidence_[source_index] = evidence;
+            producer_known_[source_index] = true;
+            delivered_known_[source_index] = true;
+        }
 
         // Pinned libvgm SN76496 reset semantics: stereo_mask = 0xFF. For a
         // mono Sega PSG the core ignores the mask and emits both outputs, which
