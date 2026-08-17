@@ -46,6 +46,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
                 "apply_studio_hq_fm_observer.py",
                 "apply_enhanced_runtime.py",
                 "apply_studio_hq_fm_runtime.py",
+                "apply_studio_hq_fm_session_reset.py",
             ):
                 self.run_patch(self.patches / script, generated)
 
@@ -68,9 +69,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
             self.assertEqual(source_player.count(method), 1, method)
 
         self.assertIn('#include "studio_frame_transport.h"', header)
-        capacity_match = re.search(
-            r"studio_frame_transport<(\d+)>", header
-        )
+        capacity_match = re.search(r"studio_frame_transport<(\d+)>", header)
         self.assertIsNotNone(capacity_match)
         transport_capacity = int(capacity_match.group(1))
 
@@ -129,8 +128,39 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
             shadow,
         )
 
-        # Seek is a real discontinuity. It is allowed to throw away the retained
-        # future queue only after unregistering deferred delivery.
+        # Every decode session is a new ordinal universe. The deferred callback
+        # and retained future queue must be removed before input_base starts
+        # PlayerA for the new session, not lazily on its first decode_run.
+        self.assertEqual(
+            header.count(
+                "void decode_initialize(unsigned int p_flags, abort_callback &p_abort);"
+            ),
+            1,
+        )
+        initialize_start = shadow.index(
+            "void input_vgm::decode_initialize(unsigned int p_flags, abort_callback &p_abort)"
+        )
+        decode_run_start = shadow.index(
+            "bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)",
+            initialize_start,
+        )
+        initialize = shadow[initialize_start:decode_run_start]
+        unregister_init = initialize.index(
+            "m_main_player.SetDeferredPostRenderProcessor(nullptr, nullptr);"
+        )
+        reset_init = initialize.index("m_studio_fm_transport.reset();")
+        base_initialize = initialize.index(
+            "input_base::decode_initialize(p_flags, p_abort);"
+        )
+        self.assertLess(unregister_init, reset_init)
+        self.assertLess(reset_init, base_initialize)
+        self.assertIn("m_studio_deferred_engaged = false;", initialize)
+        self.assertIn("m_studio_deferred_active = false;", initialize)
+        self.assertIn("m_studio_deferred_failed = false;", initialize)
+        self.assertIn("m_studio_deferred_capture_bypass = false;", initialize)
+
+        # Seek is a second real discontinuity. It may throw away retained future
+        # only after unregistering deferred delivery.
         seek_start = shadow.index(
             "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)"
         )
@@ -144,7 +174,7 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         self.assertIn("m_studio_deferred_active = false;", seek)
         self.assertIn("m_studio_deferred_failed = false;", seek)
 
-    def test_component_chain_orders_observer_runtime_then_deferred_runtime(self) -> None:
+    def test_component_chain_orders_observer_runtime_deferred_and_session_reset(self) -> None:
         chain = (self.patches / "apply_enhanced_component.py").read_text(
             encoding="utf-8"
         )
@@ -156,9 +186,13 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         deferred = chain.index(
             'run(here / "apply_studio_hq_fm_runtime.py", source)'
         )
+        session = chain.index(
+            'run(here / "apply_studio_hq_fm_session_reset.py", source)'
+        )
         self.assertLess(hq, observer)
         self.assertLess(observer, enhanced)
         self.assertLess(enhanced, deferred)
+        self.assertLess(deferred, session)
 
     def test_deferred_runtime_does_not_patch_observer_api(self) -> None:
         runtime = (self.patches / "apply_studio_hq_fm_runtime.py").read_text(
@@ -167,13 +201,25 @@ class StudioHqFmRuntimePatchTest(unittest.TestCase):
         self.assertNotIn(
             'source_player = root / "source_aware_vgm_player.h"', runtime
         )
-        self.assertNotIn(
-            'replace_once(\n        source_player,', runtime
-        )
+        self.assertNotIn('replace_once(\n        source_player,', runtime)
         self.assertIn(
             "# SourceAware's Studio observer owns every source-ordinal diagnostic.",
             runtime,
         )
+
+    def test_session_reset_patch_has_single_narrow_owner(self) -> None:
+        lifecycle = (
+            self.patches / "apply_studio_hq_fm_session_reset.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "A reused input_vgm instance must\ntherefore unregister any prior deferred callback",
+            lifecycle,
+        )
+        self.assertIn(
+            "input_base::decode_initialize(p_flags, p_abort);", lifecycle
+        )
+        self.assertNotIn("apply_studio_hq_fm_observer.py", lifecycle)
+        self.assertNotIn("apply_enhanced_runtime.py", lifecycle)
 
 
 if __name__ == "__main__":
