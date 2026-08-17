@@ -8,22 +8,38 @@ For substantive work, use this bounded entry path:
 current main HEAD
 → README.md
 → AGENTS.md at the same HEAD
+→ CATALOG.md
 → docs/retro-vgm-compiler-roadmap.md
-→ recent commits
-→ task-relevant source family / research frontier
+→ task-relevant canonical owner
+→ recent commits for that active surface
 → exact target code, test, or document
 ```
 
 1. Resolve the Retro VGM Compiler repository and record current `main`.
-2. Read `README.md`, this file, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
-3. Inspect recent commits before choosing the smallest relevant work area.
-4. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
-5. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
-6. Work on `main`; do not create branches or PRs unless explicitly requested.
-7. Never force-push.
-8. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, and listening validation as separate evidence states.
+2. Read `README.md`, this file, `CATALOG.md`, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
+3. Use `CATALOG.md` to identify the smallest canonical owner before doing a broad repository search. If a generated inventory is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
+4. Inspect recent commits for the active surface before choosing the smallest relevant work area.
+5. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
+6. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
+7. Work on `main`; do not create branches or PRs unless explicitly requested.
+8. Never force-push.
+9. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, and listening validation as separate evidence states.
 
 Direct user correction outranks project prose.
+
+### Navigation law
+
+Do not repeatedly rediscover known repository contents by broad search.
+
+```text
+CATALOG.md
+→ generated inventory when mechanical enumeration is needed
+→ canonical owner
+→ bounded search inside that owner
+→ repository-wide search only when the map is insufficient or demonstrably stale
+```
+
+The catalog is a projection, not authority. Exact source files, manifests, tests, project records, and current implementation remain canonical. If the map disagrees with reality, correct the map rather than bending reality to match it.
 
 ## Project scope
 
