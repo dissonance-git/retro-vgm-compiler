@@ -69,6 +69,26 @@ def main() -> int:
         ):
             assert marker in shadow, f"materialized input_vgm_shadow.cpp missing {marker}"
 
+        # Fail closed at the final audible seam. The delivered decode path has
+        # already written protected stereo into p_chunk before Spatial is tried.
+        # The Spatial helper itself does not touch the chunk until every source,
+        # route and Omniphony condition succeeds.
+        call_marker = "render_genesis_spatial_output(\n\t\t\tp_chunk,"
+        call = shadow.index(call_marker)
+        protected_stereo = shadow.rfind("p_chunk.set_data", 0, call)
+        assert protected_stereo >= 0, "VGM Spatial call no longer follows protected stereo output"
+        assert protected_stereo < call
+
+        helper_start = shadow.index("bool input_vgm::render_genesis_spatial_output(")
+        helper_end = shadow.index(
+            "bool input_vgm::capture_genesis_reference_sources(", helper_start
+        )
+        helper = shadow[helper_start:helper_end]
+        replacement = helper.index("chunk.set_data_floatingpoint_ex(")
+        assert "return false;" in helper[:replacement]
+        assert "!rendered.source_block_valid || !rendered.omniphony.rendered" in helper[:replacement]
+        assert helper.rfind("return true;") > replacement
+
         # The project overlay must compile the modern runtime translation unit
         # without mutating the historical vcxproj text in the builder.
         assert "input_vgm_shadow.cpp" in targets
