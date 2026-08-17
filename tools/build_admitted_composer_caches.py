@@ -4,18 +4,19 @@
 Historical/evidential ownership stays in the files that already own it. The
 Genesis routing index supplies established VGM/VGZ controls; the Sonic 3
 attribution admissions supply grounded cross-format controls such as CUBE SPC
-cues. This helper joins those sources at runtime, normalizes only the fields the
-cache router needs, and sends compatible fixtures to the current Genesis
-capsule backend.
+cues. This helper joins those sources only at runtime and routes each source
+family into its own creator-blind song cache backend.
 
-Unsupported formats remain visible in the report for future capsule backends.
-No second composer-credit truth is written.
+The SPC backend requires an already-built ``spc_forensic_features`` executable.
+If it is not supplied, SPC controls remain visible as backend-unavailable rather
+than being dropped, mislabeled, or fed to the Genesis parser.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import pathlib
+import sys
 import tempfile
 from typing import Iterable
 
@@ -25,6 +26,11 @@ from creator_blind_song_cache import (
     build_creator,
 )
 
+SPC_TOOLS = pathlib.Path(__file__).resolve().parent / "spc"
+if str(SPC_TOOLS) not in sys.path:
+    sys.path.insert(0, str(SPC_TOOLS))
+import creator_blind_spc_cache as spc_cache
+
 DEFAULT_CREDITS = pathlib.Path("research/projects/sonic3/role-credit-index.jsonl")
 DEFAULT_ADMISSIONS = pathlib.Path(
     "research/projects/sonic3/attribution-control-admissions.jsonl"
@@ -32,6 +38,7 @@ DEFAULT_ADMISSIONS = pathlib.Path(
 DEFAULT_ROLE = "composer"
 DEFAULT_ADMITTED_STATUSES = frozenset({"exact", "derived", "whole_soundtrack"})
 GENESIS_VGM_SUFFIXES = frozenset({".vgm", ".vgz"})
+SPC_SUFFIXES = frozenset({".spc"})
 CACHE_BACKEND = "creator-blind-genesis-song-capsule"
 
 
@@ -101,7 +108,6 @@ def combined_control_records(
             str(record.get("fixture_path", "")),
         )
         merged[key] = record
-    # Canonical admission rows override a routing duplicate if one ever appears.
     for record in admissions:
         key = (
             str(record.get("creator", "")),
@@ -157,11 +163,16 @@ def admitted_creators(
     })
 
 
-def cacheable_by_current_backend(record: dict[str, object]) -> bool:
+def _suffix(record: dict[str, object]) -> str:
     fixture = record.get("fixture_path")
     if not isinstance(fixture, str):
-        return False
-    return pathlib.PurePosixPath(fixture).suffix.lower() in GENESIS_VGM_SUFFIXES
+        return ""
+    return pathlib.PurePosixPath(fixture).suffix.lower()
+
+
+def cacheable_by_current_backend(record: dict[str, object]) -> bool:
+    """Compatibility predicate for the original Genesis backend."""
+    return _suffix(record) in GENESIS_VGM_SUFFIXES
 
 
 def _write_jsonl(path: pathlib.Path, records: Iterable[dict[str, object]]) -> None:
@@ -181,7 +192,11 @@ def build_all(
     cache_index: pathlib.Path,
     refresh: bool,
     admitted_statuses: set[str],
+    spc_extractor: pathlib.Path | None = None,
+    spc_cache_root: pathlib.Path = spc_cache.DEFAULT_CACHE_ROOT,
+    spc_seconds: int = spc_cache.DEFAULT_SECONDS,
 ) -> dict[str, object]:
+    repo_root = repo_root.resolve()
     records = combined_control_records(
         credit_index=credit_index,
         admissions_path=admissions_path,
@@ -193,6 +208,19 @@ def build_all(
     )
     creators = sorted({str(record["creator"]) for record in admitted})
 
+    resolved_spc_extractor = None
+    if spc_extractor is not None:
+        resolved_spc_extractor = (
+            spc_extractor if spc_extractor.is_absolute() else repo_root / spc_extractor
+        ).resolve()
+        if not resolved_spc_extractor.is_file():
+            raise FileNotFoundError(
+                f"SPC forensic extractor not found: {resolved_spc_extractor}"
+            )
+    resolved_spc_cache_root = (
+        spc_cache_root if spc_cache_root.is_absolute() else repo_root / spc_cache_root
+    )
+
     results: list[dict[str, object]] = []
     with tempfile.TemporaryDirectory(prefix="rvc-composer-cache-") as temp_dir:
         temporary_root = pathlib.Path(temp_dir)
@@ -200,18 +228,22 @@ def build_all(
             creator_records = [
                 record for record in admitted if record.get("creator") == creator
             ]
-            compatible = [
-                record for record in creator_records if cacheable_by_current_backend(record)
+            genesis = [
+                record for record in creator_records if _suffix(record) in GENESIS_VGM_SUFFIXES
             ]
-            unsupported = [
-                record for record in creator_records if not cacheable_by_current_backend(record)
+            spc = [record for record in creator_records if _suffix(record) in SPC_SUFFIXES]
+            unknown = [
+                record
+                for record in creator_records
+                if _suffix(record) not in GENESIS_VGM_SUFFIXES | SPC_SUFFIXES
             ]
 
-            backend_result: dict[str, object]
-            if compatible:
+            vgm_built = 0
+            vgm_reused = 0
+            if genesis:
                 filtered_index = temporary_root / f"credits-{len(results):04d}.jsonl"
-                _write_jsonl(filtered_index, compatible)
-                backend_result = build_creator(
+                _write_jsonl(filtered_index, genesis)
+                vgm_result = build_creator(
                     credit_index=filtered_index,
                     creator=creator,
                     role=role,
@@ -221,29 +253,59 @@ def build_all(
                     refresh=refresh,
                     admitted_statuses=admitted_statuses,
                 )
-            else:
-                backend_result = {
+                vgm_built = int(vgm_result["built"])
+                vgm_reused = int(vgm_result["reused"])
+
+            spc_built = 0
+            spc_reused = 0
+            spc_destinations: list[str] = []
+            backend_unavailable: list[dict[str, object]] = []
+            if spc and resolved_spc_extractor is None:
+                backend_unavailable.extend(spc)
+            elif spc:
+                for record in spc:
+                    fixture = str(record["fixture_path"])
+                    source = repo_root / pathlib.Path(fixture)
+                    corpus_id = str(
+                        record.get("corpus_id") or _corpus_id_from_fixture(fixture) or source.parent.name
+                    )
+                    destination, changed = spc_cache.build_one(
+                        source,
+                        corpus_id=corpus_id,
+                        extractor=resolved_spc_extractor,
+                        cache_root=resolved_spc_cache_root,
+                        seconds=spc_seconds,
+                        refresh=refresh,
+                    )
+                    spc_destinations.append(destination.as_posix())
+                    spc_built += int(changed)
+                    spc_reused += int(not changed)
+
+            unavailable = backend_unavailable + unknown
+            routed = len(genesis) + (len(spc) if resolved_spc_extractor is not None else 0)
+            results.append(
+                {
                     "creator": creator,
                     "role": role,
-                    "selected_tracks": 0,
-                    "built": 0,
-                    "reused": 0,
-                    "cache_root": cache_root.as_posix(),
-                    "cache_index": cache_index.as_posix(),
-                }
-
-            result = dict(backend_result)
-            result.update(
-                {
                     "role_selected_tracks": len(creator_records),
-                    "cacheable_tracks": len(compatible),
-                    "unsupported_tracks": len(unsupported),
+                    "selected_tracks": routed,
+                    "cacheable_tracks": routed,
+                    "genesis_tracks": len(genesis),
+                    "spc_tracks": len(spc),
+                    "backend_unavailable_tracks": len(backend_unavailable),
+                    "unsupported_tracks": len(unknown),
                     "unsupported_fixtures": [
-                        str(record.get("fixture_path", "")) for record in unsupported
+                        str(record.get("fixture_path", "")) for record in unavailable
                     ],
+                    "built": vgm_built + spc_built,
+                    "reused": vgm_reused + spc_reused,
+                    "vgm_built": vgm_built,
+                    "vgm_reused": vgm_reused,
+                    "spc_built": spc_built,
+                    "spc_reused": spc_reused,
+                    "spc_destinations": spc_destinations,
                 }
             )
-            results.append(result)
 
     cacheable_total = sum(int(result["cacheable_tracks"]) for result in results)
     return {
@@ -251,14 +313,22 @@ def build_all(
         "creator_count": len(creators),
         "creators": creators,
         "cache_backend": CACHE_BACKEND,
+        "cache_backends": {
+            "vgm_vgz": CACHE_BACKEND,
+            "spc": spc_cache.EXPECTED_MODEL,
+        },
+        "spc_backend_ready": resolved_spc_extractor is not None,
+        "spc_seconds": spc_seconds,
         "control_sources": [
             credit_index.as_posix(),
             admissions_path.as_posix() if admissions_path is not None else None,
         ],
         "role_selected_tracks": len(admitted),
         "cacheable_tracks": cacheable_total,
+        "backend_unavailable_tracks": sum(
+            int(result["backend_unavailable_tracks"]) for result in results
+        ),
         "unsupported_tracks": sum(int(result["unsupported_tracks"]) for result in results),
-        # Compatibility projection retained for existing consumers.
         "selected_tracks": cacheable_total,
         "built": sum(int(result["built"]) for result in results),
         "reused": sum(int(result["reused"]) for result in results),
@@ -274,6 +344,17 @@ def main() -> None:
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path("."))
     parser.add_argument("--cache-root", type=pathlib.Path, default=DEFAULT_CACHE_ROOT)
     parser.add_argument("--cache-index", type=pathlib.Path, default=DEFAULT_CACHE_INDEX)
+    parser.add_argument(
+        "--spc-extractor",
+        type=pathlib.Path,
+        help="Built tools/spc/forensic/spc_forensic_features executable. When omitted, SPC controls remain visible but are not executed.",
+    )
+    parser.add_argument(
+        "--spc-cache-root",
+        type=pathlib.Path,
+        default=spc_cache.DEFAULT_CACHE_ROOT,
+    )
+    parser.add_argument("--spc-seconds", type=int, default=spc_cache.DEFAULT_SECONDS)
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument(
         "--status",
@@ -292,6 +373,9 @@ def main() -> None:
         cache_index=args.cache_index,
         refresh=args.refresh,
         admitted_statuses=statuses,
+        spc_extractor=args.spc_extractor,
+        spc_cache_root=args.spc_cache_root,
+        spc_seconds=args.spc_seconds,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
