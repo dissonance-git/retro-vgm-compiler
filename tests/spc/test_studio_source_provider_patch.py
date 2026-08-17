@@ -1,0 +1,101 @@
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+class StudioSourceProviderPatchTest(unittest.TestCase):
+    def test_patches_only_the_pinned_prebrr_shape(self):
+        repo = Path(__file__).resolve().parents[2]
+        script = repo / "patches" / "snesapu" / "apply_studio_source_provider.py"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dll = root / "snesapu.dll"
+            dll.mkdir()
+
+            (dll / "DSP.inc").write_text(
+                "PUBLIC SetDSPPreBrrProvider, callback:dword, user:dword\n",
+                encoding="utf-8",
+            )
+            (dll / "DSP.h").write_text(
+                "typedef u32 (__stdcall *DSPPreBrrProvider)(void *user, u32 srcn, u32 brrAddr, s16 *out16);\n"
+                "void SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);\n\n\n"
+                "//**************************************************************************************************\n"
+                "// Set Voice Stereo Separation\n",
+                encoding="utf-8",
+            )
+            (dll / "SNESAPU.h").write_text(
+                "    void        (__stdcall *SetDSPPreBrrProvider)(DSPPreBrrProvider callback, void *user);\n"
+                "import  void        __stdcall SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);\n",
+                encoding="utf-8",
+            )
+            (dll / "SNESAPU.def").write_text(
+                "  SetDSPPreBrrProvider\n",
+                encoding="utf-8",
+            )
+            (dll / "DSP.asm").write_text(
+                "    preBrrProvider resd 1                                                       ;optional stdcall pre-BRR block provider\n"
+                "    preBrrUser     resd 1                                                       ;opaque provider context\n"
+                "\n"
+                "PROC SetDSPPreBrrProvider, callback, user\n\n"
+                "    Mov     EAX,[callback]\n"
+                "    Mov     [preBrrProvider],EAX\n"
+                "    Mov     EAX,[user]\n"
+                "    Mov     [preBrrUser],EAX\n\n"
+                "ENDP\n\n\n"
+                ";===================================================================================================\n"
+                ";Set Song Length\n"
+                "\n"
+                "    Mov     [EBX+bCur],ESI                                                      ;Save physical pointers to wave data\n"
+                "    Mov     [EBX+sIdx],EDI\n\n"
+                "    ;Fill first block: proven pre-BRR PCM or exact BRR decode ------\n"
+                "\n"
+                "%macro MixSample 0\n"
+                "    ;Get sample ========================\n"
+                "    Mov     ESI,[EBX+sIdx]\n"
+                "    MovZX   EAX,word [EBX+mDec]\n"
+                "    Call    [pInter]                                                            ;                                   |smp\n\n",
+                encoding="utf-8",
+            )
+
+            first = subprocess.run(
+                [sys.executable, str(script), str(root)],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            asm = (dll / "DSP.asm").read_text(encoding="utf-8")
+            self.assertIn("studioSourceBegin", asm)
+            self.assertIn("studioSourceSample", asm)
+            self.assertIn("studioSourceVoices", asm)
+            self.assertIn("BSF     EDX,EDX", asm)
+            self.assertIn("MovZX   EAX,byte [scr700chg+EAX]", asm)
+            self.assertIn("Push    dword [EBX+mRate]", asm)
+            self.assertIn("FLd     dword [ESP]", asm)
+            self.assertIn("Call    [pInter]", asm)
+
+            dsp_h = (dll / "DSP.h").read_text(encoding="utf-8")
+            self.assertIn("DSPStudioSourceBeginProvider", dsp_h)
+            self.assertIn("DSPStudioSourceSampleProvider", dsp_h)
+            self.assertIn("float *outSample", dsp_h)
+
+            # Guarded patching is intentionally non-idempotent. A second run no
+            # longer sees the exact pinned predecessor and must fail rather than
+            # stacking a second hot-loop hook.
+            second = subprocess.run(
+                [sys.executable, str(script), str(root)],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(second.returncode, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
