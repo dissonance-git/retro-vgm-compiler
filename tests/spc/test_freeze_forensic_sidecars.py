@@ -17,13 +17,21 @@ sys.modules[SPEC.name] = freeze
 SPEC.loader.exec_module(freeze)
 
 
-def profile(rhythm, intervals=None, contour=None, semantics="performed_pitch_ratio", confidence=1.0):
+def profile(
+    rhythm,
+    intervals=None,
+    contour=None,
+    semantics="performed_pitch_ratio",
+    confidence=1.0,
+    pitch_basis="",
+):
     return {
         "profile_index": 0,
         "gesture_count": len(rhythm) + 1,
         "normalized_inter_onset_intervals": rhythm,
         "interval_octaves": intervals,
         "pitch_contour": contour,
+        "pitch_basis": pitch_basis,
         "interval_semantics": semantics if intervals is not None else "",
         "pitch_range_octaves": 0.5 if intervals is not None else None,
         "evidence_status": "derived",
@@ -76,6 +84,19 @@ def sidecar(profiles, *, commit="abc", dropped=0, overflowed=0, breaks=0):
     }
 
 
+def bundle(representation, profiles, *, commit="abc", diagnostics=None):
+    return {
+        "model": freeze.PROFILE_BUNDLE_MODEL,
+        "representation": representation,
+        "provenance": {
+            "retro_vgm_compiler_commit": commit,
+            "extractor_contract": representation + "-v1",
+        },
+        "diagnostics": diagnostics or {"part_profile_count": len(profiles)},
+        "part_profiles": profiles,
+    }
+
+
 class FreezeForensicSidecarsTest(unittest.TestCase):
     def write(self, directory: pathlib.Path, name: str, value) -> pathlib.Path:
         path = directory / name
@@ -92,6 +113,36 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
         rhythm_a = profile([0.5, 1.0, 1.5])
         rhythm_b = profile([0.5, 1.0, 1.5])
         result = freeze.compare_profiles(rhythm_a, rhythm_b)
+        self.assertFalse(result["pitch_comparable"])
+        self.assertAlmostEqual(result["combined_similarity"], 1.0)
+        self.assertAlmostEqual(result["identity_confidence"], 0.55)
+
+    def test_cross_representation_math_ignores_native_basis_but_not_semantics(self):
+        genesis = profile(
+            [0.5, 1.0, 1.5],
+            [0.25, -0.25, 0.0],
+            [1, -1, 0],
+            semantics="log2_frequency_ratio_octaves",
+            confidence=0.90,
+            pitch_basis="genesis_ym2612_relative_frequency_code",
+        )
+        spc = profile(
+            [0.5, 1.0, 1.5],
+            [0.25, -0.25, 0.0],
+            [1, -1, 0],
+            semantics="log2_frequency_ratio_octaves",
+            confidence=0.90,
+            pitch_basis="spc_brr_runtime_version:17",
+        )
+        result = freeze.compare_profiles(genesis, spc)
+        self.assertTrue(result["pitch_comparable"])
+        self.assertAlmostEqual(result["combined_similarity"], 1.0)
+        self.assertAlmostEqual(result["evidence_confidence"], 0.90)
+        self.assertAlmostEqual(result["identity_confidence"], 0.90)
+
+        incompatible = dict(spc)
+        incompatible["interval_semantics"] = "device_specific_not_cross_comparable"
+        result = freeze.compare_profiles(genesis, incompatible)
         self.assertFalse(result["pitch_comparable"])
         self.assertAlmostEqual(result["combined_similarity"], 1.0)
         self.assertAlmostEqual(result["identity_confidence"], 0.55)
@@ -116,6 +167,16 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 freeze.load_sidecar("cue-001", self.write(root, "broken.json", broken))
 
+    def test_profile_bundle_rejects_label_leakage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            poisoned = bundle("genesis_vgm_persistent_part_motif", [profile([1.0, 1.0])])
+            poisoned["candidate"] = "poison"
+            with self.assertRaises(ValueError):
+                freeze.load_profile_bundle(
+                    "cue-001", self.write(root, "poison-bundle.json", poisoned)
+                )
+
     def test_zero_profile_capture_is_cache_valid_but_not_freeze_admissible(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
@@ -126,7 +187,7 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 freeze.load_sidecar("cue-001", path)
 
-    def test_freeze_requires_identical_runtime_provenance(self):
+    def test_freeze_requires_identical_provenance_within_representation(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
             first = freeze.load_sidecar(
@@ -135,6 +196,46 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
                 "cue-002", self.write(root, "b.json", sidecar([profile([1.0, 1.0])], commit="b")))
             with self.assertRaises(ValueError):
                 freeze.freeze_corpus([first, second])
+
+    def test_freeze_allows_distinct_exact_provenance_worlds_across_representations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            common_spc = profile(
+                [0.5, 1.0, 1.5],
+                [0.25, -0.25, 0.0],
+                [1, -1, 0],
+                semantics="log2_frequency_ratio_octaves",
+                confidence=0.90,
+                pitch_basis="spc_brr_runtime_version:17",
+            )
+            common_genesis = dict(common_spc)
+            common_genesis["pitch_basis"] = "genesis_ym2612_relative_frequency_code"
+            spc_cue = freeze.load_sidecar(
+                "cue-001", self.write(root, "spc.json", sidecar([common_spc], commit="spc-commit")))
+            genesis_cue = freeze.load_profile_bundle(
+                "cue-002",
+                self.write(
+                    root,
+                    "genesis.json",
+                    bundle(
+                        "genesis_vgm_persistent_part_motif",
+                        [common_genesis],
+                        commit="genesis-commit",
+                    ),
+                ),
+            )
+            result = freeze.freeze_corpus([genesis_cue, spc_cue])
+            self.assertEqual(result["model"], freeze.FREEZE_MODEL)
+            self.assertEqual(set(result["provenance_worlds"]), {
+                freeze.SPC_REPRESENTATION,
+                "genesis_vgm_persistent_part_motif",
+            })
+            self.assertAlmostEqual(result["similarity_matrix"]["cue-001"]["cue-002"], 0.90)
+            representations = {cue["representation"] for cue in result["cues"]}
+            self.assertEqual(representations, {
+                freeze.SPC_REPRESENTATION,
+                "genesis_vgm_persistent_part_motif",
+            })
 
     def test_frozen_output_contains_only_opaque_ids_and_hashes(self):
         with tempfile.TemporaryDirectory() as temp:
