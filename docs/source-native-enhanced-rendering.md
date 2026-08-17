@@ -13,19 +13,19 @@ The accurate/reference renderer remains the scientific control.
 User-facing playback must expose **spatial** and **enhanced** as separate checked options.
 
 ```text
-Spatial OFF + Enhanced OFF
+spatial off + enhanced off
     reference synthesis / reconstruction
     + protected historical stereo presentation
 
-Spatial ON + Enhanced OFF
+spatial on + enhanced off
     reference synthesis / reconstruction
     + source-aware Omniphony presentation
 
-Spatial OFF + Enhanced ON
+spatial off + enhanced on
     source-native enhanced synthesis / reconstruction
     + protected stereo presentation
 
-Spatial ON + Enhanced ON
+spatial on + enhanced on
     source-native enhanced synthesis / reconstruction
     + source-aware Omniphony presentation
 ```
@@ -35,10 +35,10 @@ Neither checkbox may silently enable the other.
 This distinction is architectural, not merely UI policy:
 
 ```text
-ENHANCED
+enhanced
 changes how the known source object is synthesized / reconstructed
 
-SPATIAL
+spatial
 changes how causal source lanes are presented after source rendering
 ```
 
@@ -187,7 +187,7 @@ This can sound substantially cleaner than a normal S-DSP output, but **upsamplin
 - reconstruct the shared echo field independently rather than baking it into every voice;
 - when an upstream pre-BRR source is proven, use it only with the historical game-preparation transformation separated from unavoidable loss.
 
-Normal product playback uses **48 kHz as both the live Enhanced DSP/reconstruction rate and the final playback rate**. The point of the improvement is not the number 48,000 itself. It is that the improved trajectory is evaluated in the source domain before the historical finished-bus bottleneck. Verified upstream samples can use the longer studio reconstruction law at that exact live phase; the lower rung uses SNESAPU's source interpolation at the same 48 kHz execution rate.
+Normal product playback uses **48 kHz as both the live enhanced DSP/reconstruction rate and the final playback rate**. The point of the improvement is not the number 48,000 itself. It is that the improved trajectory is evaluated in the source domain before the historical finished-bus bottleneck. Verified upstream samples can use the longer studio reconstruction law at that exact live phase; the lower rung uses SNESAPU's source interpolation at the same 48 kHz execution rate.
 
 A 96 kHz render remains useful as an offline/research comparison. It can test whether extra oversampling headroom changes aliasing or nonlinear edge cases enough to matter. It is not the normal playback contract and it is not evidence that the original 32 kHz S-DSP output contained ultrasonic detail waiting to be recovered. If a 96 kHz experiment does not survive a controlled 48 kHz final-output comparison, the extra realtime cost has not earned a place in the product path.
 
