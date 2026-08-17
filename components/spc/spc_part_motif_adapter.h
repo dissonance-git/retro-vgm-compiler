@@ -27,6 +27,7 @@ make_spc_part_gesture_observation(
         throw std::invalid_argument("SPC motif adapter requires a persistent-part node");
     if (episode == nullptr || episode->kind != node_kind::voice_instance)
         throw std::invalid_argument("SPC motif adapter requires a physical voice episode");
+    const auto part_evidence = read_persistent_part_motif_evidence(*part);
 
     bool member = false;
     for (const edge* relation : graph.edges_from(episode_id, edge_kind::groups_into)) {
@@ -61,6 +62,8 @@ make_spc_part_gesture_observation(
         std::log2(static_cast<double>(*pitch)),
         std::move(pitch_basis),
         "log2_frequency_ratio_octaves",
+        weaker_part_motif_evidence_status(pitch_item->status, part_evidence.status),
+        std::min(pitch_item->confidence, part_evidence.confidence),
     };
 }
 
