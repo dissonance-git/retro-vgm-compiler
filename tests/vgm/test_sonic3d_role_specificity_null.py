@@ -31,6 +31,49 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
         self.assertEqual(collections.Counter(first.values()), collections.Counter(labels.values()))
         self.assertEqual(set(first), set(labels))
 
+    def test_family_block_shuffle_preserves_same_size_family_label_packages(self):
+        labels = {
+            "a1": "Maeda",
+            "a2": "Maeda",
+            "b1": "Senoue",
+            "b2": "Senoue",
+            "c1": "Maeda",
+            "c2": "Senoue",
+            "d1": "Setsumaru",
+            "e1": "Okamoto",
+        }
+        families = {
+            "a1": "a",
+            "a2": "a",
+            "b1": "b",
+            "b2": "b",
+            "c1": "c",
+            "c2": "c",
+            "d1": "d",
+            "e1": "e",
+        }
+
+        def package_signature(current):
+            grouped = {}
+            for track_id, family_id in families.items():
+                grouped.setdefault(family_id, []).append(current[track_id])
+            return collections.Counter(
+                (len(values), tuple(sorted(values)))
+                for values in grouped.values()
+            )
+
+        first = null_model._shuffle_labels_by_family(
+            labels, families, random.Random(29)
+        )
+        second = null_model._shuffle_labels_by_family(
+            labels, families, random.Random(29)
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(collections.Counter(first.values()), collections.Counter(labels.values()))
+        self.assertEqual(package_signature(first), package_signature(labels))
+        self.assertEqual(set(first), set(labels))
+
     def test_empirical_p_uses_plus_one_correction(self):
         summary = null_model._null_summary(0.5, [0.1, 0.5, 0.9])
         self.assertEqual(summary["permutations"], 3)
@@ -183,6 +226,7 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["permutations"], 20)
+        self.assertEqual(first["permutation_unit"], "family-block")
         self.assertEqual(
             set(first["views"]),
             {"structural", "structural_pitch", "structural_rhythm", "realization"},
@@ -228,6 +272,7 @@ class Sonic3DRoleSpecificityNullTest(unittest.TestCase):
             sensitivity["excluded_mapping_states"],
             ["derived_audio_correspondence"],
         )
+        self.assertEqual(sensitivity["permutation_unit"], "family-block")
         self.assertEqual(sensitivity["excluded_tracks"], ["s3d::m3.vgm"])
         self.assertEqual(sensitivity["included_track_count"], 7)
         self.assertEqual(
