@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "purpose": "Frozen Sonic 3 & Knuckles target panel for testing Cube/Takaoka/Hikichi composer grammar after external calibration. Creator labels are evaluation context only and must not enter feature extraction.",
+  "claim_boundary": "The panel freezes queries, anchors, decoys, and confound controls. Unresolved targets remain unresolved regardless of existing artist tags. Composition, arrangement/programming, source lineage, and version lineage are separate evidence lanes.",
+  "platform_id": "mega-drive",
+  "implementation_family_id": "smps-sonic3",
+  "positive_anchors": [
+    {
+      "cue_id": "s3-anchor-takaoka-marble-garden-1",
+      "fixture_path": "tests/corpus/sonic-3-knuckles/05 - Marble Garden Zone Act 1.vgz",
+      "candidate": "Miyoko Takaoka",
+      "role": "composer",
+      "status": "strong",
+      "use": "Known Cube/Takaoka target-environment anchor; never a substitute for cross-game controls."
+    },
+    {
+      "cue_id": "s3-anchor-hikichi-boss-2",
+      "fixture_path": "tests/corpus/sonic-3-knuckles/27 - Boss Theme.vgz",
+      "candidate": "Masanori Hikichi",
+      "role": "composer",
+      "status": "strong",
+      "use": "Known Cube/Hikichi target-environment anchor; Sonic Origins Boss 2 / historical Major Boss."
+    }
+  ],
+  "primary_unknown_targets": [
+    {
+      "work_family_id": "mushroom-hill",
+      "source_constraint": "CUBE",
+      "candidate_note": "Masanori Hikichi historical candidate only",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/15 - Mushroom Hill Zone Act 1.vgz",
+        "tests/corpus/sonic-3-knuckles/16 - Mushroom Hill Zone Act 2.vgz"
+      ]
+    },
+    {
+      "work_family_id": "flying-battery",
+      "source_constraint": "unresolved",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/17 - Flying Battery Zone Act 1.vgz",
+        "tests/corpus/sonic-3-knuckles/18 - Flying Battery Zone Act 2.vgz"
+      ]
+    },
+    {
+      "work_family_id": "sandopolis",
+      "source_constraint": "unresolved",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/19 - Sandopolis Zone Act 1.vgz",
+        "tests/corpus/sonic-3-knuckles/20 - Sandopolis Zone Act 2.vgz"
+      ]
+    },
+    {
+      "work_family_id": "sky-sanctuary",
+      "source_constraint": "composer outside Sega; exact individual unresolved",
+      "candidate_note": "CUBE remains plausible; Setsumaru realization evidence is non-composer evidence",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/23 - Sky Sanctuary Zone.vgz"
+      ]
+    },
+    {
+      "work_family_id": "death-egg",
+      "source_constraint": "unresolved",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/24 - Death Egg Zone Act 1.vgz",
+        "tests/corpus/sonic-3-knuckles/25 - Death Egg Zone Act 2.vgz"
+      ]
+    },
+    {
+      "work_family_id": "doomsday",
+      "source_constraint": "unresolved",
+      "candidate_note": "Masanori Hikichi is a research lead only",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/29 - The Doomsday Zone.vgz"
+      ]
+    }
+  ],
+  "known_non_cube_composer_controls": [
+    {
+      "candidate": "Jun Senoue",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/40 - Gumball Machine.vgz",
+        "tests/corpus/sonic-3-knuckles/41 - Magnetic Orbs.vgz",
+        "tests/corpus/sonic-3-knuckles/42 - Slot Machine.vgz"
+      ],
+      "role": "composer",
+      "status": "strong"
+    },
+    {
+      "candidate": "Yoshiaki Kashima",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/43 - Blue Spheres.vgz"
+      ],
+      "role": "composer",
+      "status": "strong"
+    }
+  ],
+  "arrangement_confound_controls": [
+    {
+      "candidate": "Masayuki Nagao",
+      "role": "arranger_programmer",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/04 - Hydrocity Zone Act 2.vgz",
+        "tests/corpus/sonic-3-knuckles/22 - Lava Reef Zone Act 2.vgz"
+      ],
+      "rule": "Similarity to these realizations cannot become composer evidence."
+    },
+    {
+      "candidate": "Masaru Setsumaru",
+      "role": "arranger_programmer",
+      "fixtures": [
+        "tests/corpus/sonic-3-knuckles/23 - Sky Sanctuary Zone.vgz",
+        "tests/corpus/sonic-3-knuckles/31 - Data Select.vgz"
+      ],
+      "rule": "Implementation handwriting is a confound to be removed, not a composer label."
+    }
+  ],
+  "version_confound_controls": [
+    {
+      "family": "carnival-night",
+      "final": "tests/corpus/sonic-3-knuckles/07 - Carnival Night Zone Act 1.vgz",
+      "prototype": "tests/corpus/sonic-3-knuckles/47 - Carnival Night Zone Act 1 (Beta).vgz",
+      "reason": "Different source composition lineages in the same game context."
+    },
+    {
+      "family": "icecap",
+      "final": "tests/corpus/sonic-3-knuckles/09 - IceCap Zone Act 1.vgz",
+      "prototype": "tests/corpus/sonic-3-knuckles/49 - IceCap Zone Act 1 (Beta).vgz",
+      "reason": "Final Buxer/Connole lineage versus Sega prototype composition."
+    },
+    {
+      "family": "launch-base",
+      "final": "tests/corpus/sonic-3-knuckles/11 - Launch Base Zone Act 1.vgz",
+      "prototype": "tests/corpus/sonic-3-knuckles/51 - Launch Base Zone Act 1 (Beta).vgz",
+      "reason": "Final Jackson/Buxer-team lineage versus Sega prototype composition."
+    },
+    {
+      "family": "mushroom-hill",
+      "final": "tests/corpus/sonic-3-knuckles/15 - Mushroom Hill Zone Act 1.vgz",
+      "prototype": "tests/corpus/sonic-3-knuckles/54 - Mushroom Valley Zone Act 1 (Beta).vgz",
+      "reason": "Same/related Cube work across prototype and final realization."
+    }
+  ],
+  "promotion_rule": "No primary unknown target becomes a historical composer assignment from similarity alone. A blind musical result first becomes a candidate and must survive source, soundtrack, implementation, version, and role confounds before documentary coupling can raise it further."
+}
