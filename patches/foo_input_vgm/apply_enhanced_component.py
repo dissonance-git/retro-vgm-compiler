@@ -31,6 +31,7 @@ def main() -> int:
     run(here / "apply_hq_nuked_fm_lift.py", source)
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
+    run(here / "apply_studio_hq_fm_runtime.py", source)
     print("foo_input_vgm Enhanced component patch set applied")
     return 0
 
