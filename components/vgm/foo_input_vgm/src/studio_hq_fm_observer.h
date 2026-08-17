@@ -56,16 +56,20 @@ public:
         return configured_;
     }
 
-    void reset() noexcept {
+    // Native FIR history restarts locally after a discontinuity, while output
+    // ordinals remain in PlayerA's absolute playback coordinate. Keeping those
+    // origins separate lets a seek discard unavailable pre-seek source history
+    // without relabeling the protected host frames that follow it.
+    void reset(std::uint64_t destination_base = 0) noexcept {
         for (auto& stream : streams_)
             stream.reset();
         pending_.reset();
         ready_head_ = 0;
         ready_count_ = 0;
         native_next_ = 0;
-        destination_next_ = 0;
-        released_next_ = 0;
-        first_studio_destination_ordinal_ = 0;
+        destination_next_ = destination_base;
+        released_next_ = destination_base;
+        first_studio_destination_ordinal_ = destination_base;
         started_studio_domain_ = false;
         invalid_ = false;
     }
@@ -110,7 +114,8 @@ public:
     bool append_initial_pregeneration(
         const std::array<const SourceSample*, LaneCount>& lanes,
         std::size_t frame_count) noexcept {
-        if (!valid() || destination_next_ != 0 || !pending_.empty() || ready_count_ != 0) {
+        if (!valid() || native_next_ != 0 || destination_next_ != released_next_
+            || started_studio_domain_ || !pending_.empty() || ready_count_ != 0) {
             invalid_ = true;
             return false;
         }
