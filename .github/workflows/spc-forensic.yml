@@ -20,8 +20,11 @@ jobs:
       - name: Patcher integrity regression
         run: python3 -B -m unittest discover -s tests/spc -p 'test_snes_spc_runtime_patcher.py'
 
-      - name: Blind calibration boundary regression
-        run: python3 -B -m unittest tests.spc.test_freeze_forensic_sidecars tests.spc.test_cube_blind_panel
+      - name: Blind freeze regression
+        run: python3 -B -m unittest discover -s tests/spc -p 'test_freeze_forensic_sidecars.py'
+
+      - name: Cube calibration boundary regression
+        run: python3 -B -m unittest discover -s tests/spc -p 'test_cube_blind_panel.py'
 
       - name: Configure isolated forensic runtime
         run: cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
