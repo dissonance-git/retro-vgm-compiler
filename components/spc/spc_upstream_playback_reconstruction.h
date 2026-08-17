@@ -125,6 +125,53 @@ inline spc_upstream_playback_boundaries resolve_spc_upstream_playback_boundaries
     return out;
 }
 
+// Fully admitted immutable state needed by the 48 kHz Studio source sampler.
+// This is deliberately internal: provenance/evidence remains owned by the
+// restoration candidate at setup, while the audio callback receives only the
+// already-proven coordinates and PCM view it actually needs.
+struct spc_upstream_playback_reconstruction_plan {
+    const float* mono_pcm = nullptr;
+    std::size_t frame_count = 0;
+    double game_origin = 0.0;
+    double upstream_origin = 0.0;
+    double upstream_frames_per_game_sample = 0.0;
+    double upstream_loop_start = 0.0;
+    double game_pcm_units_per_source_unit = 0.0;
+    snesapu_game_loop_span game_loop{};
+    spc_upstream_playback_boundaries boundaries{};
+    bool valid = false;
+};
+
+inline spc_upstream_playback_reconstruction_plan
+compile_spc_upstream_playback_reconstruction_plan(
+    const spc_sample_restoration_candidate& candidate,
+    const spc_game_sample_playback_span& playback) noexcept
+{
+    spc_upstream_playback_reconstruction_plan out;
+    if (!may_use_spc_sample_restoration_automatically(candidate)
+        || !playback.valid()
+        || !spc_upstream_pcm_all_finite(candidate.upstream))
+        return out;
+
+    const auto boundaries = resolve_spc_upstream_playback_boundaries(candidate, playback);
+    if (!boundaries.valid)
+        return out;
+
+    out.mono_pcm = candidate.upstream.mono_pcm;
+    out.frame_count = candidate.upstream.frame_count;
+    out.game_origin = candidate.coordinate_map.game_origin;
+    out.upstream_origin = candidate.coordinate_map.upstream_origin;
+    out.upstream_frames_per_game_sample =
+        candidate.coordinate_map.upstream_frames_per_game_sample;
+    out.upstream_loop_start = candidate.coordinate_map.upstream_loop_start;
+    out.game_pcm_units_per_source_unit =
+        candidate.upstream.game_pcm_units_per_source_unit;
+    out.game_loop = playback.loop;
+    out.boundaries = boundaries;
+    out.valid = true;
+    return out;
+}
+
 inline std::int64_t map_spc_virtual_source_index(
     std::int64_t index,
     const spc_upstream_playback_boundaries& boundaries,
@@ -173,36 +220,25 @@ inline bool spc_upstream_window_is_contiguous(
     return first_index >= boundaries.loop_start && end_index <= boundaries.loop_end;
 }
 
-// Realtime primitive for callers that already resolved immutable source-binding
-// geometry under the normal admission contract. SourceFiniteVerified=true is
-// reserved for callers that also scanned the complete upstream PCM at setup;
-// standalone callers retain the defensive per-tap finite checks by default.
-template <bool SourceFiniteVerified = false>
+// One numerical FIR/topology implementation serves both standalone defensive
+// reconstruction and the setup-verified realtime plan. SourceFiniteVerified
+// removes only the per-tap NaN/Inf branch; all indexing, topology, summation and
+// amplitude arithmetic remain identical.
+template <bool SourceFiniteVerified>
 inline spc_upstream_playback_reconstruction_result
-reconstruct_spc_upstream_candidate_playback_sample_resolved(
-    const spc_sample_restoration_candidate& candidate,
-    const spc_game_sample_playback_span& playback,
+reconstruct_spc_upstream_positioned_sample(
+    const float* mono_pcm,
+    std::size_t frame_count,
+    double game_pcm_units_per_source_unit,
+    const spc_upstream_playback_boundaries& boundaries,
     const snesapu_source_trajectory_projection& trajectory,
-    const spc_upstream_playback_boundaries& boundaries) noexcept
+    double position) noexcept
 {
     spc_upstream_playback_reconstruction_result result;
-    if (!candidate.upstream.valid() || !candidate.coordinate_map.valid()
-        || !playback.valid() || !trajectory.valid || trajectory.before_key_on
-        || !boundaries.valid)
-        return result;
-
-    double position = 0.0;
-    if (trajectory.loop_cycle == 0) {
-        position = candidate.coordinate_map.map_position(
-            trajectory.effective_sample_position);
-    } else {
-        if (!playback.loop.present || !candidate.coordinate_map.loop_present)
-            return result;
-        position = candidate.coordinate_map.upstream_loop_start
-            + (trajectory.canonical_game_sample_position - playback.loop.start_sample)
-                * candidate.coordinate_map.upstream_frames_per_game_sample;
-    }
-    if (!std::isfinite(position))
+    if (mono_pcm == nullptr || frame_count == 0 || !boundaries.valid
+        || !trajectory.valid || trajectory.before_key_on || !std::isfinite(position)
+        || !std::isfinite(game_pcm_units_per_source_unit)
+        || game_pcm_units_per_source_unit <= 0.0)
         return result;
 
     double base = std::floor(position);
@@ -231,16 +267,10 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
             end_virtual_index,
             boundaries,
             trajectory.loop_cycle)) {
-        // Steady-state fast path. Preserve the exact 64-tap law and weighted
-        // summation order, but avoid per-tap topology work and repeated phase
-        // normalization. Production may also omit per-tap finite checks after a
-        // complete setup-time PCM scan.
         if (first_virtual_index < 0
-            || end_virtual_index
-                > static_cast<std::int64_t>(candidate.upstream.frame_count))
+            || end_virtual_index > static_cast<std::int64_t>(frame_count))
             return result;
-        const float* source = candidate.upstream.mono_pcm
-            + static_cast<std::size_t>(first_virtual_index);
+        const float* source = mono_pcm + static_cast<std::size_t>(first_virtual_index);
         weight_sum = table.phase_weight_sum(phase);
         for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
             const float sample = source[tap];
@@ -252,8 +282,6 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
             weighted += static_cast<double>(sample) * coefficient;
         }
     } else {
-        // Boundary path. Preserve exact authored topology: zero before key-on /
-        // after one-shot END and wrap only where the live sample loop says to.
         for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
             const std::int64_t virtual_index = first_virtual_index
                 + static_cast<std::int64_t>(tap);
@@ -265,11 +293,10 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
             if (zero)
                 continue;
             if (source_index < 0
-                || source_index >= static_cast<std::int64_t>(candidate.upstream.frame_count))
+                || source_index >= static_cast<std::int64_t>(frame_count))
                 return result;
 
-            const float sample = candidate.upstream.mono_pcm[
-                static_cast<std::size_t>(source_index)];
+            const float sample = mono_pcm[static_cast<std::size_t>(source_index)];
             if constexpr (!SourceFiniteVerified) {
                 if (!std::isfinite(sample))
                     return result;
@@ -282,14 +309,76 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
         || std::abs(weight_sum) < 1.0e-12)
         return result;
 
-    const double scaled = weighted / weight_sum
-        * candidate.upstream.game_pcm_units_per_source_unit;
+    const double scaled = weighted / weight_sum * game_pcm_units_per_source_unit;
     if (!std::isfinite(scaled))
         return result;
 
     result.sample = scaled;
     result.valid = true;
     return result;
+}
+
+inline spc_upstream_playback_reconstruction_result
+reconstruct_spc_upstream_candidate_playback_sample_resolved(
+    const spc_sample_restoration_candidate& candidate,
+    const spc_game_sample_playback_span& playback,
+    const snesapu_source_trajectory_projection& trajectory,
+    const spc_upstream_playback_boundaries& boundaries) noexcept
+{
+    if (!candidate.upstream.valid() || !candidate.coordinate_map.valid()
+        || !playback.valid() || !trajectory.valid || trajectory.before_key_on
+        || !boundaries.valid)
+        return {};
+
+    double position = 0.0;
+    if (trajectory.loop_cycle == 0) {
+        position = candidate.coordinate_map.map_position(
+            trajectory.effective_sample_position);
+    } else {
+        if (!playback.loop.present || !candidate.coordinate_map.loop_present)
+            return {};
+        position = candidate.coordinate_map.upstream_loop_start
+            + (trajectory.canonical_game_sample_position - playback.loop.start_sample)
+                * candidate.coordinate_map.upstream_frames_per_game_sample;
+    }
+
+    return reconstruct_spc_upstream_positioned_sample<false>(
+        candidate.upstream.mono_pcm,
+        candidate.upstream.frame_count,
+        candidate.upstream.game_pcm_units_per_source_unit,
+        boundaries,
+        trajectory,
+        position);
+}
+
+inline spc_upstream_playback_reconstruction_result
+reconstruct_spc_upstream_playback_plan_sample(
+    const spc_upstream_playback_reconstruction_plan& plan,
+    const snesapu_source_trajectory_projection& trajectory) noexcept
+{
+    if (!plan.valid || !trajectory.valid || trajectory.before_key_on)
+        return {};
+
+    double position = 0.0;
+    if (trajectory.loop_cycle == 0) {
+        position = plan.upstream_origin
+            + (trajectory.effective_sample_position - plan.game_origin)
+                * plan.upstream_frames_per_game_sample;
+    } else {
+        if (!plan.game_loop.present)
+            return {};
+        position = plan.upstream_loop_start
+            + (trajectory.canonical_game_sample_position - plan.game_loop.start_sample)
+                * plan.upstream_frames_per_game_sample;
+    }
+
+    return reconstruct_spc_upstream_positioned_sample<true>(
+        plan.mono_pcm,
+        plan.frame_count,
+        plan.game_pcm_units_per_source_unit,
+        plan.boundaries,
+        trajectory,
+        position);
 }
 
 } // namespace detail
