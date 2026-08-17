@@ -162,14 +162,16 @@ def build_all(
             )
             results.append(result)
 
+    cacheable_total = sum(int(result["cacheable_tracks"]) for result in results)
     return {
         "role": role,
         "creator_count": len(creators),
         "creators": creators,
         "cache_backend": CACHE_BACKEND,
         "role_selected_tracks": len(admitted),
-        "cacheable_tracks": sum(int(result["cacheable_tracks"]) for result in results),
+        "cacheable_tracks": cacheable_total,
         "unsupported_tracks": sum(int(result["unsupported_tracks"]) for result in results),
+        "selected_tracks": cacheable_total,
         "built": sum(int(result["built"]) for result in results),
         "reused": sum(int(result["reused"]) for result in results),
         "results": results,
