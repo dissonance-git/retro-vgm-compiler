@@ -117,6 +117,20 @@ class PrivateComponentPackageContractTest(unittest.TestCase):
             _verifier.verify_runtime_contracts(vgm, _verifier.VGM_RUNTIME_CONTRACTS, "VGM")
             _verifier.verify_runtime_contracts(spc, _verifier.SPC_RUNTIME_CONTRACTS, "SPC")
 
+    def test_accepts_spcplayer_usage_startup_result(self) -> None:
+        _verifier.validate_spcplayer_startup_result(
+            1,
+            "spcplayer version 1.1\nUsage: spcplayer.exe [options]\n",
+        )
+
+    def test_rejects_spcplayer_loader_or_crash_exit(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "expected usage exit 1"):
+            _verifier.validate_spcplayer_startup_result(-1073741515, "")
+
+    def test_rejects_spcplayer_non_usage_exit(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "did not reach its own usage path"):
+            _verifier.validate_spcplayer_startup_result(1, "some unrelated failure")
+
     def test_rejects_missing_runtime_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
