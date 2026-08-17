@@ -18,6 +18,17 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertNotIn("Could not locate input_vgm.cpp project item", self.text)
         self.assertNotIn("projectText.Replace", self.text)
 
+    def test_vgm_solution_dependency_graph_is_preserved_when_available(self) -> None:
+        self.assertIn(
+            "$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'",
+            self.text,
+        )
+        self.assertIn(
+            "$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }",
+            self.text,
+        )
+        self.assertIn("Run $msbuild @($vgmBuildTarget,", self.text)
+
     def test_outputs_are_explicit_not_recursively_discovered(self) -> None:
         self.assertNotIn("Find-ReleaseFile", self.text)
         for marker in (
