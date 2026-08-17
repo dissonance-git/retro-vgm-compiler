@@ -39,25 +39,34 @@ int main() {
     assert(second.first_brr_block_address == 0xfff9);
     assert(second.block_count == 3);
 
-    // The packet is sufficient to construct the realtime provider after one
-    // bounded setup-time copy. Playback itself need not parse paths or metadata.
-    std::array<std::int16_t, 32> copied_a{};
-    const std::uint8_t* raw_a = view.pcm_bytes(0);
-    assert(raw_a != nullptr);
-    for (std::size_t i = 0; i < copied_a.size(); ++i)
-        copied_a[i] = static_cast<std::int16_t>(snes_read_le16(raw_a + i * 2));
+    // Child setup owns decoded packet PCM before realtime playback starts.
+    snes_prebrr_packet_runtime<4> runtime;
+    assert(runtime.load(builder.bytes().data(), builder.bytes().size()));
+    assert(runtime.loaded());
+    assert(runtime.source_count() == 2);
 
-    snesapu_prebrr_provider<4> provider;
-    assert(provider.add({3, 0x8000, 2, copied_a.data(), copied_a.size()}));
     std::array<std::int16_t, 16> block{};
-    assert(provider.fill_block(3, 0x8009, block.data()));
+    assert(runtime.fill_block(3, 0x8009, block.data()));
     assert(block[0] == a[16]);
     assert(block[15] == a[31]);
+
+    // The same method has the exact C-callback shape the spcplayer wrapper calls.
+    block.fill(0);
+    assert(snes_prebrr_packet_runtime<4>::callback(
+        &runtime, 9, 0x0002, block.data()) == 1); // FFF9 + 9 wraps to 0002
+    assert(block[0] == b[16]);
+    assert(block[15] == b[31]);
+    assert(snes_prebrr_packet_runtime<4>::callback(
+        &runtime, 1, 0x0002, block.data()) == 0);
+    assert(snes_prebrr_packet_runtime<4>::callback(
+        nullptr, 9, 0x0002, block.data()) == 0);
 
     // Corrupt framing is rejected rather than partially parsed.
     auto corrupt = builder.bytes();
     corrupt[12] ^= 1u; // declared total size
     assert(!view.reset(corrupt.data(), corrupt.size()));
+    assert(!runtime.load(corrupt.data(), corrupt.size()));
+    assert(!runtime.loaded());
 
     corrupt = builder.bytes();
     // Duplicate the first SRCN into the second entry.
