@@ -1,24 +1,28 @@
-# Creator-blind VGM song cache
+# Creator-blind song cache
 
-This cache makes repeated creator/style research operate on a parsed song object instead of reopening the VGM/VGZ for every hypothesis.
+Repeated creator/style research should operate on a reusable song object instead of reopening or re-executing the source for every hypothesis.
 
-The immutable files under `tests/corpus/` remain source authority. Capsules are rebuildable research accelerators, not replacements for those files.
+The immutable files under `tests/corpus/` remain source authority. Caches are rebuildable research accelerators, not replacements for those files.
 
-## Ownership boundary
+## One cache law, source-specific backends
 
 ```text
-immutable VGM/VGZ source
-        ↓ parse once
-creator-blind song capsule
-        ↓ cheap projections
-feature views / part matchers / phrase models / similarity matrices
+immutable source
+      ↓ expensive source-specific lift once
+creator-blind song object
+      ↓ cheap projections
+parts / motifs / phrase models / feature views / similarity experiments
 
-role-credit index ───────────────────────────────┘
+canonical role evidence ───────────────────────────────────────────┘
 ```
 
-Creator, composer, arranger, programmer, and artist labels are **never stored in a song capsule**. Role evidence lives separately. This keeps the same cached song usable for blind experiments and for different historical-role questions.
+Different source families retain different cache schemas because they expose different evidence. **Song-centered identity is shared; source semantics are not flattened.**
 
-`tools/creator_blind_song_cache.py` currently preserves, for Genesis VGM/VGZ:
+Creator, composer, arranger, programmer, artist, cue-candidate, and attribution labels are never stored in a song cache object. Historical role evidence is joined later from its canonical owner.
+
+## Genesis VGM/VGZ backend
+
+`tools/creator_blind_song_cache.py` preserves:
 
 - ordinary full YM2612 key-on snapshots;
 - event tick, physical channel, F-number, block, algorithm, feedback, AMS/FMS, and pan;
@@ -28,75 +32,134 @@ Creator, composer, arranger, programmer, and artist labels are **never stored in
 - DAC stream command observations;
 - lightweight realization counters and VGM timing.
 
-Physical YM2612 channels remain observations, not persistent musical-part identity. Future part recovery, phrase segmentation, rhythm normalization, motion filtering, realization models, and similarity functions should derive from capsules instead of reparsing source audio.
+Physical YM2612 channels remain observations, not persistent musical-part identity.
 
-## No hash treadmill
-
-Routine cache reuse does not hash every file. A capsule is reused when its schema/extractor generation and recorded source size still match. Use `--refresh` when source bytes or extractor semantics intentionally change. Exact corpus identity remains owned by the existing corpus manifests and Git history.
-
-## Build a creator's admitted songs once
-
-The Sonic 3 research role index is:
-
-```text
-research/projects/sonic3/role-credit-index.jsonl
-```
-
-For example:
-
-```bash
-python tools/creator_blind_song_cache.py build-creator \
-  --credits research/projects/sonic3/role-credit-index.jsonl \
-  --creator "Tatsuyuki Maeda" \
-  --role composer
-```
-
-That selects the currently admitted Maeda composition controls and writes one capsule per song under:
+Cache location:
 
 ```text
 research/cache/vgm-song-capsules/<corpus-id>/
 ```
 
-A second identical invocation reuses the capsules without parsing the VGM/VGZ again.
+## SPC backend
 
-## Build every admitted composer
+`tools/spc/creator_blind_spc_cache.py` promotes the existing controlled forensic runtime output into a persistent song-centered object rather than inventing another SPC parser.
 
-The role index now contains 51 admitted composition controls across seven creators:
+```text
+SPC snapshot
+→ instrumented snes_spc controlled execution
+→ runtime trace / replay
+→ label-blind voice episodes + persistent-part profiles
+→ persistent forensic sidecar
+```
+
+The cached sidecar already contains:
+
+- controlled execution duration and source byte count;
+- runtime capture completeness diagnostics;
+- replay continuity diagnostics;
+- voice-episode and transition counts;
+- persistent-part profile count;
+- normalized inter-onset geometry;
+- performed-pitch interval geometry where supported;
+- pitch contour and evidence confidence;
+- exact runtime/instrumentation provenance emitted by the extractor.
+
+Its model remains:
+
+```text
+label-blind SPC forensic feature sidecar
+```
+
+Cache location:
+
+```text
+research/cache/spc-song-capsules/<corpus-id>/
+```
+
+Panel ids such as `cue-001` are experiment projections. They do not become cache identities. `tools/spc/capture_blind_panel.py` now reuses the song cache and only then copies the creator-blind sidecar into an opaque panel output for freezing.
+
+## No hash treadmill
+
+Routine source-cache reuse does not hash every VGM/VGZ/SPC again.
+
+Genesis reuse checks the cache/extractor generation and source size. SPC reuse checks:
+
+- expected label-blind forensic model;
+- source size recorded by controlled execution;
+- requested capture duration;
+- existing freezer integrity/label-leakage contract.
+
+Use `--refresh` / `--refresh-cache` when source bytes or extractor/runtime semantics intentionally change. Exact source identity remains owned by corpus manifests and Git history.
+
+Frozen experiment matrices may hash their small derived sidecars for immutable experiment identity. That is separate from routine source-cache reuse.
+
+## Canonical composer-control world
+
+The current Sonic 3 calibration world joins two existing owners at runtime:
+
+```text
+research/projects/sonic3/role-credit-index.jsonl
+    51 Genesis VGM/VGZ cache-routing controls
+
+research/projects/sonic3/attribution-control-admissions.jsonl
+    grounded cross-format role evidence, including 15 CUBE SPC controls
+```
+
+The combined admitted composer view currently contains **66 controls across nine composers**:
 
 - Tatsuyuki Maeda: 26
 - Jun Senoue: 12
+- Miyoko Takaoka: 11
 - Haruyo Oguro: 5
+- Masanori Hikichi: 4
 - Naofumi Hataya: 4
 - Tomonori Sawada: 2
 - Masaru Setsumaru: 1
 - Seirou Okamoto: 1
 
-`The Scorching Sand` is operationally admitted as a Tomonori Sawada composition control from the commercial soundtrack mapping. The contradictory later statement that Boss Odd Stage was his only Golden Axe III composition remains attached to the credit record as counterevidence, so experiments can use the label without erasing the provenance conflict.
+The CUBE controls remain owned by `attribution-control-admissions.jsonl` and `cube-calibration-policy.json`. They are not copied into the Genesis routing index.
 
-Build the entire admitted composer world with one command:
+`The Scorching Sand` remains operationally admitted as a Tomonori Sawada Genesis composition control per the project decision; its conflicting later recollection remains attached as counterevidence.
+
+## Build controls
+
+Genesis controls only:
 
 ```bash
 python tools/build_admitted_composer_caches.py
 ```
 
-The helper fans `build-creator` across every admitted composer. Because capsules are keyed by source song rather than creator, repeated creator/role views reuse the same parsed object instead of duplicating it.
+That reports the grounded SPC controls as `backend_unavailable_tracks` rather than pretending they are unsupported or feeding them into a VGM parser.
 
-To pre-cache a whole control soundtrack, including negatives:
+After building the existing forensic SPC runtime:
+
+```bash
+cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
+cmake --build build-spc-forensic --parallel 2
+```
+
+build the full 66-control cached world with:
+
+```bash
+python tools/build_admitted_composer_caches.py \
+  --spc-extractor build-spc-forensic/spc_forensic_features
+```
+
+The default SPC controlled-execution duration is 5 seconds, matching the frozen CUBE blind-panel contract. Change it explicitly with `--spc-seconds`; a different duration is a different reusable capture and invalidates routine reuse.
+
+To pre-cache a whole source-family control soundtrack, including negatives:
 
 ```bash
 python tools/creator_blind_song_cache.py build-corpus \
   tests/corpus/golden-axe-iii-genesis-vgz
-```
 
-To inspect role evidence without touching source music:
-
-```bash
-python tools/creator_blind_song_cache.py lookup \
-  --credits research/projects/sonic3/role-credit-index.jsonl \
-  --creator "Tatsuyuki Maeda" \
-  --role composer
+python tools/spc/creator_blind_spc_cache.py build-corpus \
+  tests/corpus/terranigma-spc \
+  --extractor build-spc-forensic/spc_forensic_features
 ```
 
 ## Research rule
 
-Pairwise matrices are derived views. They may be committed as frozen experiment evidence, but they are not the reusable cache because changing the similarity function would make them obsolete. Song capsules sit earlier in the pipeline so a new research generation can recompute cheap derived features without reopening the binary corpus.
+Pairwise matrices, rankings, attribution scores, and frozen panel geometry are derived experiment views. They may be committed as evidence for a specific experiment, but they are not the reusable song cache because changing the comparison method would make them obsolete.
+
+The reusable cache sits earlier in the pipeline so future research generations can change musical projections without reopening or re-executing the binary corpus.
