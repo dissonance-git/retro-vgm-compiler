@@ -301,3 +301,14 @@ set_tests_properties(
     cube_panel_repository_contract_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_test(
+    NAME spc_snapshot_state_correlation_py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_correlate_spc_snapshot_state.py
+)
+set_tests_properties(
+    spc_snapshot_state_correlation_py
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
