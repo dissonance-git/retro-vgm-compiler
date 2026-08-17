@@ -47,6 +47,12 @@ def main() -> int:
     if "SourceTapOnResamplerConnected" not in h:
         h = replace_once(h, marker, hooks, "VGMPlayer hook declarations")
 
+    # Let the foobar shell select the source-aware subclass only when the exact
+    # patched ABI is present. Unpatched libvgm therefore remains buildable as the
+    # protected-reference fallback rather than failing on missing virtual hooks.
+    if "LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI" not in h:
+        h = "#define LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI 1\n" + h
+
     c = cpp.read_text(encoding="utf-8")
     connect_old = (
         "\t\t\tResmpl_SetVals(&clDev->resmpl, resmplMode, chipVol, _outSmplRate);\n"
