@@ -86,6 +86,19 @@ class StudioSourceProviderPatchTest(unittest.TestCase):
             self.assertIn("FLd     dword [ESP]", asm)
             self.assertIn("Call    [pInter]", asm)
 
+            # NON/noise replaces the interpolated waveform in the pinned mixer.
+            # It must reach the historical pInter branch before the expensive
+            # verified-source callback is considered, rather than spending the
+            # 64-tap studio FIR on a value that will immediately be discarded.
+            noise_guard = asm.index("Test    [dspNoise],CH")
+            studio_guard = asm.index("Test    byte [studioSourceVoices],CH")
+            callback_rate = asm.index("Push    dword [EBX+mRate]")
+            historical = asm.index("%%HistoricalInterpolation:")
+            self.assertLess(noise_guard, studio_guard)
+            self.assertLess(studio_guard, callback_rate)
+            self.assertLess(callback_rate, historical)
+            self.assertIn("JNZ     %%HistoricalInterpolation", asm)
+
             dsp_h = (dll / "DSP.h").read_text(encoding="utf-8")
             self.assertIn("DSPStudioSourceBeginProvider", dsp_h)
             self.assertIn("u32 loopBrrAddr", dsp_h)
