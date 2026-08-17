@@ -12,6 +12,11 @@ that packet once, byte-compares every serialized BRR witness against the actual
 SPC RAM image, prepares the 64-tap coefficient table outside the audio loop, and
 installs only child-local stdcall callbacks.
 
+The per-sample callback carries the live effective SRCN, live loop BRR pointer
+and DIR page observed by the patched mixer, not merely the key-on identity. That
+lets the child fail closed if Script700 or a runtime directory entry retargets a
+loop without changing DIR.
+
 No file path, corpus lookup, hashing, allocation or IPC occurs in MixSample.
 If this top rung is absent or a live callback later fails, the assembly seam
 falls through to historical pInter, which can still consume the pre-BRR provider
@@ -245,7 +250,8 @@ void spcplayer_controller::SetVoiceMute(u32 mute)
 
 using RetroStudioRuntime = gameaudio::spc::snes_studio_source_packet_runtime<256>;
 using RetroStudioBeginCallback = u32 (__stdcall *)(void*, u32, u32, u32, u32, u32, u32);
-using RetroStudioSampleCallback = u32 (__stdcall *)(void*, u32, u32, u32, u32, float*);
+using RetroStudioSampleCallback = u32 (__stdcall *)(
+    void*, u32, u32, u32, u32, u32, u32, float*);
 using RetroSetStudioSourceProvider = void (__stdcall *)(
     RetroStudioBeginCallback, RetroStudioSampleCallback, void*);
 
@@ -260,13 +266,19 @@ static u32 __stdcall retro_studio_begin(
 }
 
 static u32 __stdcall retro_studio_sample(
-    void* user, u32 voice, u32 m_rate_q16_16, u32 directory_page,
-    u32 interpolation, float* out_sample)
+    void* user, u32 voice, u32 m_rate_q16_16, u32 effective_srcn,
+    u32 live_loop_brr, u32 directory_page, u32 interpolation, float* out_sample)
 {
     if (user == nullptr) return 0u;
     auto* runtime = static_cast<RetroStudioRuntime*>(user);
     return runtime->provider().render_voice(
-        voice, m_rate_q16_16, directory_page, interpolation, out_sample) ? 1u : 0u;
+        voice,
+        m_rate_q16_16,
+        effective_srcn,
+        live_loop_brr,
+        directory_page,
+        interpolation,
+        out_sample) ? 1u : 0u;
 }
 
 static RetroSetStudioSourceProvider resolve_studio_source_provider()
