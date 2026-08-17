@@ -4,16 +4,19 @@ These guarded patches consolidate the mature causal-source work that previously 
 
 They target the editable SPCPlay / SNESAPU source tree. They are intentionally not part of the dependency-free model build.
 
-## Source capture
+## Source capture and pre-BRR restoration seam
 
-Apply in order:
+Apply the SNESAPU/DSP patches in order:
 
 ```text
 python patches/snesapu/apply_source_capture.py <spcplay-root>
 python patches/snesapu/upgrade_source_capture_v2.py <spcplay-root>
+python patches/snesapu/apply_prebrr_provider.py <spcplay-root>
 ```
 
-Both scripts use exact singular source replacements. If the pinned upstream layout changes, patching fails instead of guessing a new hot-loop insertion point.
+The first two add exact source/control capture. `apply_prebrr_provider.py` adds the earlier restoration seam used only when a verified original/pre-BRR sample exists.
+
+All scripts use exact singular source replacements. If the pinned upstream layout changes, patching fails instead of guessing a new hot-loop insertion point.
 
 ### SRCE v2 contract
 
@@ -35,7 +38,7 @@ The gain planes are control truth, not extra audio objects. The wet planes alrea
 
 ## Independent Enhanced playback
 
-Apply the foobar preference plus the first audible Enhanced policy with:
+Apply the foobar preference plus high-rate source-reconstruction policy with:
 
 ```text
 python patches/snesapu/apply_enhanced_component.py \
@@ -64,7 +67,7 @@ configured output rate = 96 kHz
 Enhanced = on
 ```
 
-our first SNES Enhanced path selects:
+our baseline Enhanced path selects:
 
 ```text
 DSP execution / voice reconstruction at 96 kHz
@@ -83,11 +86,147 @@ historical 32 kHz final stereo
 
 This also means a user who already selected `96 kHz + Sinc` was manually exercising much of this same source-domain quality path even before the dedicated checkbox existed. The checkbox turns that mechanism into an explicit, reversible synthesis mode rather than an accidental combination of quality settings.
 
-The ordinary interpolation and output-rate preferences remain available for the reference/control path.
+## Preferred Enhanced rung: verified original sample before BRR
 
-## Deeper enhanced reconstruction
+The better target is earlier than the normal BRR decoder:
 
-The existing high-rate sinc path is only the first rung. Retro VGM Compiler also models an earlier and more explicit source seam:
+```text
+original production / sample-library waveform
+        ↓
+historically verified preparation
+(trim + resample + gain + loop + intentional filtering)
+        ↓
+16-bit game sample grid
+        ↓
+BRR encoder
+        ↓
+SPC RAM
+```
+
+When that upstream identity and preparation chain are proven, Retro VGM Compiler prepares the original waveform onto the **exact game sample grid before BRR quantization**, then replaces only the sixteen decoded samples that one 9-byte BRR block would have produced.
+
+The patched SNESAPU path becomes:
+
+```text
+SPC execution
+        ↓
+BRR block requested
+        ↓
+verified pre-BRR block available?
+  no  -> exact historical BRR decoder
+  yes -> prepared original 16-sample block
+        ↓
+SNESAPU interpolation
+pitch / PMON
+ADSR / GAIN
+VxVOL routing
+EON / echo / FIR / feedback
+MVOL
+        ↓
+output
+```
+
+This is the desired form of "the original samples before the hardware compressed them." It removes BRR loss while leaving the later S-DSP performance machinery authoritative.
+
+The block provider is deliberately low-frequency: the callback runs once per BRR block, not for every output sample.
+
+### Parent/child transport
+
+The historical x64 foobar component runs the 32-bit SNESAPU code in `spcplayer.exe`, so verified replacement data has to cross that process boundary at setup time.
+
+After the DSP patch above, apply:
+
+```text
+python patches/snesapu/apply_prebrr_transport.py <foo_snesapu-root>
+```
+
+where `<foo_snesapu-root>` contains both:
+
+```text
+foobar2000/foo_snesapu/
+spcplayer/
+```
+
+This patch:
+
+- upgrades the private SPCP startup packet to version 2;
+- appends one bounded pre-BRR packet after the SPC and optional Script700 payload;
+- parses and copies that data once inside the child;
+- installs a fixed realtime BRR-block callback;
+- never sends archival paths or corpus metadata to the child.
+
+For a local track named:
+
+```text
+music.spc
+```
+
+Enhanced optionally looks for:
+
+```text
+music.spc.prebrr
+```
+
+A missing sidecar is normal. Playback simply uses the 96 kHz/Sinc BRR reconstruction rung. An invalid sidecar is not silently accepted as historical evidence.
+
+The sidecar format is defined by:
+
+```text
+components/spc/snesapu_prebrr_packet.h
+```
+
+and contains only already-approved prepared game-grid PCM plus the SRCN / first-BRR-block mapping needed for playback.
+
+## Finding and approving original samples
+
+The search pipeline is intentionally split from playback:
+
+```text
+BRR sample
+↓ decode
+robust candidate retrieval
+↓
+possible original sample(s)
+↓
+fit explicit historical preparation transform
+↓
+waveform/loop/trim validation
+↓
+independent lineage evidence
+↓
+approved pre-BRR source
+↓
+prepared game-grid PCM
+↓
+.prebrr sidecar
+```
+
+Current pieces:
+
+```text
+tools/spc_original_sample_candidates.py
+    distortion-tolerant candidate ranking only
+
+components/spc/spc_sample_lineage_verification.h
+    transformed-source vs decoded-game validation
+
+components/spc/spc_original_sample_bank.h
+    ambiguity-safe approved-source lookup
+
+components/spc/snesapu_prebrr_provider.h
+    exact BRR-block -> prepared original PCM mapping
+
+components/spc/snesapu_prebrr_packet.h
+    setup-time parent/child transport
+```
+
+The SciSpace literature pass is the reason candidate retrieval and historical admission stay separate. Robust fingerprints can survive filtering, resampling and compression well enough to find plausible ancestors. Generative audio super-resolution can synthesize plausible missing bandwidth. Neither fact establishes that invented or merely similar high-frequency content was present in the original production sample.
+
+So normal Enhanced uses a pre-BRR source only when identity and preparation are evidenced. Generative bandwidth extension remains an optional research/listening experiment, not source truth.
+
+## Deeper reconstruction fallback
+
+When no upstream original can be established, Retro VGM Compiler still has the earlier source-domain reconstruction machinery:
 
 ```text
 components/spc/spc_enhanced_reconstruction.h
@@ -97,9 +236,21 @@ components/spc/spc_upstream_sample_reconstruction.h
 components/spc/snes_spc_enhanced_source_hook_bridge.h
 ```
 
-That machinery can evaluate the exact decoded-BRR source trajectory at sub-32-kHz phases, and can substitute a proven higher-quality upstream sample only when lineage, preparation mapping, and same-instrument validation permit it.
+That machinery can evaluate decoded-BRR source trajectories at sub-32-kHz phases without pretending an unknown original master has been recovered.
 
-This is the route for eventually going beyond the already-good SNESAPU sinc renderer while keeping historical edits, loops, articulation, pitch motion, envelopes, and sample identity under evidence control.
+The intended quality ladder is therefore:
+
+```text
+best: verified original/pre-BRR source + exact game preparation
+ ↓
+exact BRR source trajectory reconstructed at high rate
+ ↓
+SNESAPU high-rate 8-point Sinc path
+ ↓
+protected historical reference
+```
+
+Each rung is reversible and evidence-labelled.
 
 ## Separation of concerns
 
