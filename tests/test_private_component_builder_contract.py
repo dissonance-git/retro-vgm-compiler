@@ -64,6 +64,16 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertIn("-DLIBVGM_ROOT=$Libvgm", self.text)
         self.assertIn("'--test-dir', $LibvgmSourceTestBuild", self.text)
 
+    def test_source_commit_is_captured_and_reverified_before_manifest(self) -> None:
+        capture = "$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()"
+        bookend = "verify_build_source_provenance.py'), $RetroRoot, '--expected-commit', $retroCommit"
+        manifest = "$manifest = [ordered]@{"
+        self.assertIn(capture, self.text)
+        self.assertIn(bookend, self.text)
+        self.assertLess(self.text.index(capture), self.text.index("== 2. Reconstruct external"))
+        self.assertLess(self.text.index(bookend), self.text.index(manifest))
+        self.assertNotIn("$retroCommit = 'unversioned'", self.text)
+
     def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
         self.assertIn("verify_private_component_packages.py", self.text)
