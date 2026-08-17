@@ -21,6 +21,11 @@ int main() {
     float new_fm_l[frames] = {2.0f, 4.0f, 6.0f, 8.0f};
     float new_fm_r[frames] = {1.0f, 2.0f, 3.0f, 4.0f};
 
+    float old_dac_l[frames] = {0.75f, 1.00f, 1.25f, 1.50f};
+    float old_dac_r[frames] = {0.50f, 0.75f, 1.00f, 1.25f};
+    float new_dac_l[frames] = {1.00f, 1.50f, 2.00f, 2.50f};
+    float new_dac_r[frames] = {0.75f, 1.25f, 1.75f, 2.25f};
+
     float old_psg_l[frames] = {0.25f, 0.50f, 0.75f, 1.00f};
     float old_psg_r[frames] = {0.25f, 0.50f, 0.75f, 1.00f};
     float new_psg_l[frames] = {0.50f, 1.00f, 1.50f, 2.00f};
@@ -31,6 +36,11 @@ int main() {
     fm.reference = {old_fm_l, old_fm_r, true};
     fm.enhanced = {new_fm_l, new_fm_r, true};
     fm.replace = true;
+
+    auto& dac = sources[static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac)];
+    dac.reference = {old_dac_l, old_dac_r, true};
+    dac.enhanced = {new_dac_l, new_dac_r, true};
+    dac.replace = true;
 
     auto& psg = sources[static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0)];
     psg.reference = {old_psg_l, old_psg_r, true};
@@ -44,9 +54,11 @@ int main() {
     for (std::size_t frame = 0; frame < frames; ++frame) {
         const float expected_l = reference_l[frame]
             + (new_fm_l[frame] - old_fm_l[frame])
+            + (new_dac_l[frame] - old_dac_l[frame])
             + (new_psg_l[frame] - old_psg_l[frame]);
         const float expected_r = reference_r[frame]
             + (new_fm_r[frame] - old_fm_r[frame])
+            + (new_dac_r[frame] - old_dac_r[frame])
             + (new_psg_r[frame] - old_psg_r[frame]);
         assert(std::abs(render.left()[frame] - expected_l) < 1.0e-6f);
         assert(std::abs(render.right()[frame] - expected_r) < 1.0e-6f);
@@ -155,7 +167,7 @@ int main() {
     assert(!unbound_spatial.omniphony.rendered);
 
     // Never subtract a merely similar source. If exact reference contribution
-    // evidence is missing, the quality path fails closed to protected reference.
+    // evidence is missing, the strict quality path fails closed to reference.
     auto inexact = sources;
     inexact[static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1)].reference.exact = false;
     assert(!render.build(reference_l, reference_r, frames, inexact));
@@ -166,8 +178,7 @@ int main() {
         assert(render.right()[frame] == reference_r[frame]);
     }
 
-    // A broken later replacement must undo any earlier successful delta rather
-    // than leak a half-upgraded block into playback.
+    // The strict control remains all-or-nothing.
     auto transactional = sources;
     transactional[static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0)].enhanced.left = nullptr;
     assert(!render.build(reference_l, reference_r, frames, transactional));
@@ -176,6 +187,56 @@ int main() {
     for (std::size_t frame = 0; frame < frames; ++frame) {
         assert(render.left()[frame] == reference_l[frame]);
         assert(render.right()[frame] == reference_r[frame]);
+    }
+
+    // Product playback is family-local: a broken PSG candidate keeps PSG on
+    // protected reference while independently proven FM and DAC remain applied.
+    auto psg_failed = sources;
+    psg_failed[static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0)]
+        .enhanced.left = nullptr;
+    assert(render.build_independent_families(reference_l, reference_r, frames, psg_failed));
+    assert(render.valid());
+    assert(render.used_replacement());
+    assert(render.had_family_failure());
+    assert(render.last_error() == genesis_enhanced_recomposition_error::none);
+
+    const auto fm_status = render.family_status(genesis_recomposition_family::ym2612_fm);
+    const auto dac_status = render.family_status(genesis_recomposition_family::ym2612_dac);
+    const auto psg_status = render.family_status(genesis_recomposition_family::sn76489_psg);
+    assert(fm_status.requested && fm_status.applied);
+    assert(dac_status.requested && dac_status.applied);
+    assert(psg_status.requested && !psg_status.applied);
+    assert(psg_status.error == genesis_enhanced_recomposition_error::missing_enhanced_source);
+    for (std::size_t frame = 0; frame < frames; ++frame) {
+        const float expected_l = reference_l[frame]
+            + (new_fm_l[frame] - old_fm_l[frame])
+            + (new_dac_l[frame] - old_dac_l[frame]);
+        const float expected_r = reference_r[frame]
+            + (new_fm_r[frame] - old_fm_r[frame])
+            + (new_dac_r[frame] - old_dac_r[frame]);
+        assert(std::abs(render.left()[frame] - expected_l) < 1.0e-6f);
+        assert(std::abs(render.right()[frame] - expected_r) < 1.0e-6f);
+    }
+
+    // DAC failure is likewise isolated. FM and PSG still compose on the same
+    // protected block, proving all three Genesis source families are independent.
+    auto dac_failed = sources;
+    dac_failed[static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac)]
+        .reference.exact = false;
+    assert(render.build_independent_families(reference_l, reference_r, frames, dac_failed));
+    assert(render.had_family_failure());
+    assert(render.family_status(genesis_recomposition_family::ym2612_fm).applied);
+    assert(!render.family_status(genesis_recomposition_family::ym2612_dac).applied);
+    assert(render.family_status(genesis_recomposition_family::sn76489_psg).applied);
+    for (std::size_t frame = 0; frame < frames; ++frame) {
+        const float expected_l = reference_l[frame]
+            + (new_fm_l[frame] - old_fm_l[frame])
+            + (new_psg_l[frame] - old_psg_l[frame]);
+        const float expected_r = reference_r[frame]
+            + (new_fm_r[frame] - old_fm_r[frame])
+            + (new_psg_r[frame] - old_psg_r[frame]);
+        assert(std::abs(render.left()[frame] - expected_l) < 1.0e-6f);
+        assert(std::abs(render.right()[frame] - expected_r) < 1.0e-6f);
     }
 
     // Non-finite replacement data is evidence corruption, not a value to clip.
