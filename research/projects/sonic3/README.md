@@ -11,6 +11,8 @@ The project deliberately couples several evidence layers while preserving their 
 ## Project chapters
 
 - [`attribution.md`](attribution.md) is the broad composer / arranger / programmer attribution program and control design.
+- [`cue-attribution-board.md`](cue-attribution-board.md) is the conservative cue-by-cue evidence map for the committed 58-track Sonic 3 & Knuckles corpus. Known composers, source-family constraints, arrangement/programming evidence, version lineage, candidates, and unresolved cues remain separate.
+- [`sonic3-cube-target-panel.json`](sonic3-cube-target-panel.json) freezes the Sonic-side Cube attribution experiment: Marble Garden/Takaoka and Boss 2/Hikichi anchors; six unresolved target work families; Senoue/Kashima composer decoys; Nagao/Setsumaru role confounds; and prototype/final version controls.
 - [`harmonic-form.md`](harmonic-form.md) is the executable harmonic/tonal/form pressure test, including the blind VGM surface-harmony lane and the promotion path into persistent-part, key, function, cadence, tonal-region, and creator-grammar evidence.
 - [`psg-role-semantics.md`](psg-role-semantics.md) models Sonic 3's mixed YM2612+SN76489 arrangement surface: independent PSG tone, FM/PSG doubling or shadowing, PSG noise/percussion behavior, and the rule that hardware register position is not musical bass function.
 - [`rom-forensics.md`](rom-forensics.md) studies ROM-level implementation evidence and how it constrains attribution without turning implementation into composition evidence.
