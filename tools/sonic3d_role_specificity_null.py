@@ -5,6 +5,8 @@ The feature audit is frozen and creator-blind before this tool runs. Documentary
 composer and arranger/programmer labels are then compared with permutations that
 preserve each role's exact label multiset. Work-family membership never moves,
 and same-family candidates remain excluded in every observed and null retrieval.
+Optional mapping-state exclusions create matched sensitivity nulls only after the
+complete audit and role/family maps have been validated.
 """
 
 from __future__ import annotations
@@ -92,6 +94,7 @@ def permutation_null(
     *,
     permutations: int = 5000,
     seed: int = 20260816,
+    excluded_mapping_states: set[str] | None = None,
 ) -> dict[str, object]:
     if permutations <= 0:
         raise ValueError("permutations must be positive")
@@ -101,17 +104,24 @@ def permutation_null(
     soundtrack_id, mapped, specificity = role_eval._role_map(policy)
     families = role_eval._family_map(family_policy, soundtrack_id, set(mapped))
 
-    tracks = {
+    all_tracks = {
         key: value
         for key, value in indexed.items()
         if str(value["soundtrack_id"]) == soundtrack_id
     }
-    if set(tracks) != set(mapped):
-        missing = sorted(set(mapped) - set(tracks))
-        extra = sorted(set(tracks) - set(mapped))
+    if set(all_tracks) != set(mapped):
+        missing = sorted(set(mapped) - set(all_tracks))
+        extra = sorted(set(all_tracks) - set(mapped))
         raise ValueError(
             f"Sonic 3D Blast audit/role map mismatch; missing={missing}, extra={extra}"
         )
+
+    mapped, families, tracks, excluded_tracks = role_eval._filter_mapping_states(
+        mapped,
+        families,
+        all_tracks,
+        excluded_mapping_states,
+    )
 
     composer_policy = specificity["composer"]
     arranger_policy = specificity["arranger_programmer"]
@@ -123,6 +133,10 @@ def permutation_null(
     composer_classes = set(composer_policy["learnable_classes"])
     composer_sentinels = set(composer_policy.get("singleton_sentinels", {}))
     arranger_classes = set(arranger_policy["learnable_classes"])
+    role_eval._require_repeated_classes(composer_labels, composer_classes, "composition")
+    role_eval._require_repeated_classes(
+        arranger_labels, arranger_classes, "arrangement/programming"
+    )
 
     views: dict[str, tuple[str, dict[str, str], set[str], ScoreFn, set[str]]] = {
         "structural": (
@@ -241,15 +255,19 @@ def permutation_null(
         "soundtrack_id": soundtrack_id,
         "seed": seed,
         "permutations": permutations,
+        "excluded_mapping_states": sorted(excluded_mapping_states or set()),
+        "excluded_tracks": excluded_tracks,
+        "included_track_count": len(mapped),
         "null_hypothesis": (
-            "Creator-role labels are exchangeable across the fixed Sonic 3D Blast track "
-            "feature geometry. Each role preserves its exact observed class counts; work-family "
-            "membership remains fixed and same-family candidates remain excluded in every "
-            "observed and permuted retrieval."
+            "Creator-role labels are exchangeable across the selected fixed Sonic 3D Blast "
+            "track feature geometry. Each role preserves its exact selected-panel class counts; "
+            "work-family membership remains fixed and same-family candidates remain excluded in "
+            "every observed and permuted retrieval."
         ),
         "label_policy": (
-            "The frozen creator-blind audit is validated before documentary role labels are "
-            "loaded or permuted. This tool never extracts VGM features."
+            "The complete frozen creator-blind audit and complete documentary role/family maps "
+            "are validated before mapping-state exclusions, documentary role labels, or "
+            "permutations are applied. This tool never extracts VGM features."
         ),
         "claim_boundary": (
             "Empirical significance measures whether documentary creator-role labels align with "
@@ -274,6 +292,12 @@ def main() -> None:
         type=pathlib.Path,
         default=pathlib.Path("research/projects/sonic3/sonic3d-role-family-policy.json"),
     )
+    parser.add_argument(
+        "--exclude-mapping-state",
+        action="append",
+        default=[],
+        help="Exclude a documentary mapping state after the complete blind panel is validated.",
+    )
     parser.add_argument("--permutations", type=int, default=5000)
     parser.add_argument("--seed", type=int, default=20260816)
     parser.add_argument("--json", type=pathlib.Path)
@@ -288,6 +312,7 @@ def main() -> None:
         family_policy,
         permutations=args.permutations,
         seed=args.seed,
+        excluded_mapping_states=set(args.exclude_mapping_state),
     )
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.json:
