@@ -1,5 +1,6 @@
 #pragma once
 
+#include "genesis_enhanced_recomposition.h"
 #include "../../../model/spatial_source.h"
 
 #include <array>
@@ -43,7 +44,7 @@ public:
     bool push(const genesis_spatial_evidence_transition& transition) noexcept {
         if (!valid_ || size_ >= Capacity)
             return fail_closed();
-        if (transition.source_index >= source_capacity
+        if (transition.source_index >= genesis_recomposition_source_count
             || !evidence_valid(transition.evidence))
             return false;
         if (have_last_ordinal_ && transition.ordinal < last_ordinal_)
@@ -92,8 +93,6 @@ public:
     void fail_closed_state() noexcept { (void)fail_closed(); }
 
 private:
-    static constexpr std::size_t source_capacity = 11u;
-
     static bool evidence_valid(
         const vgmtooling::model::spatial_source_evidence& evidence) noexcept
     {
