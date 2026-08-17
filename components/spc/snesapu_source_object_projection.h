@@ -139,18 +139,16 @@ public:
         lanes_[8] = {};
         lanes_[8].kind = vgmtooling::model::spatial_audio_lane_kind::shared_effect_return;
         lanes_[8].mono_pcm = wet_l + source_frame_offset;
-        lanes_[8].evidence = spc_source_bus::make_preapplied_echo_source(
+        lanes_[8].evidence = spc_source_bus::make_post_evol_echo_source(
             spc_source_bus::echo_side::left,
-            echo_generation,
-            127);
+            echo_generation);
 
         lanes_[9] = {};
         lanes_[9].kind = vgmtooling::model::spatial_audio_lane_kind::shared_effect_return;
         lanes_[9].mono_pcm = wet_r + source_frame_offset;
-        lanes_[9].evidence = spc_source_bus::make_preapplied_echo_source(
+        lanes_[9].evidence = spc_source_bus::make_post_evol_echo_source(
             spc_source_bus::echo_side::right,
-            echo_generation,
-            127);
+            echo_generation);
 
         std::size_t previous_offset = 0;
         bool have_previous = false;
