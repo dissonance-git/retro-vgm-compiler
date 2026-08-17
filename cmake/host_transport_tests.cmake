@@ -13,6 +13,8 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     snes_spc_native_source_hook_bridge_test
     spc_enhanced_reconstruction_test
     spc_enhanced_native_interval_test
+    spc_studio_sample_reconstruction_test
+    spc_original_sample_interval_test
     snes_spc_enhanced_source_hook_bridge_test
     snesapu_source_transport_v2_test
     snesapu_source_object_projection_test
@@ -67,6 +69,14 @@ add_executable(
 add_executable(
     spc_enhanced_native_interval_test
     tests/spc/spc_enhanced_native_interval_test.cpp
+)
+add_executable(
+    spc_studio_sample_reconstruction_test
+    tests/spc/spc_studio_sample_reconstruction_test.cpp
+)
+add_executable(
+    spc_original_sample_interval_test
+    tests/spc/spc_original_sample_interval_test.cpp
 )
 add_executable(
     snes_spc_enhanced_source_hook_bridge_test
@@ -159,6 +169,14 @@ target_include_directories(
 )
 target_include_directories(
     spc_enhanced_native_interval_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_studio_sample_reconstruction_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_original_sample_interval_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -258,6 +276,14 @@ add_test(
 add_test(
     NAME spc_enhanced_native_interval
     COMMAND spc_enhanced_native_interval_test
+)
+add_test(
+    NAME spc_studio_sample_reconstruction
+    COMMAND spc_studio_sample_reconstruction_test
+)
+add_test(
+    NAME spc_original_sample_interval
+    COMMAND spc_original_sample_interval_test
 )
 add_test(
     NAME snes_spc_enhanced_source_hook_bridge
