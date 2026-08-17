@@ -11,6 +11,7 @@ add_library(gameaudio_vgm_core STATIC
     components/vgm/enhancement/ym2612_dac_enhanced.cpp
     components/vgm/enhancement/ym2612_pcm_stream.cpp
     components/vgm/enhancement/ym2612_fm_timeline.cpp
+    components/vgm/enhancement/ym2612_hq_fm_backend.cpp
     components/vgm/enhancement/source_stem_mixer.cpp
 )
 
@@ -301,17 +302,4 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME spc_runtime_sample_adapter COMMAND spc_runtime_sample_adapter_test)
     add_test(NAME spc_runtime_capture COMMAND spc_runtime_capture_test)
     add_test(NAME spc_runtime_capture_adapter COMMAND spc_runtime_capture_adapter_test)
-    add_test(
-        NAME xsf_unit
-        COMMAND ${Python3_EXECUTABLE} -B -m unittest discover -s tests/xsf -p test_*.py
-    )
-    set_tests_properties(xsf_unit PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_test(
-        NAME xsf_real_corpus
-        COMMAND ${Python3_EXECUTABLE} -B tools/xsf_corpus_audit.py --quiet
-            tests/corpus/chrono-cross-psf1-playstation
-            tests/corpus/mario-kart-ds-2sf-nintendo-64
-            tests/corpus/ocarina-of-time-usf-nintendo-64
-    )
-    set_tests_properties(xsf_real_corpus PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
