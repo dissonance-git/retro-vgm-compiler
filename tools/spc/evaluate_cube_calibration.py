@@ -42,6 +42,10 @@ def corpus_id_from_fixture(fixture_path: str) -> str:
     return parts[2]
 
 
+def file_sha256(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def load_panel(path: pathlib.Path) -> tuple[dict[str, str], dict[str, str]]:
     value = json.loads(path.read_text(encoding="utf-8"))
     cues = value.get("cues") if isinstance(value, dict) else None
@@ -467,6 +471,11 @@ def main() -> None:
         minimum_margin=args.minimum_margin,
         false_positive_threshold=args.false_positive_threshold,
     )
+    result["reveal_inputs"] = {
+        "panel_sha256": file_sha256(args.panel),
+        "admissions_sha256": file_sha256(args.admissions),
+        "policy_sha256": file_sha256(args.policy),
+    }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
