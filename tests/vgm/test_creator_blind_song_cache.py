@@ -5,6 +5,9 @@ import json
 import pathlib
 import struct
 import sys
+import tempfile
+import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "tools" / "creator_blind_song_cache.py"
@@ -35,60 +38,75 @@ def synthetic_vgm() -> bytes:
     return bytes(raw)
 
 
-def test_capsule_is_creator_blind_and_preserves_reusable_events(tmp_path):
-    source = tmp_path / "track.vgm"
-    source.write_bytes(synthetic_vgm())
-    capsule = cache.extract_capsule(source, corpus_id="synthetic")
+class CreatorBlindSongCacheTests(unittest.TestCase):
+    def test_capsule_is_creator_blind_and_preserves_reusable_events(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = pathlib.Path(temp_dir) / "track.vgm"
+            source.write_bytes(synthetic_vgm())
+            capsule = cache.extract_capsule(source, corpus_id="synthetic")
 
-    assert capsule["label_policy"].startswith("Creator, composer")
-    assert "creator" not in capsule
-    assert capsule["ym2612"]["ordinary_full_key_ons"] == 2
-    assert capsule["ym2612"]["events"]["tick"] == [0, 100]
-    assert capsule["ym2612"]["channels"][0]["interval_tokens"] == ["1"]
-    assert capsule["psg"]["values"] == [0x90]
-    assert capsule["ym2612"]["events"]["algorithm"] == [5, 5]
-    assert capsule["ym2612"]["events"]["pan"] == [3, 3]
-    assert "sha256" not in json.dumps(capsule).lower()
+        self.assertTrue(capsule["label_policy"].startswith("Creator, composer"))
+        self.assertNotIn("creator", capsule)
+        self.assertEqual(capsule["ym2612"]["ordinary_full_key_ons"], 2)
+        self.assertEqual(capsule["ym2612"]["events"]["tick"], [0, 100])
+        self.assertEqual(capsule["ym2612"]["channels"][0]["interval_tokens"], ["1"])
+        self.assertEqual(capsule["psg"]["values"], [0x90])
+        self.assertEqual(capsule["ym2612"]["events"]["algorithm"], [5, 5])
+        self.assertEqual(capsule["ym2612"]["events"]["pan"], [3, 3])
+        self.assertNotIn("sha256", json.dumps(capsule).lower())
+
+    def test_second_build_reuses_capsule_without_parsing_source_again(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            source = temp / "track.vgm"
+            source.write_bytes(synthetic_vgm())
+            root = temp / "cache"
+            destination, changed, _ = cache.build_one(
+                source, corpus_id="synthetic", cache_root=root
+            )
+            self.assertTrue(changed)
+            self.assertTrue(destination.is_file())
+
+            with mock.patch.object(
+                cache,
+                "extract_capsule",
+                side_effect=AssertionError("source should not be reparsed"),
+            ):
+                _, changed, capsule = cache.build_one(
+                    source, corpus_id="synthetic", cache_root=root
+                )
+
+            self.assertFalse(changed)
+            self.assertEqual(capsule["ym2612"]["ordinary_full_key_ons"], 2)
+
+    def test_creator_selection_is_separate_and_role_scoped(self):
+        records = [
+            {"fixture_path": "a.vgm", "creator": "A", "role": "composer", "status": "exact"},
+            {"fixture_path": "b.vgm", "creator": "A", "role": "arranger_programmer", "status": "exact"},
+            {"fixture_path": "c.vgm", "creator": "A", "role": "composer", "status": "conflict"},
+            {"fixture_path": "d.vgm", "creator": "B", "role": "composer", "status": "exact"},
+        ]
+        selected = cache.selected_credits(
+            records, creator="A", role="composer", admitted_statuses={"exact"}
+        )
+        self.assertEqual([item["fixture_path"] for item in selected], ["a.vgm"])
+
+    def test_source_size_change_invalidates_cache_without_hashing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            source = temp / "track.vgm"
+            source.write_bytes(synthetic_vgm())
+            root = temp / "cache"
+            destination, changed, _ = cache.build_one(
+                source, corpus_id="synthetic", cache_root=root
+            )
+            self.assertTrue(changed)
+
+            data = json.loads(destination.read_text())
+            data["source"]["size_bytes"] += 1
+            destination.write_text(json.dumps(data))
+            self.assertFalse(cache._cache_current(destination, source))
 
 
-def test_second_build_reuses_capsule_without_parsing_source_again(tmp_path, monkeypatch):
-    source = tmp_path / "track.vgm"
-    source.write_bytes(synthetic_vgm())
-    root = tmp_path / "cache"
-    destination, changed, _ = cache.build_one(source, corpus_id="synthetic", cache_root=root)
-    assert changed is True
-    assert destination.is_file()
-
-    def explode(*args, **kwargs):
-        raise AssertionError("source should not be reparsed")
-
-    monkeypatch.setattr(cache, "extract_capsule", explode)
-    _, changed, capsule = cache.build_one(source, corpus_id="synthetic", cache_root=root)
-    assert changed is False
-    assert capsule["ym2612"]["ordinary_full_key_ons"] == 2
-
-
-def test_creator_selection_is_separate_and_role_scoped():
-    records = [
-        {"fixture_path": "a.vgm", "creator": "A", "role": "composer", "status": "exact"},
-        {"fixture_path": "b.vgm", "creator": "A", "role": "arranger_programmer", "status": "exact"},
-        {"fixture_path": "c.vgm", "creator": "A", "role": "composer", "status": "conflict"},
-        {"fixture_path": "d.vgm", "creator": "B", "role": "composer", "status": "exact"},
-    ]
-    selected = cache.selected_credits(
-        records, creator="A", role="composer", admitted_statuses={"exact"}
-    )
-    assert [item["fixture_path"] for item in selected] == ["a.vgm"]
-
-
-def test_source_size_change_invalidates_cache_without_hashing(tmp_path):
-    source = tmp_path / "track.vgm"
-    source.write_bytes(synthetic_vgm())
-    root = tmp_path / "cache"
-    destination, changed, _ = cache.build_one(source, corpus_id="synthetic", cache_root=root)
-    assert changed is True
-
-    data = json.loads(destination.read_text())
-    data["source"]["size_bytes"] += 1
-    destination.write_text(json.dumps(data))
-    assert cache._cache_current(destination, source) is False
+if __name__ == "__main__":
+    unittest.main()
