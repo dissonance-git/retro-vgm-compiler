@@ -63,6 +63,25 @@ public:
     bool valid() const noexcept { return valid_ && queue_.valid(); }
     genesis_spatial_route_transport_error last_error() const noexcept { return last_error_; }
 
+    // Seed a proven current route without inventing a past output ordinal. This
+    // is for seek/state-replay boundaries: the VGM replay has already rebuilt
+    // the device state at the destination, and old route writes must not be
+    // queued as future audible events.
+    bool seed(
+        std::size_t source_index,
+        const vgmtooling::model::spatial_source_evidence& evidence) noexcept
+    {
+        if (!valid() || source_index >= source_count
+            || evidence.family != vgmtooling::model::spatial_source_family::vgm
+            || evidence.source_id == 0 || !evidence.stereo_route.present)
+            return false;
+        producer_evidence_[source_index] = evidence;
+        delivered_evidence_[source_index] = evidence;
+        producer_known_[source_index] = true;
+        delivered_known_[source_index] = true;
+        return true;
+    }
+
     // Observe one exact VGM command at its already-resolved output ordinal.
     // Non-route commands are a no-op and remain valid.
     bool observe(const command_event& event, std::uint64_t absolute_sample) noexcept {
