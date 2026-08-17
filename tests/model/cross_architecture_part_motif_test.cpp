@@ -13,6 +13,8 @@ using namespace vgmtooling::model;
 
 namespace {
 
+constexpr double part_confidence = 0.90;
+
 node_id add_part(
     musical_execution_graph& graph,
     const std::vector<node_id>& episodes,
@@ -33,14 +35,14 @@ node_id add_part(
         persistent_part_evidence_origin::musical_analysis,
         persistent_part_evidence_polarity::supports,
         evidence_status::derived,
-        0.90,
+        part_confidence,
         source,
         "synthetic successive onsets form one bounded musical line",
         episodes,
     });
     return add_persistent_part_hypothesis(
         graph,
-        make_persistent_part_hypothesis(0.90, episodes, std::move(evidence)));
+        make_persistent_part_hypothesis(part_confidence, episodes, std::move(evidence)));
 }
 
 node_id add_genesis_episode(
@@ -170,12 +172,17 @@ int main() {
         spc_part);
     assert(spc_profile.has_value());
 
-    // Native pitch coordinate systems remain distinct.
+    assert(genesis_profile->status == evidence_status::hypothesis);
+    assert(spc_profile->status == evidence_status::hypothesis);
+    assert(std::fabs(genesis_profile->evidence_confidence - part_confidence) < 1e-12);
+    assert(std::fabs(spc_profile->evidence_confidence - part_confidence) < 1e-12);
+
+    // Native pitch coordinate systems remain distinct. Hardware basis itself is
+    // not composer evidence; only independently derived commensurate interval
+    // semantics are allowed to cross the architecture boundary.
     assert(genesis_profile->pitch_basis == "genesis_ym2612_relative_frequency_code");
     assert(spc_profile->pitch_basis == "spc_brr_runtime_version:" + std::to_string(sample));
     assert(genesis_profile->pitch_basis != spc_profile->pitch_basis);
-
-    // Both adapters have independently earned the same interval semantics.
     assert(genesis_profile->interval_semantics == "log2_frequency_ratio_octaves");
     assert(spc_profile->interval_semantics == "log2_frequency_ratio_octaves");
 
@@ -186,7 +193,24 @@ int main() {
     assert(std::fabs(*similarity.interval_similarity - 1.0) < 1e-12);
     assert(std::fabs(similarity.rhythm_similarity - 1.0) < 1e-12);
     assert(std::fabs(*similarity.contour_similarity - 1.0) < 1e-12);
-    assert(std::fabs(similarity.identity_confidence - 1.0) < 1e-12);
+    assert(std::fabs(similarity.combined_similarity - 1.0) < 1e-12);
+    assert(std::fabs(similarity.evidence_confidence - part_confidence) < 1e-12);
+    assert(std::fabs(similarity.identity_confidence - part_confidence) < 1e-12);
+
+    // If the representations do not claim the same interval meaning, perfect
+    // rhythm cannot smuggle native pitch geometry across the boundary. Pitch is
+    // dropped and identity is capped at the shared rhythm-only ceiling.
+    auto incompatible = *spc_profile;
+    incompatible.interval_semantics = "device_specific_not_cross_comparable";
+    const auto rhythm_only = compare_part_motif_profiles(*genesis_profile, incompatible);
+    assert(!rhythm_only.pitch_comparable);
+    assert(!rhythm_only.interval_similarity.has_value());
+    assert(!rhythm_only.contour_similarity.has_value());
+    assert(std::fabs(rhythm_only.rhythm_similarity - 1.0) < 1e-12);
+    assert(std::fabs(rhythm_only.combined_similarity - 1.0) < 1e-12);
+    assert(std::fabs(rhythm_only.evidence_confidence - part_confidence) < 1e-12);
+    assert(std::fabs(
+        rhythm_only.identity_confidence - rhythm_only_motif_identity_ceiling) < 1e-12);
 
     return 0;
 }
