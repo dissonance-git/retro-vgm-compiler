@@ -72,6 +72,7 @@ def _precision_at_k(
 
     per_query: list[dict[str, object]] = []
     precisions: list[float] = []
+    chance_precisions: list[float] = []
     reciprocal_ranks: list[float] = []
     margins: list[float] = []
 
@@ -92,7 +93,9 @@ def _precision_at_k(
 
         top = candidates[:k]
         precision = sum(1 for _, _, is_positive in top if is_positive) / len(top)
+        chance_precision = sum(1 for _, _, is_positive in candidates if is_positive) / len(candidates)
         precisions.append(precision)
+        chance_precisions.append(chance_precision)
 
         first_positive_rank = next(
             (index for index, (_, _, is_positive) in enumerate(candidates, start=1) if is_positive),
@@ -114,6 +117,8 @@ def _precision_at_k(
             {
                 "query": query_id,
                 "precision_at_k": precision,
+                "chance_positive_fraction": chance_precision,
+                "precision_lift_over_chance": precision - chance_precision,
                 "first_positive_rank": first_positive_rank,
                 "reciprocal_rank": reciprocal_rank,
                 "best_positive_minus_best_negative": margin,
@@ -127,11 +132,15 @@ def _precision_at_k(
     def mean(values: list[float]) -> float:
         return 0.0 if not values else sum(values) / len(values)
 
+    precision_at_k = mean(precisions)
+    chance_precision_at_k = mean(chance_precisions)
     return {
         "positive_queries": len(per_query),
         "positive_controls": len(positives),
         "negative_controls": len(negatives),
-        "precision_at_k": mean(precisions),
+        "precision_at_k": precision_at_k,
+        "chance_precision_at_k": chance_precision_at_k,
+        "precision_lift_over_chance": precision_at_k - chance_precision_at_k,
         "mean_reciprocal_rank": mean(reciprocal_ranks),
         "mean_best_positive_minus_best_negative": mean(margins),
         "queries": per_query,
