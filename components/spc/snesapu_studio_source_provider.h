@@ -199,11 +199,15 @@ public:
 
         double sample = 0.0;
         if (!projection.before_key_on) {
-            const auto reconstructed = reconstruct_spc_upstream_playback_sample_resolved(
-                *state.source->restoration,
-                state.source->playback,
-                projection,
-                state.source->upstream_boundaries);
+            // add() already established automatic source permission and froze the
+            // exact upstream boundary geometry. Do not rerun the evidence
+            // classifier or boundary resolver in the 48 kHz callback.
+            const auto reconstructed =
+                detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
+                    *state.source->restoration,
+                    state.source->playback,
+                    projection,
+                    state.source->upstream_boundaries);
             if (!reconstructed.valid || !std::isfinite(reconstructed.sample))
                 return stop_and_fail(voice);
             sample = reconstructed.sample;
