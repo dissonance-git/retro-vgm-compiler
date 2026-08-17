@@ -62,7 +62,7 @@ limited storage / RAM / channels / sample bandwidth / arithmetic / effects memor
 shipped executable realization
 ```
 
-Enhanced rendering asks what can be safely relaxed **without changing the work into another arrangement or instrument system**.
+enhanced rendering asks what can be safely relaxed **without changing the work into another arrangement or instrument system**.
 
 This is not the same as assuming that every historical limitation was bad.
 
