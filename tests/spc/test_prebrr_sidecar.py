@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -20,22 +19,52 @@ class PreBrrSidecarTests(unittest.TestCase):
                 payload += int(sample).to_bytes(2, "little", signed=True)
             handle.writeframes(bytes(payload))
 
-    def test_builds_two_exact_game_grid_sources(self):
+    @staticmethod
+    def write_spc(path: Path) -> None:
+        data = bytearray(0x10200)
+        signature = b"SNES-SPC700 Sound File Data"
+        data[: len(signature)] = signature
+
+        # DIR = $20. SRCN 3 -> $8000, two BRR blocks. SRCN 9 -> $FFF9,
+        # three BRR blocks crossing the 16-bit RAM wrap.
+        data[0x10100 + 0x5D] = 0x20
+
+        def set_directory(srcn: int, start: int) -> None:
+            entry = 0x100 + 0x2000 + srcn * 4
+            data[entry] = start & 0xFF
+            data[entry + 1] = (start >> 8) & 0xFF
+            data[entry + 2] = start & 0xFF
+            data[entry + 3] = (start >> 8) & 0xFF
+
+        def set_brr_extent(start: int, blocks: int) -> None:
+            address = start
+            for block in range(blocks):
+                # END only on the final block. Payload bytes may remain zero.
+                data[0x100 + (address & 0xFFFF)] = 0x01 if block + 1 == blocks else 0x00
+                address = (address + 9) & 0xFFFF
+
+        set_directory(3, 0x8000)
+        set_brr_extent(0x8000, 2)
+        set_directory(9, 0xFFF9)
+        set_brr_extent(0xFFF9, 3)
+        path.write_bytes(data)
+
+    def test_builds_two_exact_game_grid_sources_from_spc(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            self.write_spc(root / "music.spc")
             self.write_pcm16_mono(root / "a.wav", 32)
             self.write_pcm16_mono(root / "b.wav", 48, rate=48000)
             manifest = {
                 "schema": "spc-prebrr-sidecar-manifest-001",
+                "spc_file": "music.spc",
                 "sources": [
                     {
                         "source_number": 3,
-                        "first_brr_block_address": "0x8000",
                         "prepared_pcm_wav": "a.wav",
                     },
                     {
                         "source_number": 9,
-                        "first_brr_block_address": 0xFFF9,
                         "prepared_pcm_wav": "b.wav",
                     },
                 ],
@@ -44,9 +73,44 @@ class PreBrrSidecarTests(unittest.TestCase):
             entries = parse_sidecar(packet)
             self.assertEqual(len(entries), 2)
             self.assertEqual(entries[0]["source_number"], 3)
+            self.assertEqual(entries[0]["first_brr_block_address"], 0x8000)
             self.assertEqual(entries[0]["block_count"], 2)
             self.assertEqual(entries[1]["first_brr_block_address"], 0xFFF9)
             self.assertEqual(entries[1]["block_count"], 3)
+
+    def test_spc_address_and_extent_are_assertions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.write_spc(root / "music.spc")
+            self.write_pcm16_mono(root / "two-block.wav", 32)
+
+            wrong_address = {
+                "schema": "spc-prebrr-sidecar-manifest-001",
+                "spc_file": "music.spc",
+                "sources": [
+                    {
+                        "source_number": 3,
+                        "first_brr_block_address": "0x9000",
+                        "prepared_pcm_wav": "two-block.wav",
+                    }
+                ],
+            }
+            with self.assertRaises(ValueError):
+                build_sidecar(wrong_address, root)
+
+            self.write_pcm16_mono(root / "one-block.wav", 16)
+            wrong_extent = {
+                "schema": "spc-prebrr-sidecar-manifest-001",
+                "spc_file": "music.spc",
+                "sources": [
+                    {
+                        "source_number": 3,
+                        "prepared_pcm_wav": "one-block.wav",
+                    }
+                ],
+            }
+            with self.assertRaises(ValueError):
+                build_sidecar(wrong_extent, root)
 
     def test_rejects_hidden_conversion_and_ambiguity(self):
         with tempfile.TemporaryDirectory() as temp:
