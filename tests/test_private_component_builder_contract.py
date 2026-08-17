@@ -55,6 +55,15 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
                 self.assertIn(marker, self.text)
                 self.assertLess(self.text.index(marker), package)
 
+    def test_patched_libvgm_integration_runs_before_vgm_component(self) -> None:
+        patch = self.text.index("patches\\libvgm\\apply_source_capture.py")
+        integration = self.text.index("tests\\integration\\libvgm-source")
+        vgm_component = self.text.index("== 5. Materialize and build the VGM component")
+        self.assertLess(patch, integration)
+        self.assertLess(integration, vgm_component)
+        self.assertIn("-DLIBVGM_ROOT=$Libvgm", self.text)
+        self.assertIn("'--test-dir', $LibvgmSourceTestBuild", self.text)
+
     def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
         self.assertIn("verify_private_component_packages.py", self.text)
