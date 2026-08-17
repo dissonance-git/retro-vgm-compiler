@@ -42,6 +42,30 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
             self.assertEqual(query["precision_lift_over_chance"], 0.5)
             self.assertTrue(query["top"][0]["is_positive"])
 
+    def test_blind_contract_and_heldout_target_are_required(self):
+        policy = {
+            "sonic3_target_policy": {
+                "target_environment": "tests/corpus/sonic-3-knuckles"
+            }
+        }
+        bad_model = {
+            "model": "creator-labelled audit",
+            "label_policy": "No composer/artist metadata or candidate labels are read.",
+            "soundtracks": [],
+            "tracks": [],
+        }
+        with self.assertRaisesRegex(ValueError, "creator-blind cross-soundtrack audit"):
+            evaluator._validate_blind_audit(bad_model, policy)
+
+        leaked_target = {
+            "model": evaluator.BLIND_AUDIT_MODEL,
+            "label_policy": "No composer/artist metadata or candidate labels are read.",
+            "soundtracks": ["sonic-3-knuckles"],
+            "tracks": [],
+        }
+        with self.assertRaisesRegex(ValueError, "held-out Sonic 3 target"):
+            evaluator._validate_blind_audit(leaked_target, policy)
+
     def test_incomplete_sonic_3d_panel_is_rejected(self):
         policy = {
             "sonic_3d_blast_exact_track_world": {
@@ -109,8 +133,18 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
                     "fixtures": ["tests/corpus/super-columns-vgm/Maeda.vgm"],
                 },
             ],
+            "sonic3_target_policy": {
+                "target_environment": "tests/corpus/sonic-3-knuckles"
+            },
         }
         audit = {
+            "model": evaluator.BLIND_AUDIT_MODEL,
+            "label_policy": "No composer/artist metadata or candidate labels are read.",
+            "soundtracks": [
+                "golden-axe-iii-genesis-vgz",
+                "j-league-pro-striker-2-vgz",
+                "sonic-3d-blast-genesis-vgm",
+            ],
             "tracks": [
                 {
                     "soundtrack_id": "golden-axe-iii-genesis-vgz",
@@ -142,7 +176,7 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
                     "latent": 0.10,
                     "realization_latent": 0.20,
                 },
-            ]
+            ],
         }
 
         original_structural = evaluator.base.structural_similarity
@@ -160,7 +194,7 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
             evaluator.base.structural_similarity = original_structural
             evaluator.base.realization_similarity = original_realization
 
-        self.assertIn("after documentary Maeda labels", result["label_policy"])
+        self.assertIn("validated as creator-blind", result["label_policy"])
         self.assertIn(
             "golden-axe-iii-genesis-vgz::Conflict.vgz",
             result["quarantined_controls"],
