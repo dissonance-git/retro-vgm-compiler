@@ -17,8 +17,10 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     snesapu_source_transport_v2_test
     snesapu_source_object_projection_test
     spc_sample_restoration_test
+    spc_sample_lineage_verification_test
     genesis_enhanced_recomposition_test
     sn76489_enhanced_source_block_test
+    ym2612_hq_fm_profile_test
 )
 
 add_executable(
@@ -78,12 +80,20 @@ add_executable(
     tests/spc/spc_sample_restoration_test.cpp
 )
 add_executable(
+    spc_sample_lineage_verification_test
+    tests/spc/spc_sample_lineage_verification_test.cpp
+)
+add_executable(
     genesis_enhanced_recomposition_test
     tests/vgm/genesis_enhanced_recomposition_test.cpp
 )
 add_executable(
     sn76489_enhanced_source_block_test
     tests/vgm/sn76489_enhanced_source_block_test.cpp
+)
+add_executable(
+    ym2612_hq_fm_profile_test
+    tests/vgm/ym2612_hq_fm_profile_test.cpp
 )
 
 target_include_directories(
@@ -143,11 +153,19 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
+    spc_sample_lineage_verification_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
     genesis_enhanced_recomposition_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
     sn76489_enhanced_source_block_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    ym2612_hq_fm_profile_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -213,10 +231,18 @@ add_test(
     COMMAND spc_sample_restoration_test
 )
 add_test(
+    NAME spc_sample_lineage_verification
+    COMMAND spc_sample_lineage_verification_test
+)
+add_test(
     NAME genesis_enhanced_recomposition
     COMMAND genesis_enhanced_recomposition_test
 )
 add_test(
     NAME sn76489_enhanced_source_block
     COMMAND sn76489_enhanced_source_block_test
+)
+add_test(
+    NAME ym2612_hq_fm_profile
+    COMMAND ym2612_hq_fm_profile_test
 )
