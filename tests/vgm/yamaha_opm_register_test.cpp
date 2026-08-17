@@ -1,13 +1,26 @@
 #include "yamaha_opm_register.h"
 #include "ym2151_enhanced_recomposition.h"
 #include "ym2151_selected_source_transport.h"
+#include "ym2151_spatial_route_transport.h"
 
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 
 using namespace gameaudio::vgm;
+
+namespace {
+command_event opm_command(std::uint8_t opcode, const std::uint8_t* payload) {
+    command_event event{};
+    event.kind = command_event_kind::command;
+    event.command = opcode;
+    event.payload = payload;
+    event.payload_size = 2u;
+    return event;
+}
+}
 
 int main() {
     // OPM key writes select one of 8 channels directly in bits 0-2 and carry
@@ -113,7 +126,7 @@ int main() {
     assert(recomposition.left()[0] == reference_l[0]);
     assert(recomposition.right()[0] == reference_r[0]);
 
-    // The same eight channel identities now survive the producer/render-ahead
+    // The same eight channel identities survive the producer/render-ahead
     // boundary. The queue contains the already-selected source quality, while
     // the delivered block only enforces exact provenance and host-clock order.
     constexpr std::size_t fm1_index =
@@ -136,6 +149,25 @@ int main() {
     assert(!delivered.source_present(fm8_index));
     assert(delivered.sources()[fm1_index].left[0] == 2.0f);
     assert(delivered.sources()[fm1_index].right[0] == -2.0f);
+
+    // Authored route evidence now crosses the same delivered clock. OPM starts
+    // without guessed reset routing, so Spatial is incomplete until a real RL
+    // register write or a proven seek-state seed establishes channel evidence.
+    ym2151_spatial_route_transport<8, 4> routes;
+    routes.reset();
+    ym2151_spatial_route_transport<8, 4>::presence_array present{};
+    present[fm1_index] = true;
+    ym2151_spatial_route_transport<8, 4>::delivered_block route_block{};
+    assert(routes.prepare_delivered_block(600u, 1u, present, route_block));
+    assert(!route_block.routes_complete);
+
+    const std::uint8_t fm1_left_route[] = {0x20u, 0x40u};
+    routes.reset();
+    assert(routes.observe(opm_command(0x54u, fm1_left_route), 700u));
+    assert(routes.prepare_delivered_block(700u, 1u, present, route_block));
+    assert(route_block.routes_complete);
+    assert(route_block.initial_evidence[fm1_index].stereo_route.left_gain == 1.0f);
+    assert(route_block.initial_evidence[fm1_index].stereo_route.right_gain == 0.0f);
 
     return 0;
 }
