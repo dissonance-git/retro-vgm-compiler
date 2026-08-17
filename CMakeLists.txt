@@ -35,6 +35,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     set(GAMEAUDIO_TEST_TARGETS
         genesis_state_test
         genesis_event_tap_test
+        genesis_enhanced_recomposition_test
         authored_stereo_route_test
         sn76489_enhanced_test
         sn76489_variants_test
@@ -113,6 +114,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
     add_executable(genesis_event_tap_test tests/vgm/genesis_event_tap_test.cpp)
+    add_executable(genesis_enhanced_recomposition_test tests/vgm/genesis_enhanced_recomposition_test.cpp)
     add_executable(authored_stereo_route_test tests/vgm/authored_stereo_route_test.cpp)
     add_executable(sn76489_enhanced_test tests/vgm/sn76489_enhanced_test.cpp)
     add_executable(sn76489_variants_test tests/vgm/sn76489_variants_test.cpp)
@@ -187,6 +189,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_runtime_sample_adapter_test tests/spc/spc_runtime_sample_adapter_test.cpp)
     add_executable(spc_runtime_capture_test tests/spc/spc_runtime_capture_test.cpp)
     add_executable(spc_runtime_capture_adapter_test tests/spc/spc_runtime_capture_adapter_test.cpp)
+    target_include_directories(genesis_enhanced_recomposition_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(genesis_nominal_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(smps_programmed_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(spatial_source_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -228,6 +231,7 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
 
     add_test(NAME genesis_state COMMAND genesis_state_test)
     add_test(NAME genesis_event_tap COMMAND genesis_event_tap_test)
+    add_test(NAME genesis_enhanced_recomposition COMMAND genesis_enhanced_recomposition_test)
     add_test(NAME authored_stereo_route COMMAND authored_stereo_route_test)
     add_test(NAME sn76489_enhanced COMMAND sn76489_enhanced_test)
     add_test(NAME sn76489_variants COMMAND sn76489_variants_test)
