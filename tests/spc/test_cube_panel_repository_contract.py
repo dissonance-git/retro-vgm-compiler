@@ -27,6 +27,52 @@ class CubePanelRepositoryContractTest(unittest.TestCase):
         }
         cls.panel_fixtures = set(cls.fixture_by_cue.values())
 
+    def test_policy_pins_blind_pipeline_and_strict_transfer_rule(self):
+        self.assertEqual(self.policy["schema_version"], 3)
+        self.assertEqual(
+            self.policy["blind_panel_path"],
+            "research/projects/sonic3/spc-cube-blind-panel.json",
+        )
+        self.assertEqual(
+            self.policy["blind_capture_tool"],
+            "tools/spc/capture_blind_panel.py",
+        )
+        self.assertEqual(
+            self.policy["blind_freeze_tool"],
+            "tools/spc/freeze_forensic_sidecars.py",
+        )
+        self.assertEqual(
+            self.policy["post_freeze_evaluator"],
+            "tools/spc/evaluate_cube_calibration.py",
+        )
+        protocol = self.policy["blind_protocol"]
+        self.assertIn("before creator identity is joined", protocol["feature_boundary"])
+        self.assertIn("frozen and hashed", protocol["freeze_boundary"])
+        self.assertIn("complete candidate coverage", protocol["strict_transfer_rule"])
+        self.assertIn("cannot produce correctness", protocol["team_world_rule"])
+
+    def test_grounding_state_preserves_current_asymmetry(self):
+        grounding = self.policy["current_grounding_state"]
+        self.assertEqual(grounding["total_grounded_composer_cues"], 15)
+        self.assertEqual(grounding["miyoko_takaoka"]["grounded_cue_count"], 11)
+        self.assertEqual(
+            grounding["miyoko_takaoka"]["grounded_soundtracks"],
+            ["ancient-magic-spc", "terranigma-spc"],
+        )
+        self.assertEqual(
+            grounding["miyoko_takaoka"]["strict_cross_soundtrack_status"],
+            "testable",
+        )
+        self.assertEqual(grounding["masanori_hikichi"]["grounded_cue_count"], 4)
+        self.assertEqual(
+            grounding["masanori_hikichi"]["grounded_soundtracks"],
+            ["terranigma-spc"],
+        )
+        self.assertEqual(
+            grounding["masanori_hikichi"]["strict_cross_soundtrack_status"],
+            "underdetermined",
+        )
+
     def test_panel_is_31_unique_existing_spc_fixtures(self):
         self.assertEqual(len(self.fixture_by_cue), 31)
         self.assertEqual(len(self.panel_fixtures), 31)
