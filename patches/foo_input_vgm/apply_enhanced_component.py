@@ -41,6 +41,7 @@ def main() -> int:
     run(here / "apply_studio_hq_fm_runtime.py", source)
     run(here / "apply_studio_hq_fm_session_reset.py", source)
     run(here / "apply_studio_deferred_psg.py", source)
+    run(here / "apply_studio_deferred_psg_fail_closed.py", source)
     run(here / "apply_studio_deferred_psg_session_reset.py", source)
     print("foo_input_vgm Enhanced component patch set applied")
     return 0
