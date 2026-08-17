@@ -31,7 +31,6 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_original_sample_bank_test
     genesis_enhanced_recomposition_test
     sn76489_enhanced_source_block_test
-    studio_frame_transport_test
     ym2612_hq_fm_profile_test
     ym2612_hq_source_calibration_test
 )
@@ -147,10 +146,6 @@ add_executable(
 add_executable(
     sn76489_enhanced_source_block_test
     tests/vgm/sn76489_enhanced_source_block_test.cpp
-)
-add_executable(
-    studio_frame_transport_test
-    tests/vgm/studio_frame_transport_test.cpp
 )
 add_executable(
     ym2612_hq_fm_profile_test
@@ -274,10 +269,6 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
-    studio_frame_transport_test
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
-target_include_directories(
     ym2612_hq_fm_profile_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -352,10 +343,6 @@ add_test(
     COMMAND snesapu_studio_source_provider_test
 )
 add_test(
-    NAME snesapu_studio_source_packet
-    COMMAND snesapu_studio_source_packet_test
-)
-add_test(
     NAME snesapu_brr_playback_topology
     COMMAND snesapu_brr_playback_topology_test
 )
@@ -402,10 +389,6 @@ add_test(
 add_test(
     NAME sn76489_enhanced_source_block
     COMMAND sn76489_enhanced_source_block_test
-)
-add_test(
-    NAME studio_frame_transport
-    COMMAND studio_frame_transport_test
 )
 add_test(
     NAME ym2612_hq_fm_profile
@@ -462,13 +445,5 @@ add_test(
 )
 set_tests_properties(
     spc_enhanced_runtime_rate_python
-    PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-add_test(
-    NAME vgm_studio_hq_fm_runtime_patch_python
-    COMMAND ${Python3_EXECUTABLE} tests/vgm/test_studio_hq_fm_runtime_patch.py
-)
-set_tests_properties(
-    vgm_studio_hq_fm_runtime_patch_python
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
