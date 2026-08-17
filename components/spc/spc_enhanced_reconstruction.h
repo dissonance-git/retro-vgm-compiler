@@ -87,6 +87,17 @@ inline spc_reconstruction_result reconstruct_spc_lanczos4(
     return result;
 }
 
+// Portable spelling of the arithmetic right-shift used by historical S-DSP
+// implementations. C++17 does not require signed right shift of a negative
+// value to round toward negative infinity, so keep that semantic explicit.
+inline std::int64_t spc_floor_divide_2048(std::int64_t value) noexcept {
+    std::int64_t quotient = value / 2048;
+    const std::int64_t remainder = value % 2048;
+    if (value < 0 && remainder != 0)
+        --quotient;
+    return quotient;
+}
+
 // Keep envelope arithmetic as a separate intervention. This helper applies the
 // historical S-DSP/libgme envelope quantization to a reconstructed source value
 // so reconstruction-filter experiments do not silently also become arithmetic-
@@ -102,21 +113,26 @@ inline std::int16_t apply_spc_reference_envelope_quantization(
     if (envelope > 0x07FFu)
         envelope = 0x07FFu;
 
-    // libgme's sampled-voice path performs (output * env) >> 11 and clears the
-    // low bit. Round the replacement interpolator to the same integer source
-    // domain first, then retain that arithmetic boundary.
+    // The sampled-voice path performs arithmetic division by 2^11 and clears
+    // the low bit. Round the replacement interpolator to the same integer source
+    // domain first, then retain that arithmetic boundary without relying on a
+    // compiler-specific signed-shift rule.
     long source = std::lround(reconstructed);
     if (source < -32768L)
         source = -32768L;
     else if (source > 32767L)
         source = 32767L;
 
-    long scaled = (source * static_cast<long>(envelope)) >> 11;
-    scaled &= ~1L;
-    if (scaled < -32768L)
-        scaled = -32768L;
-    else if (scaled > 32767L)
-        scaled = 32767L;
+    const std::int64_t product = static_cast<std::int64_t>(source) *
+        static_cast<std::int64_t>(envelope);
+    std::int64_t scaled = spc_floor_divide_2048(product);
+    if ((scaled % 2) != 0)
+        --scaled;
+
+    if (scaled < -32768)
+        scaled = -32768;
+    else if (scaled > 32767)
+        scaled = 32767;
     return static_cast<std::int16_t>(scaled);
 }
 
