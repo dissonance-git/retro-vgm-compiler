@@ -2,7 +2,7 @@
 
 Date: 2026-08-17
 
-This note records the literature pass used to constrain the two current Enhanced targets:
+This note records the literature pass used to constrain the two current enhanced targets:
 
 1. SNES sampled voices should approach the strongest available estimate of the **pre-BRR production source**, not merely a sharpened 32 kHz final bus.
 2. Genesis FM should behave like the same six-channel, four-operator composition executed on a **higher-ceiling Yamaha-FM descendant**, not like a preset conversion or an automatic six-operator rewrite.
@@ -34,11 +34,11 @@ Relevant literature found through SciSpace:
 
 ```text
 exact identified pre-BRR source + exact preparation lineage
-    -> normal Enhanced candidate
+    -> normal enhanced candidate
 
 exact source after a documented game-preparation step
 + invertible/explicit coordinate map
-    -> normal Enhanced candidate
+    -> normal enhanced candidate
 
 BRR decoded source + deterministic higher-order interpolation
     -> enhanced reconstruction, but not "original source recovered"
@@ -66,7 +66,7 @@ Relevant literature found through SciSpace:
 
 - F. Caspe, A. McPherson, and M. Sandler, *DDX7: Differentiable FM Synthesis of Musical Instrument Sounds*, ISMIR 2022, DOI `10.48550/arXiv.2208.06169`.
   - Useful mechanism: FM timbre can be represented and resynthesized through compact operator parameters, but optimization can encounter ambiguity and loss-design problems.
-  - Project translation: parameter preservation is stronger than fitting a replacement patch to the rendered audio. Learned patch conversion belongs in an experimental lane, not automatic Enhanced.
+  - Project translation: parameter preservation is stronger than fitting a replacement patch to the rendered audio. Learned patch conversion belongs in an experimental lane, not automatic enhanced playback.
 
 - F. Esqueda, V. Välimäki, and S. Bilbao, *Rounding corners with BLAMP*, DAFx 2016, and related antiderivative-antialiasing work.
   - Useful mechanism: nonlinear/discontinuous synthesis stages can create audible aliasing; oversampling is useful but is not the only or automatically sufficient antialiasing strategy.
@@ -108,4 +108,4 @@ higher quality != generative missing detail presented as source truth
 higher quality != removing authored routing/effects
 ```
 
-Enhanced changes only an admitted technical ceiling. Spatial remains a separate presentation choice owned by Omniphony.
+The enhanced path changes only an admitted technical ceiling. Spatial remains a separate presentation choice owned by Omniphony.
