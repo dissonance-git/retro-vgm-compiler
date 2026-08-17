@@ -61,17 +61,17 @@ A second identical invocation reuses the capsules without parsing the VGM/VGZ ag
 
 ## Build every admitted composer
 
-The role index now contains 50 admitted composition controls across seven creators:
+The role index now contains 51 admitted composition controls across seven creators:
 
 - Tatsuyuki Maeda: 26
 - Jun Senoue: 12
 - Haruyo Oguro: 5
 - Naofumi Hataya: 4
-- Tomonori Sawada: 1
+- Tomonori Sawada: 2
 - Masaru Setsumaru: 1
 - Seirou Okamoto: 1
 
-`The Scorching Sand` remains excluded because its Golden Axe III soundtrack assignment conflicts with Tomonori Sawada's later creator statement.
+`The Scorching Sand` is operationally admitted as a Tomonori Sawada composition control from the commercial soundtrack mapping. The contradictory later statement that Boss Odd Stage was his only Golden Axe III composition remains attached to the credit record as counterevidence, so experiments can use the label without erasing the provenance conflict.
 
 Build the entire admitted composer world with one command:
 
