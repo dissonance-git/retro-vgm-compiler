@@ -35,6 +35,20 @@ foreach(target IN LISTS PRIVATE_COMPONENT_TESTS)
     add_test(NAME ${target} COMMAND ${target})
 endforeach()
 
+# The final bundle names one exact Retro VGM Compiler commit as provenance.
+# Refuse a non-Git or modified tracked source state before any external
+# dependency checkout so that manifest commit always describes compiled input.
+add_test(
+    NAME build_source_provenance
+    COMMAND ${Python3_EXECUTABLE} -B
+        ${RETRO_ROOT}/tools/verify_build_source_provenance.py
+        ${RETRO_ROOT}
+)
+set_tests_properties(
+    build_source_provenance
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Guard the high-risk generated-host seams before the expensive Windows build.
 # These tests operate only on temporary files and assert exact guarded patch
 # composition/order, including family-local fallback, the one 48 kHz private
