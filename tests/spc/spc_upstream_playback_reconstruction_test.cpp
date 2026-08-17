@@ -96,6 +96,76 @@ int main() {
     assert(std::abs(topology_start.sample) < 1.0e-9);
     assert(std::abs(contiguous_start.sample) > 1.0e-3);
 
+    // Steady-state samples should not pay virtual topology mapping on every tap.
+    // A long one-shot has a large interior where the authored playback topology
+    // is exactly one contiguous 64-frame source window. The optimized path must
+    // remain numerically identical to the generic studio sampler there.
+    std::array<float, 256> long_source{};
+    for (std::size_t i = 0; i < long_source.size(); ++i) {
+        long_source[i] = static_cast<float>(
+            0.41 * std::sin(static_cast<double>(i) * 0.071)
+            - 0.16 * std::cos(static_cast<double>(i) * 0.193));
+    }
+    auto long_candidate = candidate;
+    long_candidate.upstream = {
+        long_source.data(), long_source.size(), 48000.0, 1.0};
+    long_candidate.coordinate_map.loop_present = false;
+    long_candidate.coordinate_map.game_loop_start = 0.0;
+    long_candidate.coordinate_map.upstream_loop_start = 0.0;
+    const spc_game_sample_playback_span long_playback{0.0, 256.0, {}};
+
+    const auto long_boundaries = detail::resolve_spc_upstream_playback_boundaries(
+        long_candidate, long_playback);
+    assert(long_boundaries.valid);
+    // center 128, 64 taps => [97, 161)
+    assert(detail::spc_upstream_window_is_contiguous(
+        97, 161, long_boundaries, 0));
+    assert(!detail::spc_upstream_window_is_contiguous(
+        -1, 63, long_boundaries, 0));
+
+    tracker.key_on(snesapu_source_interpolation::none);
+    for (int i = 0; i < 128; ++i)
+        assert(tracker.advance(0x00010000u));
+    assert(tracker.advance(0x00004000u));
+    trajectory = tracker.project();
+    assert(trajectory.valid);
+    assert(std::abs(trajectory.effective_sample_position - 128.25) < 1.0e-12);
+    const auto fast_interior = reconstruct_spc_upstream_playback_sample(
+        long_candidate, long_playback, trajectory);
+    const auto direct_interior = reconstruct_spc_studio_sample(
+        long_source.data(), long_source.size(), 128.25);
+    assert(fast_interior.valid && direct_interior.valid);
+    assert(std::abs(fast_interior.sample - direct_interior.sample) < 1.0e-12);
+
+    // The same fast path is legal after a loop wrap only when the entire FIR
+    // neighborhood stays inside the periodic loop body. This keeps seam samples
+    // exact while allowing long loops to spend most of playback in a dot product.
+    auto long_loop_candidate = long_candidate;
+    long_loop_candidate.coordinate_map.loop_present = true;
+    long_loop_candidate.coordinate_map.game_loop_start = 64.0;
+    long_loop_candidate.coordinate_map.upstream_loop_start = 64.0;
+    const spc_game_sample_playback_span long_loop_playback{
+        0.0, 256.0, {true, 64.0, 256.0}};
+    const auto long_loop_boundaries = detail::resolve_spc_upstream_playback_boundaries(
+        long_loop_candidate, long_loop_playback);
+    assert(long_loop_boundaries.valid);
+    assert(detail::spc_upstream_window_is_contiguous(
+        97, 161, long_loop_boundaries, 1));
+    assert(!detail::spc_upstream_window_is_contiguous(
+        40, 104, long_loop_boundaries, 1));
+
+    tracker.key_on(snesapu_source_interpolation::none);
+    for (int i = 0; i < 320; ++i)
+        assert(tracker.advance(0x00010000u));
+    assert(tracker.advance(0x00004000u)); // unwrapped 320.25 -> loop 128.25
+    trajectory = tracker.project(long_loop_playback.loop);
+    assert(trajectory.valid && trajectory.loop_cycle == 1);
+    assert(std::abs(trajectory.canonical_game_sample_position - 128.25) < 1.0e-12);
+    const auto fast_loop_interior = reconstruct_spc_upstream_playback_sample(
+        long_loop_candidate, long_loop_playback, trajectory);
+    assert(fast_loop_interior.valid && direct_interior.valid);
+    assert(std::abs(fast_loop_interior.sample - direct_interior.sample) < 1.0e-12);
+
     // Fractional upstream loop boundaries are not approximated. They require a
     // resampled virtual ring and deliberately fail closed in this implementation.
     auto fractional = candidate;
