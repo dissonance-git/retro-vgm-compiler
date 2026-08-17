@@ -9,10 +9,10 @@ import subprocess
 import sys
 
 
-def run(script: Path, root: Path) -> None:
+def run(script: Path, target: Path) -> None:
     completed = subprocess.run(
-        [sys.executable, str(script), str(root)],
-        cwd=str(root),
+        [sys.executable, str(script), str(target)],
+        cwd=str(target),
         check=False,
     )
     if completed.returncode != 0:
@@ -22,14 +22,15 @@ def run(script: Path, root: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("foo_snesapu_root", type=Path)
-    args = parser.parse_args()
-    root = args.foo_snesapu_root.resolve()
+    root = parser.parse_args().foo_snesapu_root.resolve()
     here = Path(__file__).resolve().parent
 
-    run(here / "apply_prebrr_transport.py", root)
-    run(here / "fix_prebrr_pointer_callback.py", root)
-    run(here / "apply_studio_source_transport.py", root)
-    print("complete verified sampled-source parent/child transport applied")
+    # The parent is the audited historical SRCE-v2 host. The child is already
+    # the canonical current SRCE-v2 implementation. Patch each from its actual
+    # baseline instead of replaying historical child migrations.
+    run(here / "apply_current_parent_source_transport.py", root)
+    run(here / "apply_current_child_source_transport.py", root / "spcplayer")
+    print("complete current verified sampled-source parent/child transport applied")
     return 0
 
 
