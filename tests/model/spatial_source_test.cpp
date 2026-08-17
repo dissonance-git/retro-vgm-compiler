@@ -27,7 +27,7 @@ int main() {
     assert(spc_caps.protected_reference_mix);
     assert(spc_caps.readiness == vgmtooling::model::spatial_source_readiness::isolated_audio_partial);
     assert(spc_caps.isolated_dry_pcm);
-    assert(!spc_caps.shared_effect_return);
+    assert(spc_caps.shared_effect_return);
     assert(!spc_caps.exact_linear_recomposition);
     assert(!spc_caps.authored_3d_position);
 
