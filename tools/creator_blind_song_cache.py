@@ -23,9 +23,9 @@ import struct
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 EXTRACTOR_NAME = "creator-blind-genesis-song-capsule"
-EXTRACTOR_VERSION = 2
+EXTRACTOR_VERSION = 3
 DEFAULT_CACHE_ROOT = pathlib.Path("research/cache/vgm-song-capsules")
 DEFAULT_CACHE_INDEX = DEFAULT_CACHE_ROOT / "index.jsonl"
 
@@ -50,6 +50,7 @@ class FmOnset:
     ams: int
     fms: int
     pan: int
+    key_gate_event_index: int
 
     @property
     def frequency_measure(self) -> float:
@@ -195,7 +196,7 @@ class _GenesisState:
         channel = channel_index + port * 3
         self.operator[channel][slot][groups.index(high)] = value
 
-    def onset(self, tick: int, channel: int) -> FmOnset | None:
+    def onset(self, tick: int, channel: int, key_gate_event_index: int) -> FmOnset | None:
         if channel == 5 and self.dac_enabled:
             return None
         if channel == 2 and self.ch3_special_mode:
@@ -222,7 +223,7 @@ class _GenesisState:
             full.extend(params)
         return FmOnset(
             tick, channel, fnum, block, tuple(core), tuple(full),
-            algorithm, feedback, ams, fms, pan,
+            algorithm, feedback, ams, fms, pan, key_gate_event_index,
         )
 
 
@@ -315,13 +316,14 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
             if encoded_channel not in channel_map:
                 continue
             channel = channel_map[encoded_channel]
+            key_gate_event_index = len(key_gate_ticks)
             key_gate_ticks.append(command.tick)
             key_gate_channels.append(channel)
             key_gate_masks.append(value & 0xF0)
             counters["fm_key_gate_writes"] += 1
             if (value & 0xF0) != 0xF0:
                 continue
-            onset = state.onset(command.tick, channel)
+            onset = state.onset(command.tick, channel, key_gate_event_index)
             if onset is not None:
                 onsets.append(onset)
 
@@ -361,6 +363,7 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
         "ams": [o.ams for o in onsets],
         "fms": [o.fms for o in onsets],
         "pan": [o.pan for o in onsets],
+        "key_gate_event_index": [o.key_gate_event_index for o in onsets],
     }
 
     return {
@@ -369,8 +372,9 @@ def extract_capsule(path: pathlib.Path, *, corpus_id: str | None = None) -> dict
         "label_policy": "Creator, composer, artist, arranger, and programmer metadata are never read by this extractor.",
         "claim_boundary": (
             "This is cached execution evidence from Genesis VGM/VGZ. Physical YM2612 channels are observations, "
-            "not persistent musical-part identity. Raw YM2612 key-gate transitions preserve episode-boundary evidence; "
-            "they are not notes or musical parts. Creator roles live in a separate index."
+            "not persistent musical-part identity. Raw YM2612 key-gate transitions preserve episode-boundary evidence, "
+            "and every admitted full-key onset points to the exact gate event that created it so same-tick ordering survives. "
+            "Gate writes are not notes or musical parts. Creator roles live in a separate index."
         ),
         "source": {
             "path": path.as_posix(),
