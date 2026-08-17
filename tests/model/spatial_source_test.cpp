@@ -25,7 +25,8 @@ int main() {
     assert(spc_caps.authored_stereo_route);
     assert(spc_caps.effect_send_state);
     assert(spc_caps.protected_reference_mix);
-    assert(!spc_caps.isolated_dry_pcm);
+    assert(spc_caps.readiness == vgmtooling::model::spatial_source_readiness::isolated_audio_partial);
+    assert(spc_caps.isolated_dry_pcm);
     assert(!spc_caps.shared_effect_return);
     assert(!spc_caps.exact_linear_recomposition);
     assert(!spc_caps.authored_3d_position);
@@ -46,6 +47,15 @@ int main() {
         assert(!caps.protected_reference_mix);
         assert(!caps.authored_3d_position);
     }
+
+    // The protected reference is an authority/control path, not an object to be
+    // spatialized alongside the isolated sources that produced it.
+    assert(vgmtooling::model::spatial_audio_lane_is_object_renderable(
+        vgmtooling::model::spatial_audio_lane_kind::dry_source));
+    assert(vgmtooling::model::spatial_audio_lane_is_object_renderable(
+        vgmtooling::model::spatial_audio_lane_kind::shared_effect_return));
+    assert(!vgmtooling::model::spatial_audio_lane_is_object_renderable(
+        vgmtooling::model::spatial_audio_lane_kind::reference_mix));
 
     // Both foobar components share the same UI semantics: the existing
     // Surround checkbox is the hard reference/source-aware switch. Full sphere
@@ -82,7 +92,17 @@ int main() {
     assert(genesis.stereo_route.present);
     assert(genesis.stereo_route.left_gain == 1.0f);
     assert(genesis.stereo_route.right_gain == 0.0f);
+    assert(!genesis.stereo_route.gain_preapplied);
     assert(!vgmtooling::model::may_claim_authored_3d(genesis));
+
+    // Arithmetic provenance does not change what the signed native route means.
+    // It only prevents a downstream renderer from applying that gain twice.
+    auto preapplied = genesis;
+    preapplied.stereo_route.gain_preapplied = true;
+    assert(preapplied.stereo_route.present);
+    assert(preapplied.stereo_route.left_gain == genesis.stereo_route.left_gain);
+    assert(preapplied.stereo_route.right_gain == genesis.stereo_route.right_gain);
+    assert(!vgmtooling::model::may_claim_authored_3d(preapplied));
 
     // Musical/presentation evidence is allowed to guide Omniphony, but remains
     // explicitly inferred and never upgrades itself into authored geometry.
@@ -121,6 +141,7 @@ int main() {
     assert(spc.stereo_route.present);
     assert(spc.stereo_route.left_gain == -1.0f);
     assert(std::fabs(spc.stereo_route.right_gain - (64.0f / 127.0f)) < 1.0e-6f);
+    assert(!spc.stereo_route.gain_preapplied);
     assert(spc.effect_send_known && spc.effect_send_enabled);
     assert(!vgmtooling::model::may_claim_authored_3d(spc));
 
