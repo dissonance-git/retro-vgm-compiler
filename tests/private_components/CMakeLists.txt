@@ -37,8 +37,8 @@ endforeach()
 
 # Guard the high-risk generated-host seams before the expensive Windows build.
 # These tests operate only on temporary files and assert exact guarded patch
-# composition/order, including family-local fallback and rate-specific
-# Omniphony processor lifetime.
+# composition/order, including family-local fallback, the one 48 kHz private
+# host clock, and rate-specific Omniphony processor lifetime.
 add_test(
     NAME vgm_deferred_family_independence_patch
     COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
@@ -51,6 +51,17 @@ set_tests_properties(
 )
 
 add_test(
+    NAME vgm_private_48khz_output_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/vgm
+        -p test_private_48khz_output_patch.py
+)
+set_tests_properties(
+    vgm_private_48khz_output_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
     NAME vgm_spatial_omniphony_rate_lifecycle_patch
     COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
         -s ${RETRO_ROOT}/tests/vgm
@@ -58,6 +69,17 @@ add_test(
 )
 set_tests_properties(
     vgm_spatial_omniphony_rate_lifecycle_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME spc_private_48khz_output_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/spc
+        -p test_enhanced_runtime_rate.py
+)
+set_tests_properties(
+    spc_private_48khz_output_patch
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
