@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Freeze label-blind SPC forensic sidecars before creator identity is joined.
+"""Freeze creator-blind persistent-part motif profiles before identity is joined.
 
-This tool deliberately knows nothing about soundtrack names, track titles, or
-creator identities. Callers provide opaque cue ids and already-produced forensic
-sidecars. The output binds exact sidecar hashes, enforces one runtime/provenance
-world, rejects incomplete captures, and computes the same persistent-part motif
-similarity used by model/part_motif_attribution_bridge.h.
+SPC forensic sidecars remain a first-class input, but the frozen comparison
+surface is representation-neutral. Each representation family must share one
+exact provenance world internally; different source families may coexist in the
+same opaque cue matrix. Creator, soundtrack, and track identities are forbidden
+until the downstream reveal step.
 """
 
 from __future__ import annotations
@@ -20,6 +20,10 @@ from typing import Any
 
 
 EXPECTED_MODEL = "label-blind SPC forensic feature sidecar"
+PROFILE_BUNDLE_MODEL = "creator-blind persistent-part motif profile bundle"
+FREEZE_MODEL = "creator-blind persistent-part motif corpus freeze"
+LEGACY_FREEZE_MODEL = "creator-blind SPC forensic corpus freeze"
+SPC_REPRESENTATION = "spc_forensic_persistent_part_motif"
 RHYTHM_ONLY_IDENTITY_CEILING = 0.55
 FORBIDDEN_KEYS = {
     "artist",
@@ -43,13 +47,14 @@ class CueSidecar:
     provenance: dict[str, Any]
     profiles: list[dict[str, Any]]
     diagnostics: dict[str, Any]
+    representation: str = SPC_REPRESENTATION
 
 
 def _walk_keys(value: Any) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             if str(key).lower() in FORBIDDEN_KEYS:
-                raise ValueError(f"label-bearing key is forbidden in frozen sidecar: {key}")
+                raise ValueError(f"label-bearing key is forbidden in frozen motif evidence: {key}")
             _walk_keys(child)
     elif isinstance(value, list):
         for child in value:
@@ -100,6 +105,15 @@ def _validate_profile(profile: dict[str, Any]) -> None:
     if contour is not None and any(value not in (-1, 0, 1) for value in contour):
         raise ValueError("pitch contour values must be -1, 0, or 1")
 
+    semantics = profile.get("interval_semantics")
+    if intervals is not None and (not isinstance(semantics, str) or not semantics):
+        raise ValueError("pitched motif profile requires non-empty interval semantics")
+
+
+def _validate_cue_id(cue_id: str) -> None:
+    if not cue_id or not cue_id.startswith("cue-"):
+        raise ValueError("cue ids must be opaque ids beginning with 'cue-'")
+
 
 def load_sidecar(
     cue_id: str,
@@ -107,15 +121,8 @@ def load_sidecar(
     *,
     require_profiles: bool = True,
 ) -> CueSidecar:
-    """Validate a creator-blind forensic capture.
-
-    ``require_profiles`` belongs to the experiment-admission layer, not the raw
-    capture layer. The reusable cache may preserve a complete zero-profile
-    capture as a negative result; frozen similarity corpora continue to require
-    at least one admissible persistent-part profile by default.
-    """
-    if not cue_id or not cue_id.startswith("cue-"):
-        raise ValueError("cue ids must be opaque ids beginning with 'cue-'")
+    """Validate a creator-blind SPC forensic capture."""
+    _validate_cue_id(cue_id)
     raw = path.read_bytes()
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
@@ -183,6 +190,50 @@ def load_sidecar(
         provenance=dict(provenance),
         profiles=list(profiles),
         diagnostics=diagnostics,
+        representation=SPC_REPRESENTATION,
+    )
+
+
+def load_profile_bundle(cue_id: str, path: pathlib.Path) -> CueSidecar:
+    """Load a representation-neutral, creator-blind motif profile bundle.
+
+    Source-specific tools may emit this tiny envelope after they have already
+    earned persistent musical parts. The freeze never interprets native source
+    channels or voices; it sees only normalized motif profiles plus provenance.
+    """
+    _validate_cue_id(cue_id)
+    raw = path.read_bytes()
+    value = json.loads(raw.decode("utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("motif profile bundle must be a JSON object")
+    _walk_keys(value)
+    if value.get("model") != PROFILE_BUNDLE_MODEL:
+        raise ValueError("not a creator-blind persistent-part motif profile bundle")
+
+    representation = value.get("representation")
+    provenance = value.get("provenance")
+    profiles = value.get("part_profiles")
+    diagnostics = value.get("diagnostics", {})
+    if not isinstance(representation, str) or not representation:
+        raise ValueError("motif profile bundle requires a representation family")
+    if not isinstance(provenance, dict) or not provenance:
+        raise ValueError("motif profile bundle requires provenance")
+    if not isinstance(profiles, list) or not profiles:
+        raise ValueError("motif profile bundle requires at least one part profile")
+    if not isinstance(diagnostics, dict):
+        raise ValueError("motif profile bundle diagnostics must be an object")
+    for profile in profiles:
+        if not isinstance(profile, dict):
+            raise ValueError("part profile must be a JSON object")
+        _validate_profile(profile)
+
+    return CueSidecar(
+        cue_id=cue_id,
+        sha256=hashlib.sha256(raw).hexdigest(),
+        provenance=dict(provenance),
+        profiles=list(profiles),
+        diagnostics=dict(diagnostics),
+        representation=representation,
     )
 
 
@@ -306,10 +357,17 @@ def freeze_corpus(cues: list[CueSidecar]) -> dict[str, Any]:
     if len(set(cue_ids)) != len(cue_ids):
         raise ValueError("opaque cue ids must be unique")
 
-    provenance = cues[0].provenance
-    for cue in cues[1:]:
-        if cue.provenance != provenance:
-            raise ValueError("all frozen sidecars must share exact runtime provenance")
+    provenance_worlds: dict[str, dict[str, Any]] = {}
+    for cue in cues:
+        if not cue.representation:
+            raise ValueError("frozen cue requires a representation family")
+        existing = provenance_worlds.get(cue.representation)
+        if existing is None:
+            provenance_worlds[cue.representation] = cue.provenance
+        elif existing != cue.provenance:
+            raise ValueError(
+                "all cues within one representation family must share exact provenance"
+            )
 
     ordered = sorted(cues, key=lambda cue: cue.cue_id)
     matrix: dict[str, dict[str, float]] = {cue.cue_id: {} for cue in ordered}
@@ -329,17 +387,22 @@ def freeze_corpus(cues: list[CueSidecar]) -> dict[str, Any]:
                 })
 
     return {
-        "model": "creator-blind SPC forensic corpus freeze",
+        "model": FREEZE_MODEL,
         "claim_boundary": (
             "Opaque cue identities and creator-blind persistent-part motif geometry only. "
+            "Native representations and provenance are retained for audit but never scored. "
             "Soundtrack, track-title, composer, candidate, and attribution identities are joined later."
         ),
         "similarity_contract": "model/part_motif_attribution_bridge.h",
-        "runtime_provenance": provenance,
+        "provenance_worlds": {
+            key: provenance_worlds[key] for key in sorted(provenance_worlds)
+        },
         "cue_count": len(ordered),
         "cues": [
             {
                 "cue_id": cue.cue_id,
+                "representation": cue.representation,
+                "artifact_sha256": cue.sha256,
                 "sidecar_sha256": cue.sha256,
                 "diagnostics": cue.diagnostics,
                 "part_profiles": cue.profiles,
@@ -360,11 +423,27 @@ def _parse_cue_argument(text: str) -> tuple[str, pathlib.Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cue", action="append", required=True, type=_parse_cue_argument)
+    parser.add_argument(
+        "--cue",
+        action="append",
+        default=[],
+        type=_parse_cue_argument,
+        help="legacy/current SPC forensic sidecar as cue-NNN=path.json",
+    )
+    parser.add_argument(
+        "--profile-cue",
+        action="append",
+        default=[],
+        type=_parse_cue_argument,
+        help="representation-neutral motif profile bundle as cue-NNN=path.json",
+    )
     parser.add_argument("--output", type=pathlib.Path, required=True)
     args = parser.parse_args()
 
     cues = [load_sidecar(cue_id, path) for cue_id, path in args.cue]
+    cues.extend(load_profile_bundle(cue_id, path) for cue_id, path in args.profile_cue)
+    if len(cues) < 2:
+        parser.error("at least two --cue/--profile-cue inputs are required")
     frozen = freeze_corpus(cues)
     args.output.write_text(
         json.dumps(frozen, indent=2, sort_keys=True) + "\n",
