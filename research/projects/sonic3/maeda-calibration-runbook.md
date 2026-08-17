@@ -86,6 +86,30 @@ The evaluator must fail closed if:
 - the Sonic 3D Blast partition is incomplete,
 - any required scored control is missing.
 
+## Stage C: count-matched documentary-label null
+
+Use the same frozen Stage A audit. Shuffle labels only after feature extraction:
+
+```bash
+python tools/maeda_calibration_null.py \
+  research/projects/sonic3/maeda-calibration-frozen-audit.json \
+  --policy research/projects/sonic3/maeda-calibration-policy.json \
+  --k 3 \
+  --permutations 5000 \
+  --seed 20260816 \
+  --json research/projects/sonic3/maeda-calibration-null.json
+```
+
+The null preserves the observed Maeda count separately inside Golden Axe III and Sonic 3D Blast. J.League Pro Striker 2 remains fixed as a whole-soundtrack Maeda-positive world. The disputed Scorching Sand track remains excluded.
+
+The reported empirical p-value uses the plus-one correction:
+
+```text
+(1 + number of null scores >= observed score) / (1 + permutations)
+```
+
+This tests whether the documentary labels align with the frozen feature geometry better than count-matched fake credit maps. It still does not test Sonic 3 authorship.
+
 ## Primary readouts
 
 For each of `structural`, `structural_pitch`, `structural_rhythm`, and `realization`, inspect:
@@ -102,8 +126,9 @@ Primary statistics:
 - `precision_lift_over_chance`
 - `mean_reciprocal_rank`
 - `mean_best_positive_minus_best_negative`
+- empirical permutation `p` for the same higher-is-better statistics
 
-Raw precision is never sufficient. A Maeda-heavy candidate pool can produce superficially good precision by chance, which is why lift over the query-specific positive fraction is mandatory.
+Raw precision is never sufficient. A Maeda-heavy candidate pool can produce superficially good precision by chance, which is why lift over the query-specific positive fraction and the count-matched permutation null are both mandatory.
 
 The `structural` aggregate remains the preregistered promotion statistic. Pitch and rhythm subviews explain *why* it succeeds or fails; they do not multiply the evidence count.
 
@@ -114,11 +139,16 @@ Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless the `structura
 - positive precision lift over chance in Golden Axe III,
 - positive precision lift over chance in Sonic 3D Blast,
 - positive precision lift over chance in aggregate Genesis cross-soundtrack retrieval,
+- empirical permutation `p <= 0.05` for structural precision lift in Golden Axe III,
+- empirical permutation `p <= 0.05` for structural precision lift in Sonic 3D Blast,
+- empirical permutation `p <= 0.05` for structural precision lift in aggregate Genesis cross-soundtrack retrieval,
 - positive cross-soundtrack precision lift when Golden Axe III is the query world,
 - positive cross-soundtrack precision lift when Sonic 3D Blast is the query world,
 - positive cross-soundtrack precision lift when J.League Pro Striker 2 is the query world,
 - positive mean best-Maeda-minus-best-non-Maeda margin in both same-game worlds,
 - no result depends on the quarantined Scorching Sand label.
+
+The three `p <= 0.05` requirements are an intersection gate: all three primary structural environments must clear the threshold. Pitch, rhythm, realization, reciprocal-rank, and margin p-values remain diagnostics and do not create extra ways to pass.
 
 This is a minimum gate, not proof of creator identity. If it fails, improve the representation on controls and rerun as a new frozen experiment. Do not tune on Sonic 3.
 
@@ -151,7 +181,7 @@ Ask where it falls naturally. Do not use the answer to alter the training labels
 
 ## Only then: Sonic 3 candidate search
 
-If the structural calibration gate survives the controls and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
+If the structural calibration gate survives the controls, empirical null, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
 
 The allowed conclusion format is:
 
