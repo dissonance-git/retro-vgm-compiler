@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "purpose": "Preregister the mapping test between the staged 25-SPC Monster Maker 3 pack and the game's documented sound-test numbering before inspecting machine-state correlations.",
+  "status": "unverified_hypothesis",
+  "claim_boundary": "The conditional fixture mappings below are not composer admissions. They become eligible for admission only after the pack-order-to-sound-test mapping is independently verified.",
+  "staged_corpus": {
+    "path": "imports/sonic3-attribution/monster-maker-3-spc",
+    "fixture_count": 25,
+    "observed_filename_order": "01 - BGM 1.spc through 25 - BGM 25.spc"
+  },
+  "documented_sound_test": {
+    "id_range_hex": "00..1E",
+    "entry_count": 31,
+    "sources": [
+      {
+        "url": "https://monstermaker3.kouryaku.red/entry12.html",
+        "evidence": "Independent sound-test instructions and complete BGM number list 00..1E."
+      },
+      {
+        "url": "https://w.atwiki.jp/gamemusicbest100/pages/3093.html",
+        "evidence": "Sound-test-order table, staff-role summary, and individual creator annotations; footnotes trace the Kobayashi/Takaoka and Hikichi individual associations to Takaoka's X posts."
+      }
+    ]
+  },
+  "hypothesis": {
+    "name": "full-length 01..19 subset",
+    "description": "The 25 generic BGM files are the 25 consecutive sound-test music objects 01..19 hexadecimal, omitting title 00 and the six short/end-state objects 1A..1E.",
+    "mapping_formula": "decimal fixture ordinal n in [1,25] -> sound-test integer n -> hexadecimal id 01..19",
+    "arithmetic_support": {
+      "documented_total_entries": 31,
+      "hypothesized_omitted_entries": ["00", "1A", "1B", "1C", "1D", "1E"],
+      "remaining_entries": 25
+    },
+    "alternative_offsets_remain_open": true,
+    "reason": "A 25-file count match is suggestive but does not establish which documented sound-test object corresponds to BGM 1."
+  },
+  "conditional_creator_anchors": [
+    {
+      "fixture_ordinal": 3,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/03 - BGM 3.spc",
+      "sound_test_id": "03",
+      "documented_title": "Diane theme / Chapter 3 field",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 4,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/04 - BGM 4.spc",
+      "sound_test_id": "04",
+      "documented_title": "Lufia theme I / Chapter 4 field",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 5,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/05 - BGM 5.spc",
+      "sound_test_id": "05",
+      "documented_title": "Lufia theme II / Chapter 5 field",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 6,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/06 - BGM 6.spc",
+      "sound_test_id": "06",
+      "documented_title": "Ship Journey",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 14,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/14 - BGM 14.spc",
+      "sound_test_id": "0E",
+      "documented_title": "Tower / Monster Tamer hut",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 20,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/20 - BGM 20.spc",
+      "sound_test_id": "14",
+      "documented_title": "Kibera Castle",
+      "candidate": "Miyoko Takaoka",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote"
+    },
+    {
+      "fixture_ordinal": 22,
+      "conditional_fixture_path": "imports/sonic3-attribution/monster-maker-3-spc/22 - BGM 22.spc",
+      "sound_test_id": "16",
+      "documented_title": "Battle 1 / normal battle",
+      "candidate": "Masanori Hikichi",
+      "source_chain": "AtWiki exact table -> Takaoka X footnote",
+      "importance": "If verified, this becomes the first strong Hikichi composer control outside Terranigma and unlocks strict cross-soundtrack Hikichi testing."
+    }
+  ],
+  "machine_state_test": {
+    "tool": "tools/spc/correlate_spc_snapshot_state.py",
+    "expected_primary_pattern": "At least one saved RAM selector/index locus follows fixture ordinals 1..25 exactly or a clearly interpretable fixed offset from them.",
+    "strong_support": "An exact one-based or zero-based RAM locus in a locally stable control block, preferably corroborated by another independent state relation or named musical anchor.",
+    "non_result": "No exact selector locus does not falsify the 01..19 mapping; the driver may store transformed IDs, pointers, queues, or no persistent selector after playback starts.",
+    "promotion_rule": "Do not create exact Monster Maker 3 composer admissions from this hypothesis file alone. Preserve the raw correlation report and require an explicit mapping-evidence review first."
+  }
+}
