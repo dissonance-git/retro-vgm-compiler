@@ -1,4 +1,5 @@
 #include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
+#include "components/vgm/enhancement/genesis_realtime_musical_omniphony_pipeline.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
 #include "components/vgm/enhancement/genesis_spatial_source_bus.h"
 #include "model/spatial_playback_options.h"
@@ -131,6 +132,27 @@ int main() {
     check_spatial_combination(true, false);
     check_spatial_combination(false, true);
     check_spatial_combination(true, true);
+
+    // Compile and exercise the outer Genesis -> Omniphony seam without a
+    // renderer. It accepts the selected source set and validates it, but cannot
+    // render until the independent Spatial host binds Omniphony.
+    genesis_realtime_musical_omniphony_pipeline<frames> omniphony;
+    std::array<float, genesis_recomposition_source_count * frames> source_scratch{};
+    std::array<float, frames * 2> spatial_stereo{};
+    const auto unbound_spatial = omniphony.process_selected_sources(
+        reference_sources,
+        source_evidence,
+        frames,
+        48000.0,
+        source_scratch.data(),
+        source_scratch.size(),
+        spatial_stereo.data(),
+        spatial_stereo.size(),
+        1000,
+        96);
+    assert(unbound_spatial.source_block_valid);
+    assert(!unbound_spatial.omniphony.prepared);
+    assert(!unbound_spatial.omniphony.rendered);
 
     // Never subtract a merely similar source. If exact reference contribution
     // evidence is missing, the quality path fails closed to protected reference.
