@@ -42,6 +42,7 @@ def main() -> int:
     # Legacy filenames below are all part of the one enhanced option.
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
+    run(here / "apply_enhanced_family_independence.py", source)
     run(here / "apply_studio_hq_fm_runtime.py", source)
     run(here / "apply_studio_hq_fm_session_reset.py", source)
     # The early PCM observer reset now sits inside the expanded seek lifecycle.
