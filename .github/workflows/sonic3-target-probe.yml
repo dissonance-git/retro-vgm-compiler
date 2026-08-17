@@ -7,7 +7,7 @@ on:
       - '.github/workflows/sonic3-target-probe.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
 
       - name: Verify mixed-source attribution contracts
         run: |
@@ -76,14 +78,44 @@ jobs:
               --output "sonic3-probe/$NAME/reveal/cube-calibration.json"
           done
 
-      - name: Print compact Sonic 3 score table and stability
+      - name: Audit Genesis realization coordinate separately
+        run: |
+          set -euo pipefail
+          python3 -B tools/cross_soundtrack_vgm_audit.py \
+            tests/corpus/sonic-3-knuckles \
+            --include-within-soundtrack \
+            --neighbors 3 \
+            --json sonic3-probe/genesis-realization-audit.json >/dev/null
+
+      - name: Build compact durable result
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
         run: |
           python3 - <<'PY'
-          import json, pathlib
-          names = ['tight','medium','wide']
-          by_name = {}
-          for name in names:
-              data = json.loads(pathlib.Path(f'sonic3-probe/{name}/reveal/cube-calibration.json').read_text(encoding='utf-8'))
+          import hashlib, importlib.util, json, os, pathlib, re, sys
+
+          specs = {
+              'tight': {'max_gap_ticks': 500, 'max_pitch_interval_octaves': 1.0},
+              'medium': {'max_gap_ticks': 2205, 'max_pitch_interval_octaves': 1.5},
+              'wide': {'max_gap_ticks': 8820, 'max_pitch_interval_octaves': 2.0},
+          }
+          panel = json.loads(pathlib.Path('sonic3-probe/panel.json').read_text(encoding='utf-8'))
+          fixture_to_cue = {pathlib.PurePosixPath(c['fixture_path']).name: c['cue_id'] for c in panel['cues']}
+          target_names = sorted(
+              pathlib.PurePosixPath(c['fixture_path']).name
+              for c in panel['cues']
+              if c['fixture_path'].startswith('tests/corpus/sonic-3-knuckles/')
+          )
+
+          runs = {}
+          keyed = {}
+          frozen_matrices = {}
+          for name, spec in specs.items():
+              eval_path = pathlib.Path(f'sonic3-probe/{name}/reveal/cube-calibration.json')
+              freeze_path = pathlib.Path(f'sonic3-probe/{name}/frozen-matrix.json')
+              data = json.loads(eval_path.read_text(encoding='utf-8'))
+              frozen = json.loads(freeze_path.read_text(encoding='utf-8'))
+              frozen_matrices[name] = frozen['similarity_matrix']
               world = data['validation_worlds']['sonic-3-knuckles']
               rows = []
               for item in world['cues']:
@@ -96,27 +128,174 @@ jobs:
                       'margin': item.get('winner_margin'),
                       'decisive': item.get('decisive'),
                   })
-              by_name[name] = {'mean': world.get('mean_candidate_affinity'), 'rows': rows}
+              keyed[name] = {row['file']: row for row in rows}
+              runs[name] = {
+                  'parameters': spec,
+                  'freeze_sha256': hashlib.sha256(freeze_path.read_bytes()).hexdigest(),
+                  'evaluation_sha256': hashlib.sha256(eval_path.read_bytes()).hexdigest(),
+                  'target_mean_candidate_affinity': world.get('mean_candidate_affinity'),
+                  'tracks': rows,
+              }
 
-          print('SONIC3_PROBE_JSON_BEGIN')
-          print(json.dumps(by_name, separators=(',', ':'), sort_keys=True))
-          print('SONIC3_PROBE_JSON_END')
-          print('STABILITY_BEGIN')
-          keyed = {name: {r['file']: r for r in value['rows']} for name, value in by_name.items()}
+          stability = []
           for file in sorted(keyed['medium']):
-              winners = [keyed[name][file]['winner'] for name in names]
-              decisive = [keyed[name][file]['decisive'] for name in names]
-              margins = [keyed[name][file]['margin'] for name in names]
-              stable = len(set(winners)) == 1
-              print(json.dumps({'file': file, 'winners': winners, 'decisive': decisive, 'margins': margins, 'stable_winner': stable}, separators=(',', ':'), sort_keys=True))
-          print('STABILITY_END')
+              winners = [keyed[name][file]['winner'] for name in specs]
+              decisive = [keyed[name][file]['decisive'] for name in specs]
+              margins = [keyed[name][file]['margin'] for name in specs]
+              stability.append({
+                  'file': file,
+                  'winners': winners,
+                  'decisive': decisive,
+                  'margins': margins,
+                  'stable_winner': len(set(winners)) == 1,
+                  'decisive_all': all(bool(value) for value in decisive),
+              })
+
+          def stem(file_name):
+              value = pathlib.PurePosixPath(file_name).stem
+              return re.sub(r'^\d+\s*-\s*', '', value)
+
+          by_stem = {stem(name): name for name in target_names}
+          pair_specs = []
+          seen = set()
+
+          for base, beta_file in sorted(by_stem.items()):
+              if not base.endswith(' (Beta)'):
+                  continue
+              retail_base = base[:-7]
+              retail_file = by_stem.get(retail_base)
+              if retail_file:
+                  key = tuple(sorted((retail_file, beta_file)))
+                  if key not in seen:
+                      seen.add(key)
+                      pair_specs.append(('retail_beta', retail_file, beta_file))
+
+          act_re = re.compile(r'^(.*) Act ([12])( \(Beta\))?$')
+          grouped = {}
+          for base, file_name in by_stem.items():
+              match = act_re.match(base)
+              if not match:
+                  continue
+              group = (match.group(1), bool(match.group(3)))
+              grouped.setdefault(group, {})[int(match.group(2))] = file_name
+          for (family, is_beta), acts in sorted(grouped.items()):
+              if 1 in acts and 2 in acts:
+                  key = tuple(sorted((acts[1], acts[2])))
+                  if key not in seen:
+                      seen.add(key)
+                      pair_specs.append(('act1_act2_beta' if is_beta else 'act1_act2_retail', acts[1], acts[2]))
+
+          audit_path = pathlib.Path('sonic3-probe/genesis-realization-audit.json')
+          audit = json.loads(audit_path.read_text(encoding='utf-8'))
+          audit_tracks = {row['file']: row for row in audit['tracks']}
+          tool_path = pathlib.Path('tools/vgm_creator_feature_audit.py')
+          spec = importlib.util.spec_from_file_location('probe_vgm_audit', tool_path)
+          if spec is None or spec.loader is None:
+              raise RuntimeError('could not load VGM audit scorer')
+          audit_mod = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = audit_mod
+          spec.loader.exec_module(audit_mod)
+
+          pair_results = []
+          for kind, a, b in pair_specs:
+              cue_a = fixture_to_cue[a]
+              cue_b = fixture_to_cue[b]
+              pair_results.append({
+                  'kind': kind,
+                  'a': a,
+                  'b': b,
+                  'composer_facing_motif_similarity': {
+                      name: frozen_matrices[name][cue_a][cue_b] for name in specs
+                  },
+                  'genesis_structural_similarity': audit_mod.structural_similarity(audit_tracks[a], audit_tracks[b]),
+                  'genesis_realization_similarity': audit_mod.realization_similarity(audit_tracks[a], audit_tracks[b]),
+              })
+
+          structural_neighbors = audit['top_structural_neighbors']
+          realization_neighbors = audit['top_realization_neighbors']
+          target_prefix = 'sonic-3-knuckles::'
+          execution_neighbors = {}
+          for file in target_names:
+              key = target_prefix + file
+              execution_neighbors[file] = {
+                  'structural': structural_neighbors.get(key, []),
+                  'realization': realization_neighbors.get(key, []),
+              }
+
+          selected_tokens = (
+              'Hydrocity', 'Carnival Night', 'IceCap', 'Launch Base', 'Sky Sanctuary',
+              'Data Select', 'Balloon Park', "Knuckles' Theme", 'Mushroom Hill',
+              'Marble Garden', 'Boss Theme', 'Doomsday', 'Flying Battery',
+              'Sandopolis', 'Death Egg', 'Competition Menu'
+          )
+          selected = {}
+          for file in target_names:
+              if any(token in file for token in selected_tokens):
+                  selected[file] = {
+                      'affinity_by_setting': {name: keyed[name][file] for name in specs},
+                      'execution_neighbors': execution_neighbors[file],
+                  }
+
+          result = {
+              'schema_version': 1,
+              'status': 'tentative_creator_affinity_probe',
+              'source_commit': os.environ['SOURCE_COMMIT'],
+              'target_corpus': 'tests/corpus/sonic-3-knuckles',
+              'target_count': len(target_names),
+              'grounded_composer_control_count': 15,
+              'candidates': ['Miyoko Takaoka', 'Masanori Hikichi'],
+              'claim_boundary': 'Creator-blind mixed-source persistent-part motif affinity only. This is not authorship proof. Current Hikichi cross-soundtrack coverage is incomplete; Gleylancer remains a future confidence upgrade rather than a gate. Genesis structural/realization similarity is reported separately and must not be promoted into composer identity.',
+              'parameter_order': list(specs),
+              'runs': runs,
+              'stability': stability,
+              'pair_controls': pair_results,
+              'genesis_execution_coordinate': {
+                  'audit_sha256': hashlib.sha256(audit_path.read_bytes()).hexdigest(),
+                  'claim_boundary': audit.get('claim_boundary'),
+                  'neighbors': execution_neighbors,
+              },
+              'selected_targets': selected,
+          }
+          out = pathlib.Path('/tmp/sonic3-target-probe-2026-08-17.json')
+          out.write_text(json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps({
+              'target_count': result['target_count'],
+              'pair_control_count': len(pair_results),
+              'stable_winner_count': sum(item['stable_winner'] for item in stability),
+              'decisive_all_count': sum(item['decisive_all'] for item in stability),
+              'selected_target_count': len(selected),
+              'output_sha256': hashlib.sha256(out.read_bytes()).hexdigest(),
+          }, sort_keys=True))
+          if result['target_count'] != 58:
+              raise SystemExit('target count changed during result assembly')
           PY
 
       - name: Upload exact probe artifacts
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sonic3-mixed-source-attribution-probe
           retention-days: 30
           path: sonic3-probe/
-          if-no-files-found: warn
+          if-no-files-found: error
+
+      - name: Publish compact result to main
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git checkout --detach origin/main
+          RESULT='research/projects/sonic3/execution/sonic3-target-probe-2026-08-17.json'
+          test ! -e "$RESULT"
+          mkdir -p "$(dirname "$RESULT")"
+          cp /tmp/sonic3-target-probe-2026-08-17.json "$RESULT"
+          git add "$RESULT"
+          git commit -m 'research: record first Sonic 3 mixed-source attribution probe'
+          for attempt in 1 2 3 4; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+          done
+          exit 1
