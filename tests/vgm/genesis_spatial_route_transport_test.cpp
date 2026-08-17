@@ -37,19 +37,26 @@ int main() {
     transport_type transport;
     transport.reset();
 
-    // YM2612 reset pan remains unknown. A present FM source without an observed
-    // authored route keeps this block on ordinary stereo while delivery advances.
+    // The source-aware backend requires pinned Nuked OPN2, whose reset sets all
+    // six pan_l/pan_r values to one. FM and channel-6 DAC therefore have exact
+    // both-output routing before the first B4-B6 write.
     transport_type::presence_array present{};
     present[fm1] = true;
+    present[fm6] = true;
+    present[dac] = true;
     transport_type::delivered_block block{};
     assert(transport.prepare_delivered_block(0u, 4u, present, block));
-    assert(!block.routes_complete);
-    assert(transport.valid());
-    assert(transport.last_error() ==
-        genesis_spatial_route_transport_error::missing_initial_route);
+    assert(block.routes_complete);
+    assert(block.initial_evidence[fm1].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[fm1].stereo_route.right_gain == 1.0f);
+    assert(block.initial_evidence[fm6].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[fm6].stereo_route.right_gain == 1.0f);
+    assert(block.initial_evidence[dac].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[dac].stereo_route.right_gain == 1.0f);
+    assert(block.initial_evidence[fm6].source_id != block.initial_evidence[dac].source_id);
 
-    // SN76496 is different: pinned libvgm resets stereo_mask to 0xFF. All four
-    // PSG lanes therefore have an exact both-output route before any 0x4F write.
+    // Pinned libvgm SN76496 resets stereo_mask to 0xFF. All four PSG lanes also
+    // have an exact both-output route before any 0x4F write.
     transport.reset();
     present = {};
     present[psg0] = true;
@@ -61,8 +68,8 @@ int main() {
     assert(block.initial_evidence[psg3].stereo_route.left_gain == 1.0f);
     assert(block.initial_evidence[psg3].stereo_route.right_gain == 1.0f);
 
-    // A route write at the first audible sample becomes initial evidence rather
-    // than forcing an unnecessary block of fallback.
+    // A route write at the first audible sample replaces reset evidence rather
+    // than becoming a redundant timed event at offset zero.
     transport.reset();
     const std::uint8_t fm1_left_only[] = {0xB4u, 0x80u};
     assert(transport.observe(command(0x52u, fm1_left_only, 2u), 100u));
@@ -106,8 +113,8 @@ int main() {
     assert(block.initial_evidence[psg3].stereo_route.left_gain == 0.0f);
     assert(block.initial_evidence[psg3].stereo_route.right_gain == 0.0f);
 
-    // Once an initial route is known, later in-block changes survive as timed
-    // evidence rather than being collapsed to one state for the whole block.
+    // Later in-block changes survive as timed evidence rather than being
+    // collapsed to one state for the whole block.
     transport.reset();
     const std::uint8_t fm1_both[] = {0xB4u, 0xC0u};
     const std::uint8_t fm1_right[] = {0xB4u, 0x40u};
@@ -133,15 +140,18 @@ int main() {
     assert(block.initial_evidence[fm1].stereo_route.left_gain == 0.0f);
     assert(block.initial_evidence[fm1].stereo_route.right_gain == 1.0f);
 
-    // Second-instance YM commands are not silently folded into the primary
-    // 11-lane Genesis topology.
+    // Second-instance YM commands are not folded into the primary 11-lane
+    // topology. They leave the primary lane on its exact reset route.
     transport.reset();
-    const std::uint8_t second_instance[] = {0xB4u, 0xC0u};
+    const std::uint8_t second_instance[] = {0xB4u, 0x00u};
     assert(transport.observe(command(0xA2u, second_instance, 2u), 500u));
     present = {};
     present[fm1] = true;
     assert(transport.prepare_delivered_block(500u, 4u, present, block));
-    assert(!block.routes_complete);
+    assert(block.routes_complete);
+    assert(block.event_count == 0u);
+    assert(block.initial_evidence[fm1].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[fm1].stereo_route.right_gain == 1.0f);
 
     return 0;
 }
