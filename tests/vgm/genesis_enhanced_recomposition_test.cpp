@@ -23,13 +23,13 @@ int main() {
 
     std::array<genesis_source_replacement_view, genesis_recomposition_source_count> sources{};
     auto& fm = sources[static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1)];
-    fm.reference = {{old_fm_l, old_fm_r, true}};
-    fm.enhanced = {{new_fm_l, new_fm_r, true}};
+    fm.reference = {old_fm_l, old_fm_r, true};
+    fm.enhanced = {new_fm_l, new_fm_r, true};
     fm.replace = true;
 
     auto& psg = sources[static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0)];
-    psg.reference = {{old_psg_l, old_psg_r, true}};
-    psg.enhanced = {{new_psg_l, new_psg_r, true}};
+    psg.reference = {old_psg_l, old_psg_r, true};
+    psg.enhanced = {new_psg_l, new_psg_r, true};
     psg.replace = true;
 
     genesis_enhanced_recomposition_storage<frames> render;
@@ -61,8 +61,8 @@ int main() {
     // algebraic control for proving the recompositor itself is transparent.
     auto parity = none;
     auto& parity_fm = parity[static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm2)];
-    parity_fm.reference = {{old_fm_l, old_fm_r, true}};
-    parity_fm.enhanced = {{old_fm_l, old_fm_r, true}};
+    parity_fm.reference = {old_fm_l, old_fm_r, true};
+    parity_fm.enhanced = {old_fm_l, old_fm_r, true};
     parity_fm.replace = true;
     assert(render.build(reference_l, reference_r, frames, parity));
     for (std::size_t frame = 0; frame < frames; ++frame) {
