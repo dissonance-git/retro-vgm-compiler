@@ -14,11 +14,14 @@
     <ClCompile Include="..\enhancement\sn76489_advance.cpp" />
     <ClCompile Include="..\enhancement\ym2612_dac_enhanced.cpp" />
     <ClCompile Include="..\enhancement\ym2612_pcm_stream.cpp" />
+    <ClCompile Include="..\enhancement\ym2612_fm_timeline.cpp" />
+    <ClCompile Include="..\enhancement\ym2612_hq_fm_backend.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\enhancement\vgm_command_event.h" />
     <ClInclude Include="..\enhancement\genesis_state.h" />
     <ClInclude Include="..\enhancement\sn76489_enhanced.h" />
+    <ClInclude Include="..\enhancement\sn76489_enhanced_source_block.h" />
     <ClInclude Include="..\enhancement\psg_block_capture.h" />
     <ClInclude Include="..\enhancement\qsound_block_capture.h" />
     <ClInclude Include="..\enhancement\qsound_control_state.h" />
@@ -38,6 +41,11 @@
     <ClInclude Include="..\enhancement\qsound_reference_recomposition.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_enhanced.h" />
     <ClInclude Include="..\enhancement\ym2612_dac_block_capture.h" />
+    <ClInclude Include="..\enhancement\ym2612_block_capture.h" />
+    <ClInclude Include="..\enhancement\ym2612_fm_backend.h" />
+    <ClInclude Include="..\enhancement\ym2612_fm_timeline.h" />
+    <ClInclude Include="..\enhancement\ym2612_hq_fm_profile.h" />
+    <ClInclude Include="..\enhancement\ym2612_hq_fm_backend.h" />
     <ClInclude Include="..\enhancement\dac_stream_source.h" />
     <ClInclude Include="..\enhancement\ym2612_pcm_stream.h" />
   </ItemGroup>
