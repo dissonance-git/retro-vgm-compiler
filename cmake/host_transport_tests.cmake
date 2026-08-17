@@ -343,6 +343,10 @@ add_test(
     COMMAND snesapu_studio_source_provider_test
 )
 add_test(
+    NAME snesapu_studio_source_packet
+    COMMAND snesapu_studio_source_packet_test
+)
+add_test(
     NAME snesapu_brr_playback_topology
     COMMAND snesapu_brr_playback_topology_test
 )
