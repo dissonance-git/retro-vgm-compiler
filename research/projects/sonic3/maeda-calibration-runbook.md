@@ -27,9 +27,11 @@ Use only these Genesis worlds in the first executable calibration:
    - Hataya, Oguro, and uncontested Sawada tracks are non-Maeda controls
    - `11 - The Scorching Sand.vgz` is quarantined and excluded from scoring
 2. `tests/corpus/sonic-3d-blast-genesis-vgm`
-   - complete 24-track per-track-credit partition
-   - 10 Maeda controls
-   - the other 14 fixtures are non-Maeda controls
+   - complete 24-track per-track role map
+   - composition: Maeda 10, Senoue 12, Setsumaru 1, Okamoto 1
+   - arrangement/programming: Maeda 10, Senoue 10, Setsumaru 4
+   - only Maeda and Senoue are recurring composition classes; Setsumaru and Okamoto are singleton sentinels
+   - same zone/work/source-lineage family candidates are excluded from role-specificity retrieval
 3. `tests/corpus/j-league-pro-striker-2-vgz`
    - six whole-soundtrack Maeda-positive controls
    - useful only in cross-soundtrack retrieval because this world contains no internal non-Maeda controls
@@ -67,7 +69,7 @@ sha256sum research/projects/sonic3/maeda-calibration-frozen-audit.json
 
 Record the digest with the result artifact or commit message. If the audit changes, it is a new experiment.
 
-## Stage B: documentary unblinding
+## Stage B: documentary Maeda unblinding
 
 Only after Stage A is frozen:
 
@@ -86,7 +88,7 @@ The evaluator must fail closed if:
 - the Sonic 3D Blast partition is incomplete,
 - any required scored control is missing.
 
-## Stage C: count-matched documentary-label null
+## Stage C: count-matched Maeda-label null
 
 Use the same frozen Stage A audit. Shuffle labels only after feature extraction:
 
@@ -110,7 +112,58 @@ The reported empirical p-value uses the plus-one correction:
 
 This tests whether the documentary labels align with the frozen feature geometry better than count-matched fake credit maps. It still does not test Sonic 3 authorship.
 
-## Primary readouts
+## Stage D: Sonic 3D Blast role specificity with anti-sibling exclusion
+
+Use the same frozen Stage A audit again. This stage asks a harder question than Maeda-vs-rest: does the feature geometry distinguish recurring creators inside one soundtrack after obvious related-work shortcuts are removed?
+
+```bash
+python tools/sonic3d_role_specificity_eval.py \
+  research/projects/sonic3/maeda-calibration-frozen-audit.json \
+  --policy research/projects/sonic3/maeda-calibration-policy.json \
+  --families research/projects/sonic3/sonic3d-role-family-policy.json \
+  --json research/projects/sonic3/sonic3d-role-specificity-results.json
+```
+
+The family policy is mandatory. Every query excludes candidates from the same zone/work/source-lineage family. In particular:
+
+- Act 1 cannot retrieve Act 2 of the same zone as a creator win,
+- `Robotnik 2` cannot retrieve the related `Robotnik 3` / unused-1D Boss-2-family variant as a creator win,
+- family exclusion is applied identically in composition and arrangement/programming lanes.
+
+This prevents the experiment from confusing work identity with creator identity.
+
+### Stage D composition lane
+
+The preregistered composition classes are:
+
+- Tatsuyuki Maeda: 10 fixtures
+- Jun Senoue: 12 fixtures
+
+Masaru Setsumaru and Seirou Okamoto each have one composition fixture. They remain singleton sentinels. They may steal a top-1 retrieval and count as an error, but they must never be treated as learned creator clusters.
+
+Evaluate `structural` as the primary composition-facing view. `structural_pitch` and `structural_rhythm` are diagnostic subviews only.
+
+Primary Stage D composition statistics:
+
+- balanced top-1 accuracy,
+- Maeda recall,
+- Senoue recall,
+- mean reciprocal rank,
+- mean best-same-creator-minus-best-other-creator margin,
+- singleton top-1 intrusions,
+- number of same-family candidate instances excluded.
+
+### Stage D arrangement/programming lane
+
+Use only `realization` and the recurring role classes:
+
+- Tatsuyuki Maeda: 10 fixtures
+- Jun Senoue: 10 fixtures
+- Masaru Setsumaru: 4 fixtures
+
+This lane can calibrate arrangement / sequence / sound-data / implementation fingerprints only. It is forbidden from satisfying a composition gate.
+
+## Primary Maeda readouts
 
 For each of `structural`, `structural_pitch`, `structural_rhythm`, and `realization`, inspect:
 
@@ -134,7 +187,9 @@ The `structural` aggregate remains the preregistered promotion statistic. Pitch 
 
 ## Preregistered calibration gate
 
-Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless the `structural` view satisfies all of the following:
+Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless every primary structural requirement below is satisfied.
+
+### Maeda-vs-rest control gate
 
 - positive precision lift over chance in Golden Axe III,
 - positive precision lift over chance in Sonic 3D Blast,
@@ -150,7 +205,22 @@ Do **not** expose unresolved Sonic 3 cues to Maeda scoring unless the `structura
 
 The three `p <= 0.05` requirements are an intersection gate: all three primary structural environments must clear the threshold. Pitch, rhythm, realization, reciprocal-rank, and margin p-values remain diagnostics and do not create extra ways to pass.
 
-This is a minimum gate, not proof of creator identity. If it fails, improve the representation on controls and rerun as a new frozen experiment. Do not tune on Sonic 3.
+### Sonic 3D creator-specificity gate
+
+The primary `structural` role-specificity result must additionally satisfy:
+
+- `same_family_candidates_excluded == true`,
+- balanced top-1 accuracy strictly greater than `0.50`,
+- Maeda recall strictly greater than `0.50`,
+- Senoue recall strictly greater than `0.50`,
+- mean best-same-creator-minus-best-other-creator margin greater than `0`,
+- singleton top-1 intrusions are reported explicitly and are not removed post hoc.
+
+These raw thresholds are a temporary minimum gate. Once the role-specificity label-permutation null is implemented, empirical significance against that null becomes mandatory and supersedes reliance on the raw `> 0.50` thresholds alone.
+
+A role-specificity result that succeeds only because Act 1 retrieves Act 2, or because one Boss-2-family variant retrieves the other, is invalid by construction.
+
+This is a minimum calibration gate, not proof of creator identity. If it fails, improve the representation on controls and rerun as a new frozen experiment. Do not tune on Sonic 3.
 
 Realization may be informative even when structural calibration fails, but it can support only arrangement / sequencing / programming / toolchain hypotheses.
 
@@ -162,7 +232,8 @@ Several requested confounds are already removed by construction in the compositi
 - realization-specific pan, algorithm, feedback, patch, PSG, DAC, and routing behavior is absent from structural scoring,
 - pitch is represented by relative semitone motion rather than absolute key, making the pitch lens transposition-tolerant,
 - onset gaps are divided by each physical channel's median positive gap before quantization, making the rhythm lens tempo-normalized,
-- cross-soundtrack scoring excludes same-soundtrack candidates and now reports each query world separately.
+- cross-soundtrack scoring excludes same-soundtrack candidates and reports each query world separately,
+- Sonic 3D creator-specificity scoring excludes same-family candidates.
 
 Still required before a strong Sonic 3 promotion:
 
@@ -181,7 +252,7 @@ Ask where it falls naturally. Do not use the answer to alter the training labels
 
 ## Only then: Sonic 3 candidate search
 
-If the structural calibration gate survives the controls, empirical null, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
+If the structural calibration gate survives the Maeda controls, empirical null, anti-sibling role-specificity control, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
 
 The allowed conclusion format is:
 
