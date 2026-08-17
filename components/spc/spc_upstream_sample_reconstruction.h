@@ -74,8 +74,13 @@ inline spc_upstream_reconstruction_result reconstruct_spc_upstream_sample(
         || std::abs(weight_sum) < 1.0e-12)
         return result;
 
-    result.sample = weighted / weight_sum;
-    result.valid = std::isfinite(result.sample);
+    const double reconstructed = weighted / weight_sum;
+    const double scaled = reconstructed * candidate.upstream.game_pcm_units_per_source_unit;
+    if (!std::isfinite(scaled))
+        return result;
+
+    result.sample = scaled;
+    result.valid = true;
     return result;
 }
 
