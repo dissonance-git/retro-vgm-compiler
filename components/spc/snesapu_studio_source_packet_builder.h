@@ -1,5 +1,6 @@
 #pragma once
 
+#include "snesapu_brr_playback_topology.h"
 #include "snesapu_studio_source_packet.h"
 
 namespace gameaudio::spc {
@@ -14,6 +15,65 @@ public:
         const spc_sample_restoration_candidate* restoration = nullptr;
         spc_game_sample_playback_span playback{};
     };
+
+    // Preferred authoring input when an SPC snapshot is available. The caller
+    // supplies only the runtime source selector, the live DIR page represented
+    // by the snapshot, and the already-admitted upstream restoration. BRR start,
+    // END/LOOP topology, loop target and the exact compressed witness are then
+    // derived from the snapshot itself rather than copied from hand-authored
+    // sidecar metadata.
+    struct snapshot_source {
+        std::uint8_t source_number = 0;
+        std::uint8_t directory_page = 0;
+        const std::uint8_t* spc_data = nullptr;
+        std::size_t spc_size = 0;
+        const spc_sample_restoration_candidate* restoration = nullptr;
+    };
+
+    bool build_from_spc_snapshot(const snapshot_source* sources, std::size_t count) {
+        bytes_.clear();
+        if (sources == nullptr || count == 0
+            || count > snes_studio_source_max_entries)
+            return false;
+
+        std::vector<std::vector<std::uint8_t>> witnesses(count);
+        std::vector<source> resolved(count);
+
+        for (std::size_t index = 0; index < count; ++index) {
+            const snapshot_source& item = sources[index];
+            if (item.restoration == nullptr)
+                return false;
+
+            const auto topology = derive_snesapu_brr_playback_topology_from_spc(
+                item.spc_data,
+                item.spc_size,
+                item.directory_page,
+                item.source_number);
+            if (!topology.valid)
+                return false;
+
+            auto& witness = witnesses[index];
+            witness.resize(topology.witness_byte_count());
+            if (!copy_snesapu_brr_witness_from_ram(
+                    item.spc_data + spc_ram_offset,
+                    spc_ram_size,
+                    topology,
+                    witness.data(),
+                    witness.size()))
+                return false;
+
+            resolved[index] = {
+                item.source_number,
+                topology.first_brr_block_address,
+                witness.data(),
+                witness.size(),
+                item.restoration,
+                topology.playback_span(),
+            };
+        }
+
+        return build(resolved.data(), resolved.size());
+    }
 
     bool build(const source* sources, std::size_t count) {
         bytes_.clear();
