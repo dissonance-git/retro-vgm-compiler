@@ -16,6 +16,7 @@ enum class snesapu_source_transport_v2_storage_error : std::uint8_t {
     null_planar,
     nonfinite_value,
     invalid_slice,
+    wire_not_staged,
 };
 
 // Allocation-free owner for one normalized planar SRCE v2 block. It is the
@@ -32,6 +33,9 @@ public:
 
     void reset() noexcept {
         metadata_ = {};
+        staged_metadata_ = {};
+        wire_values_ = 0;
+        wire_staged_ = false;
         valid_ = false;
         last_error_ = snesapu_source_transport_v2_storage_error::none;
     }
@@ -42,29 +46,45 @@ public:
         std::size_t planar_values) noexcept
     {
         reset();
-        transport::view incoming{&metadata, planar};
-        if (!incoming.valid() || incoming.frame_count() > MaxFrames)
-            return fail(snesapu_source_transport_v2_storage_error::invalid_header);
-        if (planar == nullptr)
-            return fail(snesapu_source_transport_v2_storage_error::null_planar);
-        const std::size_t frames = incoming.frame_count();
-        const std::size_t required = frames * transport::plane_count;
-        if (planar_values != required)
-            return fail(snesapu_source_transport_v2_storage_error::invalid_header);
+        return load_planar_unreset(metadata, planar, planar_values);
+    }
 
-        for (std::size_t plane = 0; plane < transport::plane_count; ++plane) {
-            const float* src = planar + plane * frames;
-            float* dst = data_.data() + plane * MaxFrames;
-            for (std::size_t frame = 0; frame < frames; ++frame) {
-                if (!std::isfinite(src[frame]))
-                    return fail(snesapu_source_transport_v2_storage_error::nonfinite_value);
-                dst[frame] = src[frame];
-            }
-        }
-
-        metadata_ = metadata;
-        valid_ = true;
+    // Two-phase wire receive for overlapped pipe readers. Validate the compact
+    // header before reading the payload, then read exactly wire_value_count()
+    // floats into wire_write_data() and commit. A malformed header never causes
+    // the controller to trust an attacker/child-provided payload length.
+    bool begin_wire_receive(const transport::header& metadata) noexcept {
+        reset();
+        if (!transport::wire::header_valid(metadata)
+            || static_cast<std::size_t>(metadata.block_samples) > MaxFrames)
+            return fail(snesapu_source_transport_v2_storage_error::invalid_header);
+        staged_metadata_ = metadata;
+        wire_values_ = static_cast<std::size_t>(metadata.block_samples) * transport::plane_count;
+        wire_staged_ = true;
         return true;
+    }
+
+    float* wire_write_data() noexcept {
+        return wire_staged_ ? wire_.data() : nullptr;
+    }
+
+    std::size_t wire_value_count() const noexcept {
+        return wire_staged_ ? wire_values_ : 0;
+    }
+
+    std::size_t wire_byte_count() const noexcept {
+        return wire_value_count() * sizeof(float);
+    }
+
+    bool commit_wire_receive() noexcept {
+        if (!wire_staged_)
+            return fail(snesapu_source_transport_v2_storage_error::wire_not_staged);
+        const transport::header metadata = staged_metadata_;
+        const std::size_t values = wire_values_;
+        wire_staged_ = false;
+        wire_values_ = 0;
+        staged_metadata_ = {};
+        return load_planar_unreset(metadata, wire_.data(), values);
     }
 
     // SNESAPU's native capture buffer is sample-major and keeps audio near its
@@ -78,9 +98,7 @@ public:
 
         constexpr float audio_scale = 1.0f / 32768.0f;
         for (std::size_t plane = 0; plane < transport::plane_count; ++plane) {
-            const bool audio = plane < transport::voice_count
-                || plane == transport::echo_left_plane
-                || plane == transport::echo_right_plane;
+            const bool audio = transport::wire::is_audio_plane(plane);
             const float scale = audio ? audio_scale : 1.0f;
             float* dst = data_.data() + plane * MaxFrames;
             for (std::size_t frame = 0; frame < frames; ++frame) {
@@ -139,7 +157,9 @@ public:
     }
 
     bool valid() const noexcept {
-        return valid_ && view().valid() && frame_count() <= MaxFrames;
+        return valid_ && metadata_.block_samples > 0
+            && metadata_.block_samples <= MaxFrames
+            && transport::wire::header_valid(metadata_);
     }
 
     std::size_t frame_count() const noexcept {
@@ -153,7 +173,7 @@ public:
     // happens into wire_ only when a view is requested. This is bounded and
     // allocation-free.
     transport::view view() const noexcept {
-        if (!valid_ || metadata_.block_samples == 0 || metadata_.block_samples > MaxFrames)
+        if (!valid())
             return {};
         const std::size_t frames = static_cast<std::size_t>(metadata_.block_samples);
         for (std::size_t plane = 0; plane < transport::plane_count; ++plane) {
@@ -166,7 +186,7 @@ public:
     }
 
     const float* plane_storage(std::size_t plane) const noexcept {
-        return valid_ && plane < transport::plane_count
+        return valid() && plane < transport::plane_count
             ? data_.data() + plane * MaxFrames : nullptr;
     }
 
@@ -175,16 +195,53 @@ public:
     }
 
 private:
+    bool load_planar_unreset(
+        const transport::header& metadata,
+        const float* planar,
+        std::size_t planar_values) noexcept
+    {
+        transport::view incoming{&metadata, planar};
+        if (!incoming.valid() || incoming.frame_count() > MaxFrames)
+            return fail(snesapu_source_transport_v2_storage_error::invalid_header);
+        if (planar == nullptr)
+            return fail(snesapu_source_transport_v2_storage_error::null_planar);
+        const std::size_t frames = incoming.frame_count();
+        const std::size_t required = frames * transport::plane_count;
+        if (planar_values != required)
+            return fail(snesapu_source_transport_v2_storage_error::invalid_header);
+
+        for (std::size_t plane = 0; plane < transport::plane_count; ++plane) {
+            const float* src = planar + plane * frames;
+            float* dst = data_.data() + plane * MaxFrames;
+            for (std::size_t frame = 0; frame < frames; ++frame) {
+                if (!std::isfinite(src[frame]))
+                    return fail(snesapu_source_transport_v2_storage_error::nonfinite_value);
+                dst[frame] = src[frame];
+            }
+        }
+
+        metadata_ = metadata;
+        valid_ = true;
+        last_error_ = snesapu_source_transport_v2_storage_error::none;
+        return true;
+    }
+
     bool fail(snesapu_source_transport_v2_storage_error error) noexcept {
         valid_ = false;
         metadata_ = {};
+        staged_metadata_ = {};
+        wire_values_ = 0;
+        wire_staged_ = false;
         last_error_ = error;
         return false;
     }
 
     transport::header metadata_{};
+    transport::header staged_metadata_{};
     std::array<float, transport::plane_count * MaxFrames> data_{};
     mutable std::array<float, transport::plane_count * MaxFrames> wire_{};
+    std::size_t wire_values_ = 0;
+    bool wire_staged_ = false;
     bool valid_ = false;
     snesapu_source_transport_v2_storage_error last_error_ =
         snesapu_source_transport_v2_storage_error::none;
