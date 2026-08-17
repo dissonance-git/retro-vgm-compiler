@@ -1,3 +1,4 @@
+#include "components/spc/spc_realtime_musical_omniphony_pipeline.h"
 #include "components/spc/spc_runtime_host_pipeline.h"
 #include "model/spatial_playback_options.h"
 
@@ -143,6 +144,25 @@ int main() {
                 CHECK(resolve_spatial_playback(options) ==
                     spatial_playback_path::source_full_sphere);
                 CHECK(uses_source_renderer(options));
+
+                // The SPC Omniphony wrapper consumes exactly the chunk selected
+                // above. With no renderer bound it validates the source handoff
+                // but cannot render, proving the source and presentation seams
+                // are separate executable stages.
+                spc_realtime_musical_omniphony_pipeline<10, 8, 32> omniphony;
+                std::array<float, 10 * frames> source_scratch{};
+                std::array<float, frames * 2> spatial_stereo{};
+                const auto spatial_result = omniphony.process_chunk(
+                    chunk,
+                    48000.0,
+                    source_scratch.data(),
+                    source_scratch.size(),
+                    spatial_stereo.data(),
+                    spatial_stereo.size(),
+                    96);
+                CHECK(spatial_result.source_chunk_valid);
+                CHECK(!spatial_result.omniphony.prepared);
+                CHECK(!spatial_result.omniphony.rendered);
             } else {
                 CHECK(resolve_spatial_playback(options) ==
                     spatial_playback_path::reference_stereo);
