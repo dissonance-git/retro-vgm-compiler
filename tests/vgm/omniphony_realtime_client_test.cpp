@@ -1,9 +1,11 @@
+#include "../../model/omniphony_dynamic_backend_loader.h"
 #include "../../model/omniphony_realtime_client.h"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace {
 
@@ -59,6 +61,46 @@ std::int32_t fake_process(
 int main()
 {
     using namespace vgmtooling::model;
+
+    // Keep the dynamically loaded lifecycle/config mirror pinned to the current
+    // Omniphony source_ffi C contract without requiring the DLL on non-Windows CI.
+    omniphony_source_config_transport config{};
+    assert(!omniphony_source_config_valid(config));
+    config.sample_rate_hz = 48000;
+    config.spatial_mode = omniphony_source_spatial_full_sphere;
+    config.externalization = 1;
+    config.hrir_source = omniphony_source_hrir_saf_kemar;
+    config.unit_scale_m = 1.0f;
+    config.reflection_level = 0.0f;
+    assert(omniphony_source_config_valid(config));
+
+    auto invalid = config;
+    invalid.spatial_mode = 2;
+    assert(!omniphony_source_config_valid(invalid));
+    invalid = config;
+    invalid.externalization = 2;
+    assert(!omniphony_source_config_valid(invalid));
+    invalid = config;
+    invalid.hrir_source = 2;
+    assert(!omniphony_source_config_valid(invalid));
+    invalid = config;
+    invalid.unit_scale_m = 0.0f;
+    assert(!omniphony_source_config_valid(invalid));
+    invalid = config;
+    invalid.reflection_level = -0.01f;
+    assert(!omniphony_source_config_valid(invalid));
+    invalid = config;
+    invalid.reflection_level = std::numeric_limits<float>::infinity();
+    assert(!omniphony_source_config_valid(invalid));
+
+#ifndef _WIN32
+    omniphony_dynamic_backend_loader loader;
+    assert(!loader.open_default(config));
+    assert(loader.last_error() == omniphony_dynamic_backend_error::unsupported_platform);
+    assert(!loader.open());
+    loader.close();
+    assert(loader.last_error() == omniphony_dynamic_backend_error::none);
+#endif
 
     int opaque_processor = 0;
     omniphony_realtime_client<4, 4> client{};
