@@ -63,6 +63,18 @@ struct spc_upstream_playback_boundaries {
     bool valid = false;
 };
 
+inline bool spc_upstream_pcm_all_finite(
+    const spc_upstream_sample_view& upstream) noexcept
+{
+    if (!upstream.valid())
+        return false;
+    for (std::size_t frame = 0; frame < upstream.frame_count; ++frame) {
+        if (!std::isfinite(upstream.mono_pcm[frame]))
+            return false;
+    }
+    return true;
+}
+
 inline spc_upstream_playback_boundaries resolve_spc_upstream_playback_boundaries(
     const spc_sample_restoration_candidate& candidate,
     const spc_game_sample_playback_span& playback) noexcept
@@ -162,9 +174,10 @@ inline bool spc_upstream_window_is_contiguous(
 }
 
 // Realtime primitive for callers that already resolved immutable source-binding
-// geometry under the normal admission contract. Keep this in detail so the
-// public API cannot be called with an arbitrary cached boundary object. The
-// numerical FIR/topology law is exactly the same as the standalone path below.
+// geometry under the normal admission contract. SourceFiniteVerified=true is
+// reserved for callers that also scanned the complete upstream PCM at setup;
+// standalone callers retain the defensive per-tap finite checks by default.
+template <bool SourceFiniteVerified = false>
 inline spc_upstream_playback_reconstruction_result
 reconstruct_spc_upstream_candidate_playback_sample_resolved(
     const spc_sample_restoration_candidate& candidate,
@@ -219,8 +232,9 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
             boundaries,
             trajectory.loop_cycle)) {
         // Steady-state fast path. Preserve the exact 64-tap law and weighted
-        // summation order, but avoid both per-tap topology work and rebuilding
-        // the phase's identical float-coefficient normalization sum each sample.
+        // summation order, but avoid per-tap topology work and repeated phase
+        // normalization. Production may also omit per-tap finite checks after a
+        // complete setup-time PCM scan.
         if (first_virtual_index < 0
             || end_virtual_index
                 > static_cast<std::int64_t>(candidate.upstream.frame_count))
@@ -230,8 +244,10 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
         weight_sum = table.phase_weight_sum(phase);
         for (std::size_t tap = 0; tap < spc_studio_tap_count; ++tap) {
             const float sample = source[tap];
-            if (!std::isfinite(sample))
-                return result;
+            if constexpr (!SourceFiniteVerified) {
+                if (!std::isfinite(sample))
+                    return result;
+            }
             const double coefficient = static_cast<double>(coefficients[tap]);
             weighted += static_cast<double>(sample) * coefficient;
         }
@@ -254,8 +270,10 @@ reconstruct_spc_upstream_candidate_playback_sample_resolved(
 
             const float sample = candidate.upstream.mono_pcm[
                 static_cast<std::size_t>(source_index)];
-            if (!std::isfinite(sample))
-                return result;
+            if constexpr (!SourceFiniteVerified) {
+                if (!std::isfinite(sample))
+                    return result;
+            }
             weighted += static_cast<double>(sample) * coefficient;
         }
     }
