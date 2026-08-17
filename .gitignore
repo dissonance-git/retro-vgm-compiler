@@ -41,6 +41,7 @@ sdk/
 foobar2000-SDK/
 WTL/
 libvgm-build/
+SDK-*.7z
 
 # Editors / OS
 .vscode/
