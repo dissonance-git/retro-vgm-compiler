@@ -197,8 +197,8 @@ constexpr spatial_source_capabilities spatial_capabilities_for(
             true,  // bounded runtime voice episodes exist
             true,  // signed per-voice S-DSP routing is captured
             true,  // echo-send state is captured
-            true,  // exact pre-pan dry PCM exists on the native 32 kHz path
-            false, // shared echo return is not exposed as a source-bus lane yet
+            true,  // exact pre-pan dry PCM exists on the native/SNESAPU paths
+            true,  // SNESAPU SRCE v2 exposes the final shared post-EVOL wet return
             false, // PMON/shared echo/finite arithmetic forbid a blanket sum-of-stems claim
             true,  // protected reference playback remains the control
             false,
