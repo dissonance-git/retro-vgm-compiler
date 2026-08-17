@@ -49,6 +49,42 @@ public:
         return load_planar_unreset(metadata, planar, planar_values);
     }
 
+    // Import one compact slice from a larger planar parent request. `planar`
+    // uses source_frames as its plane stride; the resulting owned block is
+    // compact and never exceeds the native 1024-frame SRCE renderer ceiling.
+    bool load_planar_slice(
+        const float* planar,
+        std::size_t source_frames,
+        std::size_t source_offset,
+        std::size_t count) noexcept
+    {
+        reset();
+        if (planar == nullptr || count == 0 || count > MaxFrames
+            || source_offset > source_frames || count > source_frames - source_offset)
+            return fail(snesapu_source_transport_v2_storage_error::invalid_slice);
+
+        for (std::size_t plane = 0; plane < transport::plane_count; ++plane) {
+            const float* src = planar + plane * source_frames + source_offset;
+            float* dst = data_.data() + plane * MaxFrames;
+            for (std::size_t frame = 0; frame < count; ++frame) {
+                if (!std::isfinite(src[frame]))
+                    return fail(snesapu_source_transport_v2_storage_error::nonfinite_value);
+                dst[frame] = src[frame];
+            }
+        }
+
+        metadata_.magic = transport::magic;
+        metadata_.version = transport::version;
+        metadata_.header_size = static_cast<std::uint16_t>(sizeof(transport::header));
+        metadata_.block_samples = static_cast<std::uint32_t>(count);
+        metadata_.plane_count = static_cast<std::uint16_t>(transport::plane_count);
+        metadata_.sample_format = transport::format_float32;
+        metadata_.audio_lanes = static_cast<std::uint16_t>(transport::audio_lane_count);
+        valid_ = true;
+        last_error_ = snesapu_source_transport_v2_storage_error::none;
+        return true;
+    }
+
     // Two-phase wire receive for overlapped pipe readers. Validate the compact
     // header before reading the payload, then read exactly wire_value_count()
     // floats into wire_write_data() and commit. A malformed header never causes
