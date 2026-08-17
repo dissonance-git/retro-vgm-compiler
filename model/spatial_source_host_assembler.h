@@ -35,7 +35,8 @@ constexpr bool same_stereo_route_evidence(
     return a.present == b.present &&
         a.left_gain == b.left_gain &&
         a.right_gain == b.right_gain &&
-        a.authority == b.authority;
+        a.authority == b.authority &&
+        a.gain_preapplied == b.gain_preapplied;
 }
 
 constexpr bool same_spatial_presentation_evidence(
