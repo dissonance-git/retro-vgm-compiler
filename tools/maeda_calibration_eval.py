@@ -179,6 +179,37 @@ def _precision_at_k(
     }
 
 
+def _summarize_query_worlds(metric: dict[str, object]) -> dict[str, dict[str, object]]:
+    queries = metric.get("queries")
+    if not isinstance(queries, list):
+        raise ValueError("metric must contain query rows")
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for row in queries:
+        if not isinstance(row, dict) or not isinstance(row.get("query"), str):
+            raise ValueError("metric query rows require query ids")
+        soundtrack_id = str(row["query"]).split("::", 1)[0]
+        grouped.setdefault(soundtrack_id, []).append(row)
+
+    def mean(rows: list[dict[str, object]], field: str) -> float:
+        values = [float(row[field]) for row in rows]
+        return 0.0 if not values else sum(values) / len(values)
+
+    return {
+        soundtrack_id: {
+            "query_count": len(rows),
+            "precision_at_k": mean(rows, "precision_at_k"),
+            "chance_precision_at_k": mean(rows, "chance_positive_fraction"),
+            "precision_lift_over_chance": mean(rows, "precision_lift_over_chance"),
+            "mean_reciprocal_rank": mean(rows, "reciprocal_rank"),
+            "mean_best_positive_minus_best_negative": mean(
+                rows, "best_positive_minus_best_negative"
+            ),
+            "same_soundtrack_candidates_excluded": True,
+        }
+        for soundtrack_id, rows in sorted(grouped.items())
+    }
+
+
 def _golden_axe_partition(policy: dict[str, object]) -> tuple[set[str], set[str], set[str]]:
     world = policy["golden_axe_iii_track_resolved_world"]
     assert isinstance(world, dict)
@@ -269,6 +300,14 @@ def evaluate(
     }
     result_views: dict[str, object] = {}
     for name, score_fn in views.items():
+        cross = _precision_at_k(
+            tracks,
+            all_genesis_pos,
+            all_genesis_neg,
+            score_fn,
+            k,
+            cross_soundtrack_only=True,
+        )
         result_views[name] = {
             "golden_axe_iii_within_soundtrack": _precision_at_k(
                 tracks, ga_pos, ga_neg, score_fn, k, cross_soundtrack_only=False
@@ -276,14 +315,8 @@ def evaluate(
             "sonic_3d_blast_within_soundtrack": _precision_at_k(
                 tracks, s3d_pos, s3d_neg, score_fn, k, cross_soundtrack_only=False
             ),
-            "genesis_cross_soundtrack": _precision_at_k(
-                tracks,
-                all_genesis_pos,
-                all_genesis_neg,
-                score_fn,
-                k,
-                cross_soundtrack_only=True,
-            ),
+            "genesis_cross_soundtrack": cross,
+            "genesis_cross_soundtrack_by_query_world": _summarize_query_worlds(cross),
         }
 
     return {
