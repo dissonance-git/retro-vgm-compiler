@@ -36,17 +36,6 @@ struct studio_hq_fm_ready_frame {
     bool valid = false;
 };
 
-// Live evidence + reconstruction layer for the exact-state HQ FM producer.
-//
-// It consumes the same native lanes as the historical HQ linear control,
-// assigns absolute source ordinals, maps every host frame through libvgm's exact
-// pre-execution timing state, and publishes a Studio frame only after the full
-// symmetric FIR window exists for every FM identity. The frame carries the
-// destination ordinal it belongs to, so a higher layer can delay the protected
-// reference/DAC/PSG bundle by the same amount rather than delaying FM alone.
-//
-// Startup history before source ordinal zero and the final EOF post-roll remain
-// explicit reference territory. This class never invents those samples.
 template <std::size_t LaneCount, std::size_t NativeCapacity, std::size_t PendingCapacity>
 class studio_hq_fm_observer {
     static_assert(LaneCount > 0, "Studio HQ FM observer needs at least one lane.");
@@ -76,6 +65,7 @@ public:
         native_next_ = 0;
         destination_next_ = 0;
         released_next_ = 0;
+        first_studio_destination_ordinal_ = 0;
         started_studio_domain_ = false;
         invalid_ = false;
     }
@@ -97,6 +87,12 @@ public:
     }
     [[nodiscard]] std::uint64_t next_release_ordinal() const noexcept {
         return released_next_;
+    }
+    [[nodiscard]] bool studio_domain_started() const noexcept {
+        return started_studio_domain_;
+    }
+    [[nodiscard]] std::uint64_t first_studio_destination_ordinal() const noexcept {
+        return first_studio_destination_ordinal_;
     }
     [[nodiscard]] std::size_t pending_frames() const noexcept { return pending_.size(); }
     [[nodiscard]] std::size_t ready_frames() const noexcept { return ready_count_; }
@@ -164,9 +160,6 @@ public:
             }
 
             if (window.first < 0) {
-                // Symmetric FIR history before source ordinal zero does not
-                // exist. These are explicitly protected-reference startup
-                // frames, not zeros and not a reason to stall the queue.
                 if (started_studio_domain_ || !pending_.empty()) {
                     invalidate();
                     return report;
@@ -177,7 +170,10 @@ public:
                 continue;
             }
 
-            started_studio_domain_ = true;
+            if (!started_studio_domain_) {
+                first_studio_destination_ordinal_ = destination_next_;
+                started_studio_domain_ = true;
+            }
             if (!pending_.push(destination_next_, position, gain)) {
                 invalidate();
                 return report;
@@ -192,10 +188,6 @@ public:
         return report;
     }
 
-    // At true EOF the final symmetric-FIR post-roll can never acquire future
-    // source samples. Count and release those ordinals explicitly as protected
-    // reference fallback. This operation must never be used during ordinary
-    // block boundaries.
     std::size_t finish_reference_tail() noexcept {
         if (!valid())
             return 0;
@@ -345,6 +337,7 @@ private:
     std::uint64_t native_next_ = 0;
     std::uint64_t destination_next_ = 0;
     std::uint64_t released_next_ = 0;
+    std::uint64_t first_studio_destination_ordinal_ = 0;
     bool configured_ = false;
     bool started_studio_domain_ = false;
     bool invalid_ = false;
