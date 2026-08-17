@@ -26,6 +26,9 @@ jobs:
       - name: Cube calibration boundary regression
         run: python3 -B -m unittest discover -s tests/spc -p 'test_cube_blind_panel.py'
 
+      - name: Cube panel repository contract
+        run: python3 -B -m unittest discover -s tests/spc -p 'test_cube_panel_repository_contract.py'
+
       - name: Configure isolated forensic runtime
         run: cmake -S tools/spc/forensic -B build-spc-forensic -DCMAKE_BUILD_TYPE=Release
 
