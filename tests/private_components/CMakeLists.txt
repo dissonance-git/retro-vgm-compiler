@@ -61,6 +61,17 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+add_test(
+    NAME spc_spatial_omniphony_rate_lifecycle_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/spc
+        -p test_spatial_omniphony_private_rate_lifecycle_patch.py
+)
+set_tests_properties(
+    spc_spatial_omniphony_rate_lifecycle_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Materialize both complete private components from their repository-owned
 # immutable seeds. This executes the canonical guarded Python patch chains in
 # the same order used by the packaging script, catching stale anchors before
