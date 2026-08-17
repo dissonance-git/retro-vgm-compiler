@@ -10,13 +10,48 @@
 namespace gameaudio::spc {
 
 constexpr std::size_t snesapu_studio_voice_count = 8u;
+constexpr std::uint32_t snesapu_brr_samples_per_block = 16u;
+constexpr std::uint32_t snesapu_brr_bytes_per_block = 9u;
+
+inline bool snesapu_studio_brr_topology_valid(
+    std::uint16_t first_brr_block_address,
+    std::uint16_t loop_brr_block_address,
+    const spc_game_sample_playback_span& playback) noexcept
+{
+    std::int64_t end_sample = 0;
+    if (!playback.valid()
+        || !detail::spc_near_integer(playback.end_sample, end_sample)
+        || end_sample <= 0
+        || (static_cast<std::uint64_t>(end_sample) % snesapu_brr_samples_per_block) != 0u)
+        return false;
+
+    if (!playback.loop.present)
+        return true;
+
+    std::int64_t loop_sample = 0;
+    if (!detail::spc_near_integer(playback.loop.start_sample, loop_sample)
+        || loop_sample < 0
+        || loop_sample >= end_sample
+        || (static_cast<std::uint64_t>(loop_sample) % snesapu_brr_samples_per_block) != 0u)
+        return false;
+
+    const std::uint64_t loop_block = static_cast<std::uint64_t>(loop_sample)
+        / snesapu_brr_samples_per_block;
+    const std::uint16_t expected_loop = static_cast<std::uint16_t>(
+        static_cast<std::uint32_t>(first_brr_block_address)
+        + static_cast<std::uint32_t>(loop_block * snesapu_brr_bytes_per_block));
+    return expected_loop == loop_brr_block_address;
+}
 
 // Setup-time binding between one concrete game sample object and an already
-// admitted upstream restoration. The first BRR address is part of the key so a
-// runtime DIR/SRCN remap cannot silently reuse a candidate for different bytes.
+// admitted upstream restoration. The first BRR address is part of the key, and
+// the loop BRR address is separately proven against the authored block topology.
+// This prevents a runtime DIR/SRCN remap from silently reusing a candidate for
+// different bytes or for the same bytes with a different loop target.
 struct snesapu_studio_source_binding {
     std::uint8_t source_number = 0;
     std::uint16_t first_brr_block_address = 0;
+    std::uint16_t loop_brr_block_address = 0;
     const spc_sample_restoration_candidate* restoration = nullptr;
     spc_game_sample_playback_span playback{};
 };
@@ -35,6 +70,10 @@ public:
         if (count_ >= sources_.size() || binding.restoration == nullptr
             || !may_use_spc_sample_restoration_automatically(*binding.restoration)
             || !binding.playback.valid()
+            || !snesapu_studio_brr_topology_valid(
+                    binding.first_brr_block_address,
+                    binding.loop_brr_block_address,
+                    binding.playback)
             || !detail::resolve_spc_upstream_playback_boundaries(
                     *binding.restoration, binding.playback).valid)
             return false;
@@ -64,12 +103,15 @@ public:
         std::uint32_t voice,
         std::uint32_t source_number,
         std::uint32_t first_brr_block_address,
+        std::uint32_t loop_brr_block_address,
+        std::uint32_t directory_page,
         std::uint32_t interpolation_raw) noexcept
     {
         if (voice >= voices_.size())
             return false;
         stop_voice(voice);
-        if (source_number > 0xffu || first_brr_block_address > 0xffffu)
+        if (source_number > 0xffu || first_brr_block_address > 0xffffu
+            || loop_brr_block_address > 0xffffu || directory_page > 0xffu)
             return false;
 
         snesapu_source_interpolation interpolation{};
@@ -86,11 +128,15 @@ public:
                 break;
             }
         }
-        if (selected == nullptr)
+        if (selected == nullptr
+            || (selected->playback.loop.present
+                && selected->loop_brr_block_address
+                    != static_cast<std::uint16_t>(loop_brr_block_address)))
             return false;
 
         auto& state = voices_[voice];
         state.source = selected;
+        state.directory_page = static_cast<std::uint8_t>(directory_page);
         state.trajectory.key_on(interpolation);
         state.active = true;
         return true;
@@ -99,6 +145,7 @@ public:
     bool render_voice(
         std::uint32_t voice,
         std::uint32_t m_rate_q16_16,
+        std::uint32_t directory_page,
         std::uint32_t interpolation_raw,
         float* output_sample) noexcept
     {
@@ -109,13 +156,17 @@ public:
             return false;
 
         snesapu_source_interpolation interpolation{};
-        if (!snesapu_source_interpolation_from_raw(interpolation_raw, interpolation)
+        if (directory_page > 0xffu
+            || static_cast<std::uint8_t>(directory_page) != state.directory_page
+            || !snesapu_source_interpolation_from_raw(interpolation_raw, interpolation)
             || !snesapu_source_rate_representable(m_rate_q16_16))
             return stop_and_fail(voice);
 
         // SetDSPOpt may change the historical interpolation routine while a
         // voice is alive. The studio waveform is different, but its presentation
         // instant must continue to follow the selected pInter timing contract.
+        // DIR is different: SNESAPU consults it again at an END+LOOP transition,
+        // so any live DIR change forfeits trajectory authority immediately.
         state.trajectory.set_interpolation(interpolation);
         const auto projection = state.trajectory.project(state.source->playback.loop);
         if (!projection.valid)
@@ -161,19 +212,27 @@ public:
         std::uint32_t voice,
         std::uint32_t source_number,
         std::uint32_t first_brr_block_address,
+        std::uint32_t loop_brr_block_address,
+        std::uint32_t directory_page,
         std::uint32_t interpolation) noexcept
     {
         if (user == nullptr)
             return 0u;
         auto* self = static_cast<snesapu_studio_source_provider*>(user);
         return self->begin_voice(
-            voice, source_number, first_brr_block_address, interpolation) ? 1u : 0u;
+            voice,
+            source_number,
+            first_brr_block_address,
+            loop_brr_block_address,
+            directory_page,
+            interpolation) ? 1u : 0u;
     }
 
     static std::uint32_t sample_callback(
         void* user,
         std::uint32_t voice,
         std::uint32_t m_rate_q16_16,
+        std::uint32_t directory_page,
         std::uint32_t interpolation,
         float* output_sample) noexcept
     {
@@ -181,13 +240,18 @@ public:
             return 0u;
         auto* self = static_cast<snesapu_studio_source_provider*>(user);
         return self->render_voice(
-            voice, m_rate_q16_16, interpolation, output_sample) ? 1u : 0u;
+            voice,
+            m_rate_q16_16,
+            directory_page,
+            interpolation,
+            output_sample) ? 1u : 0u;
     }
 
 private:
     struct voice_state {
         const snesapu_studio_source_binding* source = nullptr;
         snesapu_source_trajectory_tracker trajectory{};
+        std::uint8_t directory_page = 0;
         bool active = false;
     };
 
