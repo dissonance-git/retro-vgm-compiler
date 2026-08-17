@@ -17,7 +17,9 @@ The project deliberately couples several evidence layers while preserving their 
 - [`smps-pitch-recovery.md`](smps-pitch-recovery.md) studies inverse recovery of source-side SMPS pitch trajectories from downstream YM2612 execution.
 - [`cross-representation-controls.md`](cross-representation-controls.md) provides paired VGM/SPC and cross-representation controls for separating composition, arrangement, implementation, and format effects.
 - [`attribution-control-admissions.jsonl`](attribution-control-admissions.jsonl) is the role-specific, exact-fixture supervision boundary. Locator metadata cannot become a composer control without an independent admission here.
-- [`cube-calibration-policy.json`](cube-calibration-policy.json) defines the Ancient Magic / Terranigma Takaoka-versus-Hikichi calibration experiment, including joint-composition, disputed-mapping, weak-recollection, and third-party holdouts.
+- [`cube-calibration-policy.json`](cube-calibration-policy.json) defines the evidence-safe Takaoka-versus-Hikichi calibration program, including strict soundtrack-held-out transfer, team-level validation worlds, joint-composition, disputed-mapping, weak-recollection, and third-party holdouts.
+- [`spc-cube-blind-panel.json`](spc-cube-blind-panel.json) freezes the 31-cue Ancient Magic / Terranigma / America Oudan / Battle Master SPC panel used to create creator-blind runtime geometry before the evidence reveal.
+- [`monster-maker-3-soundtest-mapping-hypothesis.json`](monster-maker-3-soundtest-mapping-hypothesis.json) preregisters the staged Monster Maker 3 pack-order versus documented sound-test mapping test. Its conditional Takaoka/Hikichi mappings are hypotheses, never admissions, until machine-state or independent musical evidence verifies the mapping.
 - [`curated-attribution-hypotheses.json`](curated-attribution-hypotheses.json) is the machine-readable hypothesis surface used by the project tooling; it is revisable evaluation context rather than attribution ground truth.
 
 ## Shared project model
