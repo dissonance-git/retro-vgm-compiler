@@ -107,6 +107,33 @@ int main() {
     }
 
     {
+        // Arithmetic provenance is part of route evidence. A host may switch
+        // from raw mono source samples to samples that already carry the exact
+        // native route trajectory without changing source identity. That switch
+        // must survive as a timed evidence event so the consumer never applies
+        // native gain twice.
+        spatial_source_host_assembler<1, 16, 16> assembler;
+        float raw_pcm[2] = {1, 2};
+        float routed_pcm[2] = {0.5f, 1.0f};
+        const auto raw = evidence(12, 3, 0.5f, 0.5f);
+        auto preapplied = raw;
+        preapplied.stereo_route.gain_preapplied = true;
+        spatial_audio_lane_view raw_lane{spatial_audio_lane_kind::dry_source, raw_pcm, raw};
+        spatial_audio_lane_view routed_lane{spatial_audio_lane_kind::dry_source, routed_pcm, preapplied};
+        CHECK(assembler.push(spatial_source_block_view{&raw_lane, 1, 2}));
+        CHECK(assembler.push(spatial_source_block_view{&routed_lane, 1, 2}));
+
+        auto combined = assembler.pull(4);
+        CHECK(combined.frame_count == 4);
+        CHECK(!assembler.last_pull_identity_limited());
+        CHECK(combined.evidence_event_count == 1);
+        CHECK(combined.evidence_events[0].frame_offset == 2);
+        CHECK(combined.evidence_events[0].evidence.source_id == 12);
+        CHECK(combined.evidence_events[0].evidence.generation == 3);
+        CHECK(combined.evidence_events[0].evidence.stereo_route.gain_preapplied);
+    }
+
+    {
         // Reuse of a physical lane by another source episode is not rewritten as
         // a state event. The assembler makes it a hard host-chunk boundary.
         spatial_source_host_assembler<1, 16, 16> assembler;
