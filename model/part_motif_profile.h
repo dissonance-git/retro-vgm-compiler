@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace vgmtooling::model {
@@ -50,6 +51,47 @@ struct part_motif_similarity {
 };
 
 constexpr double rhythm_only_motif_identity_ceiling = 0.55;
+
+// A motif cannot be stronger evidence than the persistent musical-part identity
+// that licensed grouping its physical episodes in the first place. Keep this
+// reader in the shared motif model so every source-family adapter inherits the
+// same epistemic bound.
+struct persistent_part_motif_evidence_bound {
+    evidence_status status = evidence_status::hypothesis;
+    double confidence = 0.0;
+};
+
+inline persistent_part_motif_evidence_bound read_persistent_part_motif_evidence(
+    const node& part) {
+    if (part.kind != node_kind::part)
+        throw std::invalid_argument("part motif evidence requires a persistent-part node");
+
+    const attribute* scope_item = nullptr;
+    for (const auto& item : part.attributes) {
+        if (item.key == "identity_scope") {
+            scope_item = &item;
+            break;
+        }
+    }
+    if (scope_item == nullptr)
+        throw std::invalid_argument("persistent part is missing its identity scope evidence");
+    const auto* scope = std::get_if<std::string>(&scope_item->value);
+    if (scope == nullptr || *scope != "persistent_musical_part")
+        throw std::invalid_argument("part motif requires persistent musical-part identity evidence");
+    if (!std::isfinite(scope_item->confidence) ||
+        scope_item->confidence < 0.0 || scope_item->confidence > 1.0) {
+        throw std::invalid_argument("persistent-part identity confidence must be finite and in [0, 1]");
+    }
+    return {scope_item->status, scope_item->confidence};
+}
+
+inline evidence_status weaker_part_motif_evidence_status(
+    evidence_status first,
+    evidence_status second) noexcept {
+    return static_cast<evidence_status>(std::max(
+        static_cast<std::uint8_t>(first),
+        static_cast<std::uint8_t>(second)));
+}
 
 inline double median_positive(std::vector<double> values) {
     values.erase(
