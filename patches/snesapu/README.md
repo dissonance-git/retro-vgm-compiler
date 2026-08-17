@@ -38,7 +38,7 @@ The gain planes are control truth, not extra audio objects. The wet planes alrea
 
 ## Independent Enhanced playback
 
-Apply the foobar preference plus high-rate source-reconstruction policy with:
+Apply the foobar preference plus source-reconstruction policy with:
 
 ```text
 python patches/snesapu/apply_enhanced_component.py \
@@ -54,23 +54,23 @@ apply_enhanced_runtime.py
 
 `Enhanced` and `Spatial` are independent saved controls. Enhanced defaults off, so the protected existing synthesis path remains the default.
 
-### Existing SNESAPU already contains the right first enhancement mechanism
+### Normal Enhanced playback is one 48 kHz source-domain path
 
 The pinned SPCPlay/SNESAPU renderer has a useful distinction that is easy to miss from the preferences dialog.
 
 Its interpolation choices include `INT_SINC`, documented by the source as an **8-point sinc** interpolator. More importantly, `SetDSPOpt` normally sets the DSP execution rate to the configured output rate and recalculates source pitch for that rate. Only the separate `DSP_ECHOFIR` compatibility/actual-emulation mode forces the DSP back to 32 kHz and then activates the final sampling-rate converter when the requested output rate is higher.
 
-Therefore, with for example:
+Normal Enhanced playback is therefore standardized as:
 
 ```text
-configured output rate = 96 kHz
 Enhanced = on
+final playback rate = 48 kHz
 ```
 
-our baseline Enhanced path selects:
+and the baseline path selects:
 
 ```text
-DSP execution / voice reconstruction at 96 kHz
+DSP execution / voice reconstruction at 48 kHz
 + 8-point sinc source interpolation
 + the same sequence / BRR / pitch / envelope / routing state
 ```
@@ -79,12 +79,14 @@ rather than:
 
 ```text
 historical 32 kHz final stereo
--> generic 96 kHz upsampling
+-> generic 48 kHz upsampling
 ```
 
-`apply_enhanced_runtime.py` expresses exactly that bounded intervention. It leaves the user's configured output-rate field intact, forces `INT_SINC` only for the active Enhanced playback path, and explicitly clears `DSP_ECHOFIR` so Enhanced cannot accidentally collapse back to a 32 kHz completed-bus resample.
+`apply_enhanced_runtime.py` expresses exactly that bounded intervention. It leaves the user's stored reference output-rate field intact, but while Enhanced is active it forces the live DSP/source path to 48 kHz, selects `INT_SINC`, and explicitly clears `DSP_ECHOFIR` so Enhanced cannot accidentally collapse back to a 32 kHz completed-bus resample.
 
-This also means a user who already selected `96 kHz + Sinc` was manually exercising much of this same source-domain quality path even before the dedicated checkbox existed. The checkbox turns that mechanism into an explicit, reversible synthesis mode rather than an accidental combination of quality settings.
+The fixed 48 kHz rate is intentional. The final product path is 48 kHz, so a routine 96 kHz intermediate would roughly double per-sample reconstruction work and then discard everything above the final Nyquist limit. A 96 kHz run remains useful for offline/research A/B tests where we want to measure whether oversampling materially changes aliasing or nonlinear edge cases. It is not the normal playback contract.
+
+The more important quality gain is **where** reconstruction occurs. Verified upstream sources use the longer 64-tap source-domain sampler at the exact live game trajectory before the downstream S-DSP performance machinery. That is qualitatively different from merely asking the finished stereo bus to carry a larger sample-rate number.
 
 ## Preferred Enhanced rung: verified original sample before BRR
 
@@ -167,7 +169,7 @@ Enhanced optionally looks for:
 music.spc.prebrr
 ```
 
-A missing sidecar is normal. Playback simply uses the 96 kHz/Sinc BRR reconstruction rung. An invalid sidecar is not silently accepted as historical evidence.
+A missing sidecar is normal. Playback simply uses the 48 kHz/Sinc BRR reconstruction rung. An invalid sidecar is not silently accepted as historical evidence.
 
 The sidecar format is defined by:
 
@@ -241,16 +243,18 @@ That machinery can evaluate decoded-BRR source trajectories at sub-32-kHz phases
 The intended quality ladder is therefore:
 
 ```text
-best: verified original/pre-BRR source + exact game preparation
+best: verified upstream/original waveform at the exact live game phase
  ↓
-exact BRR source trajectory reconstructed at high rate
+verified exact pre-BRR prepared game-grid source
  ↓
-SNESAPU high-rate 8-point Sinc path
+exact BRR source trajectory reconstructed at 48 kHz
+ ↓
+SNESAPU 48 kHz 8-point Sinc path
  ↓
 protected historical reference
 ```
 
-Each rung is reversible and evidence-labelled.
+Each rung is reversible and evidence-labelled. A 96 kHz render is a research comparison of a rung, not an extra evidence rung by itself.
 
 ## Separation of concerns
 
