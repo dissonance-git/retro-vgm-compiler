@@ -15,6 +15,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_enhanced_native_interval_test
     spc_studio_sample_reconstruction_test
     spc_snesapu_source_trajectory_test
+    spc_upstream_playback_reconstruction_test
     spc_original_sample_interval_test
     snes_spc_enhanced_source_hook_bridge_test
     snesapu_source_transport_v2_test
@@ -79,6 +80,10 @@ add_executable(
 add_executable(
     spc_snesapu_source_trajectory_test
     tests/spc/spc_snesapu_source_trajectory_test.cpp
+)
+add_executable(
+    spc_upstream_playback_reconstruction_test
+    tests/spc/spc_upstream_playback_reconstruction_test.cpp
 )
 add_executable(
     spc_original_sample_interval_test
@@ -187,6 +192,10 @@ target_include_directories(
 )
 target_include_directories(
     spc_snesapu_source_trajectory_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_upstream_playback_reconstruction_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -302,6 +311,10 @@ add_test(
 add_test(
     NAME spc_snesapu_source_trajectory
     COMMAND spc_snesapu_source_trajectory_test
+)
+add_test(
+    NAME spc_upstream_playback_reconstruction
+    COMMAND spc_upstream_playback_reconstruction_test
 )
 add_test(
     NAME spc_original_sample_interval
