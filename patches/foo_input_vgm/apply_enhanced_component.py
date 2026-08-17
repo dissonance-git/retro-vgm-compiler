@@ -44,6 +44,9 @@ def main() -> int:
     run(here / "apply_enhanced_runtime.py", source)
     run(here / "apply_studio_hq_fm_runtime.py", source)
     run(here / "apply_studio_hq_fm_session_reset.py", source)
+    # The early PCM observer reset now sits inside the expanded seek lifecycle.
+    # Relocate it before the PSG patch consumes its stable seek anchor.
+    run(here / "apply_enhanced_dac_stream_seek_order_bridge.py", source)
     run(here / "apply_studio_deferred_psg.py", source)
     run(here / "apply_studio_deferred_family_independence.py", source)
     run(here / "apply_studio_deferred_psg_fail_closed.py", source)
