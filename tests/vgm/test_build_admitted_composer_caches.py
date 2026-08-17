@@ -66,20 +66,29 @@ def test_sonic3_credit_index_covers_all_admitted_composer_controls():
     records = all_caches.read_jsonl(
         ROOT / "research" / "projects" / "sonic3" / "role-credit-index.jsonl"
     )
-    counts = collections.Counter(
-        record["creator"]
+    admitted = [
+        record
         for record in records
         if record.get("role") == "composer"
         and record.get("status") in all_caches.DEFAULT_ADMITTED_STATUSES
-    )
+    ]
+    counts = collections.Counter(record["creator"] for record in admitted)
     assert counts == {
         "Tatsuyuki Maeda": 26,
         "Jun Senoue": 12,
         "Haruyo Oguro": 5,
         "Naofumi Hataya": 4,
-        "Tomonori Sawada": 1,
+        "Tomonori Sawada": 2,
         "Masaru Setsumaru": 1,
         "Seirou Okamoto": 1,
     }
-    assert sum(counts.values()) == 50
-    assert not any("Scorching Sand" in str(record.get("fixture_path", "")) for record in records)
+    assert sum(counts.values()) == 51
+
+    scorching = [
+        record for record in admitted
+        if "Scorching Sand" in str(record.get("fixture_path", ""))
+    ]
+    assert len(scorching) == 1
+    assert scorching[0]["creator"] == "Tomonori Sawada"
+    assert scorching[0]["status"] == "derived"
+    assert "counterevidence" in scorching[0]
