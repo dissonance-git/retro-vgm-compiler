@@ -105,6 +105,40 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# Retirement invariants are deliberately part of the same preflight as runtime
+# seam tests. A component build is not acceptable if it can only be reproduced
+# by resurrecting the retired vgmspc repository or its obsolete SPC patch graph.
+add_test(
+    NAME no_live_vgmspc_dependency
+    COMMAND ${Python3_EXECUTABLE} -B
+        ${RETRO_ROOT}/tests/test_no_live_vgmspc_dependency.py
+)
+set_tests_properties(
+    no_live_vgmspc_dependency
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME spc_active_patch_contract
+    COMMAND ${Python3_EXECUTABLE} -B
+        ${RETRO_ROOT}/tests/spc/test_active_spc_patch_contract.py
+)
+set_tests_properties(
+    spc_active_patch_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME spc_materializer_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/spc
+        -p test_materialize_foo_snesapu.py
+)
+set_tests_properties(
+    spc_materializer_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Materialize both complete private components from their repository-owned
 # immutable seeds. This executes the canonical guarded Python patch chains in
 # the same order used by the packaging script, catching stale anchors before
