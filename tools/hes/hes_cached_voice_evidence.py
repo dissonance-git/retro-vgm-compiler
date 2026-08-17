@@ -45,7 +45,18 @@ def _columns(value: Any, label: str) -> list[tuple[int, int, int]]:
         raise ValueError(f"{label}.count must be nonnegative")
     if not all(isinstance(column, list) and len(column) == count for column in (clocks, registers, data)):
         raise ValueError(f"{label} columns must match count")
-    return [(int(clock), int(register), int(byte)) for clock, register, byte in zip(clocks, registers, data)]
+    result: list[tuple[int, int, int]] = []
+    previous = -1
+    for clock, register, byte in zip(clocks, registers, data):
+        if not isinstance(clock, int) or isinstance(clock, bool) or clock < previous:
+            raise ValueError(f"{label} clocks must be monotonic integers")
+        if not isinstance(register, int) or isinstance(register, bool):
+            raise ValueError(f"{label} registers must be integers")
+        if not isinstance(byte, int) or isinstance(byte, bool):
+            raise ValueError(f"{label} data must be integers")
+        previous = clock
+        result.append((clock, register, byte))
+    return result
 
 
 def _mode(channel: int, state: ChannelState) -> str:
@@ -59,16 +70,22 @@ def _mode(channel: int, state: ChannelState) -> str:
 
 
 def project(sidecar: dict[str, Any]) -> dict[str, Any]:
+    schema.assert_label_blind(sidecar)
     if sidecar.get("model") != schema.EXPECTED_MODEL or sidecar.get("schema_version") != 1:
         raise ValueError("not a supported creator-blind HES forensic sidecar")
     provenance = sidecar.get("provenance")
     capture = sidecar.get("capture")
     if not isinstance(provenance, dict) or not isinstance(capture, dict):
         raise ValueError("HES sidecar requires provenance and capture")
+    if provenance.get("libgme_repository") != schema.EXPECTED_LIBGME_REPOSITORY:
+        raise ValueError("HES sidecar repository provenance differs from decoder contract")
     if provenance.get("libgme_commit") != schema.EXPECTED_LIBGME_COMMIT:
         raise ValueError("HES sidecar libgme provenance differs from decoder contract")
     if provenance.get("instrumentation_contract") != schema.EXPECTED_INSTRUMENTATION_CONTRACT:
         raise ValueError("HES sidecar instrumentation differs from decoder contract")
+    retro_commit = provenance.get("retro_vgm_compiler_commit")
+    if not isinstance(retro_commit, str) or not schema.HEX40.fullmatch(retro_commit):
+        raise ValueError("HES sidecar requires exact Retro VGM Compiler provenance")
     if capture.get("capture_complete") is not True or capture.get("warning_count") != 0:
         raise ValueError("incomplete HES capture cannot produce physical voice evidence")
     captured_clocks = capture.get("captured_clocks")
@@ -81,25 +98,29 @@ def project(sidecar: dict[str, Any]) -> dict[str, Any]:
     episodes: list[dict[str, Any]] = []
     pitch: list[dict[str, Any]] = []
     modes: list[dict[str, Any]] = []
+    pitch_at: dict[tuple[int, int], int] = {}
+    mode_at: dict[tuple[int, int], int] = {}
 
     def add_pitch(channel: int, clock: int) -> None:
         state = states[channel]
         if state.active_episode_id is None or _mode(channel, state) != "wave" or state.period <= 0:
             return
-        coordinate = -math.log2(float(state.period))
         item = {
             "episode_id": state.active_episode_id,
             "channel": channel,
             "clock": clock,
             "period": state.period,
-            "log2_pitch_coordinate": coordinate,
+            "log2_pitch_coordinate": -math.log2(float(state.period)),
             "pitch_basis": PITCH_BASIS,
             "interval_semantics": INTERVAL_SEMANTICS,
         }
-        if pitch and pitch[-1]["episode_id"] == item["episode_id"] and pitch[-1]["clock"] == clock:
-            pitch[-1] = item
-        else:
+        key = (state.active_episode_id, clock)
+        existing = pitch_at.get(key)
+        if existing is None:
+            pitch_at[key] = len(pitch)
             pitch.append(item)
+        else:
+            pitch[existing] = item
 
     def mode_observation(channel: int, clock: int) -> None:
         state = states[channel]
@@ -111,12 +132,19 @@ def project(sidecar: dict[str, Any]) -> dict[str, Any]:
             "clock": clock,
             "mode": _mode(channel, state),
         }
-        if modes and modes[-1]["episode_id"] == item["episode_id"] and modes[-1]["clock"] == clock:
-            modes[-1] = item
-        elif not modes or modes[-1] != item:
+        key = (state.active_episode_id, clock)
+        existing = mode_at.get(key)
+        if existing is None:
+            mode_at[key] = len(modes)
             modes.append(item)
+        else:
+            modes[existing] = item
 
     for clock, register, data in writes:
+        if clock > captured_clocks:
+            raise ValueError("PSG write escapes bounded HES capture")
+        if not 0 <= register <= 9 or not 0 <= data <= 0xFF:
+            raise ValueError("PSG write lies outside HuC6280 register/data range")
         if register == 0:
             latch = data & 7
             continue
@@ -167,7 +195,7 @@ def project(sidecar: dict[str, Any]) -> dict[str, Any]:
             elif register in (2, 3) and new_mode == "wave":
                 add_pitch(latch, clock)
 
-    for channel, state in enumerate(states):
+    for state in states:
         if state.active_episode_id is None:
             continue
         episode = episodes[state.active_episode_id]
