@@ -11,13 +11,13 @@
 
 namespace foobar_vgm::source_audio {
 
-// Allocation-free contiguous native-source history for Studio reconstruction.
-// Source ordinals are explicit: gaps, overlaps, overflow, and invented startup
+// Allocation-free contiguous native-source history for enhanced reconstruction.
+// Source ordinals are explicit: gaps, overlaps, overflow, and unproven startup
 // history all invalidate the stream rather than being repaired heuristically.
 template <std::size_t Capacity>
 class studio_source_stream {
     static_assert(Capacity >= studio_source_resampler_kernel::tap_count,
-        "Studio stream capacity must hold at least one complete FIR window.");
+        "enhanced stream capacity must hold at least one complete FIR window.");
 
 public:
     void reset() noexcept {
@@ -50,10 +50,9 @@ public:
         return append_converted(first_source_ordinal, source, frame_count);
     }
 
-    // libvgm captures native chip samples in DEV_SMPL while the Studio FIR uses
-    // double internally. Convert once at the source-history boundary so live
-    // integer capture can enter the same tested ordinal/ring contract without a
-    // second staging allocation.
+    // libvgm captures native chip samples in DEV_SMPL while the FIR uses double
+    // internally. Convert once at the source-history boundary so live integer
+    // capture can enter the same tested ordinal/ring contract without staging.
     template <typename SourceSample>
     bool append_converted(
         std::uint64_t first_source_ordinal,
@@ -135,6 +134,21 @@ public:
         return final < next;
     }
 
+    // A fresh OPN2 starts from a proven silent FM state. For that one boundary,
+    // negative source ordinals are therefore known zeros rather than invented
+    // samples. This helper deliberately does not generalize to seeks: callers
+    // must opt in only when the source's reset state proves the prefix.
+    [[nodiscard]] bool contains_with_known_zero_prefix(
+        const studio_source_window& window) const noexcept {
+        if (invalid_ || !have_origin_ || !window.valid
+            || window.final < window.first || window.final < 0)
+            return false;
+        if (first_ordinal_ != 0)
+            return false;
+        const auto final = static_cast<std::uint64_t>(window.final);
+        return final < next_ordinal();
+    }
+
     studio_resample_result reconstruct(
         const studio_source_resampler_kernel& kernel,
         studio_source_phase_position position) const noexcept {
@@ -152,6 +166,38 @@ public:
             taps[i] = *value;
         }
 
+        return reconstruct_taps(kernel, window, taps);
+    }
+
+    studio_resample_result reconstruct_with_known_zero_prefix(
+        const studio_source_resampler_kernel& kernel,
+        studio_source_phase_position position) const noexcept {
+        studio_resample_result invalid;
+        const auto window = plan_studio_source_window(position);
+        if (!contains_with_known_zero_prefix(window))
+            return invalid;
+
+        std::array<studio_stereo_sample, studio_source_resampler_kernel::tap_count> taps{};
+        for (std::size_t i = 0; i < taps.size(); ++i) {
+            const std::ptrdiff_t source_ordinal =
+                window.first + static_cast<std::ptrdiff_t>(i);
+            if (source_ordinal < 0)
+                continue;
+            const auto* value = find(static_cast<std::uint64_t>(source_ordinal));
+            if (value == nullptr)
+                return invalid;
+            taps[i] = *value;
+        }
+
+        return reconstruct_taps(kernel, window, taps);
+    }
+
+private:
+    static studio_resample_result reconstruct_taps(
+        const studio_source_resampler_kernel& kernel,
+        const studio_source_window& window,
+        const std::array<studio_stereo_sample,
+            studio_source_resampler_kernel::tap_count>& taps) noexcept {
         const double local_position =
             static_cast<double>(studio_source_resampler_kernel::pre_roll)
             + static_cast<double>(window.phase)
@@ -159,7 +205,6 @@ public:
         return kernel.reconstruct(taps.data(), taps.size(), local_position);
     }
 
-private:
     [[nodiscard]] const studio_stereo_sample* find(
         std::uint64_t source_ordinal) const noexcept {
         if (invalid_ || !have_origin_ || source_ordinal < first_ordinal_)
