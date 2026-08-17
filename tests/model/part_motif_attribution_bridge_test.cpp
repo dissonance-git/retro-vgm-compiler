@@ -51,6 +51,18 @@ part_motif_profile raw_profile(
     return result;
 }
 
+part_motif_profile rhythm_only_profile(
+    node_id part_id,
+    std::vector<double> rhythm,
+    double evidence_confidence) {
+    part_motif_profile result;
+    result.part_id = part_id;
+    result.normalized_inter_onset_intervals = std::move(rhythm);
+    result.status = evidence_status::derived;
+    result.evidence_confidence = evidence_confidence;
+    return result;
+}
+
 } // namespace
 
 int main() {
@@ -103,6 +115,30 @@ int main() {
     std::rotate(order_control.begin(), order_control.begin() + 1, order_control.end());
     const auto permuted = compare_part_motif_profile_sets(order_query, order_control);
     assert(std::fabs(permuted.similarity - optimal.similarity) < 1e-12);
+
+    // A globally optimal score can still have multiple tied assignments. Before
+    // canonical musical ordering, merely permuting profiles could change the
+    // diagnostic count from zero to one pitch-comparable pair while leaving the
+    // score unchanged. Tie-breaking must now preserve the evidence trail too.
+    std::vector<part_motif_profile> tied_query = {
+        raw_profile(30, {1.0}, {0.0}, {0}, 1.0),
+        raw_profile(31, {1.0}, {0.0}, {0}, 1.0),
+    };
+    std::vector<part_motif_profile> tied_control = {
+        raw_profile(40, {1.0}, {0.0}, {0}, 1.0),
+        rhythm_only_profile(41, {1.0}, 1.0),
+    };
+    const auto tied = compare_part_motif_profile_sets(tied_query, tied_control);
+    assert(std::fabs(tied.similarity - 0.775) < 1e-12);
+    assert(tied.matched_pair_count == 2);
+    assert(tied.pitch_comparable_pair_count == 1);
+
+    std::reverse(tied_query.begin(), tied_query.end());
+    std::reverse(tied_control.begin(), tied_control.end());
+    const auto tied_permuted = compare_part_motif_profile_sets(tied_query, tied_control);
+    assert(std::fabs(tied_permuted.similarity - tied.similarity) < 1e-12);
+    assert(tied_permuted.matched_pair_count == tied.matched_pair_count);
+    assert(tied_permuted.pitch_comparable_pair_count == tied.pitch_comparable_pair_count);
 
     const auto match = make_part_motif_composer_control_match(
         "sonic3-unknown",
