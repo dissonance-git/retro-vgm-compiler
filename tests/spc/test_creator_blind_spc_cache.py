@@ -29,7 +29,14 @@ def profile() -> dict[str, object]:
     }
 
 
-def sidecar(source_size: int, seconds: int, *, poison: bool = False) -> dict[str, object]:
+def sidecar(
+    source_size: int,
+    seconds: int,
+    *,
+    poison: bool = False,
+    profiles: bool = True,
+) -> dict[str, object]:
+    part_profiles = [profile()] if profiles else []
     value: dict[str, object] = {
         "model": cache.EXPECTED_MODEL,
         "claim_boundary": "blind",
@@ -72,9 +79,9 @@ def sidecar(source_size: int, seconds: int, *, poison: bool = False) -> dict[str
             "strong_transition_count": 2,
             "rejected_transition_count": 0,
             "continuity_barrier_count": 0,
-            "emitted_part_count": 1,
-            "part_profile_count": 1,
-            "part_profiles": [profile()],
+            "emitted_part_count": len(part_profiles),
+            "part_profile_count": len(part_profiles),
+            "part_profiles": part_profiles,
         },
     }
     if poison:
@@ -131,17 +138,27 @@ class CreatorBlindSpcCacheTests(unittest.TestCase):
         self.assertEqual(same, destination)
         self.assertFalse(changed)
 
-    def test_capture_duration_change_invalidates_without_source_hash(self):
+    def test_capture_durations_coexist_without_source_hash(self):
         with mock.patch.object(cache.subprocess, "run", side_effect=self.fake_run):
-            destination, _ = cache.build_one(
+            five, _ = cache.build_one(
                 self.source,
                 corpus_id="test-spc",
                 extractor=self.extractor,
                 cache_root=self.cache_root,
                 seconds=5,
             )
-        self.assertTrue(cache.cache_current(destination, self.source, seconds=5))
-        self.assertFalse(cache.cache_current(destination, self.source, seconds=10))
+            ten, _ = cache.build_one(
+                self.source,
+                corpus_id="test-spc",
+                extractor=self.extractor,
+                cache_root=self.cache_root,
+                seconds=10,
+            )
+        self.assertNotEqual(five, ten)
+        self.assertIn("5s", five.parts)
+        self.assertIn("10s", ten.parts)
+        self.assertTrue(cache.cache_current(five, self.source, seconds=5))
+        self.assertTrue(cache.cache_current(ten, self.source, seconds=10))
 
     def test_source_size_change_invalidates_without_source_hash(self):
         with mock.patch.object(cache.subprocess, "run", side_effect=self.fake_run):
@@ -154,6 +171,31 @@ class CreatorBlindSpcCacheTests(unittest.TestCase):
             )
         self.source.write_bytes(self.source.read_bytes() + b"x")
         self.assertFalse(cache.cache_current(destination, self.source, seconds=5))
+
+    def test_zero_profile_negative_result_is_cached(self):
+        def zero_run(args, check):
+            self.assertTrue(check)
+            pathlib.Path(args[2]).write_text(
+                json.dumps(
+                    sidecar(
+                        self.source.stat().st_size,
+                        int(args[3]),
+                        profiles=False,
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+        with mock.patch.object(cache.subprocess, "run", side_effect=zero_run):
+            destination, changed = cache.build_one(
+                self.source,
+                corpus_id="test-spc",
+                extractor=self.extractor,
+                cache_root=self.cache_root,
+                seconds=5,
+            )
+        self.assertTrue(changed)
+        self.assertTrue(cache.cache_current(destination, self.source, seconds=5))
 
     def test_label_bearing_forensic_output_is_rejected(self):
         def poison_run(args, check):
@@ -176,6 +218,7 @@ class CreatorBlindSpcCacheTests(unittest.TestCase):
             self.source,
             corpus_id="test-spc",
             cache_root=self.cache_root,
+            seconds=5,
         )
         self.assertFalse(destination.exists())
 
@@ -184,8 +227,10 @@ class CreatorBlindSpcCacheTests(unittest.TestCase):
             self.source,
             corpus_id="terranigma-spc",
             cache_root=self.cache_root,
+            seconds=5,
         )
         self.assertIn("terranigma-spc", destination.parts)
+        self.assertIn("5s", destination.parts)
         self.assertNotIn("composer", destination.as_posix().lower())
         self.assertNotIn("cue-", destination.as_posix().lower())
 
