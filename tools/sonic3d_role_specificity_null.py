@@ -5,8 +5,10 @@ The feature audit is frozen and creator-blind before this tool runs. Documentary
 composer and arranger/programmer labels are then compared with permutations that
 preserve each role's exact label multiset. Work-family membership never moves,
 and same-family candidates remain excluded in every observed and null retrieval.
-Optional mapping-state exclusions create matched sensitivity nulls only after the
-complete audit and role/family maps have been validated.
+The primary family-block null also preserves the observed within-family label
+package structure among families of the same size. Optional mapping-state
+exclusions create matched sensitivity nulls only after the complete audit and
+role/family maps have been validated.
 """
 
 from __future__ import annotations
@@ -42,6 +44,66 @@ def _shuffle_labels(labels: dict[str, str], rng: random.Random) -> dict[str, str
     values = [labels[key] for key in keys]
     rng.shuffle(values)
     return dict(zip(keys, values))
+
+
+def _shuffle_labels_by_family(
+    labels: dict[str, str],
+    families: dict[str, str],
+    rng: random.Random,
+) -> dict[str, str]:
+    """Permute same-size family label packages while preserving family correlation.
+
+    A source family's complete label multiset is moved to another family with the
+    same number of selected tracks. Labels are shuffled within the target family
+    so arbitrary lexical track ordering does not become part of the null.
+    """
+    if set(labels) != set(families):
+        raise ValueError("family-block permutation requires one family id per labelled track")
+
+    family_tracks: dict[str, list[str]] = {}
+    for track_id, family_id in families.items():
+        family_tracks.setdefault(family_id, []).append(track_id)
+    for track_ids in family_tracks.values():
+        track_ids.sort()
+
+    by_size: dict[int, list[str]] = {}
+    for family_id, track_ids in family_tracks.items():
+        by_size.setdefault(len(track_ids), []).append(family_id)
+
+    result: dict[str, str] = {}
+    for size in sorted(by_size):
+        target_families = sorted(by_size[size])
+        source_packages = [
+            [labels[track_id] for track_id in family_tracks[family_id]]
+            for family_id in target_families
+        ]
+        rng.shuffle(source_packages)
+
+        for target_family, package in zip(target_families, source_packages):
+            shuffled_package = list(package)
+            rng.shuffle(shuffled_package)
+            target_tracks = family_tracks[target_family]
+            for track_id, label in zip(target_tracks, shuffled_package):
+                result[track_id] = label
+
+    if set(result) != set(labels):
+        raise AssertionError("family-block permutation lost labelled tracks")
+    if sorted(result.values()) != sorted(labels.values()):
+        raise AssertionError("family-block permutation changed global label counts")
+    return result
+
+
+def _permute_labels(
+    labels: dict[str, str],
+    families: dict[str, str],
+    rng: random.Random,
+    permutation_unit: str,
+) -> dict[str, str]:
+    if permutation_unit == "track":
+        return _shuffle_labels(labels, rng)
+    if permutation_unit == "family-block":
+        return _shuffle_labels_by_family(labels, families, rng)
+    raise ValueError(f"unsupported permutation_unit: {permutation_unit}")
 
 
 def _snapshot(metric: dict[str, object]) -> dict[str, float]:
@@ -95,9 +157,12 @@ def permutation_null(
     permutations: int = 5000,
     seed: int = 20260816,
     excluded_mapping_states: set[str] | None = None,
+    permutation_unit: str = "family-block",
 ) -> dict[str, object]:
     if permutations <= 0:
         raise ValueError("permutations must be positive")
+    if permutation_unit not in {"track", "family-block"}:
+        raise ValueError("permutation_unit must be 'track' or 'family-block'")
 
     role_eval.maeda._validate_blind_audit(audit, policy)
     indexed = role_eval.maeda._index_tracks(audit)
@@ -180,10 +245,7 @@ def permutation_null(
             families,
             sentinels,
         )
-        observed[view_name] = {
-            "lane": lane,
-            "metric": metric,
-        }
+        observed[view_name] = {"lane": lane, "metric": metric}
         observed_snapshots[view_name] = _snapshot(metric)
 
     fields = (
@@ -199,8 +261,12 @@ def permutation_null(
 
     rng = random.Random(seed)
     for _ in range(permutations):
-        permuted_composer = _shuffle_labels(composer_labels, rng)
-        permuted_arranger = _shuffle_labels(arranger_labels, rng)
+        permuted_composer = _permute_labels(
+            composer_labels, families, rng, permutation_unit
+        )
+        permuted_arranger = _permute_labels(
+            arranger_labels, families, rng, permutation_unit
+        )
 
         for view_name, (lane, _labels, classes, score_fn, sentinels) in views.items():
             permuted_labels = (
@@ -250,20 +316,30 @@ def permutation_null(
             },
         }
 
+    family_structure_policy = (
+        "Whole label packages are permuted only among selected families with the same number "
+        "of tracks; labels may reorder within the target family. This preserves the multiset "
+        "of within-family label compositions while breaking creator-to-feature alignment."
+        if permutation_unit == "family-block"
+        else "Labels are permuted independently across selected tracks; family ids remain fixed."
+    )
+
     return {
         "model": "Sonic 3D Blast role-specificity label-permutation null",
         "soundtrack_id": soundtrack_id,
         "seed": seed,
         "permutations": permutations,
+        "permutation_unit": permutation_unit,
         "excluded_mapping_states": sorted(excluded_mapping_states or set()),
         "excluded_tracks": excluded_tracks,
         "included_track_count": len(mapped),
         "null_hypothesis": (
-            "Creator-role labels are exchangeable across the selected fixed Sonic 3D Blast "
-            "track feature geometry. Each role preserves its exact selected-panel class counts; "
-            "work-family membership remains fixed and same-family candidates remain excluded in "
-            "every observed and permuted retrieval."
+            "Creator-role labels are exchangeable under the selected permutation unit across "
+            "the fixed Sonic 3D Blast feature geometry. Exact selected-panel role counts are "
+            "preserved; work-family membership remains fixed and same-family candidates remain "
+            "excluded in every observed and permuted retrieval."
         ),
+        "family_structure_policy": family_structure_policy,
         "label_policy": (
             "The complete frozen creator-blind audit and complete documentary role/family maps "
             "are validated before mapping-state exclusions, documentary role labels, or "
@@ -271,9 +347,9 @@ def permutation_null(
         ),
         "claim_boundary": (
             "Empirical significance measures whether documentary creator-role labels align with "
-            "the frozen, anti-sibling feature geometry better than count-matched random labels. "
-            "Composition and arrangement/programming lanes remain separate, and no result "
-            "assigns Sonic 3 authorship."
+            "the frozen, anti-sibling feature geometry better than the selected count-matched "
+            "randomization. Composition and arrangement/programming lanes remain separate, and "
+            "no result assigns Sonic 3 authorship."
         ),
         "views": results,
     }
@@ -298,6 +374,12 @@ def main() -> None:
         default=[],
         help="Exclude a documentary mapping state after the complete blind panel is validated.",
     )
+    parser.add_argument(
+        "--permutation-unit",
+        choices=("track", "family-block"),
+        default="family-block",
+        help="Primary default preserves same-size family label-package structure.",
+    )
     parser.add_argument("--permutations", type=int, default=5000)
     parser.add_argument("--seed", type=int, default=20260816)
     parser.add_argument("--json", type=pathlib.Path)
@@ -313,6 +395,7 @@ def main() -> None:
         permutations=args.permutations,
         seed=args.seed,
         excluded_mapping_states=set(args.exclude_mapping_state),
+        permutation_unit=args.permutation_unit,
     )
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.json:
