@@ -38,6 +38,27 @@ def current_cube_admissions() -> list[dict]:
     ]
 
 
+def strict_coverage_rows(admissions: list[dict]) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    candidate_worlds: dict[str, set[str]] = defaultdict(set)
+    query_rows: list[tuple[str, str, str]] = []
+    for entry in admissions:
+        soundtrack = pathlib.PurePosixPath(entry["fixture_path"]).parts[2]
+        candidate_worlds[entry["candidate"]].add(soundtrack)
+        query_rows.append((entry["fixture_path"], entry["candidate"], soundtrack))
+
+    candidates = {"Miyoko Takaoka", "Masanori Hikichi"}
+    complete = []
+    incomplete = []
+    for fixture_path, candidate, query_soundtrack in query_rows:
+        has_all_candidates_after_exclusion = all(
+            any(world != query_soundtrack for world in candidate_worlds[other_candidate])
+            for other_candidate in candidates
+        )
+        bucket = complete if has_all_candidates_after_exclusion else incomplete
+        bucket.append((fixture_path, candidate, query_soundtrack))
+    return complete, incomplete
+
+
 class CubeCrossSoundtrackCoverageTest(unittest.TestCase):
     def test_one_world_candidate_remains_incomplete_until_second_world_exists(self):
         controls = [
@@ -107,37 +128,41 @@ class CubeCrossSoundtrackCoverageTest(unittest.TestCase):
         ]
         self.assertEqual(len(admissions), 15)
 
-        candidate_worlds: dict[str, set[str]] = defaultdict(set)
-        query_rows: list[tuple[str, str, str]] = []
-        for entry in admissions:
-            soundtrack = pathlib.PurePosixPath(entry["fixture_path"]).parts[2]
-            candidate_worlds[entry["candidate"]].add(soundtrack)
-            query_rows.append((entry["fixture_path"], entry["candidate"], soundtrack))
-
-        candidates = {"Miyoko Takaoka", "Masanori Hikichi"}
-        complete = []
-        incomplete = []
-        for fixture_path, candidate, query_soundtrack in query_rows:
-            has_all_candidates_after_exclusion = all(
-                any(world != query_soundtrack for world in candidate_worlds[other_candidate])
-                for other_candidate in candidates
-            )
-            bucket = complete if has_all_candidates_after_exclusion else incomplete
-            bucket.append((fixture_path, candidate, query_soundtrack))
-
+        complete, incomplete = strict_coverage_rows(admissions)
         self.assertEqual(len(complete), 3)
         self.assertEqual(len(incomplete), 12)
+        self.assertEqual({row[2] for row in complete}, {"ancient-magic-spc"})
+        self.assertEqual({row[1] for row in complete}, {"Miyoko Takaoka"})
+        self.assertEqual({row[2] for row in incomplete}, {"terranigma-spc"})
+
+    def test_two_gleylancer_hikichi_controls_would_make_all_seventeen_queries_strict_complete(self):
+        admissions = [
+            entry
+            for entry in current_cube_admissions()
+            if entry.get("role") == "composer"
+            and entry.get("status") in {"exact", "derived"}
+            and entry.get("candidate") in {"Miyoko Takaoka", "Masanori Hikichi"}
+        ]
+        admissions.extend(
+            [
+                {
+                    "fixture_path": "tests/corpus/gleylancer-genesis-vgm/01 - Story Begin.vgz",
+                    "candidate": "Masanori Hikichi",
+                },
+                {
+                    "fixture_path": "tests/corpus/gleylancer-genesis-vgm/03 - Stage 1 (Asteroid Field).vgz",
+                    "candidate": "Masanori Hikichi",
+                },
+            ]
+        )
+
+        complete, incomplete = strict_coverage_rows(admissions)
+        self.assertEqual(len(admissions), 17)
+        self.assertEqual(len(complete), 17)
+        self.assertEqual(incomplete, [])
         self.assertEqual(
             {row[2] for row in complete},
-            {"ancient-magic-spc"},
-        )
-        self.assertEqual(
-            {row[1] for row in complete},
-            {"Miyoko Takaoka"},
-        )
-        self.assertEqual(
-            {row[2] for row in incomplete},
-            {"terranigma-spc"},
+            {"ancient-magic-spc", "terranigma-spc", "gleylancer-genesis-vgm"},
         )
 
     def test_soundtrack_worlds_are_equal_weight_not_raw_cue_count(self):
