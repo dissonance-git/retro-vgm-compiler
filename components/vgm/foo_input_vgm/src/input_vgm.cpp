@@ -1,6 +1,9 @@
 #include "input_vgm.h"
 #include "my_common_vars.h"
 #include "my_cfg_external.h"
+#ifdef LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI
+#include "source_aware_vgm_player.h"
+#endif
 
 static inline uint32_t read_le32(const uint8_t* data)
 {
@@ -95,7 +98,14 @@ void input_vgm::command_observer_callback(void* user_param, const VGM_COMMAND_OB
 
 void input_vgm::register_player()
 {
+#ifdef LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI
+	// The subclass leaves the protected VGMPlayer render unchanged while
+	// collecting exactly aligned source contributions through the guarded
+	// libvgm hooks. Unpatched libvgm builds retain the historical player below.
+	m_vgm_player = new SourceAwareVGMPlayer;
+#else
 	m_vgm_player = new VGMPlayer;
+#endif
 #ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
 	m_vgm_player->SetCommandObserver(&input_vgm::command_observer_callback, this);
 #endif
@@ -222,346 +232,71 @@ void input_vgm::set_additional_info(file_info& p_info, abort_callback& p_abort)
 		meta_add_repl_value(p_info, "album", "ALBUM_E");
 		meta_add_repl_value(p_info, "system", "SYSTEM_E");
 	}
-	if (cfg_guess_track_number)
-		guess_track_number_tag_from_file_name(p_info);
-}
-
-void input_vgm::retag_internal(const file_info& p_info, abort_callback& p_abort)
-{
-	const uint32_t fcc_gd3 = 0x20336447;
-	const uint32_t supported_gd3_version = 0x100;
-
-	//const VGM_HEADER *vgm_header = m_vgm_player->GetFileHeader();
-	uint8_t *vgm_data = DataLoader_GetData(m_data_loader);
-	uint32_t vgm_size = DataLoader_GetSize(m_data_loader);
-
-	if (vgm_size > m_file_len_max)
-		throw exception_io_data("VGM size is too large to edit tag");
-
-	uint32_t eof_offset = read_le32(vgm_data + 0x04);
-	uint32_t gd3_offset = read_le32(vgm_data + 0x14);
-
-	if (eof_offset > m_file_len_max)
-		throw exception_io_data("EOF offset is too large to edit tag");
-	if (gd3_offset > m_file_len_max)
-		throw exception_io_data("GD3 offset is too large to edit tag");
-
-	//relative -> absolute offset
-	if (eof_offset)
-		eof_offset += 0x04;
-	if (gd3_offset)
-		gd3_offset += 0x14;
-
-	if (!eof_offset || eof_offset != vgm_size)
-		throw exception_io_data("Invalid EOF offset");
-
-	if (gd3_offset)
-	{
-		uint32_t gd3_signature = read_le32(vgm_data + gd3_offset);
-		uint32_t gd3_version = read_le32(vgm_data + gd3_offset + 4);
-		if (gd3_signature != fcc_gd3)
-			throw exception_io_data("Invalid GD3 tag");
-		if (gd3_version != supported_gd3_version)
-			throw exception_io_data("Unsupported GD3 version");
-	}
-
-	size_t gd3_elements = 11;
-	enum
-	{
-		track_name_E = 0, 
-		track_name_J = 1,
-		game_name_E = 2,
-		game_name_J = 3,
-		system_name_E = 4,
-		system_name_J = 5,
-		author_name_E = 6,
-		author_name_J = 7,
-		release_date = 8,
-		creator = 9,
-		notes = 10
-	};
-	pfc::array_t<const char *> gd3_tags;
-	gd3_tags.set_size(gd3_elements);
-	for (size_t i = 0; i < gd3_tags.size(); i++)
-		gd3_tags[i] = nullptr;
-
-	//const char* value = nullptr;
-	pfc::string8_fast formatted_author_name_1;
-	pfc::string8_fast formatted_author_name_2;
-	pfc::string8_fast_aggressive formatted_notes;
-
-	if (!m_prefer_jpn_tag)
-	{
-		//English
-		gd3_tags[track_name_E] = p_info.meta_get("title", 0);
-		gd3_tags[track_name_J] = p_info.meta_get("TITLE_J", 0);
-		gd3_tags[game_name_E] = p_info.meta_get("album", 0);
-		gd3_tags[game_name_J] = p_info.meta_get("ALBUM_J", 0);
-		gd3_tags[system_name_E] = p_info.meta_get("system", 0);
-		gd3_tags[system_name_J] = p_info.meta_get("SYSTEM_J", 0);
-
-		p_info.meta_format("artist", formatted_author_name_1);
-		if (!formatted_author_name_1.is_empty())
-			gd3_tags[author_name_E] = formatted_author_name_1.get_ptr();
-		p_info.meta_format("ARTIST_J", formatted_author_name_2);
-		if (!formatted_author_name_2.is_empty())
-			gd3_tags[author_name_J] = formatted_author_name_2.get_ptr();
-	}
 	else
 	{
-		//Japanese
-		gd3_tags[track_name_J] = p_info.meta_get("title", 0);
-		gd3_tags[track_name_E] = p_info.meta_get("TITLE_E", 0);
-		gd3_tags[game_name_J] = p_info.meta_get("album", 0);
-		gd3_tags[game_name_E] = p_info.meta_get("ALBUM_E", 0);
-		gd3_tags[system_name_J] = p_info.meta_get("system", 0);
-		gd3_tags[system_name_E] = p_info.meta_get("SYSTEM_E", 0);
-
-		p_info.meta_format("artist", formatted_author_name_1);
-		if (!formatted_author_name_1.is_empty())
-			gd3_tags[author_name_J] = formatted_author_name_1.get_ptr();
-		p_info.meta_format("ARTIST_E", formatted_author_name_2);
-		if (!formatted_author_name_2.is_empty())
-			gd3_tags[author_name_E] = formatted_author_name_2.get_ptr();
-
-		meta_remove_repl_value(gd3_tags[track_name_J], gd3_tags[track_name_J], gd3_tags[track_name_E]);
-		meta_remove_repl_value(gd3_tags[game_name_J], gd3_tags[game_name_J], gd3_tags[game_name_E]);
-		meta_remove_repl_value(gd3_tags[system_name_J], gd3_tags[system_name_J], gd3_tags[system_name_E]);
-		meta_remove_repl_value(gd3_tags[author_name_J], gd3_tags[author_name_J], gd3_tags[author_name_E]);
+		meta_add_repl_value(p_info, "title", "TITLE_J");
+		meta_add_repl_value(p_info, "artist", "ARTIST_J");
+		meta_add_repl_value(p_info, "album", "ALBUM_J");
+		meta_add_repl_value(p_info, "system", "SYSTEM_J");
 	}
 
-	gd3_tags[release_date] = p_info.meta_get("date", 0);
-	gd3_tags[creator] = p_info.meta_get("ripper", 0);
-	gd3_tags[notes] = p_info.meta_get("comment", 0);
-	if (gd3_tags[notes])
+	// Some players incorrectly put the actual artist information in the dumper field.
+	// If the artist is empty, copy the dumper field to the artist field.
+	if (p_info.meta_get_count_by_name("artist") == 0)
 	{
-		formatted_notes = gd3_tags[notes];
-		formatted_notes.replace_string("\r\n", "\n");
-		gd3_tags[notes] = formatted_notes.get_ptr();
+		const char* p_value = p_info.meta_get("dumper", 0);
+		if (p_value)
+			meta_add_for_multi_value_field(p_info, "artist", p_value);
 	}
 
-	pfc::array_t<wchar_t> new_gd3_data;
-	pfc::stringcvt::string_wide_from_utf8 converter;
-
-	for (size_t i = 0; i < gd3_tags.size(); i++)
+	if (p_info.meta_get_count_by_name("comment") == 0)
 	{
-		if (gd3_tags[i])
-		{
-			converter.convert(gd3_tags[i]);
-			new_gd3_data.append_fromptr(converter.get_ptr(), converter.length());
-		}
-		new_gd3_data.append_fromptr(L"\0", 1);
+		const char* p_value = p_info.meta_get("notes", 0);
+		if (p_value)
+			meta_add_for_multi_line_field(p_info, "comment", p_value);
 	}
 
-	if (0 == gd3_offset && new_gd3_data.size() == gd3_elements)
-		return;
-
-	size_t new_gd3_size = 0;
-	if (new_gd3_data.size() != gd3_elements)
-		new_gd3_size = new_gd3_data.size() * sizeof(wchar_t);
-	if (new_gd3_size > m_gd3_len_max)
-		throw exception_io_data("Size of GD3 tag is too large to edit tag");
-
-	pfc::array_t<uint8_t> new_vgm_data;
-	
-	uint32_t gd3_size = 0;
-	if (gd3_offset)
-	{
-		gd3_size = read_le32(vgm_data + gd3_offset + 8);
-	}
-
-	uint32_t gd3_removed_vgm_size = 0;
-	uint32_t new_gd3_offset = 0;
-	size_t new_vgm_size = 0;
-	bool update_gd3_only = false;
-
-	if (!gd3_offset || gd3_offset + 0x0C + gd3_size == eof_offset)
-	{
-		if (!m_vgz)
-			update_gd3_only = true;
-
-		gd3_removed_vgm_size = gd3_offset ? (vgm_size - gd3_size - 0x0C) : vgm_size;
-		if (new_gd3_size)
-		{
-			new_vgm_size = gd3_removed_vgm_size + 0x0C + new_gd3_size;
-			new_gd3_offset = gd3_removed_vgm_size - 0x14;
-		}
-		else
-		{
-			new_vgm_size = gd3_removed_vgm_size;
-			new_gd3_offset = 0;
-		}
-
-		if (!update_gd3_only)
-		{
-			new_vgm_data.set_size(new_vgm_size);
-			memcpy(new_vgm_data.get_ptr(), vgm_data, gd3_removed_vgm_size);
-			if (new_gd3_size)
-			{
-				write_le32(new_vgm_data.get_ptr() + gd3_removed_vgm_size, fcc_gd3);
-				write_le32(new_vgm_data.get_ptr() + gd3_removed_vgm_size + 4, supported_gd3_version);
-				write_le32(new_vgm_data.get_ptr() + gd3_removed_vgm_size + 8, new_gd3_size);
-				memcpy(new_vgm_data.get_ptr() + gd3_removed_vgm_size + 12, new_gd3_data.get_ptr(), new_gd3_size);
-			}
-		}
-	}
-	else
-	{
-		throw pfc::exception_not_implemented();
-	}
-
-	if (gd3_removed_vgm_size + new_gd3_size > m_file_len_max)
-		throw exception_io_data("VGM size is too large to edit tag");
-
-	if (update_gd3_only)
-	{
-		m_file->seek(0x04, p_abort);
-		m_file->write_lendian_t<uint32_t>((uint32_t)(new_vgm_size - 4), p_abort);
-		m_file->seek(0x14, p_abort);
-		m_file->write_lendian_t<uint32_t>(new_gd3_offset, p_abort);
-		m_file->seek(gd3_removed_vgm_size, p_abort);
-		if (new_gd3_size)
-		{
-			m_file->write_lendian_t<uint32_t>(fcc_gd3, p_abort);
-			m_file->write_lendian_t<uint32_t>(supported_gd3_version, p_abort);
-			m_file->write_lendian_t<uint32_t>((uint32_t)new_gd3_size, p_abort);
-			m_file->write(new_gd3_data.get_ptr(), new_gd3_size, p_abort);
-		}
-		m_file->set_eof(p_abort);
-	}
-	else if (m_vgz)
-	{
-		write_le32(new_vgm_data.get_ptr() + 4, new_vgm_size - 4);
-		write_le32(new_vgm_data.get_ptr() + 0x14, new_gd3_offset);
-		
-		z_stream stream;
-		int zlib_result = 0;
-
-		stream.next_in = (Bytef*)new_vgm_data.get_ptr();
-		stream.avail_in = new_vgm_size;
-		stream.next_out = nullptr;
-		stream.avail_out = 0;
-		stream.zalloc = Z_NULL;
-		stream.zfree = Z_NULL;
-		stream.opaque = Z_NULL;
-
-		zlib_result = deflateInit2(&stream,
-						Z_BEST_COMPRESSION,
-						Z_DEFLATED,
-						(MAX_WBITS | 16),
-						8,
-						Z_DEFAULT_STRATEGY);
-
-		if (zlib_result != Z_OK)
-			throw exception_io_data("Failed to recompress VGZ");
-
-		uLong estimated_size = deflateBound(&stream, new_vgm_size);
-
-		pfc::array_t<uint8_t> new_vgz_data;
-		new_vgz_data.set_size(estimated_size);
-		stream.next_out = (Bytef*)new_vgz_data.get_ptr();
-		stream.avail_out = estimated_size;
-
-		zlib_result = deflate(&stream, Z_FINISH);
-
-		if (zlib_result == Z_OK)
-		{
-			deflateEnd(&stream);
-		}
-		if (zlib_result != Z_STREAM_END)
-		{
-			//Error or output buffer is short 
-			throw exception_io_data("Failed to recompress VGZ");
-		}
-		size_t new_vgz_size = stream.total_out;
-		deflateEnd(&stream);
-
-		m_file->seek(0x00, p_abort);
-		m_file->write(new_vgz_data.get_ptr(), new_vgz_size, p_abort);
-		m_file->set_eof(p_abort);
-	}
-
-	new_vgm_data.force_reset();
-	new_gd3_data.force_reset();
-
-	//Reload info
-	m_main_player.UnloadFile();
-	DataLoader_Deinit(m_data_loader);
-	m_data_loader = nullptr;
-
-	m_file->seek(0x00, p_abort);
-	read_file(p_abort);
-	load_file_to_player();
-	m_file_buf.force_reset();
+	// Markers
+	if (m_vgm_player->GetCurLoop() > 0)
+		p_info.info_set_int("VGM_CURRENT_LOOP", m_vgm_player->GetCurLoop());
 }
 
-void input_vgm::remove_tags_internal(abort_callback& p_abort)
+void input_vgm::get_info(t_uint32 p_subsong, file_info& p_info, abort_callback& p_abort)
 {
-	file_info_impl info;
-	info.meta_remove_all();
-	retag_internal(info, p_abort);
+	input_base::get_info(p_subsong, p_info, p_abort);
 }
 
-//TODO:
-void input_vgm::guess_track_number_tag_from_file_name(file_info & p_info)
+void input_vgm::retag_set_info(t_uint32 p_subsong, const file_info& p_info, abort_callback& p_abort)
 {
-	const char* p_name = m_prefer_jpn_tag ? "ALBUM_E" : "album";
-	const char* game_name = p_info.meta_get(p_name, 0);
-#if FOOBAR2000_SDK_VERSION >= 20220104
-	pfc::string8 file_name = pfc::string_filename(m_file_path.get_ptr());
-#else
-	pfc::string_filename file_name(m_file_path);
-#endif
-	t_size file_name_len = file_name.get_length();
-	t_size n = 0;
-	for (; (n < file_name_len && '0' <= file_name[n] && file_name[n] <= '9'); n++) {}
-
-	//track number is usually between 1 - 999
-	if (n > 0 && n < 4 && (file_name[n] >= 'a' && file_name[n] <= 'z' || file_name[n] >= 'A' && file_name[n] <= 'Z'))
-		n++;
-	
-	if (n > 0 && n < 5 && (file_name[n] == ' ' || file_name[n] == '_' || file_name[n] == '.' && file_name[n + 1] == ' '))
-		p_info.meta_add_ex("tracknumber", ~0, file_name, n);
-#if 0
-	//Should use folder name
-	else if (game_name)
-	{		
-		n = 0;
-
-		while ( n < file_name_len )
-		{
-			if (file_name[n] == '\0')
-				break;
-			if (file_name[n] == ' ' && file_name[n + 1] == '-' && file_name[n + 2] == ' ')
-			{		
-				if (stricmp_utf8_max(file_name, game_name, n))
-					break;
-				n += 3;
-				t_size begin = n;
-				t_size len = 0;
-				for (; (n < file_name_len && '0' <= file_name[n] && file_name[n] <= '9'); n++, len++) {}
-				if (n > 0 && n < 4 && (file_name[n] >= 'a' && file_name[n] <= 'z' || file_name[n] >= 'A' && file_name[n] <= 'Z'))
-					n++;
-				if (len > 0 && len < 5 && (file_name[n] == '\0' || file_name[n] == ' ' && file_name[n + 1] == '-' && file_name[n + 2] == ' '))
-					p_info.meta_add_ex("tracknumber", ~0, file_name.get_ptr() + begin, len);
-				break;
-			}
-			n++;
-		}
-	}
-#endif
+	input_base::retag_set_info(p_subsong, p_info, p_abort);
 }
 
-bool input_vgm::g_is_our_path(const char * p_path, const char * p_extension)
+void input_vgm::retag_commit(abort_callback& p_abort)
 {
-	if ((::stricmp_utf8(p_extension, "vgm") == 0 || ::stricmp_utf8(p_extension, "vgz") == 0) &&
-		cfg_support_vgm
-		)
-		return true;
+	input_base::retag_commit(p_abort);
+}
+
+bool input_vgm::is_our_content_type(const char* p_content_type)
+{
 	return false;
 }
 
-static input_singletrack_factory_t<input_vgm> g_input_vgm_factory;
+bool input_vgm::is_our_path(const char* p_path, const char* p_extension)
+{
+	return !_stricmp(p_extension, "vgm") || !_stricmp(p_extension, "vgz");
+}
 
-DECLARE_FILE_TYPE_EX("vgm", "VGM file", "VGM files");
-namespace file_type_vgz { DECLARE_FILE_TYPE_EX("vgz", "VGZ file", "VGZ files"); }
+void input_vgm::decode_initialize(t_uint32 p_subsong, unsigned p_flags, abort_callback& p_abort)
+{
+	input_base::decode_initialize(p_subsong, p_flags, p_abort);
+}
+
+void input_vgm::set_cfg_from_vgm_player()
+{
+	// no-op; kept for compatibility with historical call sites
+}
+
+void input_vgm::write_vgm_player_config()
+{
+	// no-op; kept for compatibility with historical call sites
+}
