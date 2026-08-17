@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Add an independent Enhanced preference to the historical foo_input_vgm shell.
+"""Add an independent enhanced preference to the historical foo_input_vgm shell.
 
 The existing Spatial/Omniphony preference keeps its GUID and saved state.
-Enhanced defaults off and is not coupled to resampling mode, chip sample rate, or
+enhanced defaults off and is not coupled to resampling mode, chip sample rate, or
 Spatial. Runtime backends consume cfg_vgm_enhanced_enabled independently.
 """
 
@@ -57,16 +57,16 @@ def main() -> int:
 #define IDC_ENHANCED_ENABLED_VGM        1029
 #define IDC_CHIP_TYPE                   1100
 """,
-        "VGM Enhanced control id",
+        "VGM enhanced control id",
     )
     replace_once(
         resource_rc,
         """    CONTROL         "Enable Spatial Pre-Conditioning",IDC_SEM71_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,120,10
 """,
         """    CONTROL         "Spatial",IDC_SEM71_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,60,10
-    CONTROL         "Enhanced",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,222,70,10
+    CONTROL         "enhanced",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,222,70,10
 """,
-        "VGM independent Spatial/Enhanced controls",
+        "VGM independent spatial/enhanced controls",
     )
     replace_once(
         config,
@@ -87,7 +87,7 @@ static const GUID guid_cfg_vgm_enhanced_enabled =
 
 cfg_int cfg_resampling_mode(guid_cfg_resampling_mode, 0);
 """,
-        "VGM Enhanced preference GUID",
+        "VGM enhanced preference GUID",
     )
     replace_once(
         config,
@@ -100,7 +100,7 @@ cfg_int cfg_volume(guid_cfg_volume, 100);
 cfg_int cfg_vgm_sem71_enabled(guid_cfg_vgm_sem71_enabled, 1);  // preserve existing Spatial preference
 cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected reference default
 """,
-        "VGM Enhanced cfg var",
+        "VGM enhanced cfg var",
     )
     replace_once(
         config,
@@ -113,7 +113,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
 \t\tCOMMAND_HANDLER_EX(IDC_ENHANCED_ENABLED_VGM, BN_CLICKED, OnButtonClick)
 \t\tCOMMAND_HANDLER_EX(IDC_VOLUME, EN_CHANGE, OnEditChange)
 """,
-        "VGM Enhanced message handler",
+        "VGM enhanced message handler",
     )
     replace_once(
         config,
@@ -128,7 +128,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
 
 \tSetDlgItemInt(IDC_VOLUME, (UINT)cfg_volume, FALSE);
 """,
-        "VGM Enhanced initialization",
+        "VGM enhanced initialization",
     )
     replace_once(
         config,
@@ -141,7 +141,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
 \t\tcfg_vgm_enhanced_enabled != (int)IsDlgButtonChecked(IDC_ENHANCED_ENABLED_VGM) ||
 \t\tcfg_volume != GetDlgItemInt(IDC_VOLUME, NULL, FALSE) ||
 """,
-        "VGM Enhanced dirty-state tracking",
+        "VGM enhanced dirty-state tracking",
     )
     replace_once(
         config,
@@ -156,7 +156,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
 
 \tcfg_volume = GetDlgItemInt(IDC_VOLUME, NULL, FALSE);
 """,
-        "VGM Enhanced apply",
+        "VGM enhanced apply",
     )
     replace_once(
         config,
@@ -169,7 +169,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
 \tCheckDlgButton(IDC_ENHANCED_ENABLED_VGM, BST_UNCHECKED);
 \tSetDlgItemInt(IDC_VOLUME, (UINT)100, FALSE);
 """,
-        "VGM Enhanced reset",
+        "VGM enhanced reset",
     )
     replace_once(
         external,
@@ -180,10 +180,10 @@ extern cfg_int cfg_prefer_jpn_tag;
 extern cfg_int cfg_vgm_enhanced_enabled;
 extern cfg_int cfg_prefer_jpn_tag;
 """,
-        "VGM Enhanced external declaration",
+        "VGM enhanced external declaration",
     )
 
-    print("foo_input_vgm independent Enhanced preference applied successfully")
+    print("foo_input_vgm independent enhanced preference applied successfully")
     return 0
 
 
