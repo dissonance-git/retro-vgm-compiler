@@ -39,6 +39,31 @@ def track_id(soundtrack_id: str, fixture_path: str) -> str:
     return f"{soundtrack_id}::{pathlib.Path(fixture_path).name}"
 
 
+def structural_pitch_similarity(lhs: dict[str, object], rhs: dict[str, object]) -> float:
+    """Pitch-shape-only diagnostic subview of the existing structural score."""
+    a = lhs["musical_trajectory"]
+    b = rhs["musical_trajectory"]
+    assert isinstance(a, dict) and isinstance(b, dict)
+    return base._mean_available(
+        (
+            base._cosine(a["interval_histogram_semitones"], b["interval_histogram_semitones"]),
+            base._cosine(a["interval_bigram_histogram"], b["interval_bigram_histogram"]),
+            base._cosine(a["contour_histogram"], b["contour_histogram"]),
+        )
+    )
+
+
+def structural_rhythm_similarity(lhs: dict[str, object], rhs: dict[str, object]) -> float:
+    """Tempo-normalized onset-gap-only diagnostic subview of structural score."""
+    a = lhs["musical_trajectory"]
+    b = rhs["musical_trajectory"]
+    assert isinstance(a, dict) and isinstance(b, dict)
+    score = base._cosine(
+        a["normalized_onset_gap_histogram"], b["normalized_onset_gap_histogram"]
+    )
+    return 0.0 if score is None else score
+
+
 def _validate_blind_audit(audit: dict[str, object], policy: dict[str, object]) -> None:
     if audit.get("model") != BLIND_AUDIT_MODEL:
         raise ValueError(
@@ -296,6 +321,8 @@ def evaluate(
 
     views = {
         "structural": base.structural_similarity,
+        "structural_pitch": structural_pitch_similarity,
+        "structural_rhythm": structural_rhythm_similarity,
         "realization": base.realization_similarity,
     }
     result_views: dict[str, object] = {}
@@ -324,6 +351,12 @@ def evaluate(
         "label_policy": (
             "The audit is validated as creator-blind, then indexed before documentary Maeda "
             "labels are applied. This evaluator never extracts VGM features."
+        ),
+        "view_policy": (
+            "structural is the preregistered aggregate composition-facing lens; "
+            "structural_pitch and structural_rhythm are diagnostic subviews of the same "
+            "physical-channel key-on evidence, not independent corroboration; realization "
+            "remains an implementation-facing lane."
         ),
         "claim_boundary": (
             "Retrieval quality calibrates whether the current feature views can rediscover "
