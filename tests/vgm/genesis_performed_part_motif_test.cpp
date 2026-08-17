@@ -1,5 +1,6 @@
 #include "../../components/vgm/enhancement/genesis_part_motif_adapter.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -174,6 +175,8 @@ bool close_enough(double first, double second, double tolerance = 1e-9) {
     return std::fabs(first - second) <= tolerance;
 }
 
+constexpr double part_confidence = 0.93;
+
 struct motif_fixture {
     musical_execution_graph graph;
     node_id part_id = 0;
@@ -186,7 +189,7 @@ motif_fixture multiplier_fixture(bool detune_last = false) {
         add_motif_episode(result.graph, 200, 1000, 7, {2, 2, 2, 2}),
         add_motif_episode(result.graph, 300, 1000, 7, {1, 1, 1, 1}, detune_last),
     };
-    result.part_id = add_part(result.graph, episodes);
+    result.part_id = add_part(result.graph, episodes, part_confidence);
     return result;
 }
 
@@ -197,7 +200,7 @@ motif_fixture missing_fundamental_fixture() {
         add_motif_episode(result.graph, 200, 1200, 0, {1, 1, 1, 2}),
         add_motif_episode(result.graph, 300, 1000, 0, {1, 1, 1, 2}),
     };
-    result.part_id = add_part(result.graph, episodes);
+    result.part_id = add_part(result.graph, episodes, part_confidence);
     return result;
 }
 
@@ -208,7 +211,7 @@ motif_fixture direct_fixture() {
         add_motif_episode(result.graph, 200, 1200, 7, {1, 1, 1, 1}),
         add_motif_episode(result.graph, 300, 1000, 7, {1, 1, 1, 1}),
     };
-    result.part_id = add_part(result.graph, episodes);
+    result.part_id = add_part(result.graph, episodes, part_confidence);
     return result;
 }
 
@@ -219,7 +222,7 @@ motif_fixture psg_fixture() {
         add_psg_motif_episode(result.graph, 200, 100),
         add_psg_motif_episode(result.graph, 300, 200),
     };
-    result.part_id = add_part(result.graph, episodes);
+    result.part_id = add_part(result.graph, episodes, part_confidence);
     return result;
 }
 
@@ -230,7 +233,7 @@ motif_fixture mixed_family_fixture() {
         add_psg_motif_episode(result.graph, 200, 275),
         add_psg_motif_episode(result.graph, 300, 138),
     };
-    result.part_id = add_part(result.graph, episodes);
+    result.part_id = add_part(result.graph, episodes, part_confidence);
     return result;
 }
 
@@ -260,6 +263,8 @@ int main() {
         assert(performed->interval_octaves.has_value());
         assert(native->interval_octaves->size() == 2);
         assert(performed->interval_octaves->size() == 2);
+        assert(native->status == evidence_status::hypothesis);
+        assert(close_enough(native->evidence_confidence, part_confidence));
 
         // Identical channel FNUMs look stationary in the native coordinate,
         // while the operator network reveals 1x -> 2x -> 1x performed pitch.
@@ -269,7 +274,7 @@ int main() {
         assert(close_enough((*performed->interval_octaves)[1], -1.0));
         assert(close_enough(
             performed->evidence_confidence,
-            ym2612_direct_periodicity_pitch_confidence));
+            std::min(part_confidence, ym2612_direct_periodicity_pitch_confidence)));
         assert(performed->status == evidence_status::hypothesis);
     }
 
@@ -283,12 +288,14 @@ int main() {
 
         // One detuned episode cannot support the static operator-network pitch
         // interpretation. The entire part falls back to one coherent native
-        // coordinate instead of mixing two semantic bases.
+        // coordinate instead of mixing two semantic bases. The fallback still
+        // retains the persistent-part identity bound.
         assert(clock_aware->pitch_basis == "genesis_ym2612_relative_frequency_code");
         assert(clock_aware->interval_octaves.has_value());
         assert(close_enough((*clock_aware->interval_octaves)[0], 0.0));
         assert(close_enough((*clock_aware->interval_octaves)[1], 0.0));
-        assert(close_enough(clock_aware->evidence_confidence, 1.0));
+        assert(clock_aware->status == evidence_status::hypothesis);
+        assert(close_enough(clock_aware->evidence_confidence, part_confidence));
     }
 
     {
@@ -306,9 +313,11 @@ int main() {
         assert(direct_profile.has_value());
         assert(missing_profile->pitch_basis == "absolute_performed_frequency_hz");
         assert(direct_profile->pitch_basis == "absolute_performed_frequency_hz");
+        assert(missing_profile->status == evidence_status::hypothesis);
+        assert(direct_profile->status == evidence_status::hypothesis);
         assert(close_enough(
             missing_profile->evidence_confidence,
-            ym2612_missing_fundamental_pitch_ceiling));
+            std::min(part_confidence, ym2612_missing_fundamental_pitch_ceiling)));
 
         const auto comparison = compare_part_motif_profiles(
             *missing_profile,
@@ -317,10 +326,10 @@ int main() {
         assert(close_enough(comparison.combined_similarity, 1.0));
         assert(close_enough(
             comparison.evidence_confidence,
-            ym2612_missing_fundamental_pitch_ceiling));
+            std::min(missing_profile->evidence_confidence, direct_profile->evidence_confidence)));
         assert(close_enough(
             comparison.identity_confidence,
-            ym2612_missing_fundamental_pitch_ceiling));
+            comparison.evidence_confidence));
     }
 
     {
@@ -337,8 +346,10 @@ int main() {
         assert(native->pitch_basis == "genesis_sn76489_reciprocal_period");
         assert(performed->pitch_basis == "absolute_performed_frequency_hz");
         assert(performed->interval_octaves.has_value());
-        assert(performed->status == evidence_status::derived);
-        assert(close_enough(performed->evidence_confidence, 1.0));
+        assert(native->status == evidence_status::hypothesis);
+        assert(performed->status == evidence_status::hypothesis);
+        assert(close_enough(native->evidence_confidence, part_confidence));
+        assert(close_enough(performed->evidence_confidence, part_confidence));
         assert(close_enough((*performed->interval_octaves)[0], 1.0));
         assert(close_enough((*performed->interval_octaves)[1], -1.0));
     }
@@ -353,6 +364,7 @@ int main() {
         assert(performed->pitch_basis == "absolute_performed_frequency_hz");
         assert(performed->interval_octaves.has_value());
         assert(performed->interval_octaves->size() == 2);
+        assert(performed->status == evidence_status::hypothesis);
 
         // The first FM and PSG states are approximately the same performed
         // pitch despite completely different native coordinate systems. Once
@@ -362,7 +374,7 @@ int main() {
         assert(std::fabs((*performed->interval_octaves)[1] - 1.0) < 0.02);
         assert(close_enough(
             performed->evidence_confidence,
-            ym2612_direct_periodicity_pitch_confidence));
+            std::min(part_confidence, ym2612_direct_periodicity_pitch_confidence)));
     }
 
     return 0;
