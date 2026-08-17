@@ -39,7 +39,7 @@ public:
 
     bool build(
         const spc_native_source_capture& capture,
-        std::uint32_t output_sample_rate,
+        std::uint64_t output_sample_rate,
         std::uint64_t reference_frame_start,
         std::uint64_t expected_native_sample_start,
         std::size_t reference_frame_count) noexcept
