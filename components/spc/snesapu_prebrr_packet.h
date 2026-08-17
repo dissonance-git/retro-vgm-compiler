@@ -2,6 +2,7 @@
 
 #include "snesapu_prebrr_provider.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -78,9 +79,13 @@ public:
             if (source_seen[entry.source_number])
                 return false;
             source_seen[entry.source_number] = true;
+            const std::uint64_t expected_pcm_bytes =
+                static_cast<std::uint64_t>(entry.block_count)
+                * snes_prebrr_samples_per_block
+                * sizeof(std::int16_t);
             if (entry.block_count == 0
-                || entry.pcm_size_bytes
-                    != entry.block_count * snes_prebrr_samples_per_block * sizeof(std::int16_t)
+                || expected_pcm_bytes > std::numeric_limits<std::uint32_t>::max()
+                || entry.pcm_size_bytes != expected_pcm_bytes
                 || entry.pcm_offset_bytes < payload_floor
                 || (entry.pcm_offset_bytes & 1u) != 0u
                 || entry.pcm_offset_bytes > size
@@ -208,6 +213,88 @@ public:
 
 private:
     std::vector<std::uint8_t> bytes_;
+};
+
+// Setup-time owner used inside the spcplayer child. Parsing/copying happens once
+// before playback. The callback itself is fixed-capacity lookup + a 32-byte copy.
+template <std::size_t MaxEntries = 256>
+class snes_prebrr_packet_runtime {
+public:
+    bool load(const std::uint8_t* data, std::size_t size) {
+        clear();
+        snes_prebrr_packet_view view;
+        if (!view.reset(data, size) || view.entry_count() > MaxEntries)
+            return false;
+
+        for (std::size_t index = 0; index < view.entry_count(); ++index) {
+            const auto item = view.entry(index);
+            auto& pcm = pcm_by_source_[item.source_number];
+            const std::size_t frames = static_cast<std::size_t>(item.block_count)
+                * snes_prebrr_samples_per_block;
+            pcm.resize(frames);
+            const std::uint8_t* raw = view.pcm_bytes(index);
+            if (raw == nullptr)
+                return fail();
+            for (std::size_t frame = 0; frame < frames; ++frame)
+                pcm[frame] = static_cast<std::int16_t>(snes_read_le16(raw + frame * 2));
+
+            if (!provider_.add({
+                    item.source_number,
+                    item.first_brr_block_address,
+                    item.block_count,
+                    pcm.data(),
+                    pcm.size(),
+                }))
+                return fail();
+        }
+        loaded_ = true;
+        return true;
+    }
+
+    void clear() noexcept {
+        provider_.clear();
+        for (auto& pcm : pcm_by_source_)
+            pcm.clear();
+        loaded_ = false;
+    }
+
+    [[nodiscard]] bool loaded() const noexcept { return loaded_; }
+    [[nodiscard]] std::size_t source_count() const noexcept { return provider_.count(); }
+
+    bool fill_block(
+        std::uint32_t source_number,
+        std::uint32_t brr_block_address,
+        std::int16_t* output16) const noexcept
+    {
+        if (!loaded_ || source_number > 0xffu || brr_block_address > 0xffffu)
+            return false;
+        return provider_.fill_block(
+            static_cast<std::uint8_t>(source_number),
+            static_cast<std::uint16_t>(brr_block_address),
+            output16);
+    }
+
+    static int callback(
+        void* user,
+        std::uint32_t source_number,
+        std::uint32_t brr_block_address,
+        std::int16_t* output16) noexcept
+    {
+        if (user == nullptr)
+            return 0;
+        const auto* self = static_cast<const snes_prebrr_packet_runtime*>(user);
+        return self->fill_block(source_number, brr_block_address, output16) ? 1 : 0;
+    }
+
+private:
+    bool fail() noexcept {
+        clear();
+        return false;
+    }
+
+    std::array<std::vector<std::int16_t>, 256> pcm_by_source_{};
+    snesapu_prebrr_provider<MaxEntries> provider_{};
+    bool loaded_ = false;
 };
 
 } // namespace gameaudio::spc
