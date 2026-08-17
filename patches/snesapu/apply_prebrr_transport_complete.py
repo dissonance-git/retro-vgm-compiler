@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the complete current pre-BRR parent/child transport stack."""
+"""Apply the complete current sampled-source parent/child transport stack."""
 
 from __future__ import annotations
 
@@ -28,7 +28,8 @@ def main() -> int:
 
     run(here / "apply_prebrr_transport.py", root)
     run(here / "fix_prebrr_pointer_callback.py", root)
-    print("complete calibrated pre-BRR parent/child transport applied")
+    run(here / "apply_studio_source_transport.py", root)
+    print("complete verified sampled-source parent/child transport applied")
     return 0
 
 
