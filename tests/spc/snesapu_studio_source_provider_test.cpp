@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace {
 bool near(double a, double b, double tolerance = 2.0e-5) {
@@ -144,6 +145,19 @@ int main() {
     wrong_loop.first_brr_block_address = 0x4300u;
     wrong_loop.loop_brr_block_address = 0x431bu;
     assert(!provider.add(wrong_loop));
+
+    // The production FIR omits per-tap finite checks only after add() has scanned
+    // the complete immutable PCM source. One poisoned frame must therefore fail
+    // before the source can ever bind to a live voice.
+    auto non_finite_source = source;
+    non_finite_source[45] = std::numeric_limits<float>::quiet_NaN();
+    auto non_finite_candidate = candidate;
+    non_finite_candidate.upstream = {
+        non_finite_source.data(), non_finite_source.size(), 48000.0, 1.0};
+    const snesapu_studio_source_binding non_finite_binding{
+        9u, 0x4400u, 0x4412u, &non_finite_candidate, playback};
+    assert(!provider.add(non_finite_binding));
+    assert(provider.source_count() == 1);
 
     // Fractional upstream loop boundaries require the future virtual-ring path
     // and are rejected at setup rather than during the audio callback.
