@@ -46,6 +46,7 @@ def main() -> int:
     run(here / "apply_studio_deferred_psg_session_reset.py", source)
     run(here / "apply_enhanced_dac_runtime.py", source)
     run(here / "apply_enhanced_dac_stream_observer.py", source)
+    run(here / "apply_enhanced_dac_stream_session_reset.py", source)
     run(here / "apply_enhanced_dac_stream_mix.py", source)
     print("foo_input_vgm enhanced component patch set applied")
     return 0
