@@ -474,8 +474,23 @@ def build_sidecar(manifest: dict, manifest_dir: Path) -> bytes:
     return bytes(out)
 
 
+def _brr_headers_match_playback(brr: bytes, block_count: int, loop_present: bool) -> bool:
+    if block_count <= 0 or len(brr) != block_count * BYTES_PER_BRR_BLOCK:
+        return False
+    for block in range(block_count):
+        header = brr[block * BYTES_PER_BRR_BLOCK]
+        end = bool(header & 0x01)
+        loop = bool(header & 0x02)
+        if block + 1 < block_count:
+            if end:
+                return False
+        elif not end or loop != loop_present:
+            return False
+    return True
+
+
 def parse_sidecar(data: bytes) -> list[dict[str, object]]:
-    """Strict Python parser mirroring the C++ packet framing for tests/audits."""
+    """Strict Python mirror of C++ packet/runtime admission for tests/audits."""
     if len(data) < HEADER_SIZE:
         raise ValueError("packet shorter than header")
     magic, version, header_size, count, reserved, declared = struct.unpack_from(
@@ -497,8 +512,18 @@ def parse_sidecar(data: bytes) -> list[dict[str, object]]:
         blocks, loop_ordinal, frames, brr_offset, pcm_offset = struct.unpack_from(
             "<IIIII", data, entry + 4
         )
-        if flags & ~FLAG_LOOP or not blocks or not frames:
-            raise ValueError("invalid source entry flags/counts")
+        game_high, game_low, upstream_high, upstream_low = struct.unpack_from(
+            "<QQQQ", data, entry + 24
+        )
+        if (
+            flags & ~FLAG_LOOP
+            or not blocks
+            or blocks > SPC_RAM_SIZE // BYTES_PER_BRR_BLOCK
+            or not frames
+            or (game_high == 0 and game_low == 0)
+            or (upstream_high == 0 and upstream_low == 0)
+        ):
+            raise ValueError("invalid source entry flags/counts/identities")
         loop_present = bool(flags & FLAG_LOOP)
         if loop_present:
             if loop_ordinal == NO_LOOP or loop_ordinal >= blocks:
@@ -516,6 +541,9 @@ def parse_sidecar(data: bytes) -> list[dict[str, object]]:
         brr_size = blocks * BYTES_PER_BRR_BLOCK
         if brr_offset != expected_payload or brr_offset + brr_size > len(data):
             raise ValueError("invalid BRR payload extent")
+        brr = data[brr_offset : brr_offset + brr_size]
+        if not _brr_headers_match_playback(brr, blocks, loop_present):
+            raise ValueError("BRR witness headers disagree with packet playback topology")
         expected_payload += brr_size
         aligned = (expected_payload + 3) & ~3
         if aligned > len(data) or any(data[expected_payload:aligned]):
@@ -523,7 +551,12 @@ def parse_sidecar(data: bytes) -> list[dict[str, object]]:
         expected_payload = aligned
 
         pcm_size = frames * 4
-        if pcm_offset != expected_payload or pcm_offset & 3 or pcm_offset + pcm_size > len(data):
+        if (
+            pcm_size > 0xFFFFFFFF
+            or pcm_offset != expected_payload
+            or pcm_offset & 3
+            or pcm_offset + pcm_size > len(data)
+        ):
             raise ValueError("invalid PCM payload extent")
         pcm = data[pcm_offset : pcm_offset + pcm_size]
         for (sample,) in struct.iter_unpack("<f", pcm):
@@ -550,6 +583,8 @@ def parse_sidecar(data: bytes) -> list[dict[str, object]]:
                 "pcm_frame_count": frames,
                 "brr_offset_bytes": brr_offset,
                 "pcm_offset_bytes": pcm_offset,
+                "game_brr_identity": {"high": game_high, "low": game_low},
+                "upstream_identity": {"high": upstream_high, "low": upstream_low},
                 "game_origin": game_origin,
                 "upstream_origin": upstream_origin,
                 "upstream_frames_per_game_sample": ratio,
