@@ -4,7 +4,9 @@
 This tool consumes an already-frozen creator-blind cross-soundtrack audit and
 only then loads documentary Sonic 3D Blast composer/arranger labels. Structural
 views calibrate composition-facing identity; realization calibrates the
-arrangement/programming lane. Those lanes are never collapsed.
+arrangement/programming lane. Same work/source families are excluded from the
+candidate set so act siblings and near-duplicate variants cannot manufacture a
+creator signal. Those lanes are never collapsed.
 """
 
 from __future__ import annotations
@@ -66,6 +68,40 @@ def _role_map(policy: dict[str, object]) -> tuple[str, dict[str, dict[str, str]]
     return soundtrack_id, mapped, specificity
 
 
+def _family_map(
+    family_policy: dict[str, object],
+    soundtrack_id: str,
+    expected_tracks: set[str],
+) -> dict[str, str]:
+    if family_policy.get("corpus_id") != soundtrack_id:
+        raise ValueError("role-family policy targets the wrong soundtrack")
+    if "exclude all candidate fixtures with the same family_id" not in str(
+        family_policy.get("candidate_exclusion_rule", "")
+    ):
+        raise ValueError("role-family policy must explicitly require same-family exclusion")
+    rows = family_policy.get("tracks")
+    if not isinstance(rows, list):
+        raise ValueError("role-family policy requires tracks")
+
+    families: dict[str, str] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("role-family rows must be objects")
+        key = maeda.track_id(soundtrack_id, str(row["fixture_path"]))
+        family_id = row.get("family_id")
+        if not isinstance(family_id, str) or not family_id:
+            raise ValueError(f"missing family_id for {key}")
+        if key in families:
+            raise ValueError(f"duplicate role-family mapping {key}")
+        families[key] = family_id
+
+    if set(families) != expected_tracks:
+        missing = sorted(expected_tracks - set(families))
+        extra = sorted(set(families) - expected_tracks)
+        raise ValueError(f"role-family map mismatch; missing={missing}, extra={extra}")
+    return families
+
+
 def _mean(values: list[float]) -> float:
     return 0.0 if not values else statistics.mean(values)
 
@@ -76,12 +112,15 @@ def _evaluate_role(
     learnable_classes: set[str],
     score_fn: ScoreFn,
     *,
+    families: dict[str, str],
     sentinel_classes: set[str] | None = None,
 ) -> dict[str, object]:
     sentinel_classes = sentinel_classes or set()
     missing = sorted(set(labels) - set(tracks))
     if missing:
         raise ValueError(f"role-mapped fixtures missing from frozen audit: {missing}")
+    if set(families) != set(labels):
+        raise ValueError("every role-mapped fixture must have exactly one family id")
 
     query_ids = sorted(key for key, label in labels.items() if label in learnable_classes)
     if not query_ids:
@@ -95,20 +134,31 @@ def _evaluate_role(
     reciprocal_ranks: list[float] = []
     margins: list[float] = []
     sentinel_intrusions = 0
+    excluded_siblings = 0
 
     for query_id in query_ids:
         truth = labels[query_id]
         query = tracks[query_id]
+        query_family = families[query_id]
+        eligible_candidate_ids = [
+            candidate_id
+            for candidate_id in labels
+            if candidate_id != query_id and families[candidate_id] != query_family
+        ]
+        excluded_siblings += sum(
+            1
+            for candidate_id in labels
+            if candidate_id != query_id and families[candidate_id] == query_family
+        )
         ranked = sorted(
             (
                 (score_fn(query, tracks[candidate_id]), candidate_id, labels[candidate_id])
-                for candidate_id in labels
-                if candidate_id != query_id
+                for candidate_id in eligible_candidate_ids
             ),
             key=lambda row: (-row[0], row[1]),
         )
         if not ranked:
-            raise ValueError("role evaluation requires at least one candidate")
+            raise ValueError("role evaluation requires at least one non-family candidate")
 
         top_score, top_id, predicted = ranked[0]
         hit = int(predicted == truth)
@@ -140,14 +190,17 @@ def _evaluate_role(
         per_query.append(
             {
                 "query": query_id,
+                "query_family": query_family,
                 "truth": truth,
                 "predicted_top1": predicted,
                 "top1_track": top_id,
+                "top1_family": families[top_id],
                 "top1_score": top_score,
                 "top1_correct": bool(hit),
                 "first_same_role_rank": same_role_rank,
                 "reciprocal_rank": reciprocal_rank,
                 "best_same_minus_best_other": margin,
+                "same_family_candidates_excluded": True,
             }
         )
 
@@ -159,6 +212,8 @@ def _evaluate_role(
         "query_count": len(query_ids),
         "learnable_classes": sorted(learnable_classes),
         "sentinel_classes": sorted(sentinel_classes),
+        "same_family_candidates_excluded": True,
+        "excluded_same_family_candidate_instances": excluded_siblings,
         "top1_accuracy": _mean([float(row["top1_correct"]) for row in per_query]),
         "balanced_top1_accuracy": _mean(list(per_class_recall.values())),
         "per_class_recall": per_class_recall,
@@ -170,10 +225,15 @@ def _evaluate_role(
     }
 
 
-def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, object]:
+def evaluate(
+    audit: dict[str, object],
+    policy: dict[str, object],
+    family_policy: dict[str, object],
+) -> dict[str, object]:
     maeda._validate_blind_audit(audit, policy)
     tracks = maeda._index_tracks(audit)
     soundtrack_id, mapped, specificity = _role_map(policy)
+    families = _family_map(family_policy, soundtrack_id, set(mapped))
 
     s3d_tracks = {
         key: value
@@ -204,6 +264,7 @@ def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, o
             composer_labels,
             composer_classes,
             maeda.base.structural_similarity,
+            families=families,
             sentinel_classes=composer_sentinels,
         ),
         "structural_pitch": _evaluate_role(
@@ -211,6 +272,7 @@ def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, o
             composer_labels,
             composer_classes,
             maeda.structural_pitch_similarity,
+            families=families,
             sentinel_classes=composer_sentinels,
         ),
         "structural_rhythm": _evaluate_role(
@@ -218,6 +280,7 @@ def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, o
             composer_labels,
             composer_classes,
             maeda.structural_rhythm_similarity,
+            families=families,
             sentinel_classes=composer_sentinels,
         ),
     }
@@ -227,6 +290,7 @@ def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, o
             arranger_labels,
             arranger_classes,
             maeda.base.realization_similarity,
+            families=families,
         )
     }
 
@@ -236,6 +300,10 @@ def evaluate(audit: dict[str, object], policy: dict[str, object]) -> dict[str, o
         "label_policy": (
             "The frozen creator-blind audit is validated before documentary role labels are "
             "loaded. This tool never extracts VGM features."
+        ),
+        "family_policy": (
+            "Same zone/work/source-lineage family candidates are excluded for every query so "
+            "act siblings and near-duplicate variants cannot create creator-specificity wins."
         ),
         "claim_boundary": (
             "Composition-facing structural retrieval and implementation-facing realization "
@@ -255,12 +323,18 @@ def main() -> None:
         type=pathlib.Path,
         default=pathlib.Path("research/projects/sonic3/maeda-calibration-policy.json"),
     )
+    parser.add_argument(
+        "--families",
+        type=pathlib.Path,
+        default=pathlib.Path("research/projects/sonic3/sonic3d-role-family-policy.json"),
+    )
     parser.add_argument("--json", type=pathlib.Path)
     args = parser.parse_args()
 
     audit = json.loads(args.audit_json.read_text(encoding="utf-8"))
     policy = json.loads(args.policy.read_text(encoding="utf-8"))
-    result = evaluate(audit, policy)
+    family_policy = json.loads(args.families.read_text(encoding="utf-8"))
+    result = evaluate(audit, policy, family_policy)
     text = json.dumps(result, indent=2, sort_keys=True)
     if args.json:
         args.json.write_text(text + "\n", encoding="utf-8")
