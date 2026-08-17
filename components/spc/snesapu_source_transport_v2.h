@@ -1,5 +1,6 @@
 #pragma once
 
+#include "snesapu_source_wire_v2.h"
 #include "spc_source_bus.h"
 
 #include <array>
@@ -22,50 +23,28 @@ namespace gameaudio::spc {
 // The shared wet lanes are already route-gain-scaled. The dry lanes are not.
 // Global master/fade arithmetic remains downstream of this transport.
 struct snesapu_source_transport_v2 {
-    static constexpr std::uint32_t magic = 0x45435253u; // "SRCE" little-endian
-    static constexpr std::uint16_t version = 2u;
-    static constexpr std::size_t voice_count = 8u;
-    static constexpr std::size_t dry_base = 0u;
-    static constexpr std::size_t gain_left_base = 8u;
-    static constexpr std::size_t gain_right_base = 16u;
-    static constexpr std::size_t echo_left_plane = 24u;
-    static constexpr std::size_t echo_right_plane = 25u;
-    static constexpr std::size_t audio_lane_count = 10u;
-    static constexpr std::size_t plane_count = 26u;
-    static constexpr std::size_t max_frames = 1024u;
-    static constexpr std::uint16_t format_float32 = 1u;
+    using wire = snesapu_source_wire_v2;
+    using header = wire::header;
 
-    struct header {
-        std::uint32_t magic = 0;
-        std::uint16_t version = 0;
-        std::uint16_t header_size = 0;
-        std::uint32_t block_samples = 0;
-        std::uint16_t plane_count = 0;
-        std::uint16_t sample_format = 0;
-        std::uint16_t audio_lanes = 0;
-        std::uint16_t reserved16 = 0;
-        std::uint32_t reserved32 = 0;
-    };
-
-    static_assert(sizeof(header) == 24, "SNESAPU SRCE v2 header ABI changed");
+    static constexpr std::uint32_t magic = wire::magic;
+    static constexpr std::uint16_t version = wire::version;
+    static constexpr std::size_t voice_count = wire::voice_count;
+    static constexpr std::size_t dry_base = wire::dry_base;
+    static constexpr std::size_t gain_left_base = wire::gain_left_base;
+    static constexpr std::size_t gain_right_base = wire::gain_right_base;
+    static constexpr std::size_t echo_left_plane = wire::echo_left_plane;
+    static constexpr std::size_t echo_right_plane = wire::echo_right_plane;
+    static constexpr std::size_t audio_lane_count = wire::audio_lane_count;
+    static constexpr std::size_t plane_count = wire::plane_count;
+    static constexpr std::size_t max_frames = wire::max_frames;
+    static constexpr std::uint16_t format_float32 = wire::format_float32;
 
     struct view {
         const header* metadata = nullptr;
         const float* planar = nullptr;
 
         bool valid() const noexcept {
-            return metadata != nullptr
-                && planar != nullptr
-                && metadata->magic == magic
-                && metadata->version == version
-                && metadata->header_size == sizeof(header)
-                && metadata->block_samples > 0u
-                && metadata->block_samples <= max_frames
-                && metadata->plane_count == plane_count
-                && metadata->sample_format == format_float32
-                && metadata->audio_lanes == audio_lane_count
-                && metadata->reserved16 == 0u
-                && metadata->reserved32 == 0u;
+            return metadata != nullptr && planar != nullptr && wire::header_valid(*metadata);
         }
 
         std::size_t frame_count() const noexcept {
