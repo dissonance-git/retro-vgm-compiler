@@ -20,6 +20,9 @@ from typing import Any
 EXPECTED_SCHEMA_VERSION = 3
 EXPECTED_EXTRACTOR = {"name": "creator-blind-genesis-song-capsule", "version": 3}
 MODEL = "creator-blind cached Genesis persistent-part evidence"
+PROFILE_BUNDLE_MODEL = "creator-blind persistent-part motif profile bundle"
+GENESIS_MOTIF_REPRESENTATION = "genesis_vgm_persistent_part_motif"
+MOTIF_PROJECTION_VERSION = 1
 
 SLOT_ONLY_CEILING = 0.35
 NO_IDENTITY_CEILING = 0.64
@@ -475,6 +478,134 @@ def assemble_strand_hypotheses(
     }
 
 
+def _median_positive(values: list[float]) -> float:
+    ordered = sorted(value for value in values if math.isfinite(value) and value > 0.0)
+    if not ordered:
+        raise ValueError("motif timing requires a positive inter-onset interval")
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return 0.5 * (ordered[middle - 1] + ordered[middle])
+
+
+def strand_motif_profile(
+    strand: dict[str, Any],
+    by_id: dict[int, Episode],
+    profile_index: int,
+) -> dict[str, Any] | None:
+    """Project one already-admitted persistent-part strand into motif geometry."""
+    episode_ids = strand.get("episode_ids")
+    if not isinstance(episode_ids, list) or any(not isinstance(item, int) for item in episode_ids):
+        raise ValueError("strand episode_ids must be an integer array")
+    if len(episode_ids) < 3:
+        return None
+    if len(set(episode_ids)) != len(episode_ids):
+        raise ValueError("motif strand cannot repeat an episode")
+    try:
+        episodes = [by_id[episode_id] for episode_id in episode_ids]
+    except KeyError as error:
+        raise ValueError("motif strand references an unknown episode") from error
+
+    onset_ticks = [episode.start_tick for episode in episodes]
+    inter_onset_intervals = [
+        float(current - previous)
+        for previous, current in zip(onset_ticks, onset_ticks[1:])
+    ]
+    if any(interval <= 0.0 for interval in inter_onset_intervals):
+        raise ValueError("motif strand onsets must be strictly increasing")
+    median_ioi = _median_positive(inter_onset_intervals)
+
+    pitch_coordinates = [episode.pitch_coordinate for episode in episodes]
+    if any(not math.isfinite(value) or value <= 0.0 for value in pitch_coordinates):
+        raise ValueError("motif strand requires positive finite pitch coordinates")
+    log2_pitches = [math.log2(value) for value in pitch_coordinates]
+    intervals = [
+        current - previous
+        for previous, current in zip(log2_pitches, log2_pitches[1:])
+    ]
+    contour = [
+        1 if interval > 1e-9 else (-1 if interval < -1e-9 else 0)
+        for interval in intervals
+    ]
+
+    confidence = strand.get("confidence")
+    if (
+        not isinstance(confidence, (int, float))
+        or isinstance(confidence, bool)
+        or not math.isfinite(float(confidence))
+        or float(confidence) < 0.0
+        or float(confidence) > 1.0
+    ):
+        raise ValueError("motif strand confidence must be finite and in [0, 1]")
+
+    return {
+        "profile_index": profile_index,
+        "gesture_count": len(episodes),
+        "normalized_inter_onset_intervals": [
+            interval / median_ioi for interval in inter_onset_intervals
+        ],
+        "interval_octaves": intervals,
+        "pitch_contour": contour,
+        "pitch_basis": "genesis_ym2612_relative_frequency_code",
+        "interval_semantics": "log2_frequency_ratio_octaves",
+        "pitch_range_octaves": max(log2_pitches) - min(log2_pitches),
+        "evidence_status": "hypothesis",
+        "evidence_confidence": float(confidence),
+    }
+
+
+def make_motif_profile_bundle(projection: dict[str, Any]) -> dict[str, Any]:
+    """Make the representation-neutral bundle consumed by the blind freezer."""
+    episodes_raw = projection.get("episodes")
+    strand_projection = projection.get("strand_projection")
+    if not isinstance(episodes_raw, list) or not isinstance(strand_projection, dict):
+        raise ValueError("motif bundle requires an existing strand projection")
+
+    episodes: list[Episode] = []
+    for item in episodes_raw:
+        if not isinstance(item, dict):
+            raise ValueError("motif bundle episodes must be objects")
+        episodes.append(Episode(**item))
+    by_id = {episode.episode_id: episode for episode in episodes}
+    if len(by_id) != len(episodes):
+        raise ValueError("motif bundle episode ids must be unique")
+
+    strands = strand_projection.get("strands")
+    unresolved = strand_projection.get("unresolved")
+    if not isinstance(strands, list) or not isinstance(unresolved, list):
+        raise ValueError("motif bundle requires strand and unresolved arrays")
+
+    profiles: list[dict[str, Any]] = []
+    for strand in strands:
+        if not isinstance(strand, dict):
+            raise ValueError("motif strand must be an object")
+        profile = strand_motif_profile(strand, by_id, len(profiles))
+        if profile is not None:
+            profiles.append(profile)
+    if not profiles:
+        raise ValueError("strand projection produced no motif profile with at least three episodes")
+
+    return {
+        "model": PROFILE_BUNDLE_MODEL,
+        "representation": GENESIS_MOTIF_REPRESENTATION,
+        "claim_boundary": "Normalized persistent-part motif profiles only; upstream identities are excluded.",
+        "provenance": {
+            "source_cache_schema_version": EXPECTED_SCHEMA_VERSION,
+            "source_cache_extractor": dict(EXPECTED_EXTRACTOR),
+            "strand_model": "conservative creator-blind Genesis persistent-part strand hypotheses",
+            "motif_projection_version": MOTIF_PROJECTION_VERSION,
+            "motif_contract": "model/part_motif_profile.h",
+        },
+        "diagnostics": {
+            "episode_count": len(episodes),
+            "strand_count": len(strands),
+            "unresolved_strand_count": len(unresolved),
+            "part_profile_count": len(profiles),
+        },
+        "part_profiles": profiles,
+    }
+
+
 def project(
     capsule: dict[str, Any],
     *,
@@ -527,6 +658,11 @@ def main() -> int:
     parser.add_argument("--max-pitch-interval-octaves", type=float, default=2.0)
     parser.add_argument("--strand-min-confidence", type=float)
     parser.add_argument("--json", type=pathlib.Path)
+    parser.add_argument(
+        "--motif-bundle",
+        type=pathlib.Path,
+        help="write a creator-blind generic motif-profile bundle from admitted strands",
+    )
     args = parser.parse_args()
 
     capsule = json.loads(args.capsule.read_text(encoding="utf-8"))
@@ -536,6 +672,14 @@ def main() -> int:
         max_pitch_interval_octaves=args.max_pitch_interval_octaves,
         strand_min_confidence=args.strand_min_confidence,
     )
+    if args.motif_bundle:
+        bundle = make_motif_profile_bundle(payload)
+        args.motif_bundle.parent.mkdir(parents=True, exist_ok=True)
+        args.motif_bundle.write_text(
+            json.dumps(bundle, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
