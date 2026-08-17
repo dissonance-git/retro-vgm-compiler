@@ -48,5 +48,7 @@
     <ClInclude Include="..\enhancement\ym2612_hq_fm_backend.h" />
     <ClInclude Include="..\enhancement\dac_stream_source.h" />
     <ClInclude Include="..\enhancement\ym2612_pcm_stream.h" />
+    <ClInclude Include="..\enhancement\ym2612_pcm_stream_bank.h" />
+    <ClInclude Include="..\enhancement\ym2612_pcm_source_queue.h" />
   </ItemGroup>
 </Project>
