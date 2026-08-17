@@ -1,4 +1,7 @@
 #include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
+#include "components/vgm/enhancement/genesis_spatial_source.h"
+#include "components/vgm/enhancement/genesis_spatial_source_bus.h"
+#include "model/spatial_playback_options.h"
 
 #include <array>
 #include <cassert>
@@ -6,6 +9,7 @@
 
 int main() {
     using namespace gameaudio::vgm;
+    using namespace vgmtooling::model;
 
     constexpr std::size_t frames = 4;
     const float reference_l[frames] = {10.0f, 20.0f, 30.0f, 40.0f};
@@ -57,8 +61,8 @@ int main() {
         assert(render.right()[frame] == reference_r[frame]);
     }
 
-    // Enhanced == exact reference must be exact parity. This is the strongest
-    // algebraic control for proving the recompositor itself is transparent.
+    // Higher-quality == exact reference must be exact parity. This is the
+    // strongest algebraic control for proving the recompositor is transparent.
     auto parity = none;
     auto& parity_fm = parity[static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm2)];
     parity_fm.reference = {old_fm_l, old_fm_r, true};
@@ -70,8 +74,66 @@ int main() {
         assert(render.right()[frame] == reference_r[frame]);
     }
 
+    // The spatial bus consumes the already-selected isolated source lanes. It
+    // cannot choose source quality itself, so surround changes presentation only.
+    std::array<genesis_stereo_source_view, genesis_recomposition_source_count> reference_sources{};
+    std::array<genesis_stereo_source_view, genesis_recomposition_source_count> higher_quality_sources{};
+    std::array<spatial_source_evidence, genesis_recomposition_source_count> source_evidence{};
+
+    constexpr std::size_t fm1_index =
+        static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1);
+    constexpr std::size_t psg0_index =
+        static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0);
+    reference_sources[fm1_index] = {old_fm_l, old_fm_r, true};
+    reference_sources[psg0_index] = {old_psg_l, old_psg_r, true};
+    higher_quality_sources[fm1_index] = {new_fm_l, new_fm_r, true};
+    higher_quality_sources[psg0_index] = {new_psg_l, new_psg_r, true};
+    source_evidence[fm1_index] = make_genesis_spatial_source(
+        genesis_spatial_device::ym2612_fm, 0, 0, 1, ym2612_authored_route(true, true));
+    source_evidence[psg0_index] = make_genesis_spatial_source(
+        genesis_spatial_device::sn76489_tone, 0, 0, 1, sn76489_authored_route(0xFF, 0));
+
+    const auto check_spatial_combination = [&](bool quality, bool surround) {
+        spatial_playback_options options;
+        options.enhanced = quality;
+        options.surround = surround;
+
+        const auto& selected = uses_enhanced_renderer(options)
+            ? higher_quality_sources
+            : reference_sources;
+        genesis_spatial_source_bus_storage<frames> bus;
+        assert(bus.build(selected, source_evidence, frames));
+        assert(bus.valid());
+        assert(bus.lane_count() == 2);
+        assert(bus.canonical_source_index(0) == fm1_index);
+        assert(bus.canonical_source_index(1) == psg0_index);
+
+        const auto& block = bus.block();
+        assert(block.lane_count == 2);
+        assert(block.frame_count == frames);
+        assert(block.lanes[0].evidence.stereo_route.gain_preapplied);
+        assert(block.lanes[1].evidence.stereo_route.gain_preapplied);
+
+        const float expected_fm0 = quality
+            ? static_cast<float>(std::sqrt((4.0 + 1.0) * 0.5))
+            : static_cast<float>(std::sqrt((1.0 + 0.25) * 0.5));
+        const float expected_psg0 = quality ? 0.50f : 0.25f;
+        assert(std::abs(block.lanes[0].mono_pcm[0] - expected_fm0) < 1.0e-6f);
+        assert(std::abs(block.lanes[1].mono_pcm[0] - expected_psg0) < 1.0e-6f);
+
+        if (surround)
+            assert(resolve_spatial_playback(options) == spatial_playback_path::source_spatial);
+        else
+            assert(resolve_spatial_playback(options) == spatial_playback_path::stereo_reference);
+    };
+
+    check_spatial_combination(false, false);
+    check_spatial_combination(true, false);
+    check_spatial_combination(false, true);
+    check_spatial_combination(true, true);
+
     // Never subtract a merely similar source. If exact reference contribution
-    // evidence is missing, Enhanced fails closed back to protected reference.
+    // evidence is missing, the quality path fails closed to protected reference.
     auto inexact = sources;
     inexact[static_cast<std::size_t>(genesis_recomposition_source::ym2612_fm1)].reference.exact = false;
     assert(!render.build(reference_l, reference_r, frames, inexact));
@@ -83,7 +145,7 @@ int main() {
     }
 
     // A broken later replacement must undo any earlier successful delta rather
-    // than leak a half-enhanced block into playback.
+    // than leak a half-upgraded block into playback.
     auto transactional = sources;
     transactional[static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0)].enhanced.left = nullptr;
     assert(!render.build(reference_l, reference_r, frames, transactional));
