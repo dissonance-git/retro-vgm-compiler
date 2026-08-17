@@ -16,6 +16,41 @@
 
 namespace gameaudio::vgm {
 
+struct genesis_part_evidence_bound {
+    vgmtooling::model::evidence_status status =
+        vgmtooling::model::evidence_status::derived;
+    double confidence = 1.0;
+};
+
+inline genesis_part_evidence_bound genesis_persistent_part_evidence_bound(
+    const vgmtooling::model::node& part) {
+    using namespace vgmtooling::model;
+
+    if (part.kind != node_kind::part)
+        throw std::invalid_argument("Genesis motif evidence bound requires a persistent-part node");
+
+    const attribute* scope_item = find_genesis_part_attribute(part, "identity_scope");
+    if (scope_item == nullptr)
+        throw std::invalid_argument("Genesis persistent part is missing its identity scope evidence");
+    const auto* scope = std::get_if<std::string>(&scope_item->value);
+    if (scope == nullptr || *scope != "persistent_musical_part")
+        throw std::invalid_argument("Genesis motif adapter requires persistent musical-part identity evidence");
+    if (!std::isfinite(scope_item->confidence) ||
+        scope_item->confidence < 0.0 || scope_item->confidence > 1.0) {
+        throw std::invalid_argument("Genesis persistent-part identity confidence must be in [0, 1]");
+    }
+
+    return {scope_item->status, scope_item->confidence};
+}
+
+inline vgmtooling::model::evidence_status weaker_genesis_motif_status(
+    vgmtooling::model::evidence_status first,
+    vgmtooling::model::evidence_status second) noexcept {
+    return static_cast<vgmtooling::model::evidence_status>(std::max(
+        static_cast<std::uint8_t>(first),
+        static_cast<std::uint8_t>(second)));
+}
+
 inline std::optional<vgmtooling::model::part_gesture_observation>
 make_genesis_part_gesture_observation(
     const vgmtooling::model::musical_execution_graph& graph,
@@ -29,6 +64,7 @@ make_genesis_part_gesture_observation(
         throw std::invalid_argument("Genesis motif adapter requires a persistent-part node");
     if (episode == nullptr || episode->kind != node_kind::voice_instance)
         throw std::invalid_argument("Genesis motif adapter requires a physical voice episode");
+    const auto part_evidence = genesis_persistent_part_evidence_bound(*part);
 
     bool member = false;
     for (const edge* relation : graph.edges_from(episode_id, edge_kind::groups_into)) {
@@ -70,6 +106,8 @@ make_genesis_part_gesture_observation(
         std::log2(*relative_pitch),
         std::move(pitch_basis),
         "log2_frequency_ratio_octaves",
+        weaker_genesis_motif_status(evidence_status::derived, part_evidence.status),
+        part_evidence.confidence,
     };
 }
 
@@ -87,6 +125,7 @@ make_genesis_performed_part_gesture_observation(
         throw std::invalid_argument("Genesis performed motif adapter requires a persistent-part node");
     if (episode == nullptr || episode->kind != node_kind::voice_instance)
         throw std::invalid_argument("Genesis performed motif adapter requires a physical voice episode");
+    const auto part_evidence = genesis_persistent_part_evidence_bound(*part);
 
     bool member = false;
     for (const edge* relation : graph.edges_from(episode_id, edge_kind::groups_into)) {
@@ -144,8 +183,8 @@ make_genesis_performed_part_gesture_observation(
         std::log2(*frequency),
         "absolute_performed_frequency_hz",
         "log2_frequency_ratio_octaves",
-        *performed->status,
-        *performed->confidence,
+        weaker_genesis_motif_status(*performed->status, part_evidence.status),
+        std::min(*performed->confidence, part_evidence.confidence),
     };
 }
 
