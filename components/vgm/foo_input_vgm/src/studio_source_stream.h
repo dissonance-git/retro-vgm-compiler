@@ -47,6 +47,18 @@ public:
         std::uint64_t first_source_ordinal,
         const studio_stereo_sample* source,
         std::size_t frame_count) noexcept {
+        return append_converted(first_source_ordinal, source, frame_count);
+    }
+
+    // libvgm captures native chip samples in DEV_SMPL while the Studio FIR uses
+    // double internally. Convert once at the source-history boundary so live
+    // integer capture can enter the same tested ordinal/ring contract without a
+    // second staging allocation.
+    template <typename SourceSample>
+    bool append_converted(
+        std::uint64_t first_source_ordinal,
+        const SourceSample* source,
+        std::size_t frame_count) noexcept {
         if (invalid_ || (frame_count != 0 && source == nullptr)) {
             invalid_ = true;
             return false;
@@ -67,11 +79,13 @@ public:
         }
 
         for (std::size_t i = 0; i < frame_count; ++i) {
-            if (!std::isfinite(source[i].left) || !std::isfinite(source[i].right)) {
+            const double left = static_cast<double>(source[i].left);
+            const double right = static_cast<double>(source[i].right);
+            if (!std::isfinite(left) || !std::isfinite(right)) {
                 invalid_ = true;
                 return false;
             }
-            storage_[(head_ + count_ + i) % Capacity] = source[i];
+            storage_[(head_ + count_ + i) % Capacity] = {left, right};
         }
         count_ += frame_count;
         return true;
