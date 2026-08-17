@@ -32,6 +32,9 @@ def main() -> int:
     here = Path(__file__).resolve().parent
 
     run(here / "apply_enhanced_ui.py", source)
+    # Private package output is one 48 kHz host timeline in every source-quality
+    # and Spatial combination. This does not select Enhanced or presentation.
+    run(here / "apply_private_48khz_output.py", source)
     run(here / "apply_source_aware_player.py", source)
     run(here / "apply_source_aware_shadow_include.py", source)
     # Install the source-bank observer while the base seek/decode anchors are
