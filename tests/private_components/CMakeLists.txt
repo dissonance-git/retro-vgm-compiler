@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(private_component_frontier LANGUAGES CXX)
 
 enable_testing()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 get_filename_component(RETRO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
 set(PRIVATE_COMPONENT_TESTS
@@ -33,3 +34,62 @@ foreach(target IN LISTS PRIVATE_COMPONENT_TESTS)
     endif()
     add_test(NAME ${target} COMMAND ${target})
 endforeach()
+
+# Guard the high-risk generated-host seams before the expensive Windows build.
+# These tests operate only on temporary files and assert exact guarded patch
+# composition/order, including family-local fallback and rate-specific
+# Omniphony processor lifetime.
+add_test(
+    NAME vgm_deferred_family_independence_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/vgm
+        -p test_studio_deferred_family_independence_patch.py
+)
+set_tests_properties(
+    vgm_deferred_family_independence_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME vgm_spatial_omniphony_rate_lifecycle_patch
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/vgm
+        -p test_spatial_omniphony_rate_lifecycle_patch.py
+)
+set_tests_properties(
+    vgm_spatial_omniphony_rate_lifecycle_patch
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+# Materialize both complete private components from their repository-owned
+# immutable seeds. This executes the canonical guarded Python patch chains in
+# the same order used by the packaging script, catching stale anchors before
+# external dependency checkout/compilation begins. The Windows private builder
+# already requires 7-Zip on PATH for the VGM bootstrap archive.
+set(PRIVATE_VGM_MATERIALIZED_ROOT
+    ${CMAKE_CURRENT_BINARY_DIR}/materialized-vgm/components/vgm)
+set(PRIVATE_SPC_MATERIALIZED_ROOT
+    ${CMAKE_CURRENT_BINARY_DIR}/materialized-spc)
+
+add_test(
+    NAME private_vgm_materialization
+    COMMAND ${Python3_EXECUTABLE}
+        ${RETRO_ROOT}/tools/materialize_foo_input_vgm.py
+        --sdk-root ${PRIVATE_VGM_MATERIALIZED_ROOT}
+)
+set_tests_properties(
+    private_vgm_materialization
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
+    NAME private_spc_materialization
+    COMMAND ${Python3_EXECUTABLE}
+        ${RETRO_ROOT}/tools/materialize_foo_snesapu.py
+        ${PRIVATE_SPC_MATERIALIZED_ROOT}
+        --force
+)
+set_tests_properties(
+    private_spc_materialization
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
