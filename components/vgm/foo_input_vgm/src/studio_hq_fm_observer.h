@@ -6,6 +6,7 @@
 #include "studio_source_timeline.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -23,14 +24,29 @@ struct studio_hq_fm_observation {
     bool valid = false;
 };
 
-// Non-audible evidence layer for the live HQ FM producer.
+struct studio_hq_fm_gain {
+    std::int32_t left = 1;
+    std::int32_t right = 1;
+};
+
+template <std::size_t LaneCount>
+struct studio_hq_fm_ready_frame {
+    std::uint64_t destination_ordinal = 0;
+    std::array<studio_stereo_sample, LaneCount> lane{};
+    bool valid = false;
+};
+
+// Live evidence + reconstruction layer for the exact-state HQ FM producer.
 //
-// It consumes the same six native lanes that the current HQ linear mirror sees,
+// It consumes the same native lanes as the historical HQ linear control,
 // assigns absolute source ordinals, maps every host frame through libvgm's exact
-// pre-execution timing state, and proves when the 64-tap Studio reconstruction is
-// actually available. No source is substituted here. This observer exists to
-// make lookahead, startup fallback, EOF tail, and block-boundary behavior visible
-// before PlayerA is allowed to use Studio samples audibly.
+// pre-execution timing state, and publishes a Studio frame only after the full
+// symmetric FIR window exists for every FM identity. The frame carries the
+// destination ordinal it belongs to, so a higher layer can delay the protected
+// reference/DAC/PSG bundle by the same amount rather than delaying FM alone.
+//
+// Startup history before source ordinal zero and the final EOF post-roll remain
+// explicit reference territory. This class never invents those samples.
 template <std::size_t LaneCount, std::size_t NativeCapacity, std::size_t PendingCapacity>
 class studio_hq_fm_observer {
     static_assert(LaneCount > 0, "Studio HQ FM observer needs at least one lane.");
@@ -39,6 +55,8 @@ class studio_hq_fm_observer {
     static_assert(PendingCapacity > 0, "Studio HQ FM pending queue must be non-zero.");
 
 public:
+    using ready_frame = studio_hq_fm_ready_frame<LaneCount>;
+
     bool configure(std::uint32_t source_rate_hz, std::uint32_t destination_rate_hz) noexcept {
         reset();
         source_rate_hz_ = source_rate_hz;
@@ -53,6 +71,8 @@ public:
         for (auto& stream : streams_)
             stream.reset();
         pending_.reset();
+        ready_head_ = 0;
+        ready_count_ = 0;
         native_next_ = 0;
         destination_next_ = 0;
         released_next_ = 0;
@@ -75,13 +95,26 @@ public:
     [[nodiscard]] std::uint64_t next_destination_ordinal() const noexcept {
         return destination_next_;
     }
+    [[nodiscard]] std::uint64_t next_release_ordinal() const noexcept {
+        return released_next_;
+    }
     [[nodiscard]] std::size_t pending_frames() const noexcept { return pending_.size(); }
+    [[nodiscard]] std::size_t ready_frames() const noexcept { return ready_count_; }
+
+    bool pop_ready_frame(ready_frame& out) noexcept {
+        if (!valid() || ready_count_ == 0)
+            return false;
+        out = ready_[ready_head_];
+        ready_head_ = (ready_head_ + 1u) % PendingCapacity;
+        --ready_count_;
+        return out.valid;
+    }
 
     template <typename SourceSample>
     bool append_initial_pregeneration(
         const std::array<const SourceSample*, LaneCount>& lanes,
         std::size_t frame_count) noexcept {
-        if (!valid() || destination_next_ != 0 || !pending_.empty()) {
+        if (!valid() || destination_next_ != 0 || !pending_.empty() || ready_count_ != 0) {
             invalid_ = true;
             return false;
         }
@@ -93,7 +126,8 @@ public:
         const studio_linear_timing_snapshot& timing,
         const std::array<const SourceSample*, LaneCount>& lanes,
         std::size_t native_frames,
-        std::size_t destination_frames) noexcept {
+        std::size_t destination_frames,
+        studio_hq_fm_gain gain = {}) noexcept {
         studio_hq_fm_observation report;
         report.native_base = native_next_;
         report.destination_base = destination_next_;
@@ -144,7 +178,7 @@ public:
             }
 
             started_studio_domain_ = true;
-            if (!pending_.push(destination_next_, position, std::uint8_t{0})) {
+            if (!pending_.push(destination_next_, position, gain)) {
                 invalidate();
                 return report;
             }
@@ -181,7 +215,7 @@ public:
 
 private:
     using native_stream = studio_source_stream<NativeCapacity>;
-    using pending_queue = studio_alignment_queue<std::uint8_t, PendingCapacity>;
+    using pending_queue = studio_alignment_queue<studio_hq_fm_gain, PendingCapacity>;
 
     void invalidate() noexcept { invalid_ = true; }
 
@@ -229,26 +263,45 @@ private:
         while (const auto* front = pending_.front()) {
             if (!all_lanes_ready(front->source_position))
                 break;
+            if (ready_count_ == PendingCapacity) {
+                invalidate();
+                return 0;
+            }
 
-            // Reconstruct every lane now even though this observer does not
-            // publish audio. A frame is evidence-valid only if the actual FIR
-            // operation succeeds transactionally for the entire FM family.
-            for (const auto& stream : streams_) {
-                if (!stream.reconstruct(kernel_, front->source_position).valid) {
+            ready_frame candidate{};
+            candidate.destination_ordinal = front->destination_ordinal;
+            for (std::size_t lane = 0; lane < LaneCount; ++lane) {
+                const auto reconstructed = streams_[lane].reconstruct(
+                    kernel_, front->source_position);
+                if (!reconstructed.valid) {
                     invalidate();
                     return 0;
                 }
+                const double left = reconstructed.sample.left
+                    * static_cast<double>(front->payload.left);
+                const double right = reconstructed.sample.right
+                    * static_cast<double>(front->payload.right);
+                if (!std::isfinite(left) || !std::isfinite(right)) {
+                    invalidate();
+                    return 0;
+                }
+                candidate.lane[lane] = {left, right};
             }
+            candidate.valid = true;
 
             typename pending_queue::entry entry{};
             if (!pending_.pop_ready(streams_[0], entry)) {
                 invalidate();
                 return 0;
             }
-            if (entry.destination_ordinal != released_next_) {
+            if (entry.destination_ordinal != released_next_
+                || entry.destination_ordinal != candidate.destination_ordinal) {
                 invalidate();
                 return 0;
             }
+
+            ready_[(ready_head_ + ready_count_) % PendingCapacity] = candidate;
+            ++ready_count_;
             ++released_next_;
             ++released;
         }
@@ -284,6 +337,9 @@ private:
     studio_source_resampler_kernel kernel_{};
     std::array<native_stream, LaneCount> streams_{};
     pending_queue pending_{};
+    std::array<ready_frame, PendingCapacity> ready_{};
+    std::size_t ready_head_ = 0;
+    std::size_t ready_count_ = 0;
     std::uint32_t source_rate_hz_ = 0;
     std::uint32_t destination_rate_hz_ = 0;
     std::uint64_t native_next_ = 0;
