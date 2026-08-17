@@ -82,6 +82,11 @@ def root_files(files: Iterable[str], prefix: str) -> list[str]:
     return sorted(values)
 
 
+def files_under(files: Iterable[str], prefix: str) -> list[str]:
+    root = prefix.rstrip("/") + "/"
+    return sorted(file[len(root) :] for file in files if file.startswith(root))
+
+
 def corpus_ids(files: Iterable[str]) -> list[str]:
     values: set[str] = set()
     for file in files:
@@ -113,9 +118,31 @@ def top_level_counts(files: Iterable[str]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def tool_inventory(files: Iterable[str]) -> list[str]:
+    """List nested executable/source tool entries, not only tools/*.py."""
+    result = []
+    for relative in files_under(files, "tools"):
+        path = pathlib.PurePosixPath(relative)
+        if path.name == "README.md":
+            continue
+        if path.name == "CMakeLists.txt" or path.suffix.lower() in {
+            ".py",
+            ".cpp",
+            ".cc",
+            ".c",
+            ".h",
+            ".hpp",
+            ".cmake",
+            ".ps1",
+            ".sh",
+        }:
+            result.append(relative)
+    return sorted(result)
+
+
 def build_inventory(files: list[str]) -> dict[str, object]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "purpose": "navigation_projection_not_source_truth",
         "tracked_file_count": len(files),
         "top_level_tracked_file_counts": top_level_counts(files),
@@ -127,7 +154,8 @@ def build_inventory(files: list[str]) -> dict[str, object]:
             "ids": corpus_ids(files),
             "runnable_extension_counts": corpus_extensions(files),
         },
-        "tools": [name for name in root_files(files, "tools") if name.endswith(".py")],
+        "tool_families": first_level_dirs(files, "tools"),
+        "tools": tool_inventory(files),
         "docs": {
             "root_files": root_files(files, "docs"),
             "subdirectories": first_level_dirs(files, "docs"),
@@ -204,7 +232,11 @@ Detected corpus directories: **{corpus['set_count']}**
 | --- | ---: |
 {ext_lines}
 
-## Tools
+## Tool families
+
+{bullet(inventory['tool_families'])}
+
+## Tools (recursive)
 
 {bullet(inventory['tools'])}
 
