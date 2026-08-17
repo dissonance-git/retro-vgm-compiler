@@ -44,6 +44,20 @@ int main() {
     // construction belongs to player/track preparation, not the audio callback.
     prepare_spc_studio_sample_reconstruction();
 
+    // Full 64-tap neighborhoods use a cached normalization denominator. It is
+    // built from the final float coefficients in the same left-to-right order
+    // as the former hot-loop sum, so the optimization changes no arithmetic
+    // result while removing 64 repeated coefficient additions per sample.
+    const auto& table = spc_studio_table();
+    for (std::size_t phase : {0u, 1u, 4096u, 8192u, 16383u}) {
+        double manual_sum = 0.0;
+        for (const float coefficient : table.phase(phase))
+            manual_sum += static_cast<double>(coefficient);
+        assert(manual_sum == table.phase_weight_sum(phase));
+        assert(std::isfinite(manual_sum));
+        assert(std::abs(manual_sum) > 1.0e-12);
+    }
+
     std::array<float, 256> constant{};
     constant.fill(0.375f);
     for (double position : {0.0, 0.125, 7.5, 127.375, 254.875, 255.0}) {
