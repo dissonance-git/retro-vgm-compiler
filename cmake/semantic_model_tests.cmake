@@ -356,6 +356,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     studio_source_stream_test
     studio_source_timeline_test
     studio_source_resampler_test
+    studio_hq_fm_observer_rebase_test
 )
 
 add_executable(
@@ -386,6 +387,10 @@ add_executable(
     studio_source_resampler_test
     tests/vgm/studio_source_resampler_test.cpp
 )
+add_executable(
+    studio_hq_fm_observer_rebase_test
+    tests/vgm/studio_hq_fm_observer_rebase_test.cpp
+)
 
 target_include_directories(
     ym2612_hq_fm_backend_test
@@ -413,6 +418,10 @@ target_include_directories(
 )
 target_include_directories(
     studio_source_resampler_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_hq_fm_observer_rebase_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -443,4 +452,8 @@ add_test(
 add_test(
     NAME studio_source_resampler
     COMMAND studio_source_resampler_test
+)
+add_test(
+    NAME studio_hq_fm_observer_rebase
+    COMMAND studio_hq_fm_observer_rebase_test
 )
