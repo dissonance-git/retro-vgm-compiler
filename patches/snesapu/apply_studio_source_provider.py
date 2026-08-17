@@ -13,6 +13,11 @@ The current DIR page is also supplied on every sample because SNESAPU consults
 DIR again at END+LOOP; the provider can therefore fail closed immediately if a
 live directory remap would invalidate its playback trajectory.
 
+When NON/noise is active for a voice, the original mixer replaces pInter's
+waveform immediately afterward. The studio callback is therefore bypassed for
+that sample and historical pInter runs normally; this avoids a 64-tap source FIR
+whose result would be discarded without changing the original mixer sequence.
+
 The callback never crosses process IPC. A zero callback result falls through to
 exact historical pInter for that sample and disables substitution until the next
 key-on so a failed provider cannot repeatedly perturb the hot loop.
@@ -282,6 +287,10 @@ ENDP
     ;current PMON-adjusted mRate is consumed by the child-local provider after
     ;rendering this phase, mirroring the UpdateSrc call below MixSample. DIR is
     ;also sampled live because SNESAPU may consult it again at END+LOOP.
+    ;NON/noise immediately discards this waveform in the historical code below,
+    ;so do not spend a 64-tap studio FIR on a value that cannot reach the mix.
+    Test    [dspNoise],CH
+    JNZ     %%HistoricalInterpolation
     Test    byte [studioSourceVoices],CH
     JZ      %%HistoricalInterpolation
     Mov     EDX,[studioSourceSample]
