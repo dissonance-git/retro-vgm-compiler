@@ -31,8 +31,9 @@ enum class genesis_selected_source_block_error : std::uint8_t {
 // complete block is known, a lane which is identically zero on both channels is
 // omitted from the Spatial source set. Such a lane has no audible contribution
 // and therefore must not require authored route evidence merely to present the
-// other active lanes. This never changes source-quality selection or the stereo
-// mix; it only removes provably silent passengers at the presentation boundary.
+// other active lanes. An all-silent block is a nonfatal presentation miss: its
+// ordinals are consumed, ordinary stereo remains authoritative for that block,
+// and the source queue remains coherent for the next audible block.
 template <std::size_t MaxFrames = 8192>
 class genesis_selected_source_block_storage {
     static_assert(MaxFrames > 0, "selected source block capacity must be non-zero");
@@ -112,7 +113,7 @@ public:
         }
 
         if (!any_signal)
-            return fail(genesis_selected_source_block_error::no_sources, &queue);
+            return fail(genesis_selected_source_block_error::no_sources, nullptr);
 
         first_ordinal_ = first_ordinal;
         frame_count_ = frame_count;
@@ -179,8 +180,9 @@ private:
         return false;
     }
 
-    // Non-queue failures use this overload so callers can reject parameters
-    // without invalidating an otherwise coherent source queue.
+    // Non-queue failures use this overload so callers can reject parameters or
+    // decline an all-silent presentation block without invalidating an otherwise
+    // coherent source queue.
     bool fail(genesis_selected_source_block_error error, std::nullptr_t) noexcept {
         sources_ = {};
         present_.fill(false);
