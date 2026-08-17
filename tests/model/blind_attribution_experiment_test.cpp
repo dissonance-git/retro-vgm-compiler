@@ -56,7 +56,7 @@ int main() {
         composer_grammar_dimension::melody, 0.88));
     request.matches.push_back(support(
         request.query_id, "candidate-A", creative_attribution_role::composer,
-        "A-battle-master", "battle-master", "stage-family", "snes", "nspc",
+        "A-independent-game", "independent-game", "stage-family", "snes", "nspc",
         composer_grammar_dimension::rhythm, 0.84));
     request.matches.push_back(support(
         request.query_id, "candidate-A", creative_attribution_role::composer,
@@ -88,6 +88,16 @@ int main() {
         request.query_id, "implementer-only", creative_attribution_role::arranger_programmer,
         "impl-2", "sonic3-impl-b", "impl-family-b", "mega-drive", "smps-sonic3",
         composer_grammar_dimension::arrangement_orchestration, 0.99));
+
+    // Real-world-shaped role decoy: surviving Battle Master album credits assign
+    // Masanori Hikichi arrangement on J.S.P.-composed material. Even a perfect
+    // structural match therefore remains arranger/programmer evidence and is
+    // invisible to this composer-scoped request.
+    request.matches.push_back(support(
+        request.query_id, "Masanori Hikichi", creative_attribution_role::arranger_programmer,
+        "battle-master-arrangement-decoy", "battle-master", "jsp-composition",
+        "snes", "cube-battle-master",
+        composer_grammar_dimension::arrangement_orchestration, 1.0, 1.0));
 
     const auto result = run_blind_attribution_experiment(request);
     assert(result.ranked_candidates.size() == 2);
