@@ -40,8 +40,33 @@ std::array<ym2612_timed_write, 32> make_basic_patch(std::size_t& count) {
 int main() {
     using namespace gameaudio::vgm;
 
+    // The normal Enhanced contract stays inside the OPN2 family rather than
+    // silently upgrading the composition to a different Yamaha synth topology.
+    const auto reference_traits = traits_for(
+        ym2612_enhanced_realization::reference_ym2612);
+    const auto ym3438_traits = traits_for(
+        ym2612_enhanced_realization::ym3438_opn2c);
+    const auto ymf276_traits = traits_for(
+        ym2612_enhanced_realization::ymf276_opn2l);
+    assert(reference_traits.fm_channels == 6);
+    assert(reference_traits.operators_per_channel == 4);
+    assert(reference_traits.nominal_intermediate_bits == 9);
+    assert(reference_traits.ym2612_dac_discontinuity);
+    assert(!ym3438_traits.ym2612_dac_discontinuity);
+    assert(ym3438_traits.nominal_intermediate_bits == 9);
+    assert(ymf276_traits.fm_channels == 6);
+    assert(ymf276_traits.operators_per_channel == 4);
+    assert(ymf276_traits.algorithms == 8);
+    assert(ymf276_traits.nominal_intermediate_bits == 14);
+    assert(!ymf276_traits.ym2612_dac_discontinuity);
+    assert(ymf276_traits.proper_channel_mix);
+    assert(ymf276_traits.hardware_descendant);
+    assert(default_ym2612_enhanced_realization
+        == ym2612_enhanced_realization::ymf276_opn2l);
+
     ym2612_hq_fm_profile profile;
     profile.internal_oversample = 8;
+    assert(profile.realization == ym2612_enhanced_realization::ymf276_opn2l);
     ym2612_hq_fm_backend backend(profile);
     assert(backend.configure({7670453, 44100, 48000}));
     assert(backend.configured());
@@ -97,6 +122,8 @@ int main() {
     // Expanded modern-FM topology is a separate experiment, not normal
     // Enhanced playback.
     auto expanded = make_experimental_expanded_yamaha_fm_profile();
+    assert(expanded.realization
+        == ym2612_enhanced_realization::studio_precision_opn2);
     ym2612_hq_fm_backend expanded_backend(expanded);
     assert(expanded_backend.configure({7670453, 44100, 96000}));
     assert(!expanded_backend.profile().automatic_enhanced_safe_shape());
