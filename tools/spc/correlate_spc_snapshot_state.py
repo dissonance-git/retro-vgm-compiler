@@ -241,15 +241,29 @@ def correlate(snapshots: list[Snapshot], *, top: int = 64) -> dict[str, object]:
     if top <= 0:
         raise ValueError("top must be positive")
     ordinals = [snapshot.ordinal for snapshot in snapshots]
-    candidates = list(iter_candidate_vectors(snapshots))
-    exact = [item for item in candidates if item["exact_one_based"] or item["exact_zero_based"] or item["exact_additive"]]
-    near = [
-        item
-        for item in candidates
-        if item not in exact
-        and float(item["best_additive_match_fraction"]) >= 0.80
-        and int(item["unique_value_count"]) >= max(4, len(snapshots) // 2)
-    ]
+    variable_state_vector_count = 0
+    exact: list[dict[str, object]] = []
+    near: list[dict[str, object]] = []
+    minimum_unique_for_near = max(4, len(snapshots) // 2)
+
+    # Stream the full 64 KiB + u16 + DSP search. Real packs may differ across
+    # large sequence-data regions, so retaining every variable vector would turn
+    # a small forensic report into an unnecessary memory spike.
+    for item in iter_candidate_vectors(snapshots):
+        variable_state_vector_count += 1
+        is_exact = bool(
+            item["exact_one_based"]
+            or item["exact_zero_based"]
+            or item["exact_additive"]
+        )
+        if is_exact:
+            exact.append(item)
+        elif (
+            float(item["best_additive_match_fraction"]) >= 0.80
+            and int(item["unique_value_count"]) >= minimum_unique_for_near
+        ):
+            near.append(item)
+
     exact.sort(key=candidate_sort_key, reverse=True)
     near.sort(key=candidate_sort_key, reverse=True)
 
@@ -279,7 +293,7 @@ def correlate(snapshots: list[Snapshot], *, top: int = 64) -> dict[str, object]:
             for snapshot in snapshots
         ],
         "summary": {
-            "variable_state_vector_count": len(candidates),
+            "variable_state_vector_count": variable_state_vector_count,
             "exact_sequence_candidate_count": len(exact),
             "exact_one_based_ram_u8_count": len(exact_ram_one_based),
             "exact_zero_based_ram_u8_count": len(exact_ram_zero_based),
