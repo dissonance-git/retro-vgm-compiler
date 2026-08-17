@@ -16,12 +16,13 @@ struct ym2612_dac_timed_event {
     std::uint8_t value = 0;
 };
 
-// Realtime high-quality realization of the YM2612 DAC source stream.
+// Source-faithful realization of direct YM2612 DAC writes.
 //
-// The source bytes are still authoritative. The enhanced renderer removes the
-// historical zero-order-hold staircase between known PCM samples by joining
-// consecutive source points in floating point. It does not invent percussion,
-// replace samples, or touch FM channels.
+// The 8-bit source codes and their exact write times remain authoritative. For
+// arbitrary direct $2A writes, absence of another write means "hold this code",
+// not permission to invent intermediate PCM. Source-bank VGM DAC streams have a
+// separate ym2612_pcm_stream renderer that may reconstruct between source bytes
+// because the bank and authored playback frequency make that semantics explicit.
 class ym2612_dac_enhanced {
 public:
     void reset() noexcept;
@@ -32,9 +33,18 @@ public:
     std::uint8_t last_byte() const noexcept { return last_byte_; }
     float last_level() const noexcept { return last_level_; }
 
-    // Render a block from already-sorted, exact source events. Data events are
-    // linearly reconstructed to the following data point when one is visible
-    // in this block. Enable events remain hard control boundaries.
+    // Exact causal hold renderer for arbitrary direct writes. It removes the
+    // hardware ladder/sign/output coloration later in the source-scaled mixing
+    // path, but never smooths a gap whose source semantics are unknown.
+    void render_exact_hold(
+        const ym2612_dac_timed_event* events,
+        std::size_t event_count,
+        float* output,
+        std::size_t frames) noexcept;
+
+    // Legacy bounded reconstruction helper retained for experiments/tests where
+    // consecutive events are independently known to be samples of one PCM
+    // stream. Normal direct-write playback must use render_exact_hold().
     void render_timed(
         const ym2612_dac_timed_event* events,
         std::size_t event_count,
