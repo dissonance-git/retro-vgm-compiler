@@ -116,6 +116,16 @@ class FreezeForensicSidecarsTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 freeze.load_sidecar("cue-001", self.write(root, "broken.json", broken))
 
+    def test_zero_profile_capture_is_cache_valid_but_not_freeze_admissible(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            path = self.write(root, "zero.json", sidecar([]))
+            cached = freeze.load_sidecar("cue-001", path, require_profiles=False)
+            self.assertEqual(cached.profiles, [])
+            self.assertEqual(cached.diagnostics["part_profile_count"], 0)
+            with self.assertRaises(ValueError):
+                freeze.load_sidecar("cue-001", path)
+
     def test_freeze_requires_identical_runtime_provenance(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
