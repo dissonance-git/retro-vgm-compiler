@@ -52,6 +52,10 @@ struct part_motif_similarity {
 
 constexpr double rhythm_only_motif_identity_ceiling = 0.55;
 
+// A motif cannot be stronger evidence than the persistent musical-part identity
+// that licensed grouping its physical episodes in the first place. Keep this
+// reader in the shared motif model so every source-family adapter inherits the
+// same epistemic bound.
 struct persistent_part_motif_evidence_bound {
     evidence_status status = evidence_status::hypothesis;
     double confidence = 0.0;
@@ -106,119 +110,133 @@ inline double median_positive(std::vector<double> values) {
 
 inline part_motif_profile make_part_motif_profile(
     const std::vector<part_gesture_observation>& observations) {
-    if (observations.size() < 2)
-        throw std::invalid_argument("part motif profile requires at least two gestures");
+    if (observations.size() < 3)
+        throw std::invalid_argument("part motif profile requires at least three observations");
+
+    const node_id part_id = observations.front().part_id;
+    if (part_id == 0)
+        throw std::invalid_argument("part motif observations require a persistent-part id");
+
+    const time_domain time_domain_value = observations.front().onset.domain;
+    const std::uint64_t tick_rate = observations.front().onset.tick_rate;
+    const std::int64_t loop_iteration = observations.front().onset.loop_iteration;
+
+    std::vector<double> iois;
+    iois.reserve(observations.size() - 1);
+    evidence_status weakest_status = observations.front().status;
+    double evidence_confidence = 1.0;
+    for (std::size_t index = 0; index < observations.size(); ++index) {
+        const auto& observation = observations[index];
+        if (observation.source_node == 0)
+            throw std::invalid_argument("part motif observations require source nodes");
+        if (observation.part_id != part_id)
+            throw std::invalid_argument("one motif profile cannot silently merge different persistent parts");
+        if (observation.onset.domain != time_domain_value ||
+            observation.onset.tick_rate != tick_rate ||
+            observation.onset.loop_iteration != loop_iteration) {
+            throw std::invalid_argument("motif observations require one compatible local time and loop basis");
+        }
+        if (observation.confidence < 0.0 || observation.confidence > 1.0)
+            throw std::invalid_argument("motif observation confidence must be in [0, 1]");
+        weakest_status = static_cast<evidence_status>(std::max(
+            static_cast<std::uint8_t>(weakest_status),
+            static_cast<std::uint8_t>(observation.status)));
+        evidence_confidence = std::min(evidence_confidence, observation.confidence);
+        if (index == 0)
+            continue;
+        const std::int64_t delta = observation.onset.tick - observations[index - 1].onset.tick;
+        if (delta <= 0)
+            throw std::invalid_argument("motif observations must have strictly increasing onset times");
+        iois.push_back(static_cast<double>(delta));
+    }
+
+    const double median_ioi = median_positive(iois);
 
     part_motif_profile result;
-    result.part_id = observations.front().part_id;
-    result.status = observations.front().status;
-    result.evidence_confidence = observations.front().confidence;
-
-    for (const auto& observation : observations) {
-        if (observation.part_id != result.part_id)
-            throw std::invalid_argument("part motif observations must belong to one persistent part");
+    result.part_id = part_id;
+    result.status = weakest_status;
+    result.evidence_confidence = evidence_confidence;
+    result.source_nodes.reserve(observations.size());
+    for (const auto& observation : observations)
         result.source_nodes.push_back(observation.source_node);
-        result.status = weaker_part_motif_evidence_status(result.status, observation.status);
-        result.evidence_confidence = std::min(result.evidence_confidence, observation.confidence);
-    }
+    result.normalized_inter_onset_intervals.reserve(iois.size());
+    for (double ioi : iois)
+        result.normalized_inter_onset_intervals.push_back(ioi / median_ioi);
 
-    std::vector<double> positive_intervals;
-    for (std::size_t index = 1; index < observations.size(); ++index) {
-        const auto& previous = observations[index - 1].onset;
-        const auto& current = observations[index].onset;
-        if (previous.domain != current.domain || previous.tick_rate != current.tick_rate)
-            throw std::invalid_argument("part motif timing requires one time domain and tick rate");
-        const auto delta = current.tick - previous.tick;
-        if (delta <= 0)
-            throw std::invalid_argument("part motif observations must be strictly ordered in time");
-        positive_intervals.push_back(static_cast<double>(delta));
-    }
-
-    const double timing_scale = median_positive(positive_intervals);
-    result.normalized_inter_onset_intervals.reserve(positive_intervals.size());
-    for (double interval : positive_intervals)
-        result.normalized_inter_onset_intervals.push_back(interval / timing_scale);
-
-    bool all_pitched = true;
-    std::string interval_semantics;
-    std::vector<double> pitches;
+    bool all_have_pitch = true;
+    bool same_pitch_basis = !observations.front().pitch_basis.empty();
+    bool same_interval_semantics = !observations.front().interval_semantics.empty();
+    const std::string basis = observations.front().pitch_basis;
+    const std::string interval_semantics = observations.front().interval_semantics;
     for (const auto& observation : observations) {
-        if (!observation.log2_pitch_coordinate.has_value()) {
-            all_pitched = false;
-            break;
-        }
-        if (interval_semantics.empty())
-            interval_semantics = observation.interval_semantics;
-        if (observation.interval_semantics.empty() ||
-            observation.interval_semantics != interval_semantics) {
-            all_pitched = false;
-            break;
-        }
-        pitches.push_back(*observation.log2_pitch_coordinate);
+        all_have_pitch = all_have_pitch && observation.log2_pitch_coordinate.has_value() &&
+            std::isfinite(*observation.log2_pitch_coordinate);
+        same_pitch_basis = same_pitch_basis && observation.pitch_basis == basis;
+        same_interval_semantics = same_interval_semantics &&
+            observation.interval_semantics == interval_semantics;
     }
 
-    if (all_pitched && pitches.size() == observations.size()) {
-        result.interval_semantics = interval_semantics;
-        result.pitch_basis = observations.front().pitch_basis;
-        bool same_basis = !result.pitch_basis.empty();
-        for (const auto& observation : observations) {
-            if (observation.pitch_basis != result.pitch_basis) {
-                same_basis = false;
-                break;
-            }
-        }
-        if (!same_basis)
-            result.pitch_basis.clear();
-
+    // Coordinate differences are only valid when every event in this one
+    // profile shares the same native coordinate basis. Once derived, however,
+    // the resulting interval semantics may be comparable with another profile
+    // produced from a different native representation.
+    if (all_have_pitch && same_pitch_basis && same_interval_semantics) {
         std::vector<double> intervals;
         std::vector<std::int8_t> contour;
-        intervals.reserve(pitches.size() - 1);
-        contour.reserve(pitches.size() - 1);
-        for (std::size_t index = 1; index < pitches.size(); ++index) {
-            const double delta = pitches[index] - pitches[index - 1];
-            intervals.push_back(delta);
-            contour.push_back(delta > 0.0 ? 1 : (delta < 0.0 ? -1 : 0));
+        intervals.reserve(observations.size() - 1);
+        contour.reserve(observations.size() - 1);
+
+        double low = *observations.front().log2_pitch_coordinate;
+        double high = low;
+        for (std::size_t index = 1; index < observations.size(); ++index) {
+            const double previous = *observations[index - 1].log2_pitch_coordinate;
+            const double current = *observations[index].log2_pitch_coordinate;
+            const double interval = current - previous;
+            intervals.push_back(interval);
+            contour.push_back(interval > 1e-9 ? 1 : (interval < -1e-9 ? -1 : 0));
+            low = std::min(low, current);
+            high = std::max(high, current);
         }
+
         result.interval_octaves = std::move(intervals);
         result.pitch_contour = std::move(contour);
-        const auto [minimum, maximum] = std::minmax_element(pitches.begin(), pitches.end());
-        result.pitch_range_octaves = *maximum - *minimum;
+        result.pitch_basis = basis;
+        result.interval_semantics = interval_semantics;
+        result.pitch_range_octaves = high - low;
     }
 
     return result;
 }
 
-inline double bounded_vector_similarity(
+inline double bounded_difference_similarity(
     const std::vector<double>& first,
     const std::vector<double>& second,
-    double weight) {
+    double distance_weight) {
     if (first.size() != second.size() || first.empty())
         return 0.0;
-    double sum = 0.0;
+    double total = 0.0;
     for (std::size_t index = 0; index < first.size(); ++index)
-        sum += std::fabs(first[index] - second[index]);
-    const double mean = sum / static_cast<double>(first.size());
-    return 1.0 / (1.0 + weight * mean);
+        total += std::fabs(first[index] - second[index]);
+    const double mean = total / static_cast<double>(first.size());
+    return 1.0 / (1.0 + distance_weight * mean);
 }
 
-inline double contour_similarity(
+inline double contour_match_similarity(
     const std::vector<std::int8_t>& first,
     const std::vector<std::int8_t>& second) {
     if (first.size() != second.size() || first.empty())
         return 0.0;
-    std::size_t same = 0;
-    for (std::size_t index = 0; index < first.size(); ++index) {
-        if (first[index] == second[index])
-            ++same;
-    }
-    return static_cast<double>(same) / static_cast<double>(first.size());
+    std::size_t matches = 0;
+    for (std::size_t index = 0; index < first.size(); ++index)
+        matches += first[index] == second[index] ? 1u : 0u;
+    return static_cast<double>(matches) / static_cast<double>(first.size());
 }
 
 inline part_motif_similarity compare_part_motif_profiles(
     const part_motif_profile& first,
     const part_motif_profile& second) {
     part_motif_similarity result;
-    result.rhythm_similarity = bounded_vector_similarity(
+    result.rhythm_similarity = bounded_difference_similarity(
         first.normalized_inter_onset_intervals,
         second.normalized_inter_onset_intervals,
         1.0);
@@ -226,37 +244,33 @@ inline part_motif_similarity compare_part_motif_profiles(
         first.evidence_confidence,
         second.evidence_confidence);
 
+    double weighted_sum = 0.35 * result.rhythm_similarity;
+    double total_weight = 0.35;
+
     result.pitch_comparable =
-        first.interval_octaves.has_value() &&
-        second.interval_octaves.has_value() &&
-        first.pitch_contour.has_value() &&
-        second.pitch_contour.has_value() &&
+        first.interval_octaves.has_value() && second.interval_octaves.has_value() &&
+        first.pitch_contour.has_value() && second.pitch_contour.has_value() &&
         !first.interval_semantics.empty() &&
         first.interval_semantics == second.interval_semantics;
 
     if (result.pitch_comparable) {
-        result.interval_similarity = bounded_vector_similarity(
+        result.interval_similarity = bounded_difference_similarity(
             *first.interval_octaves,
             *second.interval_octaves,
             4.0);
-        result.contour_similarity = contour_similarity(
+        result.contour_similarity = contour_match_similarity(
             *first.pitch_contour,
             *second.pitch_contour);
-        result.combined_similarity =
-            0.35 * result.rhythm_similarity +
-            0.45 * *result.interval_similarity +
-            0.20 * *result.contour_similarity;
-        result.identity_confidence = std::min(
-            result.combined_similarity,
-            result.evidence_confidence);
-    } else {
-        result.combined_similarity = result.rhythm_similarity;
-        result.identity_confidence = std::min({
-            result.rhythm_similarity,
-            result.evidence_confidence,
-            rhythm_only_motif_identity_ceiling,
-        });
+        weighted_sum += 0.45 * *result.interval_similarity;
+        weighted_sum += 0.20 * *result.contour_similarity;
+        total_weight += 0.65;
     }
+
+    result.combined_similarity = total_weight > 0.0 ? weighted_sum / total_weight : 0.0;
+    const double structural_identity = result.pitch_comparable
+        ? result.combined_similarity
+        : std::min(result.combined_similarity, rhythm_only_motif_identity_ceiling);
+    result.identity_confidence = std::min(structural_identity, result.evidence_confidence);
     return result;
 }
 
