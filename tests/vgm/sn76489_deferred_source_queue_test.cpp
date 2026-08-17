@@ -10,17 +10,25 @@
 namespace {
 using namespace gameaudio::vgm;
 
+std::int64_t expected_channel(
+    const sn76489_enhanced_source_block_storage<128>& block,
+    std::size_t channel,
+    std::size_t frame,
+    bool left)
+{
+    const auto source = block.source(channel);
+    const float value = left ? source.left[frame] : source.right[frame];
+    return static_cast<std::int64_t>(std::llround(value));
+}
+
 std::int64_t expected_side(
     const sn76489_enhanced_source_block_storage<128>& block,
     std::size_t frame,
     bool left)
 {
     std::int64_t total = 0;
-    for (std::size_t channel = 0; channel < sn76489_enhanced::stem_count; ++channel) {
-        const auto source = block.source(channel);
-        const float value = left ? source.left[frame] : source.right[frame];
-        total += static_cast<std::int64_t>(std::llround(value));
-    }
+    for (std::size_t channel = 0; channel < sn76489_enhanced::stem_count; ++channel)
+        total += expected_channel(block, channel, frame, left);
     return total;
 }
 }
@@ -91,6 +99,19 @@ int main() {
         assert(queue.pop_expected(base + frame, streamed));
         assert(streamed.left == expected_side(block, frame, true));
         assert(streamed.right == expected_side(block, frame, false));
+
+        std::int64_t lane_sum_left = 0;
+        std::int64_t lane_sum_right = 0;
+        for (std::size_t channel = 0; channel < sn76489_enhanced::stem_count; ++channel) {
+            assert(streamed.source_left[channel] ==
+                expected_channel(block, channel, frame, true));
+            assert(streamed.source_right[channel] ==
+                expected_channel(block, channel, frame, false));
+            lane_sum_left += streamed.source_left[channel];
+            lane_sum_right += streamed.source_right[channel];
+        }
+        assert(lane_sum_left == streamed.left);
+        assert(lane_sum_right == streamed.right);
     }
     assert(queue.size() == 0);
 
@@ -112,6 +133,12 @@ int main() {
         assert(queue.pop_expected(base + frame_count + frame, streamed));
         assert(streamed.left == expected_side(next_block, frame, true));
         assert(streamed.right == expected_side(next_block, frame, false));
+        for (std::size_t channel = 0; channel < sn76489_enhanced::stem_count; ++channel) {
+            assert(streamed.source_left[channel] ==
+                expected_channel(next_block, channel, frame, true));
+            assert(streamed.source_right[channel] ==
+                expected_channel(next_block, channel, frame, false));
+        }
     }
 
     // Capacity failure is checked before synthesis advances. It invalidates the
