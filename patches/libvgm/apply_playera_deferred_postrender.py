@@ -58,6 +58,8 @@ def main() -> int:
         "\t// only a finalized prefix beginning at expectedFinalizedBase. A quality\n"
         "\t// failure must be resolved inside the callback as protected-reference\n"
         "\t// output; nonzero return values are reserved for contract corruption.\n"
+        "\t// sourceEnded means the engine can no longer render. PLAYSTATE_END by\n"
+        "\t// itself is not EOF here because chip release tails remain renderable.\n"
         "\ttypedef UINT8 (*PLR_DEFERRED_POST_RENDER_PROCESSOR)(\n"
         "\t\tvoid* user,\n"
         "\t\tconst WAVE_32BS* renderedSamples,\n"
@@ -213,7 +215,7 @@ def main() -> int:
 		{
 			UINT32 produced = 0;
 			UINT8 state = _player->GetState();
-			UINT8 sourceEnded = ((state & PLAYSTATE_END) || ! (state & PLAYSTATE_PLAY)) ? 1 : 0;
+			UINT8 sourceEnded = (state & PLAYSTATE_PLAY) ? 0 : 1;
 			UINT8 cbResult = _deferredPostRenderFunc(
 				_deferredPostRenderParam,
 				NULL,
@@ -250,7 +252,7 @@ def main() -> int:
 					renderedBase);
 			
 			state = _player->GetState();
-			sourceEnded = ((state & PLAYSTATE_END) || ! (state & PLAYSTATE_PLAY)) ? 1 : 0;
+			sourceEnded = (state & PLAYSTATE_PLAY) ? 0 : 1;
 			produced = 0;
 			cbResult = _deferredPostRenderFunc(
 				_deferredPostRenderParam,
