@@ -17,6 +17,9 @@ import sys
 from typing import Callable
 
 
+BLIND_AUDIT_MODEL = "blind cross-soundtrack Genesis VGM creator audit"
+
+
 def _load_base():
     path = pathlib.Path(__file__).with_name("vgm_creator_feature_audit.py")
     spec = importlib.util.spec_from_file_location("vgm_creator_feature_audit", path)
@@ -34,6 +37,35 @@ ScoreFn = Callable[[dict[str, object], dict[str, object]], float]
 
 def track_id(soundtrack_id: str, fixture_path: str) -> str:
     return f"{soundtrack_id}::{pathlib.Path(fixture_path).name}"
+
+
+def _validate_blind_audit(audit: dict[str, object], policy: dict[str, object]) -> None:
+    if audit.get("model") != BLIND_AUDIT_MODEL:
+        raise ValueError(
+            "Maeda calibration requires the frozen creator-blind cross-soundtrack audit contract"
+        )
+    label_policy = audit.get("label_policy")
+    if not isinstance(label_policy, str) or "No composer/artist metadata" not in label_policy:
+        raise ValueError("frozen audit does not prove creator-label blindness")
+
+    target_policy = policy.get("sonic3_target_policy")
+    if isinstance(target_policy, dict):
+        target_environment = target_policy.get("target_environment")
+        if isinstance(target_environment, str):
+            target_id = pathlib.Path(target_environment).name
+            soundtracks = audit.get("soundtracks")
+            if isinstance(soundtracks, list) and target_id in soundtracks:
+                raise ValueError(
+                    f"held-out Sonic 3 target {target_id!r} must not enter Maeda calibration audit"
+                )
+            tracks = audit.get("tracks")
+            if isinstance(tracks, list) and any(
+                isinstance(track, dict) and track.get("soundtrack_id") == target_id
+                for track in tracks
+            ):
+                raise ValueError(
+                    f"held-out Sonic 3 target {target_id!r} must not enter Maeda calibration audit"
+                )
 
 
 def _index_tracks(audit: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -222,6 +254,7 @@ def evaluate(
     policy: dict[str, object],
     k: int = 3,
 ) -> dict[str, object]:
+    _validate_blind_audit(audit, policy)
     tracks = _index_tracks(audit)
     ga_pos, ga_neg, ga_quarantine = _golden_axe_partition(policy)
     s3d_pos, s3d_neg = _sonic_3d_partition(policy, tracks)
@@ -256,8 +289,8 @@ def evaluate(
     return {
         "model": "post-extraction Maeda control unblinding",
         "label_policy": (
-            "The audit is loaded and indexed before documentary Maeda labels are applied. "
-            "This evaluator never extracts VGM features."
+            "The audit is validated as creator-blind, then indexed before documentary Maeda "
+            "labels are applied. This evaluator never extracts VGM features."
         ),
         "claim_boundary": (
             "Retrieval quality calibrates whether the current feature views can rediscover "
