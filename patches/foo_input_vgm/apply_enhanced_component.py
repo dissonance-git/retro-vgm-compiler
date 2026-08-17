@@ -34,6 +34,10 @@ def main() -> int:
     run(here / "apply_enhanced_ui.py", source)
     run(here / "apply_source_aware_player.py", source)
     run(here / "apply_source_aware_shadow_include.py", source)
+    # Install the source-bank observer while the base seek/decode anchors are
+    # still intact. Later deferred FM/PSG patches extend those same lifecycle
+    # seams, while the final DAC mix patch composes their resulting frame.
+    run(here / "apply_enhanced_dac_stream_observer.py", source)
     run(here / "apply_hq_nuked_fm_lift.py", source)
     # Legacy filenames below are all part of the one enhanced option.
     run(here / "apply_studio_hq_fm_observer.py", source)
@@ -45,7 +49,6 @@ def main() -> int:
     run(here / "apply_studio_deferred_psg_fail_closed.py", source)
     run(here / "apply_studio_deferred_psg_session_reset.py", source)
     run(here / "apply_enhanced_dac_runtime.py", source)
-    run(here / "apply_enhanced_dac_stream_observer.py", source)
     run(here / "apply_enhanced_dac_stream_session_reset.py", source)
     run(here / "apply_enhanced_dac_stream_mix.py", source)
     print("foo_input_vgm enhanced component patch set applied")
