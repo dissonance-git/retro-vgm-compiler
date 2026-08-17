@@ -19,6 +19,7 @@ namespace foobar_vgm::genesis {
 static constexpr std::size_t opn2_hq_channel_count = 6;
 static constexpr std::size_t opn2_hq_operator_count = 24;
 static constexpr double opn2_hq_pi = 3.141592653589793238462643383279502884;
+static constexpr double opn2_hq_phase_modulus = 1048576.0; // 2^20 native phase accumulator
 
 // Exact carrier-connect column from pinned Nuked OPN2 fm_algorithm[][5][].
 static constexpr std::uint8_t opn2_carrier_table[4][8] = {
@@ -62,13 +63,20 @@ inline double opn2_hq_operator_from_exact_state(
     if (slot >= opn2_hq_operator_count)
         return 0.0;
 
-    const Bit32u phase = static_cast<Bit32u>(
-        chip.fm_mod[slot] + (chip.pg_phase[slot] >> 10)) & 0x03ffu;
+    // Nuked's hardware output path truncates the 20-bit phase accumulator to ten
+    // bits before the log-sine ROM. The high-ceiling lift keeps the exact same
+    // OPN modulation value (whose unit is one q10 phase step) but combines it
+    // with the *full* 20-bit carrier phase. This relaxes carrier phase/sine-table
+    // quantization without changing pitch, PM/LFO history or algorithm topology.
+    double phase_cycles = static_cast<double>(chip.pg_phase[slot])
+        / opn2_hq_phase_modulus;
+    phase_cycles += static_cast<double>(chip.fm_mod[slot]) / 1024.0;
+    phase_cycles -= std::floor(phase_cycles);
 
     // eg_out contributes eg_out<<2 to Nuked's logarithmic amplitude. +256 log
     // units halves amplitude, therefore +64 eg_out units halves amplitude.
     const double attenuation = std::exp2(-static_cast<double>(chip.eg_out[slot]) / 64.0);
-    const double angle = 2.0 * opn2_hq_pi * static_cast<double>(phase) / 1024.0;
+    const double angle = 2.0 * opn2_hq_pi * phase_cycles;
     const double output = 8192.0 * attenuation * std::sin(angle);
     return std::isfinite(output) ? output : 0.0;
 }
@@ -113,6 +121,8 @@ inline nuked_opn2_hq_pending_operator opn2_hq_prepare_cycle(
         state.channel_accumulator[channel] = next;
     }
 
+    // OPN2_FMGenerate runs before the reference phase/envelope update in this
+    // cycle, so the pre-clock state is exactly the state its generated slot sees.
     const std::size_t generated_slot = static_cast<std::size_t>((cycle + 19u) % 24u);
     return {generated_slot, opn2_hq_operator_from_exact_state(chip, generated_slot)};
 }
