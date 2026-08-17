@@ -17,6 +17,16 @@ enum class snesapu_source_interpolation : std::uint8_t {
     gaussian4_c = 7,
 };
 
+constexpr bool snesapu_source_interpolation_from_raw(
+    std::uint32_t raw,
+    snesapu_source_interpolation& interpolation) noexcept
+{
+    if (raw > static_cast<std::uint32_t>(snesapu_source_interpolation::gaussian4_c))
+        return false;
+    interpolation = static_cast<snesapu_source_interpolation>(raw);
+    return true;
+}
+
 // Effective source-time offset of the historical pInter result relative to the
 // pitch accumulator at MixSample. These values come from StartSrc's sIdx setup
 // together with the sample positions consumed by NoneInt/LinearInt/Point4Int/
@@ -83,6 +93,10 @@ public:
     }
 
     void stop() noexcept { active_ = false; }
+
+    void set_interpolation(snesapu_source_interpolation interpolation) noexcept {
+        interpolation_ = interpolation;
+    }
 
     bool advance(std::uint32_t m_rate_q16_16) noexcept {
         if (!active_ || !snesapu_source_rate_representable(m_rate_q16_16))
