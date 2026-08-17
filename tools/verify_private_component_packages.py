@@ -4,12 +4,15 @@
 The build stages files in disposable directories, but the deletion gate is about
 what is actually shipped. This verifier reopens each renamed ZIP
 (`.fb2k-component`), checks the exact sibling payload expected by the runtime,
-and inspects the packaged PE images themselves. On Windows it also extracts and
+and inspects the packaged PE images themselves. It validates machine type,
+exports, and private import boundaries so the process split cannot silently
+collapse into an accidental DLL dependency. On Windows it also extracts and
 loads each packaged Omniphony DLL, executes its ABI version functions, and starts
 the exact packaged x86 spcplayer far enough to reach its own usage path. That
 proves its sibling SNESAPU DLL can be resolved by the Windows loader. It rejects
 path traversal, duplicate case-insensitive names, nested layout, zero-byte
-runtime files, wrong architectures, and missing runtime ABI exports.
+runtime files, wrong architectures, missing runtime ABI exports, and forbidden
+private imports.
 """
 
 from __future__ import annotations
@@ -97,15 +100,17 @@ def _read_c_string(data: bytes, offset: int, *, limit: int = 4096) -> str:
     end_limit = min(len(data), offset + limit)
     end = data.find(b"\0", offset, end_limit)
     if end < 0:
-        raise ValueError("unterminated PE export name")
+        raise ValueError("unterminated PE string")
     try:
         return data[offset:end].decode("ascii")
     except UnicodeDecodeError as exc:
-        raise ValueError("non-ASCII PE export name") from exc
+        raise ValueError("non-ASCII PE string") from exc
 
 
-def inspect_pe(data: bytes) -> tuple[int, set[str]]:
-    """Return (COFF machine, named exports) from one PE image."""
+def _pe_layout(
+    data: bytes,
+) -> tuple[int, int, int, list[tuple[int, int, int, int]]]:
+    """Return (machine, data-directory offset, optional end, section map)."""
     if len(data) < 0x40 or data[:2] != b"MZ":
         raise ValueError("not an MZ executable")
 
@@ -118,9 +123,10 @@ def inspect_pe(data: bytes) -> tuple[int, set[str]]:
     section_count = _u16(data, coff + 2)
     optional_size = _u16(data, coff + 16)
     optional = coff + 20
+    optional_end = optional + optional_size
     if section_count == 0 or section_count > 96:
         raise ValueError("invalid PE section count")
-    if optional + optional_size > len(data):
+    if optional_end > len(data):
         raise ValueError("truncated PE optional header")
 
     magic = _u16(data, optional)
@@ -130,12 +136,8 @@ def inspect_pe(data: bytes) -> tuple[int, set[str]]:
         data_directory = optional + 112
     else:
         raise ValueError(f"unsupported PE optional-header magic 0x{magic:04X}")
-    if data_directory + 8 > optional + optional_size:
-        raise ValueError("PE export data directory missing")
 
-    export_rva = _u32(data, data_directory)
-    export_size = _u32(data, data_directory + 4)
-    section_table = optional + optional_size
+    section_table = optional_end
     if section_table + section_count * 40 > len(data):
         raise ValueError("truncated PE section table")
 
@@ -149,25 +151,40 @@ def inspect_pe(data: bytes) -> tuple[int, set[str]]:
         if raw_offset > len(data) or raw_size > len(data) - raw_offset:
             raise ValueError("PE section raw data outside file")
         sections.append((virtual_address, virtual_size, raw_offset, raw_size))
+    return machine, data_directory, optional_end, sections
 
-    def rva_to_offset(rva: int, size: int = 1) -> int:
-        if size < 0:
-            raise ValueError("negative PE RVA size")
-        for virtual_address, virtual_size, raw_offset, raw_size in sections:
-            span = max(virtual_size, raw_size)
-            if virtual_address <= rva < virtual_address + span:
-                delta = rva - virtual_address
-                if delta > raw_size or size > raw_size - delta:
-                    raise ValueError("PE RVA points outside section raw data")
-                return raw_offset + delta
-        raise ValueError(f"PE RVA 0x{rva:X} is not backed by a section")
 
+def _rva_to_offset(
+    sections: list[tuple[int, int, int, int]],
+    rva: int,
+    size: int = 1,
+) -> int:
+    if size < 0:
+        raise ValueError("negative PE RVA size")
+    for virtual_address, virtual_size, raw_offset, raw_size in sections:
+        span = max(virtual_size, raw_size)
+        if virtual_address <= rva < virtual_address + span:
+            delta = rva - virtual_address
+            if delta > raw_size or size > raw_size - delta:
+                raise ValueError("PE RVA points outside section raw data")
+            return raw_offset + delta
+    raise ValueError(f"PE RVA 0x{rva:X} is not backed by a section")
+
+
+def inspect_pe(data: bytes) -> tuple[int, set[str]]:
+    """Return (COFF machine, named exports) from one PE image."""
+    machine, data_directory, optional_end, sections = _pe_layout(data)
+    if data_directory + 8 > optional_end:
+        raise ValueError("PE export data directory missing")
+
+    export_rva = _u32(data, data_directory)
+    export_size = _u32(data, data_directory + 4)
     if export_rva == 0:
         return machine, set()
     if export_size == 0:
         raise ValueError("PE export directory has zero size")
 
-    export_offset = rva_to_offset(export_rva, 40)
+    export_offset = _rva_to_offset(sections, export_rva, 40)
     name_count = _u32(data, export_offset + 24)
     names_rva = _u32(data, export_offset + 32)
     if name_count > 65536:
@@ -175,13 +192,49 @@ def inspect_pe(data: bytes) -> tuple[int, set[str]]:
     if name_count == 0:
         return machine, set()
 
-    names_offset = rva_to_offset(names_rva, name_count * 4)
+    names_offset = _rva_to_offset(sections, names_rva, name_count * 4)
     exports: set[str] = set()
     for index in range(name_count):
         name_rva = _u32(data, names_offset + index * 4)
-        name_offset = rva_to_offset(name_rva)
+        name_offset = _rva_to_offset(sections, name_rva)
         exports.add(_read_c_string(data, name_offset))
     return machine, exports
+
+
+def inspect_pe_imports(data: bytes) -> set[str]:
+    """Return case-preserved imported DLL names from one PE image."""
+    _machine, data_directory, optional_end, sections = _pe_layout(data)
+    # Data-directory entry 1 is IMAGE_DIRECTORY_ENTRY_IMPORT.
+    if data_directory + 16 > optional_end:
+        raise ValueError("PE import data directory missing")
+    import_rva = _u32(data, data_directory + 8)
+    import_size = _u32(data, data_directory + 12)
+    if import_rva == 0:
+        return set()
+    if import_size < 20:
+        raise ValueError("PE import directory is too small")
+
+    # The size is advisory but bounds how far we will walk malformed input.
+    max_descriptors = min(max(import_size // 20, 1), 4096)
+    descriptor = _rva_to_offset(sections, import_rva, 20)
+    imports: set[str] = set()
+    terminated = False
+    for index in range(max_descriptors):
+        current = descriptor + index * 20
+        if current < 0 or current + 20 > len(data):
+            raise ValueError("truncated PE import descriptor table")
+        fields = struct.unpack_from("<IIIII", data, current)
+        if fields == (0, 0, 0, 0, 0):
+            terminated = True
+            break
+        name_rva = fields[3]
+        if name_rva == 0:
+            raise ValueError("PE import descriptor has no DLL name")
+        name_offset = _rva_to_offset(sections, name_rva)
+        imports.add(_read_c_string(data, name_offset))
+    if not terminated:
+        raise ValueError("PE import descriptor table is not terminated")
+    return imports
 
 
 def verify_archive(path: Path, expected: set[str], label: str) -> None:
@@ -257,6 +310,56 @@ def verify_runtime_contracts(
                 raise AssertionError(
                     f"{label} {name} missing required exports: {missing_exports}"
                 )
+
+
+def verify_private_import_contracts(vgm_path: Path, spc_path: Path) -> None:
+    """Prove private process/DLL boundaries from the actual packaged import tables."""
+    with zipfile.ZipFile(vgm_path, "r") as archive:
+        vgm_imports = {
+            name.casefold() for name in inspect_pe_imports(archive.read("foo_input_vgm.dll"))
+        }
+    with zipfile.ZipFile(spc_path, "r") as archive:
+        spc_parent_imports = {
+            name.casefold() for name in inspect_pe_imports(archive.read("foo_snesapu.dll"))
+        }
+        spcplayer_imports = {
+            name.casefold() for name in inspect_pe_imports(archive.read("spcplayer.exe"))
+        }
+        snesapu_imports = {
+            name.casefold() for name in inspect_pe_imports(archive.read("SNESAPU.dll"))
+        }
+
+    if "snesapu.dll" not in spcplayer_imports:
+        raise AssertionError(
+            "SPC spcplayer.exe must import sibling SNESAPU.dll through its fresh import library"
+        )
+
+    for label, imports in (
+        ("VGM foo_input_vgm.dll", vgm_imports),
+        ("SPC foo_snesapu.dll", spc_parent_imports),
+        ("SPC spcplayer.exe", spcplayer_imports),
+        ("SPC SNESAPU.dll", snesapu_imports),
+    ):
+        if "omniphony_source.dll" in imports:
+            raise AssertionError(
+                f"{label} must not import omniphony_source.dll; Omniphony is sibling-dynamic-loaded"
+            )
+
+    if "snesapu.dll" in spc_parent_imports:
+        raise AssertionError(
+            "SPC x64 foo_snesapu.dll must not import x86 SNESAPU.dll; the child process owns it"
+        )
+    if "snesapu.dll" in vgm_imports:
+        raise AssertionError("VGM foo_input_vgm.dll must not import SNESAPU.dll")
+
+    shared_libvgm = sorted(
+        name for name in vgm_imports if name.startswith("libvgm") and name.endswith(".dll")
+    )
+    if shared_libvgm:
+        raise AssertionError(
+            "VGM foo_input_vgm.dll unexpectedly imports shared libvgm runtime(s): "
+            f"{shared_libvgm}; private build requires static libvgm linkage"
+        )
 
 
 def _load_omniphony_abi_verifier():
@@ -340,6 +443,7 @@ def main() -> int:
     verify_archive(spc, SPC_EXPECTED, "SPC")
     verify_runtime_contracts(vgm, VGM_RUNTIME_CONTRACTS, "VGM")
     verify_runtime_contracts(spc, SPC_RUNTIME_CONTRACTS, "SPC")
+    verify_private_import_contracts(vgm, spc)
     vgm_abi = verify_packaged_omniphony_runtime(vgm, "VGM")
     spc_abi = verify_packaged_omniphony_runtime(spc, "SPC")
     spcplayer_started = verify_packaged_spcplayer_startup(spc)
@@ -347,7 +451,9 @@ def main() -> int:
         print(f"packaged Omniphony runtime ABI verified: VGM={vgm_abi}, SPC={spc_abi}")
     if spcplayer_started:
         print("packaged spcplayer startup and sibling SNESAPU resolution verified")
-    print("private foobar component package payloads and runtime PE contracts verified")
+    print(
+        "private foobar component payload, PE, import-boundary and runtime contracts verified"
+    )
     return 0
 
 
