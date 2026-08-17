@@ -36,6 +36,17 @@ void install_wrapped_brr(
         spc[spc_ram_offset + address] = brr[offset];
     }
 }
+
+void write_spc_ram16(
+    std::array<std::uint8_t, gameaudio::spc::spc_full_file_size>& spc,
+    std::uint16_t address,
+    std::uint16_t value)
+{
+    using namespace gameaudio::spc;
+    spc[spc_ram_offset + address] = static_cast<std::uint8_t>(value);
+    spc[spc_ram_offset + static_cast<std::uint16_t>(address + 1u)]
+        = static_cast<std::uint8_t>(value >> 8u);
+}
 }
 
 int main() {
@@ -79,13 +90,19 @@ int main() {
     }
 
     auto spc = make_spc();
+    constexpr std::uint8_t directory_page = 0x4cu;
+    constexpr std::uint8_t source_number = 7u;
+    constexpr std::uint16_t directory_entry =
+        static_cast<std::uint16_t>((directory_page << 8u) + source_number * 4u);
     constexpr std::uint16_t first_brr = 0xfff0u;
     constexpr std::uint16_t loop_brr = 0x0002u;
     install_wrapped_brr(spc, first_brr, brr.data(), brr.size());
+    write_spc_ram16(spc, directory_entry, first_brr);
+    write_spc_ram16(spc, static_cast<std::uint16_t>(directory_entry + 2u), loop_brr);
 
     snes_studio_source_packet_builder builder;
     const snes_studio_source_packet_builder::source source{
-        7u,
+        source_number,
         first_brr,
         brr.data(),
         brr.size(),
@@ -95,11 +112,42 @@ int main() {
     assert(builder.build(&source, 1));
     assert(!builder.bytes().empty());
 
+    // Preferred authoring path: derive first/loop addresses, BRR witness and
+    // game playback span from the actual SPC snapshot. With identical evidence
+    // it must serialize byte-for-byte identically to the explicit legacy input.
+    snes_studio_source_packet_builder snapshot_builder;
+    const snes_studio_source_packet_builder::snapshot_source snapshot_source{
+        source_number,
+        directory_page,
+        spc.data(),
+        spc.size(),
+        &candidate,
+    };
+    assert(snapshot_builder.build_from_spc_snapshot(&snapshot_source, 1));
+    assert(snapshot_builder.bytes() == builder.bytes());
+
+    // A live DIR loop pointer that is not one of the witnessed BRR block starts
+    // cannot be papered over by caller metadata. Snapshot-derived authoring
+    // fails closed before a sidecar exists.
+    auto wrong_directory_spc = spc;
+    write_spc_ram16(
+        wrong_directory_spc,
+        static_cast<std::uint16_t>(directory_entry + 2u),
+        0x0003u);
+    const snes_studio_source_packet_builder::snapshot_source wrong_snapshot_source{
+        source_number,
+        directory_page,
+        wrong_directory_spc.data(),
+        wrong_directory_spc.size(),
+        &candidate,
+    };
+    assert(!snapshot_builder.build_from_spc_snapshot(&wrong_snapshot_source, 1));
+
     snes_studio_source_packet_view view;
     assert(view.reset(builder.bytes().data(), builder.bytes().size()));
     assert(view.entry_count() == 1);
     const auto entry = view.entry(0);
-    assert(entry.source_number == 7u);
+    assert(entry.source_number == source_number);
     assert(entry.first_brr_block_address == first_brr);
     assert(entry.loop_present);
     assert(entry.brr_block_count == 4u);
@@ -120,7 +168,8 @@ int main() {
     assert(runtime.source_count() == 1);
 
     auto& provider = runtime.provider();
-    assert(provider.begin_voice(0, 7, first_brr, loop_brr, 0x4cu, 0));
+    assert(provider.begin_voice(
+        0, source_number, first_brr, loop_brr, directory_page, 0));
     snesapu_source_trajectory_tracker reference;
     reference.key_on(snesapu_source_interpolation::none);
     const auto projection = reference.project(playback.loop);
@@ -128,7 +177,7 @@ int main() {
         candidate, playback, projection);
     assert(expected.valid);
     float rendered = 0.0f;
-    assert(provider.render_voice(0, 0x00010000u, 0x4cu, 0, &rendered));
+    assert(provider.render_voice(0, 0x00010000u, directory_page, 0, &rendered));
     assert(near(rendered, expected.sample));
 
     // The transport is content-bound, not path/address-bound. One changed BRR
