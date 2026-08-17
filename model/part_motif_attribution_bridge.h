@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -125,10 +126,33 @@ maximum_weight_part_motif_assignment(const std::vector<std::vector<double>>& wei
     return result;
 }
 
+inline bool part_motif_assignment_profile_less(
+    const part_motif_profile& first,
+    const part_motif_profile& second) {
+    // Only fields consumed by compare_part_motif_profiles participate. Native
+    // basis, provenance, source-node ids, and enumeration are deliberately not
+    // tie-break evidence.
+    if (first.normalized_inter_onset_intervals != second.normalized_inter_onset_intervals)
+        return first.normalized_inter_onset_intervals < second.normalized_inter_onset_intervals;
+    if (first.interval_octaves.has_value() != second.interval_octaves.has_value())
+        return first.interval_octaves.has_value() < second.interval_octaves.has_value();
+    if (first.interval_octaves.has_value() && *first.interval_octaves != *second.interval_octaves)
+        return *first.interval_octaves < *second.interval_octaves;
+    if (first.pitch_contour.has_value() != second.pitch_contour.has_value())
+        return first.pitch_contour.has_value() < second.pitch_contour.has_value();
+    if (first.pitch_contour.has_value() && *first.pitch_contour != *second.pitch_contour)
+        return *first.pitch_contour < *second.pitch_contour;
+    if (first.interval_semantics != second.interval_semantics)
+        return first.interval_semantics < second.interval_semantics;
+    return first.evidence_confidence < second.evidence_confidence;
+}
+
 // Compare two cue-level sets of persistent-part profiles without any creator or
 // catalog labels. Candidate pairs are assigned one-to-one by globally maximum
-// evidence-bounded motif identity. The final denominator is max(|query|,|control|),
-// so unmatched parts contribute zero rather than disappearing from the score.
+// evidence-bounded motif identity. Profiles are first canonicalized by the exact
+// musical fields used by the metric so tied optima cannot make diagnostics depend
+// on profile enumeration. The final denominator is max(|query|,|control|), so
+// unmatched parts contribute zero rather than disappearing from the score.
 inline part_motif_set_similarity compare_part_motif_profile_sets(
     const std::vector<part_motif_profile>& query,
     const std::vector<part_motif_profile>& control) {
@@ -138,29 +162,52 @@ inline part_motif_set_similarity compare_part_motif_profile_sets(
     if (query.empty() || control.empty())
         return result;
 
+    std::vector<std::size_t> query_order(query.size());
+    std::vector<std::size_t> control_order(control.size());
+    std::iota(query_order.begin(), query_order.end(), 0);
+    std::iota(control_order.begin(), control_order.end(), 0);
+    std::stable_sort(query_order.begin(), query_order.end(), [&](std::size_t lhs, std::size_t rhs) {
+        return part_motif_assignment_profile_less(query[lhs], query[rhs]);
+    });
+    std::stable_sort(control_order.begin(), control_order.end(), [&](std::size_t lhs, std::size_t rhs) {
+        return part_motif_assignment_profile_less(control[lhs], control[rhs]);
+    });
+
     std::vector<std::vector<part_motif_similarity>> similarities(
         query.size(),
         std::vector<part_motif_similarity>(control.size()));
     std::vector<std::vector<double>> weights(
         query.size(),
         std::vector<double>(control.size(), 0.0));
-    for (std::size_t qi = 0; qi < query.size(); ++qi) {
-        for (std::size_t ci = 0; ci < control.size(); ++ci) {
-            similarities[qi][ci] = compare_part_motif_profiles(query[qi], control[ci]);
-            weights[qi][ci] = similarities[qi][ci].identity_confidence;
+    for (std::size_t canonical_qi = 0; canonical_qi < query.size(); ++canonical_qi) {
+        for (std::size_t canonical_ci = 0; canonical_ci < control.size(); ++canonical_ci) {
+            similarities[canonical_qi][canonical_ci] = compare_part_motif_profiles(
+                query[query_order[canonical_qi]],
+                control[control_order[canonical_ci]]);
+            weights[canonical_qi][canonical_ci] =
+                similarities[canonical_qi][canonical_ci].identity_confidence;
         }
     }
 
     const auto assignment = maximum_weight_part_motif_assignment(weights);
     double score_sum = 0.0;
-    for (const auto& [qi, ci] : assignment) {
-        const auto& similarity = similarities[qi][ci];
+    for (const auto& [canonical_qi, canonical_ci] : assignment) {
+        const auto& similarity = similarities[canonical_qi][canonical_ci];
         score_sum += similarity.identity_confidence;
         ++result.matched_pair_count;
         if (similarity.pitch_comparable)
             ++result.pitch_comparable_pair_count;
-        result.matches.push_back({qi, ci, similarity});
+        result.matches.push_back({
+            query_order[canonical_qi],
+            control_order[canonical_ci],
+            similarity,
+        });
     }
+    std::sort(result.matches.begin(), result.matches.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.query_index != rhs.query_index)
+            return lhs.query_index < rhs.query_index;
+        return lhs.control_index < rhs.control_index;
+    });
 
     const std::size_t denominator = std::max(query.size(), control.size());
     result.matched_coverage = denominator == 0
