@@ -6,9 +6,9 @@ Target: historical foo_snesapu tree containing both:
   foo_snesapu/spcplayer
 
 The parent discovers an optional `<track>.prebrr` sidecar only while Enhanced is
-active, validates its bounded size, then appends it to SPCP protocol v2. The
-child parses it once, owns the PCM for the process lifetime, and installs the
-SNESAPU block provider added by apply_prebrr_provider.py.
+active and appends it to private SPCP protocol v2. The child validates and owns
+that PCM once at startup, then resolves the patched SNESAPU provider export at
+runtime. No new import-library dependency is required in the child build.
 
 No corpus/library path crosses the realtime boundary. The sidecar contains only
 already-verified, historically prepared 16-bit game-grid samples for this SPC.
@@ -54,9 +54,6 @@ def main() -> int:
     child = foo_root / "spcplayer"
     project_root = Path(__file__).resolve().parents[2]
 
-    # Copy project-owned header-only runtime into the child build. The source of
-    # truth remains this repository; the dependency checkout receives a build
-    # overlay, not a forked independent implementation.
     overlay = child / "retro_vgm"
     overlay.mkdir(parents=True, exist_ok=True)
     for name in ("snesapu_prebrr_provider.h", "snesapu_prebrr_packet.h"):
@@ -74,13 +71,14 @@ def main() -> int:
     )
     replace_once(
         spcplayer_h,
-        """#define SPCP_HEADER_SCRIPT700_SIZE_OFFSET 16
-#define SPCP_HEADER_RESERVED1_OFFSET 20
+        """// 16: Script700 payload size in bytes (uint32 little endian)
+// 20: Reserved1 (uint32 little endian, must be zero)
 """,
-        """#define SPCP_HEADER_SCRIPT700_SIZE_OFFSET 16
+        """// 16: Script700 payload size in bytes (uint32 little endian)
+// 20: Verified pre-BRR payload size in bytes (uint32 little endian)
 #define SPCP_HEADER_PREBRR_SIZE_OFFSET 20
 """,
-        "SPCP pre-BRR size field",
+        "SPCP v2 pre-BRR field",
     )
 
     controller_h = parent / "spcplayer_controller.h"
@@ -99,11 +97,17 @@ def main() -> int:
         controller_h,
         """\tpfc::array_t<t_uint8> m_script700_data;
 \tt_size\t\t\t\t  m_script700_size;
+
+
+\tbool         initialized;
 """,
         """\tpfc::array_t<t_uint8> m_script700_data;
 \tt_size\t\t\t\t  m_script700_size;
 \tpfc::array_t<t_uint8> m_prebrr_data;
 \tt_size\t\t\t\t  m_prebrr_size;
+
+
+\tbool         initialized;
 """,
         "parent pre-BRR packet storage",
     )
@@ -112,8 +116,10 @@ def main() -> int:
     replace_once(
         controller_cpp,
         """\tm_spcp_size(0), m_spc_size(0), m_script700_size(0),
+\tm_telem_enabled(false), m_source_enabled(false),
 """,
         """\tm_spcp_size(0), m_spc_size(0), m_script700_size(0), m_prebrr_size(0),
+\tm_telem_enabled(false), m_source_enabled(false),
 """,
         "parent pre-BRR constructor state",
     )
@@ -197,10 +203,13 @@ void spcplayer_controller::SetVoiceMute(u32 mute)
     child_cpp = child / "main.cpp"
     replace_once(
         child_cpp,
-        """#include "source_capture_output.h"
+        """#include <snesapu.h>
+#include "source_capture_output.h"
 """,
-        """#include "source_capture_output.h"
+        """#include <snesapu.h>
+#include "source_capture_output.h"
 #include "retro_vgm/snesapu_prebrr_packet.h"
+#include <windows.h>
 """,
         "child pre-BRR runtime include",
     )
@@ -211,83 +220,100 @@ void spcplayer_controller::SetVoiceMute(u32 mute)
         """static uint32_t m_sample_rate = 32000;
 
 using RetroPreBrrRuntime = gameaudio::spc::snes_prebrr_packet_runtime<256>;
-static int __stdcall retro_prebrr_callback(void* user, u32 srcn, u32 brr_addr, s16* out16)
+using RetroPreBrrCallback = u32 (__stdcall *)(void*, u32, u32, s16*);
+using RetroSetPreBrrProvider = void (__stdcall *)(RetroPreBrrCallback, void*);
+
+static u32 __stdcall retro_prebrr_callback(void* user, u32 srcn, u32 brr_addr, s16* out16)
 {
-    return RetroPreBrrRuntime::callback(user, srcn, brr_addr, out16);
+    return RetroPreBrrRuntime::callback(user, srcn, brr_addr, out16) ? 1u : 0u;
+}
+
+static RetroSetPreBrrProvider resolve_prebrr_provider()
+{
+    HMODULE module = GetModuleHandleW(L"snesapu.dll");
+    if (module == NULL) return nullptr;
+    return reinterpret_cast<RetroSetPreBrrProvider>(
+        GetProcAddress(module, "SetDSPPreBrrProvider"));
 }
 """,
-        "child pre-BRR callback wrapper",
+        "child pre-BRR callback/runtime resolver",
     )
+
     replace_once(
         child_cpp,
-        """    uint32_t spc_size = spcp_read_le32(header + SPCP_HEADER_SPC_SIZE_OFFSET);
-    uint32_t script700_size = spcp_read_le32(header + SPCP_HEADER_SCRIPT700_SIZE_OFFSET);
-    std::vector<uint8_t> spcbuf(static_cast<size_t>(spc_size) + script700_size);
-""",
-        """    uint32_t spc_size = spcp_read_le32(header + SPCP_HEADER_SPC_SIZE_OFFSET);
-    uint32_t script700_size = spcp_read_le32(header + SPCP_HEADER_SCRIPT700_SIZE_OFFSET);
-    uint32_t prebrr_size = spcp_read_le32(header + SPCP_HEADER_PREBRR_SIZE_OFFSET);
-    if (spcp_read_le32(header + 24) != 0 || spcp_read_le32(header + 28) != 0)
+        """    const uint32_t magic = get_le32(&spcbuf[0]);
+    const uint32_t version = get_le32(&spcbuf[4]);
+    const uint32_t header_size = get_le32(&spcbuf[8]);
+    const uint32_t spc_size = get_le32(&spcbuf[12]);
+    const uint32_t script700_size = get_le32(&spcbuf[16]);
+    (void)version;
+    if (magic != SPCP_HEADER_MAGIC || header_size < SPCP_HEADER_SIZE || spc_size == 0 ||
+        header_size > spcbuf.size() || spc_size > spcbuf.size() - header_size ||
+        script700_size > spcbuf.size() - header_size - spc_size)
     {
-        std::cerr << "spcplayer: unsupported nonzero SPCP v2 reserved fields\n";
+        std::cerr << "Invalid input header.\n";
         return -1;
     }
-    const uint64_t payload_size64 = static_cast<uint64_t>(spc_size)
+
+    const uint8_t* spc_data = &spcbuf[header_size];
+    const uint8_t* script700_data = spc_data + spc_size;
+
+    InitAPU();
+    LoadSPCFile((void*)spc_data);
+""",
+        """    const uint32_t magic = get_le32(&spcbuf[0]);
+    const uint32_t version = get_le32(&spcbuf[4]);
+    const uint32_t header_size = get_le32(&spcbuf[8]);
+    const uint32_t spc_size = get_le32(&spcbuf[12]);
+    const uint32_t script700_size = get_le32(&spcbuf[16]);
+    const uint32_t prebrr_size = get_le32(&spcbuf[20]);
+    const uint32_t reserved2 = get_le32(&spcbuf[24]);
+    const uint32_t reserved3 = get_le32(&spcbuf[28]);
+    const uint64_t payload_size = static_cast<uint64_t>(spc_size)
         + static_cast<uint64_t>(script700_size)
         + static_cast<uint64_t>(prebrr_size);
-    if (payload_size64 > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    if (magic != SPCP_HEADER_MAGIC || version != SPCP_HEADER_VERSION
+        || header_size != SPCP_HEADER_SIZE || spc_size == 0
+        || reserved2 != 0 || reserved3 != 0
+        || header_size > spcbuf.size()
+        || payload_size != static_cast<uint64_t>(spcbuf.size() - header_size))
     {
-        std::cerr << "spcplayer: SPCP payload too large\n";
+        std::cerr << "Invalid SPCP v2 input header.\n";
         return -1;
     }
-    std::vector<uint8_t> spcbuf(static_cast<size_t>(payload_size64));
-""",
-        "child SPCP v2 payload size",
-    )
-    replace_once(
-        child_cpp,
-        """    InitAPU();
-    LoadSPCFile(spcbuf.data());
-    if (script700_size > 0)
-""",
-        """    const uint8_t* prebrr_data = spcbuf.data()
-        + static_cast<size_t>(spc_size)
-        + static_cast<size_t>(script700_size);
+
+    const uint8_t* spc_data = &spcbuf[header_size];
+    const uint8_t* script700_data = spc_data + spc_size;
+    const uint8_t* prebrr_data = script700_data + script700_size;
+
     RetroPreBrrRuntime prebrr_runtime;
-    if (prebrr_size != 0
-        && !prebrr_runtime.load(prebrr_data, static_cast<size_t>(prebrr_size)))
+    if (prebrr_size != 0 && !prebrr_runtime.load(prebrr_data, prebrr_size))
     {
-        std::cerr << "spcplayer: invalid pre-BRR restoration packet\n";
+        std::cerr << "Invalid verified pre-BRR packet.\n";
         return -1;
     }
 
     InitAPU();
-    LoadSPCFile(spcbuf.data());
+    LoadSPCFile((void*)spc_data);
+    RetroSetPreBrrProvider set_prebrr_provider = resolve_prebrr_provider();
     if (prebrr_runtime.loaded())
-        SetDSPPreBrrProvider(&retro_prebrr_callback, &prebrr_runtime);
-    else
-        SetDSPPreBrrProvider(NULL, NULL);
-    if (script700_size > 0)
+    {
+        if (set_prebrr_provider == nullptr)
+        {
+            std::cerr << "Pre-BRR data supplied but patched SNESAPU provider export is unavailable.\n";
+            return -1;
+        }
+        set_prebrr_provider(&retro_prebrr_callback, &prebrr_runtime);
+    }
+    else if (set_prebrr_provider != nullptr)
+    {
+        set_prebrr_provider(nullptr, nullptr);
+    }
 """,
-        "child pre-BRR provider installation",
-    )
-
-    # The packet-size guard uses numeric_limits.
-    replace_once(
-        child_cpp,
-        """#include <vector>
-#include <cstring>
-""",
-        """#include <vector>
-#include <cstring>
-#include <limits>
-""",
-        "child payload overflow include",
+        "child strict SPCP v2/pre-BRR parsing",
     )
 
     input_cpp = parent / "input_snesapu.cpp"
-    # Load only a per-track verified sidecar and only when Enhanced is active.
-    # Missing sidecar is normal and leaves the high-rate BRR/sinc path active.
     replace_once(
         input_cpp,
         """\tm_Apu.SetDSPAmp(m_CurAmp);
@@ -299,17 +325,15 @@ static int __stdcall retro_prebrr_callback(void* user, u32 srcn, u32 brr_addr, s
 
 #ifdef _WIN64
 \tm_Apu.SetPreBrrPacket(nullptr, 0);
-\tif (cfg_enhanced_enabled && !filesystem::g_is_remote_or_unrecognized(m_SpcPath))
+\tif (cfg_enhanced_enabled && !filesystem::g_is_remote_or_unrecognized(m_SpcPath.get_ptr()))
 \t{
 \t\tpfc::string8 sidecar = m_SpcPath;
 \t\tsidecar += ".prebrr";
 \t\ttry
 \t\t{
-\t\t\tfile::ptr restoration_file;
+\t\t\tservice_ptr_t<file> restoration_file;
 \t\t\tfilesystem::g_open_read(restoration_file, sidecar, p_abort);
 \t\t\tconst t_filesize size64 = restoration_file->get_size(p_abort);
-\t\t\t// Per-track prepared PCM is bounded to 64 MiB. Larger files are
-\t\t\t// almost certainly malformed or the wrong archival object.
 \t\t\tif (size64 != filesize_invalid && size64 > 0 && size64 <= 64u * 1024u * 1024u)
 \t\t\t{
 \t\t\t\tpfc::array_t<t_uint8> restoration_packet;
@@ -321,7 +345,7 @@ static int __stdcall retro_prebrr_callback(void* user, u32 srcn, u32 brr_addr, s
 \t\t}
 \t\tcatch (const exception_io_not_found&)
 \t\t{
-\t\t\t// No verified upstream source for this track: normal BRR Enhanced fallback.
+\t\t\t// Missing verified source is normal: use high-rate BRR Enhanced fallback.
 \t\t}
 \t}
 \tm_Apu.SetVoiceMute(m_TagMask);
