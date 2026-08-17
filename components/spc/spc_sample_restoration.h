@@ -14,7 +14,7 @@ enum class spc_sample_restoration_evidence : std::uint8_t {
     documented_creator_intent = 0,     // A
     same_production_source = 1,        // B
     exact_upstream_source = 2,         // C
-    deterministic_ceiling = 3,        // D
+    deterministic_ceiling = 3,         // D
     cross_source_inference = 4,        // E
     aesthetic_hypothesis = 5,          // F
     unknown = 6,
@@ -26,6 +26,16 @@ enum class spc_sample_lineage_relation : std::uint8_t {
     exact_source_after_game_preparation,
     same_preset_or_library_variant,
     inferred_relative,
+};
+
+// How the candidate waveform itself was obtained. This is deliberately
+// separate from lineage/evidence. A convincing inverse or generative estimate
+// can be useful for listening without becoming historical source truth.
+enum class spc_sample_restoration_basis : std::uint8_t {
+    exact_upstream_pcm = 0,
+    deterministic_inverse_estimate,
+    generative_bandwidth_extension,
+    unknown,
 };
 
 enum class spc_sample_restoration_permission : std::uint8_t {
@@ -121,6 +131,12 @@ struct spc_sample_restoration_candidate {
     spc_sample_content_identity upstream_identity{};
     spc_sample_lineage_relation relation = spc_sample_lineage_relation::unknown;
     spc_sample_restoration_evidence evidence = spc_sample_restoration_evidence::unknown;
+
+    // Existing candidates are actual upstream PCM by construction, so preserve
+    // that behavior as the default. Callers creating inverse/generative
+    // candidates must opt into the weaker basis explicitly.
+    spc_sample_restoration_basis basis = spc_sample_restoration_basis::exact_upstream_pcm;
+
     spc_upstream_sample_view upstream{};
     spc_sample_coordinate_map coordinate_map{};
 
@@ -137,6 +153,11 @@ constexpr bool spc_has_exact_upstream_lineage(
         || relation == spc_sample_lineage_relation::exact_source_after_game_preparation;
 }
 
+constexpr bool spc_restoration_basis_may_be_automatic(
+    spc_sample_restoration_basis basis) noexcept {
+    return basis == spc_sample_restoration_basis::exact_upstream_pcm;
+}
+
 inline spc_sample_restoration_permission classify_spc_sample_restoration(
     const spc_sample_restoration_candidate& candidate) noexcept {
     if (!candidate.game_brr_identity.present() ||
@@ -146,6 +167,13 @@ inline spc_sample_restoration_permission classify_spc_sample_restoration(
         !candidate.coordinate_map.preparation_chain_exact ||
         !spc_has_exact_upstream_lineage(candidate.relation))
         return spc_sample_restoration_permission::reference_only;
+
+    // A waveform produced by inverse estimation or generative bandwidth
+    // extension can be a useful reversible listening experiment, but it cannot
+    // become source-supported automatic playback merely because the inferred
+    // waveform was given an identity-bearing container or sounds plausible.
+    if (!spc_restoration_basis_may_be_automatic(candidate.basis))
+        return spc_sample_restoration_permission::reversible_experiment;
 
     // C or stronger can enter normal Enhanced playback once the same-instrument
     // validation has also passed. D..F remain explicit experiments even if a
