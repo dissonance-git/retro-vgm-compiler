@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -28,8 +29,103 @@ struct part_motif_set_similarity {
     std::vector<part_motif_pair_match> matches;
 };
 
+// Exact maximum-weight one-to-one assignment for a rectangular matrix. The
+// Hungarian solve removes profile-enumeration order from cue-level evidence.
+// Rows or columns may outnumber the other side; every item on the smaller side
+// is matched because motif identity weights are nonnegative, while unmatched
+// items on the larger side remain zero through the cue-level denominator.
+inline std::vector<std::pair<std::size_t, std::size_t>>
+maximum_weight_part_motif_assignment(const std::vector<std::vector<double>>& weights) {
+    if (weights.empty() || weights.front().empty())
+        return {};
+    const std::size_t row_count = weights.size();
+    const std::size_t column_count = weights.front().size();
+    for (const auto& row : weights) {
+        if (row.size() != column_count)
+            throw std::invalid_argument("part-motif assignment matrix must be rectangular");
+        for (double weight : row) {
+            if (!std::isfinite(weight) || weight < 0.0)
+                throw std::invalid_argument("part-motif assignment weights must be finite and nonnegative");
+        }
+    }
+
+    const bool transposed = row_count > column_count;
+    std::vector<std::vector<double>> matrix;
+    if (transposed) {
+        matrix.assign(column_count, std::vector<double>(row_count, 0.0));
+        for (std::size_t row = 0; row < row_count; ++row) {
+            for (std::size_t column = 0; column < column_count; ++column)
+                matrix[column][row] = weights[row][column];
+        }
+    } else {
+        matrix = weights;
+    }
+
+    const std::size_t n = matrix.size();
+    const std::size_t m = matrix.front().size();
+    std::vector<double> u(n + 1, 0.0);
+    std::vector<double> v(m + 1, 0.0);
+    std::vector<std::size_t> p(m + 1, 0);
+    std::vector<std::size_t> way(m + 1, 0);
+
+    for (std::size_t i = 1; i <= n; ++i) {
+        p[0] = i;
+        std::size_t j0 = 0;
+        std::vector<double> minv(m + 1, std::numeric_limits<double>::infinity());
+        std::vector<bool> used(m + 1, false);
+        do {
+            used[j0] = true;
+            const std::size_t i0 = p[j0];
+            double delta = std::numeric_limits<double>::infinity();
+            std::size_t j1 = 0;
+            for (std::size_t j = 1; j <= m; ++j) {
+                if (used[j])
+                    continue;
+                const double current = -matrix[i0 - 1][j - 1] - u[i0] - v[j];
+                if (current < minv[j]) {
+                    minv[j] = current;
+                    way[j] = j0;
+                }
+                if (minv[j] < delta) {
+                    delta = minv[j];
+                    j1 = j;
+                }
+            }
+            for (std::size_t j = 0; j <= m; ++j) {
+                if (used[j]) {
+                    u[p[j]] += delta;
+                    v[j] -= delta;
+                } else {
+                    minv[j] -= delta;
+                }
+            }
+            j0 = j1;
+        } while (p[j0] != 0);
+
+        do {
+            const std::size_t j1 = way[j0];
+            p[j0] = p[j1];
+            j0 = j1;
+        } while (j0 != 0);
+    }
+
+    std::vector<std::pair<std::size_t, std::size_t>> result;
+    result.reserve(n);
+    for (std::size_t column = 1; column <= m; ++column) {
+        if (p[column] == 0)
+            continue;
+        const std::size_t row = p[column] - 1;
+        const std::size_t col = column - 1;
+        result.push_back(transposed
+            ? std::pair<std::size_t, std::size_t>{col, row}
+            : std::pair<std::size_t, std::size_t>{row, col});
+    }
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
 // Compare two cue-level sets of persistent-part profiles without any creator or
-// catalog labels. Candidate pairs are greedily assigned one-to-one in descending
+// catalog labels. Candidate pairs are assigned one-to-one by globally maximum
 // evidence-bounded motif identity. The final denominator is max(|query|,|control|),
 // so unmatched parts contribute zero rather than disappearing from the score.
 inline part_motif_set_similarity compare_part_motif_profile_sets(
@@ -41,51 +137,28 @@ inline part_motif_set_similarity compare_part_motif_profile_sets(
     if (query.empty() || control.empty())
         return result;
 
-    struct candidate_pair {
-        std::size_t query_index = 0;
-        std::size_t control_index = 0;
-        part_motif_similarity similarity{};
-    };
-
-    std::vector<candidate_pair> candidates;
-    candidates.reserve(query.size() * control.size());
+    std::vector<std::vector<part_motif_similarity>> similarities(
+        query.size(),
+        std::vector<part_motif_similarity>(control.size()));
+    std::vector<std::vector<double>> weights(
+        query.size(),
+        std::vector<double>(control.size(), 0.0));
     for (std::size_t qi = 0; qi < query.size(); ++qi) {
         for (std::size_t ci = 0; ci < control.size(); ++ci) {
-            candidates.push_back({
-                qi,
-                ci,
-                compare_part_motif_profiles(query[qi], control[ci]),
-            });
+            similarities[qi][ci] = compare_part_motif_profiles(query[qi], control[ci]);
+            weights[qi][ci] = similarities[qi][ci].identity_confidence;
         }
     }
 
-    std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
-        if (lhs.similarity.identity_confidence != rhs.similarity.identity_confidence)
-            return lhs.similarity.identity_confidence > rhs.similarity.identity_confidence;
-        if (lhs.similarity.combined_similarity != rhs.similarity.combined_similarity)
-            return lhs.similarity.combined_similarity > rhs.similarity.combined_similarity;
-        if (lhs.query_index != rhs.query_index)
-            return lhs.query_index < rhs.query_index;
-        return lhs.control_index < rhs.control_index;
-    });
-
-    std::vector<bool> query_used(query.size(), false);
-    std::vector<bool> control_used(control.size(), false);
+    const auto assignment = maximum_weight_part_motif_assignment(weights);
     double score_sum = 0.0;
-    for (const auto& candidate : candidates) {
-        if (query_used[candidate.query_index] || control_used[candidate.control_index])
-            continue;
-        query_used[candidate.query_index] = true;
-        control_used[candidate.control_index] = true;
-        score_sum += candidate.similarity.identity_confidence;
+    for (const auto& [qi, ci] : assignment) {
+        const auto& similarity = similarities[qi][ci];
+        score_sum += similarity.identity_confidence;
         ++result.matched_pair_count;
-        if (candidate.similarity.pitch_comparable)
+        if (similarity.pitch_comparable)
             ++result.pitch_comparable_pair_count;
-        result.matches.push_back({
-            candidate.query_index,
-            candidate.control_index,
-            candidate.similarity,
-        });
+        result.matches.push_back({qi, ci, similarity});
     }
 
     const std::size_t denominator = std::max(query.size(), control.size());
