@@ -94,6 +94,51 @@ class MixedBlindPanelCaptureTest(unittest.TestCase):
                     genesis_max_pitch_interval_octaves=1.5,
                 )
 
+    def test_genesis_without_three_episode_motif_evidence_never_reaches_freeze(self):
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            repo = pathlib.Path(raw_tmp)
+            fixture = repo / "tests/corpus/genesis-world/one.vgz"
+            fixture.parent.mkdir(parents=True)
+            fixture.write_bytes(b"VGZ")
+            freeze_tool = repo / "freeze.py"
+            freeze_tool.write_text("# placeholder\n", encoding="utf-8")
+            cue = capture.PanelCue(
+                cue_id="cue-001",
+                fixture_path=pathlib.PurePosixPath("tests/corpus/genesis-world/one.vgz"),
+            )
+            projection = {
+                "episodes": [],
+                "strand_projection": {"strands": [], "unresolved": []},
+            }
+
+            with (
+                mock.patch.object(
+                    capture.genesis_cache,
+                    "build_one",
+                    return_value=(repo / "cache/genesis.json", False, {"opaque": True}),
+                ),
+                mock.patch.object(
+                    capture.genesis_parts,
+                    "project",
+                    return_value=projection,
+                ),
+                mock.patch.object(capture.subprocess, "run") as run,
+            ):
+                with self.assertRaisesRegex(ValueError, "no motif profile"):
+                    capture.capture_panel(
+                        [cue],
+                        repo_root=repo,
+                        extractor=None,
+                        output_dir=repo / "opaque",
+                        seconds=5,
+                        freeze_tool=freeze_tool,
+                        freeze_output=repo / "frozen.json",
+                        genesis_cache_root=repo / "genesis-cache",
+                        genesis_max_gap_ticks=500,
+                        genesis_max_pitch_interval_octaves=1.5,
+                    )
+            run.assert_not_called()
+
     def test_mixed_panel_routes_spc_sidecar_and_genesis_profile_bundle_to_one_freeze(self):
         with tempfile.TemporaryDirectory() as raw_tmp:
             repo = pathlib.Path(raw_tmp)
