@@ -2,6 +2,8 @@
 
 The target is not "make 32 kHz SPC output brighter." It is to move the reconstruction boundary as far upstream as evidence allows while leaving the game's performance/control system intact.
 
+The listening target is the **same sample-based instrument realized as a contemporary release master**: what the preserved composition, arrangement and performance could sound like if released today without the historical BRR/interpolation/numerical ceilings that are not themselves identity-bearing. This does not authorize rewriting the instrument. Loop design, pitch behavior, articulation, envelopes, routing, deliberate echo and other authored transformations remain part of the object.
+
 ## Quality ladder
 
 Normal `Enhanced` chooses the highest proven rung available for each sample identity:
@@ -39,6 +41,22 @@ song/driver timing
 ```
 
 The restoration source changes the waveform evidence boundary, not the arrangement or performance.
+
+## Modern reconstruction policy
+
+Historical interpolation is part of the protected reference, but it is not automatically part of the Enhanced quality ceiling.
+
+For a source-supported reconstruction, use the highest validated modern source-domain sampler that preserves the same waveform identity and trajectory. Current top-rung upstream PCM uses:
+
+```text
+components/spc/spc_studio_sample_reconstruction.h
+```
+
+Its first implementation is a tabled 64-tap Kaiser-windowed sinc with 16,384 fractional phases. The table can be prepared outside the audio callback, and the realtime path is a bounded dot product rather than per-sample trigonometry. The older eight-tap path remains an important fallback/control, not the endpoint for a proven original waveform.
+
+Modern reconstruction must be judged by measurable passband accuracy, imaging/alias suppression, transient behavior, numerical stability, realtime cost and listening tests. Longer or newer does not win by name. Variable-rate/pitch-up anti-aliasing remains a separate requirement: a high-quality interpolation kernel must not be mistaken for a complete rate-conversion policy when the source trajectory crosses a downsampling boundary.
+
+Normal Enhanced still cannot invent missing spectrum. If no source-supported waveform contains information above the historical preparation/BRR boundary, generative bandwidth extension remains an explicit experiment rather than playback truth.
 
 ## Current realtime-capable rung
 
@@ -86,6 +104,8 @@ components/spc/spc_original_sample_interval.h
 
 It evaluates an automatically approved upstream waveform at the exact live game source coordinate and sub-native output phase. If an upstream-to-game coordinate map is 2:1, for example, a 96 kHz output interval can evaluate real upstream positions between historical game-grid samples instead of inventing them from the 32 kHz result.
 
+That evaluator now reaches the studio reconstruction primitive through `spc_upstream_sample_reconstruction.h`; candidate/lineage validation and eventual playback therefore use the same source-domain interpolation model rather than validating an eight-tap approximation and rendering a different one later.
+
 This is the final intended SNES source model:
 
 ```text
@@ -95,14 +115,14 @@ exact historical preparation mapping
         +
 exact live game source phase
         ↓
-high-quality original-waveform reconstruction
+modern bandlimited original-waveform reconstruction
         ↓
 exact game control trajectory
         ↓
-SNES routing / echo / presentation
+SNES routing / echo intent / presentation
 ```
 
-The remaining dependency frontier is to place this direct-original evaluator at SNESAPU's live pre-envelope interpolation seam. Until that hot-loop integration is validated against the pinned assembly, rung 1 remains modeled/testable while rung 2 is the highest concrete dependency injection point.
+The remaining dependency frontier is to place this direct-original evaluator at SNESAPU's live pre-envelope interpolation seam and give it the exact output-rate/pitch context needed for anti-aliased variable-rate reconstruction. Until that hot-loop integration is validated against the pinned assembly, rung 1 remains modeled/testable while rung 2 is the highest concrete dependency injection point.
 
 ## Discovery is not provenance
 
