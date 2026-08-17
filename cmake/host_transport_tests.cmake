@@ -8,6 +8,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_runtime_spatial_end_boundary_test
     spc_runtime_host_pipeline_test
     spc_native_source_capture_test
+    spc_native_exact_source_storage_test
 )
 
 add_executable(
@@ -30,6 +31,10 @@ add_executable(
     spc_native_source_capture_test
     tests/spc/spc_native_source_capture_test.cpp
 )
+add_executable(
+    spc_native_exact_source_storage_test
+    tests/spc/spc_native_exact_source_storage_test.cpp
+)
 
 target_include_directories(
     spatial_source_host_session_test
@@ -49,6 +54,10 @@ target_include_directories(
 )
 target_include_directories(
     spc_native_source_capture_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_native_exact_source_storage_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -71,4 +80,8 @@ add_test(
 add_test(
     NAME spc_native_source_capture
     COMMAND spc_native_source_capture_test
+)
+add_test(
+    NAME spc_native_exact_source_storage
+    COMMAND spc_native_exact_source_storage_test
 )
