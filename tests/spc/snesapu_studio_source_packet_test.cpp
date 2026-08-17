@@ -177,8 +177,42 @@ int main() {
         candidate, playback, projection);
     assert(expected.valid);
     float rendered = 0.0f;
-    assert(provider.render_voice(0, 0x00010000u, directory_page, 0, &rendered));
+    assert(provider.render_voice(
+        0,
+        0x00010000u,
+        source_number,
+        loop_brr,
+        directory_page,
+        0,
+        &rendered));
     assert(near(rendered, expected.sample));
+
+    // Runtime identity stays live after setup too. A Script700/SRCN remap or a
+    // changed loop locator on the same DIR page must not keep using the packet's
+    // old upstream trajectory merely because its original BRR witness was valid.
+    assert(provider.begin_voice(
+        1, source_number, first_brr, loop_brr, directory_page, 0));
+    assert(!provider.render_voice(
+        1,
+        0x00010000u,
+        static_cast<std::uint32_t>(source_number + 1u),
+        loop_brr,
+        directory_page,
+        0,
+        &rendered));
+    assert(!provider.voice_active(1));
+
+    assert(provider.begin_voice(
+        1, source_number, first_brr, loop_brr, directory_page, 0));
+    assert(!provider.render_voice(
+        1,
+        0x00010000u,
+        source_number,
+        static_cast<std::uint16_t>(loop_brr + snesapu_brr_bytes_per_block),
+        directory_page,
+        0,
+        &rendered));
+    assert(!provider.voice_active(1));
 
     // The transport is content-bound, not path/address-bound. One changed BRR
     // payload byte in the actual SPC rejects the packet even though SRCN and
