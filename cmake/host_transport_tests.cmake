@@ -25,6 +25,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_original_sample_bank_test
     genesis_enhanced_recomposition_test
     sn76489_enhanced_source_block_test
+    studio_source_resampler_test
     ym2612_hq_fm_profile_test
     ym2612_hq_fm_backend_test
     ym2612_hq_source_calibration_test
@@ -117,6 +118,10 @@ add_executable(
 add_executable(
     sn76489_enhanced_source_block_test
     tests/vgm/sn76489_enhanced_source_block_test.cpp
+)
+add_executable(
+    studio_source_resampler_test
+    tests/vgm/studio_source_resampler_test.cpp
 )
 add_executable(
     ym2612_hq_fm_profile_test
@@ -217,6 +222,10 @@ target_include_directories(
 )
 target_include_directories(
     sn76489_enhanced_source_block_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    studio_source_resampler_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -324,6 +333,10 @@ add_test(
 add_test(
     NAME sn76489_enhanced_source_block
     COMMAND sn76489_enhanced_source_block_test
+)
+add_test(
+    NAME studio_source_resampler
+    COMMAND studio_source_resampler_test
 )
 add_test(
     NAME ym2612_hq_fm_profile
