@@ -1,0 +1,92 @@
+name: VGM component materialization
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "imports/foo_input_vgm.7z"
+      - "components/vgm/foo_input_vgm/**"
+      - "components/vgm/enhancement/**"
+      - "patches/foo_input_vgm/**"
+      - "tools/materialize_foo_input_vgm.py"
+      - ".github/workflows/vgm-component-materialization.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  materialize-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify materializer tools
+        shell: pwsh
+        run: |
+          python --version
+          if ($LASTEXITCODE -ne 0) { throw 'Python is unavailable' }
+          $sevenZip = Get-Command 7z -ErrorAction Stop
+          & $sevenZip.Source | Out-Null
+
+      - name: Reconstruct and patch canonical foo_input_vgm
+        shell: pwsh
+        run: |
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-fb2k-sdk'
+          python tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot
+          if ($LASTEXITCODE -ne 0) { throw 'foo_input_vgm materialization failed' }
+          "VGM_SDK_ROOT=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify current source-aware runtime landed
+        shell: pwsh
+        run: |
+          $src = Join-Path $env:VGM_SDK_ROOT 'foo_input_vgm\src'
+          $header = Get-Content (Join-Path $src 'input_vgm.h') -Raw
+          $shadow = Get-Content (Join-Path $src 'input_vgm_shadow.cpp') -Raw
+          foreach ($required in @(
+            'genesis_selected_source_queue',
+            'genesis_selected_source_block',
+            'genesis_spatial_route_transport',
+            'genesis_realtime_musical_omniphony_pipeline'
+          )) {
+            if ($header -notmatch [regex]::Escape($required)) {
+              throw "materialized input_vgm.h missing current runtime marker: $required"
+            }
+          }
+          foreach ($required in @(
+            'capture_genesis_reference_sources',
+            'render_genesis_spatial_output',
+            'cfg_vgm_enhanced_enabled'
+          )) {
+            if ($shadow -notmatch [regex]::Escape($required)) {
+              throw "materialized input_vgm_shadow.cpp missing current runtime marker: $required"
+            }
+          }
+
+      - name: Verify project-owned support overlay
+        shell: pwsh
+        run: |
+          $component = Join-Path $env:VGM_SDK_ROOT 'foo_input_vgm'
+          $required = @(
+            'Directory.Build.targets',
+            'src\source_aware_vgm_player.h',
+            'src\linear_source_resampler.h',
+            'src\nuked_opn2_source_capture.h',
+            '..\enhancement\genesis_selected_source_queue.h',
+            '..\enhancement\genesis_spatial_route_transport.h'
+          )
+          foreach ($relative in $required) {
+            $path = Join-Path $component $relative
+            if (!(Test-Path $path)) { throw "materialized support file missing: $relative" }
+          }
+
+      - name: Upload materialized source for diagnosis
+        uses: actions/upload-artifact@v4
+        with:
+          name: foo-input-vgm-materialized-${{ github.sha }}
+          path: ${{ env.VGM_SDK_ROOT }}/foo_input_vgm
+          if-no-files-found: error
+          retention-days: 7
