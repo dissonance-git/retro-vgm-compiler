@@ -1,76 +1,52 @@
 #include "components/vgm/foo_input_vgm/src/studio_source_resampler.h"
-
+#include "components/vgm/foo_input_vgm/src/studio_source_stream.h"
+#include "components/vgm/foo_input_vgm/src/studio_source_timeline.h"
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
-
-namespace {
-
-constexpr double pi = 3.141592653589793238462643383279502884;
-
-} // namespace
-
+#include <cstdint>
+namespace { constexpr double pi = 3.141592653589793238462643383279502884; }
 int main() {
     using namespace foobar_vgm::source_audio;
-
     studio_source_resampler_kernel kernel;
     assert(!kernel.configure(0.0, 48000.0));
     assert(kernel.configure(53267.0, 44100.0));
     assert(kernel.configured());
     assert(kernel.cutoff() > 0.0 && kernel.cutoff() < 1.0);
-
     constexpr std::size_t frames = 1024;
     std::array<studio_stereo_sample, frames> constant{};
-    for (auto& sample : constant)
-        sample = {0.25, -0.5};
-
+    for (auto& sample : constant) sample = {0.25, -0.5};
     for (double position : {128.125, 256.5, 512.875}) {
-        const auto reconstructed = kernel.reconstruct(
-            constant.data(), constant.size(), position);
+        const auto reconstructed = kernel.reconstruct(constant.data(), constant.size(), position);
         assert(reconstructed.valid);
         assert(std::abs(reconstructed.sample.left - 0.25) < 1.0e-6);
         assert(std::abs(reconstructed.sample.right + 0.5) < 1.0e-6);
     }
-
-    // A comfortably in-band sinusoid should retain its continuous-time value
-    // at fractional source positions to much tighter error than linear SRC.
     std::array<studio_stereo_sample, frames> passband{};
     constexpr double passband_frequency = 0.20;
     for (std::size_t i = 0; i < passband.size(); ++i) {
-        const double value = std::sin(
-            2.0 * pi * passband_frequency * static_cast<double>(i));
+        const double value = std::sin(2.0 * pi * passband_frequency * static_cast<double>(i));
         passband[i] = {value, -value};
     }
     for (double position : {400.125, 400.25, 400.5, 400.75, 400.875}) {
-        const double expected = std::sin(
-            2.0 * pi * passband_frequency * position);
-        const auto reconstructed = kernel.reconstruct(
-            passband.data(), passband.size(), position);
+        const double expected = std::sin(2.0 * pi * passband_frequency * position);
+        const auto reconstructed = kernel.reconstruct(passband.data(), passband.size(), position);
         assert(reconstructed.valid);
         assert(std::abs(reconstructed.sample.left - expected) < 3.0e-5);
         assert(std::abs(reconstructed.sample.right + expected) < 3.0e-5);
     }
-
-    // 53.267 kHz -> 44.1 kHz moves the destination Nyquist below 0.45 cycles
-    // per source sample. The Enhanced kernel must therefore reject that energy
-    // instead of folding it into the audible band. Measure RMS over a run of
-    // destination-spaced samples; a linear interpolator leaves a very large
-    // alias here, while this bounded FIR should be far below it.
     std::array<studio_stereo_sample, frames> stopband{};
     constexpr double stopband_frequency = 0.45;
     for (std::size_t i = 0; i < stopband.size(); ++i) {
-        const double value = std::sin(
-            2.0 * pi * stopband_frequency * static_cast<double>(i));
+        const double value = std::sin(2.0 * pi * stopband_frequency * static_cast<double>(i));
         stopband[i] = {value, value};
     }
-
     const double source_step = 53267.0 / 44100.0;
     double energy = 0.0;
     std::size_t count = 0;
     for (double position = 300.0; position < 700.0; position += source_step) {
-        const auto reconstructed = kernel.reconstruct(
-            stopband.data(), stopband.size(), position);
+        const auto reconstructed = kernel.reconstruct(stopband.data(), stopband.size(), position);
         assert(reconstructed.valid);
         energy += reconstructed.sample.left * reconstructed.sample.left;
         ++count;
@@ -79,11 +55,71 @@ int main() {
     const double rms = std::sqrt(energy / static_cast<double>(count));
     assert(rms < 1.0e-3);
 
-    // Symmetric bandlimited reconstruction has a real lookahead obligation.
-    // Fail closed at unavailable edges rather than invent history or advance the
-    // authoritative chip just to satisfy the filter.
+    // Exact timing adapter: one upsampling pregeneration lives in history.next,
+    // so the first newly captured native frame has ordinal one. Studio mirrors
+    // libvgm's fixed-point phase instead of restarting time at each host block.
+    studio_linear_timing_snapshot exact_up{};
+    exact_up.source_rate_hz = 53267;
+    exact_up.destination_rate_hz = 96000;
+    exact_up.sample_p = 0;
+    exact_up.sample_next = 1;
+    const auto exact0 = studio_linear_source_position(exact_up, 1, 0);
+    assert(exact0.valid);
+    assert(exact0.phase_units == -static_cast<std::int64_t>(
+        studio_source_resampler_kernel::phase_count));
+
+    constexpr std::uint64_t split = 50;
+    const std::uint64_t split_fp =
+        ((split - 1u) * (1u << 11) * exact_up.source_rate_hz)
+        / exact_up.destination_rate_hz;
+    const std::uint32_t split_next = static_cast<std::uint32_t>(
+        (split_fp + (1u << 11) - 1u) / (1u << 11));
+    studio_linear_timing_snapshot exact_after = exact_up;
+    exact_after.sample_p = static_cast<std::uint32_t>(split);
+    exact_after.sample_next = split_next;
+    const std::uint64_t pulled = split_next - exact_up.sample_next;
+    const auto unsplit_position =
+        studio_linear_source_position(exact_up, 1, split + 17);
+    const auto split_position =
+        studio_linear_source_position(exact_after, 1 + pulled, 17);
+    assert(unsplit_position.valid && split_position.valid);
+    assert(unsplit_position.phase_units == split_position.phase_units);
+
+    // Native Studio history is bounded and block-shape invariant. A future FIR
+    // support sample must exist before the corresponding destination is valid.
+    studio_source_stream<2048> whole_stream;
+    studio_source_stream<2048> split_stream;
+    assert(whole_stream.append(0, passband.data(), passband.size()));
+    assert(split_stream.append(0, passband.data(), 137));
+    assert(split_stream.append(137, passband.data() + 137, 389));
+    assert(split_stream.append(526, passband.data() + 526, passband.size() - 526));
+
+    studio_source_phase_position stream_position{
+        static_cast<std::int64_t>(
+            400 * studio_source_resampler_kernel::phase_count + 1234),
+        true
+    };
+    const auto whole_stream_result = whole_stream.reconstruct(kernel, stream_position);
+    const auto split_stream_result = split_stream.reconstruct(kernel, stream_position);
+    assert(whole_stream_result.valid && split_stream_result.valid);
+    assert(std::abs(whole_stream_result.sample.left
+        - split_stream_result.sample.left) < 1.0e-12);
+    assert(std::abs(whole_stream_result.sample.right
+        - split_stream_result.sample.right) < 1.0e-12);
+
+    const auto stream_window = plan_studio_source_window(stream_position);
+    assert(stream_window.valid);
+    studio_source_stream<512> future_stream;
+    const std::size_t before_final = static_cast<std::size_t>(stream_window.final);
+    assert(future_stream.append(0, passband.data(), before_final));
+    assert(!future_stream.reconstruct(kernel, stream_position).valid);
+    assert(future_stream.append(
+        static_cast<std::uint64_t>(before_final),
+        passband.data() + before_final,
+        1));
+    assert(future_stream.reconstruct(kernel, stream_position).valid);
+
     assert(!kernel.reconstruct(constant.data(), constant.size(), 12.0).valid);
     assert(!kernel.reconstruct(constant.data(), constant.size(), 1000.0).valid);
-
     return 0;
 }
