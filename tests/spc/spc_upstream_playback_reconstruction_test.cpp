@@ -73,6 +73,21 @@ int main() {
     assert(topology_head.valid && contiguous_head.valid);
     assert(far(topology_head.sample, contiguous_head.sample));
 
+    // The coordinate map and live playback span describe the same authored
+    // game-domain topology. An upstream loop coordinate that looks plausible is
+    // not enough if the map claims a different game loop start or no loop at all.
+    auto wrong_game_loop = candidate;
+    wrong_game_loop.coordinate_map.game_loop_start = 31.0;
+    assert(!detail::resolve_spc_upstream_playback_boundaries(
+        wrong_game_loop, playback).valid);
+    assert(!reconstruct_spc_upstream_playback_sample(
+        wrong_game_loop, playback, trajectory).valid);
+
+    auto missing_map_loop = candidate;
+    missing_map_loop.coordinate_map.loop_present = false;
+    assert(!detail::resolve_spc_upstream_playback_boundaries(
+        missing_map_loop, playback).valid);
+
     // Key-on is an authored boundary. A trimmed source beginning at upstream
     // frame 16 must not leak frames 0..15 into the long symmetric FIR.
     std::array<float, 96> trimmed{};
@@ -95,6 +110,13 @@ int main() {
     assert(topology_start.valid && contiguous_start.valid);
     assert(std::abs(topology_start.sample) < 1.0e-9);
     assert(std::abs(contiguous_start.sample) > 1.0e-3);
+
+    auto false_loop = trimmed_candidate;
+    false_loop.coordinate_map.loop_present = true;
+    false_loop.coordinate_map.game_loop_start = 16.0;
+    false_loop.coordinate_map.upstream_loop_start = 32.0;
+    assert(!detail::resolve_spc_upstream_playback_boundaries(
+        false_loop, one_shot).valid);
 
     // Steady-state samples should not pay virtual topology mapping on every tap.
     // A long one-shot has a large interior where the authored playback topology
