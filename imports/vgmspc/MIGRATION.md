@@ -1,93 +1,81 @@
 # vgmspc retirement migration
 
-`dissonance-git/vgmspc` is a migration source, not a sibling architecture and not a permanent dependency of Retro VGM Compiler.
+`dissonance-git/vgmspc` has been mined as a migration source. It is not a sibling architecture and is no longer a live build dependency of Retro VGM Compiler.
 
-Pinned source state for this audit:
+Pinned source states used during the audit:
 
-- repository: `dissonance-git/vgmspc`
-- source head inspected: `f3368941213c841fdb59f601196401aef30c257a`
-- source-head message: `ci: run complete focused VGM source test suite`
+- final source head inspected: `f3368941213c841fdb59f601196401aef30c257a`
+- audited SPC parent transport cut: `2b7ec8bbd7326eabee3ba39bb91130b9b128e74b`
 - migration target: `dissonance-git/retro-vgm-compiler` `main`
 
-The old repository or local checkout is deletable only when every non-third-party capability below is either present canonically in Retro VGM Compiler or explicitly retired here with an evidence-backed reason. Merely copying the old tree into `imports/` does not count as migration.
+## Current status
+
+**Executable extraction is structurally complete. Fresh Windows execution validation is still pending because GitHub has not assigned a hosted runner to the materialization job.** The old repository is no longer needed as a source/build input, but destructive deletion remains gated on the clean build/package proof below.
 
 ## Migration law
 
 1. Preserve unique executable knowledge, tests, build/release knowledge, and provenance.
-2. Prefer the newer Retro VGM Compiler implementation when both repositories encode the same mechanism.
-3. Do not revive heuristics that the newer evidence model intentionally rejected.
-4. Do not vendor replaceable upstream SDKs/libraries just because the old build tree contained them. Preserve exact provenance/pins and reproduce them from the canonical build instead.
-5. Move source-specific host code under the owning component (`components/vgm/` or `components/spc/`), shared evidence only after the abstraction is independently justified, maintained transformations under `patches/`, tests under `tests/`, and immutable external provenance under `imports/`.
-6. The final proof of retirement is a clean build/package from this repository with no path, checkout, submodule, artifact, or manual step that requires `vgmspc`.
+2. Prefer newer Retro VGM Compiler descendants where both repositories encode the same mechanism.
+3. Do not revive heuristics rejected by the newer evidence model.
+4. Reconstruct replaceable upstream dependencies from immutable public pins instead of carrying copied dependency trees.
+5. New implementation work belongs in `components/`, maintained transformations in `patches/`, tests in `tests/`, and immutable historical seeds in `imports/`.
+6. Deletion requires a clean build/package from this repository with no path, checkout, binary, artifact, or manual step that reads `vgmspc`.
 
-## Inventory and disposition
+## Final disposition
 
-| vgmspc area | Disposition | Canonical target / reason | State |
-|---|---|---|---|
-| `foo_input_vgm/src` reusable Genesis source/enhancement primitives | Mine by semantic comparison, not wholesale copy | `components/vgm/foo_input_vgm/src/` plus `components/vgm/enhancement/`; much of this code already has a newer descendant here | in progress |
-| `foo_input_vgm` foobar host source, resources, `.sln` / `.vcxproj` | Reconstruct from the immutable project bootstrap and current overlays instead of copying the stale vgmspc host tree | `imports/foo_input_vgm.7z` + `components/vgm/foo_input_vgm/` + `tools/materialize_foo_input_vgm.py`; smoke workflow does not consult vgmspc | migrated |
-| `foo_snesapu/foobar2000/foo_snesapu` parent host | Preserve the proven process transport baseline, then apply the current enhanced/spatial patch stack | canonical SPC parent bootstrap/materializer still required; current private patch stack must stop requiring an external vgmspc checkout | open |
-| `foo_snesapu/spcplayer` source-aware child | Migrated as canonical source, with the stale checked-in import library removed | `components/spc/spcplayer/`; SRCE v2 now comes from `components/spc/snesapu_source_wire_v2.h`, and the project requires a freshly built SNESAPU import library | migrated |
-| `patches/libvgm` | Superseded by the newer combined source-capture patcher | `patches/libvgm/apply_source_capture.py` | retired |
-| SNESAPU source-capture / SRCE v2 patches | Consolidated and then advanced beyond the old two-script chain | `patches/snesapu/apply_source_capture.py`, `patches/snesapu/upgrade_source_capture_v2.py`, `patches/snesapu/apply_private_snesapu.py`, and current SRCE v2 wire/storage/runtime work | migrated |
-| old VGM source-player / Omniphony plugin patches | Superseded by the selected-source and delivered-route architecture | `patches/foo_input_vgm/`; finalized reference/enhanced source choices are transported to delivered audio and then rendered conditionally through Omniphony | retired |
-| old SPC Omniphony plugin bridge semantics | Re-expressed by the current source-aware private runtime: source admission, absolute source clock/generation, reset/seek handling, and reference fallback remain explicit | `patches/snesapu/apply_spatial_omniphony_private_runtime.py` and `patches/snesapu/apply_private_component.py`; remaining dependency is the parent bootstrap, not the runtime semantics | migrated |
-| `tests/vgm/genesis_source_plane_test.cpp` relative chip-height assertions | Intentionally superseded | old test asserts inferred PSG-above-YM placement; current source model keeps listener-space placement neutral unless authored/perceptual evidence earns it | retired |
-| authored YM2612 / Game Gear route assertions embedded in that test | Already represented by stronger dedicated controls | `tests/vgm/authored_stereo_route_test.cpp` covers mute/left/right/both YM routing and Game Gear/SN76489 masks including noise | migrated |
-| `tests/vgm/linear_source_resampler_test.cpp` | Preserved as an external-libvgm integration regression | `tests/integration/libvgm-source/linear_source_resampler_test.cpp` with standalone dependency-aware CMake and provenance README | migrated |
-| `inference/chip_inference.h`, `chip_adapter.h`, `chip_hint_bus.h` | Intentionally superseded, not copied | current `model/realtime_musical_role_hypothesis.h` separates resemblance from confidence, records cue provenance, caps weak acoustic role evidence, and does not directly turn guessed roles into spatial coordinates; the old singleton Prism hint bus is obsolete | retired |
-| `.github/workflows/build.yml` | Mine build/release procedure, not repository layout | canonical Windows component build/package workflow in this repository | open |
-| `.github/workflows/snesapu-source.yml` | Mine unique SNESAPU validation/build behavior | canonical SPC validation/build workflow or tests | open |
-| `.github/workflows/spc-source-player.yml` | Source/link contract is now explicit in the migrated project; still preserve its independent CI proof that the child links the freshly built patched DLL | `components/spc/spcplayer/spcplayer.vcxproj` plus a canonical Windows integration workflow | in progress |
-| `Directory.Build.props` / `Directory.Build.targets` | Preserve only rules still required by imported projects | WTL include/toolset compatibility belongs in canonical component build support; old automatic patch invocations are superseded by explicit current patch chains | in progress |
-| `SDK-2025-03-07`, `WTL`, `libvgm-master`, `third_party`, `submodules` dependency copies/checkouts | Do not treat copies as project knowledge | preserve upstream URLs, exact required revisions, patch order and build flags; fetch/reconstruct dependencies reproducibly | open |
-| old `genesis_omniphony_projection.h` inferred depth/height policy | Intentionally superseded | current exact authored-route transport + selected-source Omniphony runtime avoids device/pitch-to-position invention | retired |
-| `foo_snesapu/spcplayer/lib/Win32/snesapu.lib` | Do not migrate a stale import library | regenerated by the exact patched SNESAPU build and supplied to the canonical spcplayer project through `SNESAPULibDir` | retired |
-| other binaries, intermediate outputs, generated release packages | Do not migrate as source of truth | regenerate from canonical source/build; retain hashes only when scientifically useful | open |
+| vgmspc area | Canonical disposition | State |
+|---|---|---|
+| VGM reusable source/enhancement code | newer descendants in `components/vgm/` and `patches/foo_input_vgm/` | migrated / superseded |
+| VGM foobar host/project shell | `imports/foo_input_vgm.7z` + `tools/materialize_foo_input_vgm.py` + current overlays | migrated |
+| SPC foobar parent host | audited seed in `imports/foo_snesapu/parent/`, protected by historical Git-blob checks | migrated |
+| SPC child process | canonical `components/spc/spcplayer/`; stale checked-in import library removed | migrated |
+| SPC parent/child source transport | active `apply_current_parent_source_transport.py` + `apply_current_child_source_transport.py`; current child is patched from its real SRCE-v2 baseline rather than replaying stale migrations | migrated |
+| stale five-argument pre-BRR pointer fix | incompatible with the real four-argument SNESAPU `__stdcall` ABI and removed from the active chain | retired |
+| SNESAPU source capture / pre-BRR / studio providers | current `patches/snesapu/apply_private_snesapu.py` stack | migrated |
+| old SPC semantic/spatial presentation | current causal-source Omniphony runtime; guessed placement machinery not copied | superseded |
+| old VGM Omniphony/source-player patches | current selected-source + delivered-route architecture | superseded |
+| inferred Genesis PSG-above-YM policy/test | rejected by current evidence discipline; authored routing has stronger dedicated controls | retired |
+| libvgm resampler parity regression | `tests/integration/libvgm-source/` | migrated |
+| old inference singleton / Prism hint bus | current provenance-aware musical-role model | superseded |
+| old build/release workflow knowledge | `tools/build_private_foobar_components.ps1` now reconstructs, patches, builds, verifies exports, packages and hashes both components | migrated |
+| old SNESAPU/source-player linkage proof | current builder compiles patched x86 SNESAPU first and passes its include/lib paths explicitly to canonical `spcplayer.vcxproj` | migrated |
+| copied libvgm tree | `ValleyBell/libvgm@64e1de284e9a4305c54dd162ee8c33539a9bc0d1`, fingerprinted against the old copy | retired copy / pinned upstream |
+| copied WTL tree | `Win32-WTL/WTL@d1cd80e9ce76c4d79da4cf556401ad7a970ce46f`, fingerprinted against the old copy | retired copy / pinned upstream |
+| copied foobar SDK | official `SDK-2025-03-07.7z`; builder checks historical project fingerprints before use | retired copy / official reconstruction |
+| SPCPlay submodule/copy | `dgrfactory/spcplay@fc770e268ecacb4523699e2edc5c0efdf80957d6` | pinned upstream |
+| checked-in `snesapu.lib` and other generated binaries | rebuilt from canonical pinned source | retired |
 
-## Proven build knowledge already identified
+## Preserved evidence
 
-The old Windows integration build establishes several requirements that must survive retirement:
+The SPC parent seed records exact historical Git object identity for every file consumed by guarded patch anchors. `tools/materialize_foo_snesapu.py` verifies those hashes before applying current transformations.
 
-- libvgm source capture is patched before its static libraries are built;
-- the focused VGM source tests run against the patched libvgm semantics;
-- Omniphony source ABI and Windows payload are built before plugin packaging;
-- SNESAPU source capture is patched before building the x86 `SNESAPU.dll`;
-- source-aware `spcplayer.exe`, `foo_snesapu`, and `foo_input_vgm` are separate build products;
-- `.fb2k-component` packages place runtime dependencies beside the component DLL that loads or launches them;
-- the combined release was gated on required files/exports rather than packaging best-effort outputs.
+The old copied dependency trees were fingerprinted before replacement:
 
-These are migration facts, not a mandate to preserve the old directory layout or historical junction hacks.
+- libvgm root `CMakeLists.txt`: `1f8fb7f99ec45e1d2af12231f624498e6e252732`
+- WTL `Include/atlapp.h`: `4b3fe38dfd930dfedf1fe642d5a2fe7d167ac099`
+- foobar SDK `foobar2000_SDK.vcxproj`: `a1074e4aa8b2fc03cbc1738c9cddd912158bff67`
+- foobar SDK `pfc.vcxproj`: `57cbc91551935cd6f12c13a0e41c4c6bf601ac94`
 
-## SPC parent bootstrap cut
+The live build verifies these identities instead of assuming that a similarly named dependency is equivalent.
 
-The current SPC private runtime deliberately targets `vgmspc@2b7ec8bbd7326eabee3ba39bb91130b9b128e74b`, the commit `spc: splice framed source packets across foobar requests`. That cut is useful because it already contains the proven x86-child to x64-parent `[PCM][TLEM][SRCE-v2]` transport while predating the later Omniphony object/runtime layer.
+## Current safeguards
 
-That commit is provenance, not an acceptable permanent dependency. The remaining SPC migration work is to preserve the required parent-host source from that cut inside this repository, or reconstruct it from an independently pinned upstream baseline plus the proven transport changes, then point `apply_private_component.py` at that internal materialization. Once that is done, the private patch stack must contain no instruction to obtain or read a `vgmspc` checkout.
+- `tests/spc/test_materialize_foo_snesapu.py` invokes the materializer in a temporary directory and checks SPCP v3, explicit `__stdcall` provider bridges, parent studio transport, and lowercase `enhanced` UI state.
+- `tests/test_no_live_vgmspc_dependency.py` rejects executable dependency shapes such as a clone URL, `$VgmSpcCommit`, or `vgmspc-scaffold` in build-critical roots.
+- `tools/build_private_foobar_components.ps1` contains no `vgmspc` checkout. Historical provenance appears only in its output manifest.
 
-## Dependency provenance observed in vgmspc
+## Destructive deletion gate
 
-The old tree references foobar2000 SDK, WTL, libvgm and Omniphony as external dependencies. Its later build additionally pins SPCPlay/SNESAPU and Omniphony revisions and pins a Rust toolchain. The canonical build must record exact revisions at the point where they are actually required, rather than inheriting an opaque copied dependency directory.
+The old repository/directory may be deleted after one clean Windows run proves all of the following from a fresh Retro VGM Compiler checkout:
 
-Observed old release-build pins:
+- core/private-component tests pass;
+- both materializers succeed;
+- pinned libvgm source-capture tests pass, including linear resampler parity;
+- patched x86 SNESAPU exports `SetDSPSourceCapture`, `GetDSPSourceData`, `SetDSPPreBrrProvider`, and `SetDSPStudioSourceProvider`;
+- canonical `spcplayer.exe`, `foo_snesapu.dll`, and `foo_input_vgm.dll` build;
+- Omniphony ABI validation succeeds;
+- reference/enhanced and stereo/Spatial fallbacks remain independent and fail closed;
+- both `.fb2k-component` packages contain their required runtime dependencies;
+- `tests/test_no_live_vgmspc_dependency.py` passes.
 
-- SPCPlay/SNESAPU commit: `fc770e268ecacb4523699e2edc5c0efdf80957d6`
-- Omniphony commit: `32cf0cba471d39768593cd42e0a768a4c47bc045`
-- Rust toolchain: `1.88.0`
-
-The old `.gitmodules` URLs identify the upstream foobar2000 SDK, WTL, libvgm and Omniphony repositories. Their copied checkout directories are not themselves migration payloads.
-
-## Retirement checklist
-
-`vgmspc` is fully mined only when all rows above are `migrated`, `superseded`, or `retired`, and these end-to-end checks are reproducible from a fresh Retro VGM Compiler checkout:
-
-- core tests;
-- patched libvgm source-capture tests, including linear resampler parity;
-- source-aware VGM component build;
-- patched SNESAPU + source-player + SPC component build;
-- Omniphony ABI validation;
-- reference/enhanced and stereo/spatial playback combinations where applicable;
-- foobar component packaging with all runtime dependencies present;
-- no build or test step reads from a `vgmspc` path or repository.
-
-Until those conditions hold, `vgmspc` is read-only migration evidence. New implementation work belongs here.
+GitHub Actions has so far failed before assigning a Windows runner (`steps: []`, `runner_id: 0`), so this execution proof has not occurred. That infrastructure failure is not counted as a code failure and is the only remaining reason this ledger does not authorize destructive deletion yet.
