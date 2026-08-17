@@ -2,7 +2,7 @@
 """Keep deferred FM and PSG quality admission dynamically independent.
 
 SourceAware's source_block_complete() is an all-family convenience predicate. It
-is too strong for the deferred Enhanced path: a transient invalid PSG source
+is too strong for the deferred enhanced path: a transient invalid PSG source
 block must fail only PSG, not destroy an otherwise exact YM/FM Studio block.
 Static source_topology_supported() remains required, then each family proves its
 own current block with its own source evidence.
@@ -64,7 +64,7 @@ def main() -> int:
         "deferred FM family-local block admission",
     )
 
-    print("foo_input_vgm deferred Enhanced family independence applied")
+    print("foo_input_vgm deferred enhanced family independence applied")
     return 0
 
 
