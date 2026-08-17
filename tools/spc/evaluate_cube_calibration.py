@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reveal creator labels only after a creator-blind SPC similarity freeze exists.
+"""Reveal creator labels only after a creator-blind motif similarity freeze exists.
 
 This evaluator never extracts music. It consumes an already-frozen opaque cue
 matrix, then joins fixture identity to independently maintained composer-control
@@ -18,7 +18,9 @@ from dataclasses import dataclass
 from typing import Any
 
 
-EXPECTED_FREEZE_MODEL = "creator-blind SPC forensic corpus freeze"
+LEGACY_FREEZE_MODEL = "creator-blind SPC forensic corpus freeze"
+CURRENT_FREEZE_MODEL = "creator-blind persistent-part motif corpus freeze"
+SUPPORTED_FREEZE_MODELS = {LEGACY_FREEZE_MODEL, CURRENT_FREEZE_MODEL}
 SUPPORTED_GROUNDING_STATUSES = {"exact", "derived"}
 DEFAULT_MINIMUM_MARGIN = 0.08
 DEFAULT_FALSE_POSITIVE_THRESHOLD = 0.65
@@ -70,8 +72,8 @@ def load_panel(path: pathlib.Path) -> tuple[dict[str, str], dict[str, str]]:
 def load_frozen(path: pathlib.Path, expected_cues: set[str]) -> tuple[dict[str, dict[str, float]], str]:
     raw = path.read_bytes()
     value = json.loads(raw.decode("utf-8"))
-    if not isinstance(value, dict) or value.get("model") != EXPECTED_FREEZE_MODEL:
-        raise ValueError("input is not a creator-blind SPC forensic corpus freeze")
+    if not isinstance(value, dict) or value.get("model") not in SUPPORTED_FREEZE_MODELS:
+        raise ValueError("input is not a supported creator-blind motif corpus freeze")
     cues = value.get("cues")
     matrix = value.get("similarity_matrix")
     if not isinstance(cues, list) or not isinstance(matrix, dict):
@@ -405,7 +407,7 @@ def evaluate(
     return {
         "model": "post-freeze Cube composer calibration reveal",
         "claim_boundary": (
-            "Creator identities are joined only after the opaque SPC similarity matrix is frozen. "
+            "Creator identities are joined only after the opaque persistent-part motif similarity matrix is frozen. "
             "Grounded cue-level admissions support evaluation; team/partial corpora remain unlabeled validation worlds."
         ),
         "frozen_corpus_sha256": frozen_sha256,
