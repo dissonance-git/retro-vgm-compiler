@@ -74,6 +74,23 @@ def main() -> int:
         assert "RenderSpatialBlock" in input_source
         assert "m_Enhancer.reset()" not in input_source
 
+        # Fail closed at the final audible seam. Historical/enhanced stereo is
+        # committed to p_chunk before the conditional Spatial render is called.
+        # RenderSpatialBlock itself mutates the chunk only after all source and
+        # Omniphony checks pass, so a false return preserves protected stereo.
+        spatial_call = input_source.index("RenderSpatialBlock(p_chunk, wanted_sample);")
+        protected_stereo = input_source.rfind("p_chunk.set_data_fixedpoint(", 0, spatial_call)
+        assert protected_stereo >= 0, "SPC Spatial call no longer follows protected stereo output"
+        assert protected_stereo < spatial_call
+
+        helper_start = input_source.index("bool input_snesapu::RenderSpatialBlock(")
+        helper_end = input_source.index("void input_snesapu::decode_initialize(", helper_start)
+        helper = input_source[helper_start:helper_end]
+        replacement = helper.index("chunk.set_data_floatingpoint_ex(")
+        assert "return false;" in helper[:replacement]
+        assert "!rendered.source_chunk_valid || !rendered.omniphony.rendered" in helper[:replacement]
+        assert helper.rfind("return true;") > replacement
+
         # UI/source-quality naming remains descriptive rather than a tier name.
         assert '"enhanced"' in parent_ui
 
