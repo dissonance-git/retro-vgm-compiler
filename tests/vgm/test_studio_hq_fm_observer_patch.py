@@ -30,6 +30,15 @@ class StudioHqFmObserverPatchTest(unittest.TestCase):
         self.assertIn("observe_initial_studio_hq_pregen(m_ym);", text)
         self.assertIn("observe_studio_hq_fm_segment(\n                    m_ym, outputCount)", text)
         self.assertIn("studio_hq_fm_observer_valid() const noexcept", text)
+        self.assertIn("studio_hq_fm_domain_started() const noexcept", text)
+        self.assertIn("studio_hq_fm_first_destination_ordinal() const noexcept", text)
+        self.assertIn("studio_hq_fm_next_destination_ordinal() const noexcept", text)
+        self.assertIn("studio_hq_fm_next_release_ordinal() const noexcept", text)
+        self.assertIn(
+            "m_studio_hq_fm_observer.first_studio_destination_ordinal()", text
+        )
+        self.assertIn("m_studio_hq_fm_observer.next_destination_ordinal()", text)
+        self.assertIn("m_studio_hq_fm_observer.next_release_ordinal()", text)
         self.assertIn("m_studio_hq_fm_observer.configure(\n                    base.resmpl.smpRateSrc,\n                    base.resmpl.smpRateDst)", text)
 
         # Startup order is an identity invariant: exact and HQ histories first,
