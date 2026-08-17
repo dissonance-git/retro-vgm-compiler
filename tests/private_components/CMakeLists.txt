@@ -154,6 +154,20 @@ set_tests_properties(
     PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
 )
 
+# The private builder itself is part of the product contract. Keep outputs
+# deterministic and prove every packaged executable's bitness before archive
+# creation so a stale or wrong-architecture artifact cannot be selected.
+add_test(
+    NAME private_component_builder_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests
+        -p test_private_component_builder_contract.py
+)
+set_tests_properties(
+    private_component_builder_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
 # Materialize both complete private components from their repository-owned
 # immutable seeds. This executes the canonical guarded Python patch chains in
 # the same order used by the packaging script, catching stale anchors before
