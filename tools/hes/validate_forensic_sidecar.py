@@ -23,15 +23,15 @@ FORBIDDEN_KEYS = {
 }
 
 
-def _walk_keys(value: Any) -> None:
+def assert_label_blind(value: Any) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             if str(key).lower() in FORBIDDEN_KEYS:
                 raise ValueError(f"label/source-bearing key is forbidden: {key}")
-            _walk_keys(child)
+            assert_label_blind(child)
     elif isinstance(value, list):
         for child in value:
-            _walk_keys(child)
+            assert_label_blind(child)
 
 
 def _integer(mapping: dict[str, Any], key: str) -> int:
@@ -86,7 +86,7 @@ def validate(
     value: dict[str, Any], *, source_size: int, playlist_size: int,
     playlist_loaded: bool, track_index: int, seconds: int,
 ) -> None:
-    _walk_keys(value)
+    assert_label_blind(value)
     if value.get("model") != EXPECTED_MODEL or value.get("schema_version") != 1:
         raise ValueError("unsupported HES forensic sidecar")
     provenance = value.get("provenance")
