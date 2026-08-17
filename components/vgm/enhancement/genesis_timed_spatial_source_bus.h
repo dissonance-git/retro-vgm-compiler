@@ -98,11 +98,17 @@ public:
     }
 
     bool valid() const noexcept { return valid_; }
+    std::size_t lane_count() const noexcept { return valid_ ? base_.lane_count() : 0; }
+    std::size_t frame_count() const noexcept { return valid_ ? base_.frame_count() : 0; }
     genesis_timed_spatial_source_bus_error last_error() const noexcept { return last_error_; }
     std::size_t event_count() const noexcept { return valid_ ? event_count_ : 0; }
 
     const vgmtooling::model::spatial_source_block_view& block() const noexcept {
         return block_;
+    }
+
+    std::size_t canonical_source_index(std::size_t lane_index) const noexcept {
+        return valid_ ? base_.canonical_source_index(lane_index) : source_capacity;
     }
 
     const genesis_spatial_source_bus_storage<MaxFrames>& base_bus() const noexcept {
