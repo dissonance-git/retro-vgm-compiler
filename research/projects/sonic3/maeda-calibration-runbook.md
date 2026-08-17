@@ -163,6 +163,36 @@ Use only `realization` and the recurring role classes:
 
 This lane can calibrate arrangement / sequence / sound-data / implementation fingerprints only. It is forbidden from satisfying a composition gate.
 
+## Stage E: anti-sibling role-label permutation null
+
+Stage D must also beat randomized role maps. Use the same frozen audit and the same fixed family policy:
+
+```bash
+python tools/sonic3d_role_specificity_null.py \
+  research/projects/sonic3/maeda-calibration-frozen-audit.json \
+  --policy research/projects/sonic3/maeda-calibration-policy.json \
+  --families research/projects/sonic3/sonic3d-role-family-policy.json \
+  --permutations 5000 \
+  --seed 20260816 \
+  --json research/projects/sonic3/sonic3d-role-specificity-null.json
+```
+
+The null keeps the feature vectors and every `family_id` fixed. It permutes documentary role labels across tracks while preserving the exact observed label multiset separately for composition and arrangement/programming. Therefore every null trial retains:
+
+- composition counts 10 Maeda / 12 Senoue / 1 Setsumaru / 1 Okamoto,
+- arrangement/programming counts 10 Maeda / 10 Senoue / 4 Setsumaru,
+- the exact same same-family candidate exclusions as the observed result,
+- the same singleton treatment in the composition lane.
+
+The primary composition null statistics are:
+
+- balanced top-1 accuracy,
+- minimum recall across the learnable composition classes,
+- mean reciprocal rank,
+- mean best-same-creator-minus-best-other-creator margin.
+
+The same statistics are produced for pitch, rhythm, and realization as diagnostics. They are not alternative composition pass routes.
+
 ## Primary Maeda readouts
 
 For each of `structural`, `structural_pitch`, `structural_rhythm`, and `realization`, inspect:
@@ -214,9 +244,11 @@ The primary `structural` role-specificity result must additionally satisfy:
 - Maeda recall strictly greater than `0.50`,
 - Senoue recall strictly greater than `0.50`,
 - mean best-same-creator-minus-best-other-creator margin greater than `0`,
+- empirical role-permutation `p <= 0.05` for structural balanced top-1 accuracy,
+- empirical role-permutation `p <= 0.05` for structural mean best-same-creator-minus-best-other-creator margin,
 - singleton top-1 intrusions are reported explicitly and are not removed post hoc.
 
-These raw thresholds are a temporary minimum gate. Once the role-specificity label-permutation null is implemented, empirical significance against that null becomes mandatory and supersedes reliance on the raw `> 0.50` thresholds alone.
+The two role-specificity significance requirements are an intersection gate. Both must pass. `minimum_learnable_class_recall` and reciprocal-rank permutation p-values are diagnostics; raw Maeda and Senoue recall thresholds remain mandatory so one creator cannot carry the balanced score while the other collapses.
 
 A role-specificity result that succeeds only because Act 1 retrieves Act 2, or because one Boss-2-family variant retrieves the other, is invalid by construction.
 
@@ -233,7 +265,8 @@ Several requested confounds are already removed by construction in the compositi
 - pitch is represented by relative semitone motion rather than absolute key, making the pitch lens transposition-tolerant,
 - onset gaps are divided by each physical channel's median positive gap before quantization, making the rhythm lens tempo-normalized,
 - cross-soundtrack scoring excludes same-soundtrack candidates and reports each query world separately,
-- Sonic 3D creator-specificity scoring excludes same-family candidates.
+- Sonic 3D creator-specificity scoring excludes same-family candidates,
+- Sonic 3D creator-specificity significance is measured against role-count-preserving permutations with family geometry fixed.
 
 Still required before a strong Sonic 3 promotion:
 
@@ -252,7 +285,7 @@ Ask where it falls naturally. Do not use the answer to alter the training labels
 
 ## Only then: Sonic 3 candidate search
 
-If the structural calibration gate survives the Maeda controls, empirical null, anti-sibling role-specificity control, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
+If the structural calibration gate survives the Maeda controls, both empirical nulls, anti-sibling role-specificity control, and ablations, create a new frozen blind extraction for unresolved Sonic 3 cues and compare them against the already-frozen control representation.
 
 The allowed conclusion format is:
 
