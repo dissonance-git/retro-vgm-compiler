@@ -18,7 +18,7 @@ void assert_same(
 
     const auto ordinary = reconstruct_spc_upstream_playback_sample(
         candidate, playback, trajectory);
-    const auto resolved = reconstruct_spc_upstream_playback_sample_resolved(
+    const auto resolved = detail::reconstruct_spc_upstream_candidate_playback_sample_resolved(
         candidate, playback, trajectory, boundaries);
     assert(ordinary.valid == resolved.valid);
     if (ordinary.valid)
@@ -112,7 +112,7 @@ int main() {
     assert_same(looped, looped_playback, trajectory);
 
     // Invalid/fractional geometry still fails during setup resolution and cannot
-    // be smuggled into the resolved realtime entry point as a valid plan.
+    // become a cached realtime plan.
     auto fractional = looped;
     fractional.coordinate_map.upstream_frames_per_game_sample = 1.5;
     fractional.coordinate_map.upstream_loop_start = 96.0;
