@@ -119,6 +119,17 @@ set_tests_properties(
 )
 
 add_test(
+    NAME enhanced_wording_contract
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s ${RETRO_ROOT}/tests/vgm
+        -p test_enhanced_wording.py
+)
+set_tests_properties(
+    enhanced_wording_contract
+    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
+)
+
+add_test(
     NAME spc_active_patch_contract
     COMMAND ${Python3_EXECUTABLE} -B
         ${RETRO_ROOT}/tests/spc/test_active_spc_patch_contract.py
