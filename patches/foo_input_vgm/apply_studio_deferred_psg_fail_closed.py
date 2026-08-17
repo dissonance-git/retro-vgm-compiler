@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail deferred Enhanced PSG immediately when exact subtraction authority is lost.
+"""Fail deferred enhanced PSG immediately when exact subtraction authority is lost.
 
 Run after apply_studio_deferred_psg.py. Command-time engine-clock synthesis may
 already have queued a prefix of the current render before SourceAware's completed
@@ -72,7 +72,7 @@ def main() -> int:
         "deferred PSG exact-block fail close",
     )
 
-    print("foo_input_vgm deferred Enhanced PSG fail-close guard applied")
+    print("foo_input_vgm deferred enhanced PSG fail-close guard applied")
     return 0
 
 
