@@ -7,6 +7,7 @@
 using gameaudio::spc::apply_spc_reference_envelope_quantization;
 using gameaudio::spc::reconstruct_spc_lanczos4;
 using gameaudio::spc::spc_decoded_source_window;
+using gameaudio::spc::spc_floor_divide_2048;
 
 int main() {
     // Constant input must remain constant at every fractional position. This
@@ -54,6 +55,13 @@ int main() {
     assert(apply_spc_reference_envelope_quantization(-16000.0, 0x0400u) == -8000);
     assert((apply_spc_reference_envelope_quantization(12345.0, 0x07FFu) & 1) == 0);
     assert(apply_spc_reference_envelope_quantization(50000.0, 0x07FFu) <= 32767);
+
+    // Preserve the arithmetic-right-shift behavior explicitly even on C++17
+    // implementations whose signed right shift would make a different choice.
+    assert(spc_floor_divide_2048(2049) == 1);
+    assert(spc_floor_divide_2048(-2049) == -2);
+    assert(spc_floor_divide_2048(-1) == -1);
+    assert(apply_spc_reference_envelope_quantization(-1.0, 1u) == -2);
 
     return 0;
 }
