@@ -97,6 +97,19 @@ Relevant literature:
 - Dupraz & Richard, *Robust frequency-based Audio Fingerprinting* (ICASSP 2010), DOI 10.1109/ICASSP.2010.5495944.
 - Ouali, Dumouchel & Gupta, *A robust audio fingerprinting method for content-based copy detection* (2014), DOI 10.1109/CBMI.2014.6849814.
 
+### Retrieval is now executable
+
+`tools/spc_original_sample_candidates.py` implements the first corpus-search rung. It intentionally performs **candidate retrieval only**:
+
+- PCM WAV ingestion and mono folding;
+- DC/gain normalization;
+- coarse duration/window search for resampled or trimmed descendants;
+- multiscale smoothed waveform correlation, which downweights local BRR/filter damage;
+- derivative correlation as a smaller edge/transient term;
+- JSON-ranked candidate output with an explicit claim boundary.
+
+A high ranking still has no authority to replace audio. The candidate must pass `spc_sample_lineage_verification.h` and independent exact-lineage evidence before it can enter `spc_original_sample_bank.h`.
+
 ### Code frontier now present
 
 ```text
@@ -114,6 +127,9 @@ spc_original_sample_bank.h
 
 spc_enhanced_native_interval.h
     source-coordinate reconstruction when no upstream master is available
+
+tools/spc_original_sample_candidates.py
+    distortion-tolerant candidate retrieval, never provenance by itself
 ```
 
 The runtime bank refuses a choice when two different approved upstream identities conflict for the same BRR identity. Ambiguity returns to the BRR reference path rather than choosing whichever file appears first.
@@ -172,23 +188,75 @@ expanded modern Yamaha FM
       until patch-specific identity testing says otherwise
 ```
 
-### First executable high-fidelity backend
+### Automatic rung: exact-state Nuked carrier lift
 
-`ym2612_hq_fm_backend` now exists as the first bounded candidate engine.
+The first audible automatic FM rung no longer needs an approximate second envelope/control engine.
 
-It:
+`nuked_opn2_hq_lift.h` reads the **same live authoritative Nuked OPN2 state** immediately around each native chip cycle. Nuked remains responsible for:
 
-- keeps six FM channel states;
-- keeps four operator states per channel;
-- uses the Nuked OPN2 operator-routing table as the modulation topology;
-- preserves ordered VGM register writes rather than converting the music to MIDI;
-- reconstructs OPN detune/multiple phase increments into a floating-point oscillator domain;
+- register/write-buffer timing;
+- FNUM, block, detune and multiplier behavior;
+- key-on/off and exact envelope state;
+- LFO, AM and PM;
+- channel-3 special mode and CSM;
+- SSG-EG;
+- the exact quantized modulation history;
+- authored pan and source mute state.
+
+The lift changes only the final carrier/channel/output ceiling:
+
+```text
+exact Nuked q10 modulated phase
++ exact Nuked eg_out attenuation
+        ↓
+continuous sine carrier
+        ↓
+exact OPN carrier-connect topology
+        ↓
+floating carrier accumulation
+(no 9-bit channel clamp)
+        ↓
+FM bus without YM2612 sign-leak/DAC-ladder artifact
+        ↓
+no optional MD1 analog low-pass
+```
+
+The six lifted FM lanes are then sent through the **same outer libvgm linear-resampler timing and device-volume coordinate** as the exact six reference FM lanes. PlayerA performs:
+
+```text
+protected reference mix
+- exact FM1..FM6
++ lifted FM1..FM6
+```
+
+all six at once. DAC remains a separate seventh YM source identity and is untouched by this FM operation.
+
+This is intentionally conservative. Modulator history is still the exact hardware-quantized OPN history, which preserves difficult timbral/control identity. The audible improvement is at the final sine/carrier sum/channel/DAC/bandwidth ceiling rather than an uncontrolled reinterpretation of the patch.
+
+### Deeper experimental rung
+
+`ym2612_hq_fm_backend` remains the deeper all-floating candidate engine. It:
+
+- keeps six FM channel states and four source operators per channel;
+- uses the Nuked OPN2 operator-routing table as modulation topology;
+- preserves ordered VGM register writes instead of converting to MIDI;
+- reconstructs OPN detune/multiple phase increments into a floating oscillator domain;
 - runs at a bounded oversampled internal rate;
-- replaces the quantized sine/output arithmetic with floating-point synthesis;
-- separates the YM2612 DAC from FM channel 6;
-- fails its automatic-admission fence when it encounters semantics not yet matched closely enough, currently including enabled OPN LFO/AM/PM, channel-3 special mode, or SSG-EG.
+- can eventually relax modulation-path quantization as well as output quantization.
 
-That last behavior is intentional. Unsupported semantics do not become zero, generic FM, or a guessed modern equivalent. The exact Nuked reference lane remains the playback answer for that source until the enhanced implementation reaches it.
+Its current smooth envelope/control implementation is not yet a universal automatic replacement for every OPN semantic. The exact-state lift exists specifically so normal `Enhanced` can improve FM now without pretending that deeper experimental renderer has already matched every control behavior.
+
+### Reference-source correctness repair
+
+While building the FM lift, the source-aware Nuked decomposition was re-audited against the pinned libvgm core and corrected to mirror the real `NOPN2_GenerateResampled` path:
+
+- `NOPN2_Clock`, `smplRate`, `dacen`, `rateratio`, and `samplecnt` semantics now match the pinned ABI;
+- the buffered-register-write scheduler is executed after each authoritative chip clock;
+- the 24-cycle output-bus mute/channel mapping is retained;
+- the no-filter x11 scaling and optional MD1 filter recurrence match the pinned core;
+- the exact mix remains the accounting authority, with only bounded per-lane filter-rounding residual accepted.
+
+This repair matters more than any enhancement. An Enhanced delta is meaningful only if the source being subtracted is the exact source that actually built the protected reference mix.
 
 ## 3. Product composition
 
@@ -203,7 +271,7 @@ reference source lane(s)
         └─ Enhanced ON                           │
            ├─ proven pre-compression sample      │
            ├─ high-rate BRR source reconstruction│
-           ├─ higher-ceiling Yamaha FM           │
+           ├─ exact-state higher-ceiling OPN FM  │
            └─ source-specific descendants        │
                          ↓                        │
                   source result ←────────────────┘
