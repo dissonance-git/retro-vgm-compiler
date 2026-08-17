@@ -1,4 +1,5 @@
 #include "components/vgm/foo_input_vgm/src/studio_alignment_queue.h"
+#include "components/vgm/foo_input_vgm/src/studio_hq_fm_observer.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_resampler.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_stream.h"
 #include "components/vgm/foo_input_vgm/src/studio_source_timeline.h"
@@ -153,6 +154,72 @@ int main() {
     assert(aligned_out.payload.reference == 101);
     assert(aligned_out.payload.dac == 7);
     assert(aligned_out.payload.psg == 11);
+
+    // Live observer: startup without synthetic past is explicit reference,
+    // ordinary block boundaries retain future-dependent frames, and the next
+    // native segment releases them before admitting its own ready frames.
+    struct native_integer_sample {
+        std::int32_t left = 0;
+        std::int32_t right = 0;
+    };
+    std::array<native_integer_sample, 160> live0{};
+    std::array<native_integer_sample, 160> live1{};
+    for (std::size_t i = 0; i < live0.size(); ++i) {
+        live0[i] = {
+            static_cast<std::int32_t>(i * 3u + 1u),
+            -static_cast<std::int32_t>(i * 5u + 2u)
+        };
+        live1[i] = {
+            static_cast<std::int32_t>(i * 7u + 3u),
+            -static_cast<std::int32_t>(i * 11u + 4u)
+        };
+    }
+
+    studio_hq_fm_observer<2, 512, 256> observer;
+    assert(observer.configure(48000, 48000));
+    studio_linear_timing_snapshot same_rate{};
+    same_rate.source_rate_hz = 48000;
+    same_rate.destination_rate_hz = 48000;
+
+    std::array<const native_integer_sample*, 2> live_first{{
+        live0.data(), live1.data()
+    }};
+    const auto observed_first = observer.observe_segment(
+        same_rate, live_first, 80, 80);
+    assert(observed_first.valid);
+    assert(observed_first.native_base == 0);
+    assert(observed_first.destination_base == 0);
+    assert(observed_first.startup_reference_frames
+        == studio_source_resampler_kernel::pre_roll);
+    assert(observed_first.newly_ready_studio_frames == 17);
+    assert(observed_first.pending_future_frames
+        == studio_source_resampler_kernel::post_roll);
+    assert(observer.next_native_ordinal() == 80);
+    assert(observer.next_destination_ordinal() == 80);
+
+    std::array<const native_integer_sample*, 2> live_second{{
+        live0.data() + 80, live1.data() + 80
+    }};
+    const auto observed_second = observer.observe_segment(
+        same_rate, live_second, 80, 80);
+    assert(observed_second.valid);
+    assert(observed_second.native_base == 80);
+    assert(observed_second.destination_base == 80);
+    assert(observed_second.startup_reference_frames == 0);
+    assert(observed_second.newly_ready_studio_frames == 80);
+    assert(observed_second.pending_future_frames
+        == studio_source_resampler_kernel::post_roll);
+    assert(observer.next_native_ordinal() == 160);
+    assert(observer.next_destination_ordinal() == 160);
+    assert(observer.finish_reference_tail()
+        == studio_source_resampler_kernel::post_roll);
+    assert(observer.pending_frames() == 0);
+
+    observer.reset();
+    assert(observer.valid());
+    assert(observer.next_native_ordinal() == 0);
+    assert(observer.next_destination_ordinal() == 0);
+    assert(observer.pending_frames() == 0);
 
     assert(!kernel.reconstruct(constant.data(), constant.size(), 12.0).valid);
     assert(!kernel.reconstruct(constant.data(), constant.size(), 1000.0).valid);
