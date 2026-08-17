@@ -15,6 +15,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     snes_spc_enhanced_source_hook_bridge_test
     snesapu_source_transport_v2_test
     snesapu_source_object_projection_test
+    spc_sample_restoration_test
 )
 
 add_executable(
@@ -65,6 +66,10 @@ add_executable(
     snesapu_source_object_projection_test
     tests/spc/snesapu_source_object_projection_test.cpp
 )
+add_executable(
+    spc_sample_restoration_test
+    tests/spc/spc_sample_restoration_test.cpp
+)
 
 target_include_directories(
     spatial_source_host_session_test
@@ -112,6 +117,10 @@ target_include_directories(
 )
 target_include_directories(
     snesapu_source_object_projection_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    spc_sample_restoration_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -162,4 +171,8 @@ add_test(
 add_test(
     NAME snesapu_source_object_projection
     COMMAND snesapu_source_object_projection_test
+)
+add_test(
+    NAME spc_sample_restoration
+    COMMAND spc_sample_restoration_test
 )
