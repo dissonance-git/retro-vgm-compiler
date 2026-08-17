@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """Extract reusable creator-blind Genesis VGM feature capsules once per song.
 
-The expensive VGM parse belongs at ingestion time.  Later attribution research
+The expensive VGM parse belongs at ingestion time. Later attribution research
 should load these JSON capsules and never reopen the source VGM/VGZ unless a new
 representation needs evidence the cache does not contain.
 
-Composer/artist labels are intentionally excluded.  Keep documentary labels in
+Each capsule also keeps a canonical ordinary-YM2612-key-on event lane. That is a
+small analysis-ready copy of the observed song geometry, so many future feature
+ideas can be derived from cache rather than by reopening the VGM.
+
+Composer/artist labels are intentionally excluded. Keep documentary labels in
 separate policy/index files so extraction stays blind and reusable.
 """
 
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import pathlib
 import re
@@ -21,13 +26,77 @@ import vgm_creator_feature_audit as gen1
 import vgm_creator_part_matcher as gen2
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MODEL = "creator-blind Genesis VGM reusable feature capsule"
 
 
 def _slug(text: str) -> str:
     value = re.sub(r"[^A-Za-z0-9._-]+", "-", text.strip()).strip("-")
     return value or "track"
+
+
+def _raw_vgm(path: pathlib.Path) -> bytes:
+    packed = path.read_bytes()
+    return gzip.decompress(packed) if path.suffix.lower() == ".vgz" else packed
+
+
+def _canonical_event_lane(path: pathlib.Path) -> dict[str, object]:
+    """Keep reusable creator-blind ordinary full-FM key-on evidence.
+
+    This is intentionally closer to the parsed song than any particular
+    similarity metric. It preserves timing, channel, pitch registers, and the
+    realization state already available at each accepted key-on. Future
+    composition-facing lenses can therefore usually be derived from JSON only.
+    """
+    state = gen1.GenesisAuditState()
+    channel_map = {0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5}
+    rows: list[dict[str, object]] = []
+    last_tick = 0
+
+    for command in gen1.command_stream(_raw_vgm(path)):
+        last_tick = max(last_tick, command.tick)
+        if command.opcode not in (0x52, 0x53):
+            continue
+
+        register, value = command.args
+        port = 0 if command.opcode == 0x52 else 1
+        state.update(port, register, value)
+
+        if port != 0 or register != 0x28:
+            continue
+        key_mask = value & 0xF0
+        encoded_channel = value & 0x07
+        if key_mask != 0xF0 or encoded_channel not in channel_map:
+            continue
+        channel = channel_map[encoded_channel]
+        onset = state.onset(command.tick, channel)
+        if onset is None:
+            continue
+        rows.append(
+            {
+                "tick": onset.tick,
+                "channel": onset.channel,
+                "fnum": onset.fnum,
+                "block": onset.block,
+                "patch_core": onset.patch_core,
+                "patch_full": onset.patch_full,
+                "algorithm": onset.algorithm,
+                "feedback": onset.feedback,
+                "ams": onset.ams,
+                "fms": onset.fms,
+                "pan": onset.pan,
+            }
+        )
+
+    return {
+        "duration_vgm_samples": last_tick,
+        "ordinary_full_fm_key_on_count": len(rows),
+        "ordinary_full_fm_key_ons": rows,
+        "claim_boundary": (
+            "Observed ordinary full YM2612 key-ons after DAC and CH3-special exclusions. "
+            "This is execution evidence, not original notation or persistent-part identity."
+        ),
+    }
 
 
 def _motion_part(part: dict[str, object]) -> dict[str, object]:
@@ -55,6 +124,10 @@ def _motion_part(part: dict[str, object]) -> dict[str, object]:
 
 
 def extract_capsule(path: pathlib.Path, soundtrack_id: str) -> dict[str, object]:
+    # These are all ingestion-time operations. Normal research uses only the
+    # resulting capsule. The canonical lane is retained so future views can be
+    # derived without another source-file pass.
+    canonical = _canonical_event_lane(path)
     base = gen1.audit_file(path)
     parts = gen2.extract_part_features(path)
     raw_parts = list(parts.get("parts", []))  # type: ignore[arg-type]
@@ -78,6 +151,7 @@ def extract_capsule(path: pathlib.Path, soundtrack_id: str) -> dict[str, object]
             "source_path": str(path),
         },
         "views": {
+            "canonical_events": canonical,
             "gen1": base,
             "gen2_parts": {
                 "parts": clean_parts,
