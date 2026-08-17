@@ -6,21 +6,28 @@ when DSP_ECHOFIR is clear, SetDSPOpt runs the DSP itself at the requested output
 rate, adjusts source pitch for that DSP rate, and dispatches the selected voice
 interpolator at that rate. INT_SINC is its 8-point sinc interpolator.
 
-So for a user-selected 96 kHz output rate, Enhanced can immediately use a true
-source-domain 96 kHz reconstruction path instead of rendering the historical
-32 kHz DSP output and merely resampling that final bus.
+Enhanced playback is intentionally standardized at 48 kHz. That is the final
+playback rate, so running the source/DSP reconstruction at 48 kHz avoids spending
+roughly twice the realtime work on a 96 kHz intermediate that would immediately
+be discarded. The verified-upstream studio rung still uses its longer 64-tap
+source-domain reconstruction; this change only sets the host/DSP presentation
+rate used by normal Enhanced playback.
 
-This patch does not alter the stored quality controls. It treats the configured
-sample-rate field as the Enhanced target rate, forces only the interpolation
-stage to INT_SINC while Enhanced is checked, and explicitly clears the hidden
-DSP_ECHOFIR compatibility mode which would otherwise clamp the DSP to 32 kHz and
-invoke the final sampling-rate converter. Spatial/Omniphony remains independent.
+The stored reference quality controls are left untouched. While Enhanced is
+checked, the runtime forces 48 kHz plus INT_SINC and explicitly clears the hidden
+DSP_ECHOFIR compatibility mode which would otherwise clamp DSP execution to
+32 kHz and invoke the final sampling-rate converter. Spatial/Omniphony remains
+independent. 96 kHz remains useful as an offline/research comparison, not the
+normal playback contract.
 """
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
+
+ENHANCED_PLAYBACK_RATE = 48000
 
 
 def decode_source(raw: bytes) -> tuple[str, str, bool]:
@@ -64,26 +71,30 @@ def main() -> int:
 \tm_CnfStereo = cfg_stereo;
 \tm_CnfOptions = cfg_dsp_option;
 """,
-        """\tm_CnfInterpolation = cfg_interpolation;
+        f"""\tm_CnfInterpolation = cfg_interpolation;
 \tm_CnfStereo = cfg_stereo;
 \tm_CnfOptions = cfg_dsp_option;
 #ifdef _WIN64
 \tif (cfg_enhanced_enabled)
-\t{
-\t\t// Enhanced changes the reconstruction ceiling, not the stored reference
-\t\t// preference. INT_SINC is SNESAPU's 8-point source interpolator.
+\t{{
+\t\t// Normal Enhanced playback is deliberately one-rate end to end. The
+\t\t// protected reference preference remains stored but is not used while
+\t\t// Enhanced is active.
+\t\tm_CnfSampleRate = {ENHANCED_PLAYBACK_RATE};
+\t\t// INT_SINC is SNESAPU's 8-point source interpolator. Verified upstream
+\t\t// sources can replace this waveform stage with the 64-tap studio sampler.
 \t\tm_CnfInterpolation = INT_SINC;
 \t\t// DSP_ECHOFIR is the compatibility mode that clamps DSP execution to
-\t\t// 32 kHz and then resamples the finished bus. Enhanced explicitly uses
-\t\t// the configured output rate as the DSP/source-reconstruction rate.
+\t\t// 32 kHz and then resamples the finished bus. Enhanced instead executes
+\t\t// the DSP/source reconstruction directly at the 48 kHz playback rate.
 \t\tm_CnfOptions &= ~DSP_ECHOFIR;
-\t}
+\t}}
 #endif
 """,
-        "SNES Enhanced source-domain interpolation policy",
+        "SNES Enhanced 48 kHz source-domain policy",
     )
 
-    print("SNESAPU source-domain Enhanced runtime applied successfully")
+    print("SNESAPU 48 kHz source-domain Enhanced runtime applied successfully")
     return 0
 
 
