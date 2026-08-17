@@ -113,25 +113,33 @@ else()
     )
 endif()
 
+function(configure_hes_first_party target)
+    target_link_libraries(${target} PRIVATE gme_static retro_vgm_hes_forensic_capture)
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    target_include_directories(${target} PRIVATE ${RETRO_VGM_COMPILER_ROOT})
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endfunction()
+
 add_executable(
     hes_forensic_hook_test
     ${RETRO_VGM_COMPILER_ROOT}/tests/hes/hes_forensic_hook_test.cpp
 )
-target_link_libraries(
-    hes_forensic_hook_test
-    PRIVATE gme_static retro_vgm_hes_forensic_capture
-)
-target_compile_features(hes_forensic_hook_test PRIVATE cxx_std_17)
-target_include_directories(
-    hes_forensic_hook_test
-    PRIVATE ${RETRO_VGM_COMPILER_ROOT}
-)
-if(MSVC)
-    target_compile_options(hes_forensic_hook_test PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(
-        hes_forensic_hook_test
-        PRIVATE -Wall -Wextra -Wpedantic -Werror
-    )
-endif()
+configure_hes_first_party(hes_forensic_hook_test)
 add_test(NAME hes_forensic_hook COMMAND hes_forensic_hook_test)
+
+add_executable(
+    hes_forensic_features
+    ${CMAKE_CURRENT_LIST_DIR}/hes_forensic_features.cpp
+)
+configure_hes_first_party(hes_forensic_features)
+target_compile_definitions(
+    hes_forensic_features
+    PRIVATE
+        RETRO_VGM_COMPILER_FORENSIC_COMMIT="${RETRO_VGM_COMPILER_FORENSIC_COMMIT}"
+        LIBGME_HES_FORENSIC_COMMIT="${LIBGME_HES_FORENSIC_COMMIT}"
+        LIBGME_HES_FORENSIC_HOOK_CONTRACT="${LIBGME_HES_FORENSIC_HOOK_CONTRACT}"
+)
