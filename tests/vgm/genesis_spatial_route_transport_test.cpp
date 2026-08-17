@@ -37,8 +37,8 @@ int main() {
     transport_type transport;
     transport.reset();
 
-    // No reset route is guessed. A present source without an observed authored
-    // route keeps this block on ordinary stereo while delivery state advances.
+    // YM2612 reset pan remains unknown. A present FM source without an observed
+    // authored route keeps this block on ordinary stereo while delivery advances.
     transport_type::presence_array present{};
     present[fm1] = true;
     transport_type::delivered_block block{};
@@ -47,6 +47,19 @@ int main() {
     assert(transport.valid());
     assert(transport.last_error() ==
         genesis_spatial_route_transport_error::missing_initial_route);
+
+    // SN76496 is different: pinned libvgm resets stereo_mask to 0xFF. All four
+    // PSG lanes therefore have an exact both-output route before any 0x4F write.
+    transport.reset();
+    present = {};
+    present[psg0] = true;
+    present[psg3] = true;
+    assert(transport.prepare_delivered_block(0u, 4u, present, block));
+    assert(block.routes_complete);
+    assert(block.initial_evidence[psg0].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[psg0].stereo_route.right_gain == 1.0f);
+    assert(block.initial_evidence[psg3].stereo_route.left_gain == 1.0f);
+    assert(block.initial_evidence[psg3].stereo_route.right_gain == 1.0f);
 
     // A route write at the first audible sample becomes initial evidence rather
     // than forcing an unnecessary block of fallback.
@@ -78,8 +91,8 @@ int main() {
     assert(block.initial_evidence[dac].stereo_route.right_gain == 1.0f);
     assert(block.initial_evidence[fm6].source_id != block.initial_evidence[dac].source_id);
 
-    // Game Gear stereo command establishes all four PSG routes from the exact
-    // bit layout. 0x81 = tone0 both sides, all other PSG lanes disabled.
+    // Game Gear stereo command overrides all four exact reset routes from the
+    // documented bit layout. 0x11 = tone0 both sides, all other lanes disabled.
     transport.reset();
     const std::uint8_t psg_mask[] = {0x11u};
     assert(transport.observe(command(0x4Fu, psg_mask, 1u), 300u));
