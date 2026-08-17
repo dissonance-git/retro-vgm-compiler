@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Require an exact committed source state before private binary construction.
+"""Require an exact committed source state for private binary construction.
 
 The final bundle records one Retro VGM Compiler commit as provenance. Building
 from modified tracked files would make that statement false even if every binary
-compiled successfully. This preflight therefore requires a real 40-hex HEAD and
-no staged or unstaged tracked changes. Untracked build/output directories are
-intentionally ignored because the private builder creates them before CTest runs.
+compiled successfully. The verifier therefore requires a real 40-hex HEAD and
+no staged or unstaged tracked changes. An optional expected commit lets the
+builder prove that the checkout stayed on the same source snapshot for the whole
+build. Untracked build/output directories are intentionally ignored.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ def run_git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def verify_repository(repo: Path) -> str:
+def verify_repository(repo: Path, expected_commit: str | None = None) -> str:
     head = run_git(repo, "rev-parse", "HEAD")
     commit = head.stdout.strip()
     if head.returncode != 0 or not HEX40.fullmatch(commit):
@@ -37,6 +38,18 @@ def verify_repository(repo: Path) -> str:
             "private build requires a Git checkout with an exact 40-hex HEAD"
             + (f": {detail}" if detail else "")
         )
+    commit = commit.lower()
+
+    if expected_commit is not None:
+        expected = expected_commit.strip().lower()
+        if not HEX40.fullmatch(expected):
+            raise AssertionError(
+                f"expected source commit must be exactly 40 hexadecimal characters: {expected_commit!r}"
+            )
+        if commit != expected:
+            raise AssertionError(
+                f"private build source commit changed during build: started {expected}, now {commit}"
+            )
 
     unstaged = run_git(repo, "diff", "--quiet", "--ignore-submodules=dirty", "--")
     if unstaged.returncode not in (0, 1):
@@ -60,15 +73,20 @@ def verify_repository(repo: Path) -> str:
             "private build source has staged modifications not represented by HEAD"
         )
 
-    return commit.lower()
+    return commit
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("repo", nargs="?", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--expected-commit",
+        default=None,
+        help="require HEAD to still equal this 40-hex source commit",
+    )
     args = parser.parse_args()
 
-    commit = verify_repository(args.repo.resolve())
+    commit = verify_repository(args.repo.resolve(), args.expected_commit)
     print(f"private build source provenance verified: {commit}")
     return 0
 
