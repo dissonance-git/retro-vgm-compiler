@@ -15,6 +15,7 @@ enum class spc_native_exact_source_error : std::uint8_t {
     unsupported_output_rate,
     frame_count_mismatch,
     native_timeline_mismatch,
+    native_timeline_overflow,
     reference_timeline_overflow,
     capacity_exceeded,
 };
@@ -56,6 +57,10 @@ public:
         if (reference_frame_count != 0 &&
             capture.first_native_sample() != expected_native_sample_start)
             return fail(spc_native_exact_source_error::native_timeline_mismatch);
+        if (reference_frame_count != 0 &&
+            static_cast<std::uint64_t>(reference_frame_count - 1u) >
+                std::numeric_limits<std::uint64_t>::max() - expected_native_sample_start)
+            return fail(spc_native_exact_source_error::native_timeline_overflow);
         if (reference_frame_count >
             std::numeric_limits<std::uint64_t>::max() - reference_frame_start)
             return fail(spc_native_exact_source_error::reference_timeline_overflow);
