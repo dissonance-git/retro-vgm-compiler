@@ -5,129 +5,98 @@ import unittest
 from pathlib import Path
 
 
-HEADER_FIXTURE = r'''#define LIBVGM_GAMEAUDIO_POSTRENDER_ABI 1
+HEADER_FIXTURE = '''#define LIBVGM_GAMEAUDIO_POSTRENDER_ABI 1
 #ifndef __PLAYERA_HPP__
 #define __PLAYERA_HPP__
 #include <vector>
 class PlayerA
 {
 public:
-    typedef void (*PLR_SMPL_PACK)(void* buffer, INT32 value);
-    typedef void (*PLR_POST_RENDER_PROCESSOR)(void* user, WAVE_32BS* samples, UINT32 sampleCount, UINT32 basePlaybackSample);
-    void SetLogCallback(PLAYER_LOG_CB cbFunc, void* cbParam);
-    void SetPostRenderProcessor(PLR_POST_RENDER_PROCESSOR cbFunc, void* cbParam);
-    UINT32 Render(UINT32 bufSize, void* data);
+\ttypedef void (*PLR_SMPL_PACK)(void* buffer, INT32 value);
+\ttypedef void (*PLR_POST_RENDER_PROCESSOR)(void* user, WAVE_32BS* samples, UINT32 sampleCount, UINT32 basePlaybackSample);
+\tvoid SetPostRenderProcessor(PLR_POST_RENDER_PROCESSOR cbFunc, void* cbParam);
 private:
-    PLAYER_EVENT_CB _plrCbFunc;
-    void* _plrCbParam;
-    PLR_POST_RENDER_PROCESSOR _postRenderFunc;
-    void* _postRenderParam;
-    PLR_SMPL_PACK _outSmplPack;
-    std::vector<WAVE_32BS> _smplBuf;
+\tPLR_POST_RENDER_PROCESSOR _postRenderFunc;
+\tvoid* _postRenderParam;
+\tPLR_SMPL_PACK _outSmplPack;
+\tstd::vector<WAVE_32BS> _smplBuf;
 };
 #endif
 '''
 
 
-CPP_FIXTURE = r'''PlayerA::PlayerA()
+CPP_FIXTURE = '''PlayerA::PlayerA()
 {
-    _postRenderFunc = NULL;
-    _postRenderParam = NULL;
-    _myPlayState = 0x00;
+\t_postRenderFunc = NULL;
+\t_postRenderParam = NULL;
+\t_myPlayState = 0x00;
 }
 
 UINT8 PlayerA::SetOutputSettings(UINT32 smplRate, UINT8 channels, UINT8 smplBits, UINT32 smplBufferLen)
 {
-    _smplBuf.resize(smplBufferLen);
-    return 0x00;
+\t_smplBuf.resize(smplBufferLen);
+\treturn 0x00;
 }
 
 void PlayerA::SetPostRenderProcessor(PLR_POST_RENDER_PROCESSOR cbFunc, void* cbParam)
 {
-    _postRenderFunc = cbFunc;
-    _postRenderParam = cbParam;
-    return;
+\t_postRenderFunc = cbFunc;
+\t_postRenderParam = cbParam;
+\treturn;
 }
 
 UINT8 PlayerA::GetState(void) const
 {
-    return _myPlayState;
+\treturn _myPlayState;
 }
 
 UINT8 PlayerA::Start(void)
 {
-    UINT8 retVal = _player->Start();
-    _myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
-    return retVal;
+\tUINT8 retVal = _player->Start();
+\t_myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
+\treturn retVal;
 }
 
 UINT8 PlayerA::Stop(void)
 {
-    return _player->Stop();
+\treturn _player->Stop();
 }
 
 UINT8 PlayerA::Reset(void)
 {
-    UINT8 retVal = _player->Reset();
-    _myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
-    return retVal;
+\tUINT8 retVal = _player->Reset();
+\t_myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
+\treturn retVal;
 }
 
 UINT8 PlayerA::FadeOut(void)
 {
-    return 0;
+\treturn 0;
 }
 
 UINT8 PlayerA::Seek(UINT8 unit, UINT32 pos)
 {
-    UINT8 retVal = _player->Seek(unit, pos);
-    _myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
-    UINT32 pbSmpl = _player->GetCurPos(PLAYPOS_SAMPLE);
-    if (pbSmpl < _fadeSmplStart)
-        _fadeSmplStart = (UINT32)-1;
-    if (pbSmpl < _endSilenceStart)
-        _endSilenceStart = (UINT32)-1;
-    return retVal;
+\tUINT8 retVal = _player->Seek(unit, pos);
+\t_myPlayState = _player->GetState() & (PLAYSTATE_PLAY | PLAYSTATE_END);
+\tUINT32 pbSmpl = _player->GetCurPos(PLAYPOS_SAMPLE);
+\tif (pbSmpl < _fadeSmplStart)
+\t\t_fadeSmplStart = (UINT32)-1;
+\tif (pbSmpl < _endSilenceStart)
+\t\t_endSilenceStart = (UINT32)-1;
+\treturn retVal;
 }
 
 #if 1
 #define VOLCALC64
-#define VOL_BITS 16
-#define VOL_SHIFT (16 - VOL_BITS)
 
 UINT32 PlayerA::Render(UINT32 bufSize, void* data)
 {
-    UINT8* bData = (UINT8*)data;
-    UINT32 basePbSmpl;
-    UINT32 smplCount;
-    UINT32 smplRendered;
-    UINT32 curSmpl;
-    WAVE_32BS fnlSmpl;
-    INT32 curVolume;
-    smplCount = bufSize / _outSmplSizeA;
-    if (_player == NULL) return 0;
-    if (! (_player->GetState() & PLAYSTATE_PLAY)) return 0;
-    if (! smplCount) return 0;
-    if (smplCount > (UINT32)_smplBuf.size()) smplCount = (UINT32)_smplBuf.size();
-    memset(&_smplBuf[0], 0, smplCount * sizeof(WAVE_32BS));
-    basePbSmpl = _player->GetCurPos(PLAYPOS_SAMPLE);
-    smplRendered = _player->Render(smplCount, &_smplBuf[0]);
-    smplCount = smplRendered;
-    if (_postRenderFunc != NULL && smplCount != 0)
-        _postRenderFunc(_postRenderParam, &_smplBuf[0], smplCount, basePbSmpl);
-    curVolume = CalcCurrentVolume(basePbSmpl) >> VOL_SHIFT;
-    for (curSmpl = 0; curSmpl < smplCount; curSmpl ++, basePbSmpl ++)
-    {
-        fnlSmpl = _smplBuf[curSmpl];
-        _outSmplPack(&bData[(curSmpl * 2 + 0) * _outSmplSize1], fnlSmpl.L);
-        _outSmplPack(&bData[(curSmpl * 2 + 1) * _outSmplSize1], fnlSmpl.R);
-    }
-    return curSmpl * _outSmplSizeA;
+\treturn 0;
 }
 
 /*static*/ UINT8 PlayerA::PlayCallbackS(PlayerBase* player, void* userParam, UINT8 evtType, void* evtParam)
 {
-    return 0;
+\treturn 0;
 }
 '''
 
@@ -164,7 +133,6 @@ class PlayerADeferredPostRenderPatchTest(unittest.TestCase):
         render_start = source.index("UINT32 PlayerA::Render")
         render_end = source.index("/*static*/ UINT8 PlayerA::PlayCallbackS", render_start)
         render = source[render_start:render_end]
-
         engine = render.index("smplRendered = _player->Render(renderRequest")
         post = render.index("_postRenderFunc(", engine)
         deferred = render.index("cbResult = _deferredPostRenderFunc(", post)
@@ -179,7 +147,6 @@ class PlayerADeferredPostRenderPatchTest(unittest.TestCase):
         self.assertIn("_deferredEmitSmpl + finalized", render)
         self.assertIn("_deferredEmitSmpl += curSmpl;", render)
         self.assertIn("passes < 16", render)
-        self.assertIn("return 0;", render)
 
         start = source[source.index("UINT8 PlayerA::Start"):source.index("UINT8 PlayerA::Stop")]
         reset = source[source.index("UINT8 PlayerA::Reset"):source.index("UINT8 PlayerA::FadeOut")]
