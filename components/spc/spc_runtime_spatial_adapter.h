@@ -153,6 +153,9 @@ public:
         if (capture.overflowed)
             return fail(spc_runtime_spatial_adapter_error::capture_overflow);
 
+        // First pass is transactional validation and exact capacity accounting.
+        // Persistent state is not touched until the whole capture window proves
+        // contiguous and representable.
         spc_runtime_spatial_state simulated_state = state_;
         std::size_t simulated_segments = 1;
         std::size_t simulated_events = 0;
@@ -198,10 +201,9 @@ public:
                 auto& voice = simulated_state.voices[record.voice];
                 if (voice.generation == std::numeric_limits<std::uint64_t>::max())
                     return fail(spc_runtime_spatial_adapter_error::generation_overflow);
-                if (mapped_frame > simulated_segment_start) {
+                if (mapped_frame > simulated_segment_start && mapped_frame < reference_frame_count)
                     ++simulated_segments;
-                    simulated_segment_start = mapped_frame;
-                }
+                simulated_segment_start = mapped_frame;
                 ++voice.generation;
             }
 
@@ -227,9 +229,6 @@ public:
         std::size_t segment_start = 0;
         std::size_t segment_event_start = 0;
         snapshot_segment_lanes(state_);
-        previous_frame = 0;
-        previous_tick = window_start_tick;
-        have_previous = false;
 
         std::size_t index = 0;
         while (index < capture.count) {
@@ -279,9 +278,15 @@ public:
                 if (!changed)
                     continue;
 
+                // A state observation exactly at the end boundary belongs to the
+                // persistent state entering the next window. It must not rewrite
+                // this segment's frame-zero evidence or appear as an in-block
+                // event for audio frames that precede it.
+                if (mapped_frame == reference_frame_count)
+                    continue;
+
                 const auto evidence = make_spc_spatial_evidence(record.voice, state_.voices[record.voice]);
-                if (mapped_frame == segment_start || identity_break ||
-                    mapped_frame == reference_frame_count) {
+                if (mapped_frame == segment_start || identity_break) {
                     current_segment_lanes_[record.voice].evidence = evidence;
                 } else {
                     auto& destination = events_[event_count_++];
