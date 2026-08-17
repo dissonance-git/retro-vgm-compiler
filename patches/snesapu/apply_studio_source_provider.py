@@ -9,9 +9,11 @@ provide the waveform value that pInter would otherwise leave on the x87 stack.
 
 Everything after that point remains SNESAPU truth: NON/noise replacement,
 envelope, mOut/PMON feedback, VxVOL, EON, echo/FIR/feedback, MVOL and timing.
-The current DIR page is also supplied on every sample because SNESAPU consults
-DIR again at END+LOOP; the provider can therefore fail closed immediately if a
-live directory remap would invalidate its playback trajectory.
+The current effective source, live loop target and DIR page are supplied on every
+restored sample. This mirrors the pinned END+LOOP path, which can refresh mSrc
+from live DSP SRCN, apply Script700 NoteChange again, and re-read the loop pointer
+without changing DIR. Any such remap therefore fails closed before a stale studio
+trajectory can render a sample.
 
 When NON/noise is active for a voice, the original mixer replaces pInter's
 waveform immediately afterward. The studio callback is therefore bypassed for
@@ -82,18 +84,19 @@ void SetDSPPreBrrProvider(DSPPreBrrProvider callback, void *user);
 // evidence-approved upstream waveform and exact playback map.
 //
 // Sample runs at MixSample before historical pInter. mRateQ16_16 is the exact
-// current rate after PMON, and directoryPage is re-read live so a DIR change can
-// invalidate substitution before loop topology diverges. Write one source sample
-// in SNESAPU's decoded int16 amplitude units to outSample and return non-zero.
-// Returning zero uses pInter for the current sample and disables studio
-// substitution until the next key-on.
+// current rate after PMON. effectiveSrcn, liveLoopBrrAddr and directoryPage are
+// recomputed from the live mixer/DIR state on every restored sample because the
+// pinned END+LOOP path can refresh SRCN + Script700 NoteChange + loop pointer
+// without another key-on. Write one source sample in SNESAPU's decoded int16
+// amplitude units to outSample and return non-zero. Returning zero uses pInter
+// for the current sample and disables studio substitution until the next key-on.
 
 typedef u32 (__stdcall *DSPStudioSourceBeginProvider)(
     void *user, u32 voice, u32 srcn, u32 firstBrrAddr, u32 loopBrrAddr,
     u32 directoryPage, u32 interpolation);
 typedef u32 (__stdcall *DSPStudioSourceSampleProvider)(
-    void *user, u32 voice, u32 mRateQ16_16, u32 directoryPage,
-    u32 interpolation, float *outSample);
+    void *user, u32 voice, u32 mRateQ16_16, u32 effectiveSrcn,
+    u32 liveLoopBrrAddr, u32 directoryPage, u32 interpolation, float *outSample);
 void SetDSPStudioSourceProvider(
     DSPStudioSourceBeginProvider beginCallback,
     DSPStudioSourceSampleProvider sampleCallback,
@@ -285,16 +288,21 @@ ENDP
     ;Get sample ========================
     ;A verified studio source replaces only pInter's waveform value. The exact
     ;current PMON-adjusted mRate is consumed by the child-local provider after
-    ;rendering this phase, mirroring the UpdateSrc call below MixSample. DIR is
-    ;also sampled live because SNESAPU may consult it again at END+LOOP.
+    ;rendering this phase, mirroring the UpdateSrc call below MixSample.
+    ;
+    ;The pinned END+LOOP path can refresh mSrc from the live DSP SRCN, apply
+    ;Script700 NoteChange again, and re-read that source's loop pointer from RAM.
+    ;Recompute the same effective source + loop locator for every restored sample
+    ;so a dynamic remap fails closed before stale source topology reaches output.
+    ;
     ;NON/noise immediately discards this waveform in the historical code below,
     ;so do not spend a 64-tap studio FIR on a value that cannot reach the mix.
     Test    [dspNoise],CH
     JNZ     %%HistoricalInterpolation
     Test    byte [studioSourceVoices],CH
     JZ      %%HistoricalInterpolation
-    Mov     EDX,[studioSourceSample]
-    Test    EDX,EDX
+    Mov     EAX,[studioSourceSample]
+    Test    EAX,EAX
     JZ      %%DisableStudioSource
         Sub     ESP,4                                                          ;float callback output slot
         Push    ECX                                                             ;preserve one-hot voice mask in CH
@@ -304,12 +312,23 @@ ENDP
         Push    EAX                                                             ;interpolation timing contract
         MovZX   EAX,byte [dsp+dir]
         Push    EAX                                                             ;live DIR page
+
+        MovZX   EDX,byte [EBX+mSrc]
+        MovZX   EDX,byte [scr700chg+EDX]                                        ;live effective source identity
+        Mov     ESI,[pAPURAM]
+        Mov     EAX,EDX
+        ShL     EAX,2
+        Add     AH,[dsp+dir]                                                    ;same wrapped DIR+SRCN directory address as StartSrc
+        MovZX   ESI,word [EAX+ESI+2]                                            ;live loop BRR address
+        Push    ESI                                                             ;liveLoopBrrAddr
+        Push    EDX                                                             ;effectiveSrcn
         Push    dword [EBX+mRate]                                               ;exact current rate after PMON
         MovZX   EAX,CH
         BSF     EAX,EAX
         Push    EAX                                                             ;voice index 0..7
         Push    dword [studioSourceUser]
-        Call    EDX                                                             ;stdcall callback cleans six arguments
+        Mov     EDX,[studioSourceSample]
+        Call    EDX                                                             ;stdcall callback cleans eight arguments
         Pop     ECX
         Test    EAX,EAX
         JZ      %%StudioSourceFailed
