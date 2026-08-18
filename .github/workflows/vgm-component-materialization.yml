@@ -11,9 +11,11 @@ on:
       - "components/vgm/enhancement/**"
       - "components/spc/**"
       - "patches/foo_input_vgm/**"
+      - "patches/libvgm/**"
       - "patches/snesapu/**"
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
+      - "tests/integration/libvgm-source/**"
       - "tests/spc/test_materialize_foo_snesapu.py"
       - "tests/test_no_live_vgmspc_dependency.py"
       - ".github/workflows/vgm-component-materialization.yml"
@@ -43,6 +45,26 @@ jobs:
         run: |
           python tests/test_no_live_vgmspc_dependency.py
           if ($LASTEXITCODE -ne 0) { throw 'live vgmspc dependency guard failed' }
+
+      - name: Validate pinned libvgm source contracts
+        shell: pwsh
+        run: |
+          $libvgm = Join-Path $env:RUNNER_TEMP 'retro-vgm-libvgm'
+          $libvgmBuild = Join-Path $env:RUNNER_TEMP 'retro-vgm-libvgm-source-tests'
+          git clone https://github.com/ValleyBell/libvgm.git $libvgm
+          if ($LASTEXITCODE -ne 0) { throw 'libvgm clone failed' }
+          git -C $libvgm checkout 64e1de284e9a4305c54dd162ee8c33539a9bc0d1
+          if ($LASTEXITCODE -ne 0) { throw 'pinned libvgm checkout failed' }
+
+          python patches/libvgm/apply_source_capture.py $libvgm
+          if ($LASTEXITCODE -ne 0) { throw 'libvgm source-aware patch chain failed' }
+
+          cmake -S tests/integration/libvgm-source -B $libvgmBuild -DLIBVGM_ROOT=$libvgm
+          if ($LASTEXITCODE -ne 0) { throw 'libvgm integration configure failed' }
+          cmake --build $libvgmBuild --config Release
+          if ($LASTEXITCODE -ne 0) { throw 'libvgm integration build failed' }
+          ctest --test-dir $libvgmBuild -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'libvgm integration tests failed' }
 
       - name: Reconstruct and patch canonical foo_input_vgm
         shell: pwsh
