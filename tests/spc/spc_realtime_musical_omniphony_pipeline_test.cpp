@@ -240,6 +240,32 @@ int main()
             first_trace.sources[1].coarse_band_energy_share[band],
             1.0e-5f));
     }
+
+    // The pairwise field must resolve the same two dry voices that created the
+    // existing scalar and must reject every pair involving the shared echo
+    // field. Reconstructing the scalar from lazy pairs proves the new evidence
+    // view has not quietly changed the governor's crowding definition.
+    realtime_spatial_overlap_pair_observation dry_pair{};
+    assert(first_trace.pair(0, 1, dry_pair));
+    assert(dry_pair.valid);
+    assert(dry_pair.left_lane_index == 0);
+    assert(dry_pair.right_lane_index == 1);
+    assert(dry_pair.left_source_id == first_trace.sources[0].source_id);
+    assert(dry_pair.left_generation == first_trace.sources[0].generation);
+    assert(dry_pair.right_source_id == first_trace.sources[1].source_id);
+    assert(dry_pair.right_generation == first_trace.sources[1].generation);
+    assert(dry_pair.coarse_spectral_overlap > 0.99f);
+    assert(dry_pair.pair_energy_weight > 0.0f);
+
+    realtime_spatial_overlap_pair_observation wet_pair{};
+    assert(!first_trace.pair(0, 2, wet_pair));
+    assert(!first_trace.pair(1, 3, wet_pair));
+    assert(!first_trace.pair(2, 3, wet_pair));
+    assert(near(
+        first_trace.reconstructed_coarse_spectral_overlap(),
+        first_trace.scene.coarse_spectral_overlap,
+        1.0e-5f));
+
     assert(first_trace.applied_budget.depth_scale == 1.0f);
     assert(first_trace.applied_budget.height_scale == 1.0f);
     assert(first_trace.applied_budget.shared_wet_strength == 1.0f);
