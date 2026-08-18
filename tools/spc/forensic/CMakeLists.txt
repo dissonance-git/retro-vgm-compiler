@@ -33,7 +33,7 @@ set(
 )
 set(
     SNES_SPC_FORENSIC_PATCH_CONTRACT
-    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1"
+    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1"
 )
 
 if(NOT SNES_SPC_FORENSIC_COMMIT STREQUAL
@@ -131,6 +131,16 @@ add_executable(
 )
 gameaudio_configure_forensic_first_party(snes_spc_forensic_bridge_test)
 add_test(NAME snes_spc_forensic_bridge COMMAND snes_spc_forensic_bridge_test)
+
+add_executable(
+    snes_spc_native_spatial_observer_test
+    ${RETRO_VGM_COMPILER_ROOT}/tests/spc/snes_spc_native_spatial_observer_test.cpp
+)
+gameaudio_configure_forensic_first_party(snes_spc_native_spatial_observer_test)
+add_test(
+    NAME snes_spc_native_spatial_observer
+    COMMAND snes_spc_native_spatial_observer_test
+)
 
 add_executable(
     spc_forensic_features
