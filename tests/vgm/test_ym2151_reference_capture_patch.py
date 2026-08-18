@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the YM2151 host-reference capture patch on maintained player source."""
+"""Exercise the YM2151 host-reference capture patches on maintained player source."""
 
 from __future__ import annotations
 
@@ -13,8 +13,19 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PATCH = ROOT / "patches" / "foo_input_vgm" / "apply_ym2151_reference_capture.py"
+STARTUP_FIX = ROOT / "patches" / "foo_input_vgm" / "apply_ym2151_reference_startup_fix.py"
 CHAIN = ROOT / "patches" / "foo_input_vgm" / "apply_enhanced_component.py"
 OWNED = ROOT / "components" / "vgm" / "foo_input_vgm" / "src"
+
+
+def run_patch(script: Path, root: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-B", str(script), str(root)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
@@ -24,14 +35,10 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
             shutil.copy2(OWNED / "source_aware_vgm_player.h", root / "source_aware_vgm_player.h")
             shutil.copy2(OWNED / "ym2151_source_plane.h", root / "ym2151_source_plane.h")
 
-            completed = subprocess.run(
-                [sys.executable, "-B", str(PATCH), str(root)],
-                cwd=str(ROOT),
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            completed = run_patch(PATCH, root)
             self.assertEqual(completed.returncode, 0, completed.stderr)
+            startup = run_patch(STARTUP_FIX, root)
+            self.assertEqual(startup.returncode, 0, startup.stderr)
             text = (root / "source_aware_vgm_player.h").read_text(encoding="utf-8")
 
             self.assertIn('#include "ym2151_source_plane.h"', text)
@@ -44,6 +51,7 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
             self.assertIn("sum_l != static_cast<INT64>(mix_left)", text)
             self.assertIn("mirror_opm_segment(outputOffset, outputCount)", text)
             self.assertIn("m_opm_output[lane].data() + outputOffset", text)
+            self.assertIn("promote_initial_pregen(m_opm);", text)
 
             # OPM topology is independent. The existing Genesis predicate must
             # not suddenly include m_opm or m_unsupported_opm_topology.
@@ -57,10 +65,13 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
         chain = CHAIN.read_text(encoding="utf-8")
         source_aware = 'run(here / "apply_source_aware_player.py", source)'
         opm = 'run(here / "apply_ym2151_reference_capture.py", source)'
+        startup = 'run(here / "apply_ym2151_reference_startup_fix.py", source)'
         shadow = 'run(here / "apply_source_aware_shadow_include.py", source)'
         self.assertIn(opm, chain)
+        self.assertIn(startup, chain)
         self.assertLess(chain.index(source_aware), chain.index(opm))
-        self.assertLess(chain.index(opm), chain.index(shadow))
+        self.assertLess(chain.index(opm), chain.index(startup))
+        self.assertLess(chain.index(startup), chain.index(shadow))
 
 
 if __name__ == "__main__":
