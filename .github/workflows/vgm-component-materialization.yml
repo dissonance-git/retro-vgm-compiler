@@ -66,6 +66,32 @@ jobs:
           ctest --test-dir $libvgmBuild -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'libvgm integration tests failed' }
 
+          $additivityExe = Join-Path $libvgmBuild 'Release\nukedopm_channel_additivity_falsifier.exe'
+          $additivityLog = Join-Path $libvgmBuild 'nukedopm-channel-additivity.txt'
+          $additivityOutput = & $additivityExe 2>&1
+          $additivityExit = $LASTEXITCODE
+          $additivityOutput | Tee-Object -FilePath $additivityLog
+          if ($additivityExit -ne 0) { throw "Nuked-OPM additivity falsifier failed with $additivityExit" }
+
+          $pairExe = Join-Path $libvgmBuild 'Release\ym2151_renderer_pair_probe.exe'
+          $pairLog = Join-Path $libvgmBuild 'ym2151-renderer-pair.txt'
+          $pairOutput = & $pairExe 2>&1
+          $pairExit = $LASTEXITCODE
+          $pairOutput | Tee-Object -FilePath $pairLog
+          if ($pairExit -ne 0) { throw "YM2151 renderer pair probe failed with $pairExit" }
+
+          "LIBVGM_TEST_BUILD=$libvgmBuild" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload YM2151 libvgm diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ym2151-libvgm-diagnostics-${{ github.sha }}
+          path: |
+            ${{ env.LIBVGM_TEST_BUILD }}/nukedopm-channel-additivity.txt
+            ${{ env.LIBVGM_TEST_BUILD }}/ym2151-renderer-pair.txt
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Reconstruct and patch canonical foo_input_vgm
         shell: pwsh
         run: |
