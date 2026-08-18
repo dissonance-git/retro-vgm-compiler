@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 
@@ -26,6 +29,37 @@ class VgmSurroundOmniphonyPatchContractTest(unittest.TestCase):
         self.assertIn("cfg_surround_sound", bridge)
         self.assertIn("pa_cfg.chnInvert = 0x00;", bridge)
         self.assertIn("!cfg_surround_sound || !sources_ready", bridge)
+
+    def test_bridge_executes_against_the_expected_generated_source_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir)
+            input_base = source / "input_base.cpp"
+            shadow = source / "input_vgm_shadow.cpp"
+            input_base.write_text(
+                "\tpa_cfg.chnInvert = cfg_surround_sound ? 0x02 : 0x00;\n",
+                encoding="utf-8",
+            )
+            shadow.write_text(
+                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || !routes_ready\n"
+                "\t\t|| !m_genesis_spatial_route_block.routes_complete)\n",
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [sys.executable, str(PATCHES / "apply_surround_omniphony_bridge.py"), str(source)],
+                cwd=source,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+            patched_base = input_base.read_text(encoding="utf-8")
+            patched_shadow = shadow.read_text(encoding="utf-8")
+            self.assertIn("pa_cfg.chnInvert = 0x00;", patched_base)
+            self.assertNotIn("cfg_surround_sound ? 0x02 : 0x00", patched_base)
+            self.assertIn("!cfg_surround_sound || !sources_ready", patched_shadow)
+            self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
     def test_old_libvgm_surround_is_not_stacked_with_omniphony(self) -> None:
         bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
