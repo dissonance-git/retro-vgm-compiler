@@ -184,9 +184,9 @@ int main()
     assert(terminal_frontend.prepare_block(terminal_block, handoff));
     assert(handoff.lane(0).roles_available);
 
-    // Source-native shared wet is its own adaptive layer. A wet-dominated scene
-    // keeps the historical return, but future presentation backs off its added
-    // scale and strongly suppresses a second generic externalization layer.
+    // Source-native shared wet is its own adaptive scene layer. A wet-dominated
+    // scene keeps the historical return evidence exactly intact while the
+    // separate renderer budget backs off added scale and generic room support.
     frontend_type wet_frontend{};
     auto wet_lane = make_lane(high.data(), 500);
     wet_lane.kind = spatial_audio_lane_kind::shared_effect_return;
@@ -197,14 +197,14 @@ int main()
     frontend_type::handoff_storage wet_handoff{};
     assert(wet_frontend.prepare_block(wet_block, wet_handoff));
     assert(wet_handoff.projected_view().lanes[0].evidence.presentation.diffuse == 1.0f);
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.width == 1.0f);
     assert(wet_frontend.complete_block(wet_block, sample_rate));
     assert(wet_frontend.mix_budget().shared_wet_strength < 1.0f);
     assert(wet_frontend.mix_budget().shared_wet_extent < 1.0f);
     assert(wet_frontend.mix_budget().added_externalization_scale < 0.9f);
     assert(wet_frontend.prepare_block(wet_block, wet_handoff));
-    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.diffuse < 1.0f);
-    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.width < 1.0f);
-    // The source-native record remains untouched; only the renderer sidecar moves.
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.diffuse == 1.0f);
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.width == 1.0f);
     assert(wet_lane.evidence.presentation.diffuse == 1.0f);
     assert(wet_lane.evidence.presentation.width == 1.0f);
 
