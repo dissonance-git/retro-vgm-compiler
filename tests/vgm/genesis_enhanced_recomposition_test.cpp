@@ -7,6 +7,70 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+
+namespace {
+
+struct genesis_fake_renderer_state {
+    vgmtooling::model::omniphony_source_mix_budget_v1_transport observed_budget{};
+    std::size_t budget_calls = 0;
+    std::size_t process_calls = 0;
+    std::size_t reset_calls = 0;
+};
+
+std::uint32_t genesis_fake_abi_major() { return 0; }
+std::uint32_t genesis_fake_abi_minor() { return 4; }
+
+std::int32_t genesis_fake_reset(void* processor)
+{
+    auto* state = static_cast<genesis_fake_renderer_state*>(processor);
+    assert(state != nullptr);
+    ++state->reset_calls;
+    state->observed_budget = {};
+    return 0;
+}
+
+std::int32_t genesis_fake_set_mix_budget(
+    void* processor,
+    const vgmtooling::model::omniphony_source_mix_budget_v1_transport* budget)
+{
+    auto* state = static_cast<genesis_fake_renderer_state*>(processor);
+    assert(state != nullptr);
+    assert(budget != nullptr);
+    ++state->budget_calls;
+    state->observed_budget = *budget;
+    return 0;
+}
+
+std::int32_t genesis_fake_process(
+    void* processor,
+    const float* input,
+    const vgmtooling::model::omniphony_source_evidence_v1_transport*,
+    std::size_t source_count,
+    const vgmtooling::model::omniphony_source_evidence_event_v1_transport*,
+    std::size_t,
+    std::size_t frame_count,
+    std::uint64_t,
+    std::uint32_t,
+    float* output)
+{
+    auto* state = static_cast<genesis_fake_renderer_state*>(processor);
+    assert(state != nullptr);
+    assert(input != nullptr);
+    assert(output != nullptr);
+    assert(source_count != 0);
+    ++state->process_calls;
+
+    for (std::size_t frame = 0; frame < frame_count; ++frame) {
+        const float sample = input[frame * source_count];
+        output[frame * 2] = sample;
+        output[frame * 2 + 1] = sample;
+    }
+    return 0;
+}
+
+} // namespace
 
 int main() {
     using namespace gameaudio::vgm;
@@ -165,6 +229,73 @@ int main() {
     assert(unbound_spatial.source_block_valid);
     assert(!unbound_spatial.omniphony.prepared);
     assert(!unbound_spatial.omniphony.rendered);
+
+    // The Genesis/VGM front door must expose the ABI 0.4 scene-budget setter,
+    // not merely the source-event function. This is the product seam through
+    // which causal spectral crowding can actually reach Omniphony.
+    genesis_fake_renderer_state fake_renderer{};
+    assert(omniphony.bind_renderer(
+        static_cast<void*>(&fake_renderer),
+        genesis_fake_abi_major,
+        genesis_fake_abi_minor,
+        genesis_fake_reset,
+        genesis_fake_set_mix_budget,
+        genesis_fake_process));
+    assert(omniphony.renderer_bound());
+
+    const auto first_bound = omniphony.process_selected_sources(
+        reference_sources,
+        source_evidence,
+        frames,
+        48000.0,
+        source_scratch.data(),
+        source_scratch.size(),
+        spatial_stereo.data(),
+        spatial_stereo.size(),
+        1000,
+        96);
+    assert(first_bound.source_block_valid);
+    assert(first_bound.omniphony.prepared);
+    assert(first_bound.omniphony.rendered);
+    assert(first_bound.omniphony.learned);
+    assert(fake_renderer.budget_calls == 1);
+    assert(fake_renderer.process_calls == 1);
+    assert(fake_renderer.observed_budget.depth_scale == 1.0f);
+    assert(fake_renderer.observed_budget.height_scale == 1.0f);
+    assert(fake_renderer.observed_budget.externalization_scale == 1.0f);
+
+    // These two actual Genesis source lanes are proportional copies, so their
+    // broad three-band profiles should overlap almost exactly. The observation
+    // is taken only after the first rendered block and is therefore available
+    // to govern the next block, never the block that created it.
+    const auto& genesis_scene = omniphony.pipeline().frontend().observer().scene();
+    assert(genesis_scene.observed_lane_count == 2);
+    assert(genesis_scene.active_lane_count == 2);
+    assert(genesis_scene.coarse_spectral_overlap > 0.99f);
+    const auto learned_genesis_budget = omniphony.pipeline().frontend().mix_budget();
+    assert(learned_genesis_budget.dry_width_scale < 1.0f);
+    assert(learned_genesis_budget.dry_diffuse_scale < 1.0f);
+    assert(learned_genesis_budget.added_externalization_scale < 1.0f);
+
+    const auto second_bound = omniphony.process_selected_sources(
+        reference_sources,
+        source_evidence,
+        frames,
+        48000.0,
+        source_scratch.data(),
+        source_scratch.size(),
+        spatial_stereo.data(),
+        spatial_stereo.size(),
+        1000 + frames,
+        96);
+    assert(second_bound.omniphony.rendered);
+    assert(second_bound.omniphony.learned);
+    assert(fake_renderer.budget_calls == 2);
+    assert(fake_renderer.process_calls == 2);
+    assert(fake_renderer.observed_budget.depth_scale == learned_genesis_budget.depth_scale);
+    assert(fake_renderer.observed_budget.height_scale == learned_genesis_budget.height_scale);
+    assert(fake_renderer.observed_budget.externalization_scale
+        == learned_genesis_budget.added_externalization_scale);
 
     // Never subtract a merely similar source. If exact reference contribution
     // evidence is missing, the strict quality path fails closed to reference.
