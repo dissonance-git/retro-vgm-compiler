@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   build-private-components:
@@ -87,3 +88,36 @@ jobs:
             dist/private-components/README.txt
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish run locator for connected clients
+        if: always()
+        shell: pwsh
+        env:
+          API_URL: ${{ github.api_url }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $state = switch ($env:JOB_STATUS) {
+            'success' { 'success' }
+            'cancelled' { 'error' }
+            default { 'failure' }
+          }
+          $body = @{
+            state = $state
+            context = 'private-foobar-binary'
+            description = "run_id=$($env:RUN_ID); $($env:JOB_STATUS)"
+            target_url = "https://github.com/$($env:REPOSITORY)/actions/runs/$($env:RUN_ID)"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod `
+            -Method Post `
+            -Uri "$($env:API_URL)/repos/$($env:REPOSITORY)/statuses/$($env:SOURCE_SHA)" `
+            -Headers @{
+              Authorization = "Bearer $($env:GH_TOKEN)"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2022-11-28'
+            } `
+            -ContentType 'application/json' `
+            -Body $body | Out-Null
