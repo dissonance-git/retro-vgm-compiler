@@ -10,14 +10,28 @@
 namespace {
 
 std::uint32_t fake_major() { return 0; }
-std::uint32_t fake_minor() { return 3; }
-std::uint32_t old_minor() { return 2; }
+std::uint32_t fake_minor() { return 4; }
+std::uint32_t old_minor() { return 3; }
+
+int mix_budget_calls = 0;
+vgmtooling::model::omniphony_source_mix_budget_v1_transport last_mix_budget{};
 
 std::int32_t fake_reset(void* processor)
 {
     auto* reset_count = static_cast<int*>(processor);
     assert(reset_count != nullptr);
     ++*reset_count;
+    return 0;
+}
+
+std::int32_t fake_set_mix_budget(
+    void* processor,
+    const vgmtooling::model::omniphony_source_mix_budget_v1_transport* budget)
+{
+    assert(processor != nullptr);
+    assert(budget != nullptr);
+    ++mix_budget_calls;
+    last_mix_budget = *budget;
     return 0;
 }
 
@@ -62,8 +76,8 @@ int main()
 {
     using namespace vgmtooling::model;
 
-    // Keep the dynamically loaded lifecycle/config mirror pinned to the current
-    // Omniphony source_ffi C contract without requiring the DLL on non-Windows CI.
+    // Keep the dynamically loaded lifecycle/config mirror pinned to Omniphony
+    // source_ffi ABI 0.4 without requiring the DLL on non-Windows CI.
     omniphony_source_config_transport config{};
     assert(!omniphony_source_config_valid(config));
     config.sample_rate_hz = 48000;
@@ -109,6 +123,7 @@ int main()
         fake_major,
         old_minor,
         fake_reset,
+        fake_set_mix_budget,
         fake_process));
     assert(!client.bound());
     assert(client.bind(
@@ -116,6 +131,7 @@ int main()
         fake_major,
         fake_minor,
         fake_reset,
+        fake_set_mix_budget,
         fake_process));
     assert(client.bound());
 
@@ -150,10 +166,18 @@ int main()
         1,
     };
 
+    realtime_spatial_mix_budget mix_budget{};
+    mix_budget.depth_scale = 0.8f;
+    mix_budget.height_scale = 0.7f;
+    mix_budget.shared_wet_strength = 0.9f;
+    mix_budget.shared_wet_extent = 0.85f;
+    mix_budget.added_externalization_scale = 0.4f;
+
     std::array<float, frames * 2> source_scratch{};
     std::array<float, frames * 2> stereo{};
     const auto result = client.process(
         block,
+        mix_budget,
         source_scratch.data(),
         source_scratch.size(),
         stereo.data(),
@@ -162,6 +186,12 @@ int main()
         96);
     assert(result.transport_valid);
     assert(result.renderer_status == 0);
+    assert(mix_budget_calls == 1);
+    assert(last_mix_budget.depth_scale == 0.8f);
+    assert(last_mix_budget.height_scale == 0.7f);
+    assert(last_mix_budget.shared_wet_strength_scale == 0.9f);
+    assert(last_mix_budget.shared_wet_extent_scale == 0.85f);
+    assert(last_mix_budget.externalization_scale == 0.4f);
     assert(stereo[0] == 0.1f);
     assert(stereo[1] == 1.0f);
     assert(stereo[4] == 0.3f);
