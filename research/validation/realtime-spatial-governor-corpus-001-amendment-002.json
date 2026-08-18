@@ -1,0 +1,26 @@
+{
+  "experiment_id": "realtime-spatial-governor-corpus-001",
+  "amendment_id": "realtime-spatial-governor-corpus-001-amendment-002",
+  "status": "frozen_before_first_real_corpus_execution",
+  "amended_utc_date": "2026-08-18",
+  "spc_execution": {
+    "seconds_per_fixture": 24,
+    "native_sample_rate_hz": 32000,
+    "governor_window_frames": 2048,
+    "governor_window_seconds": 0.064,
+    "last_window_policy": "process the final shorter window when 24 seconds is not an exact multiple of 2048 frames",
+    "source_runtime": "blarggs-audio-libraries/snes_spc pinned by the existing forensic runtime",
+    "runtime_observers_attach": "after successful load_spc so snapshot/load reset instrumentation is outside the playback timeline",
+    "frame_zero_route_state": "seeded from saved S-DSP VOLL/VOLR/EON snapshot registers",
+    "identity_policy": "physical voice source IDs begin at generation 0 and change generation only on a live accepted key-on observed by the accurate DSP"
+  },
+  "reason": "The original preregistration froze corpora, metrics, thresholds and falsifiers but did not freeze a uniform playback duration. Twenty-four seconds is adopted before execution because the existing SPC forensic workflow already uses a 24-second controlled panel horizon; it was not selected after inspecting governor results.",
+  "unchanged": [
+    "all original corpora and fixture counts",
+    "all measurement thresholds and validator tolerances",
+    "all pair eligibility and promotion rules",
+    "creator/game/title/genre blindness",
+    "all route-projection rules frozen in amendment-001"
+  ],
+  "execution_claim": "No preregistered real SPC governor trace had been produced when this horizon was frozen."
+}
