@@ -11,12 +11,14 @@ namespace {
 struct fake_renderer_state {
     bool fail = false;
     float observed_foundation = -1.0f;
+    vgmtooling::model::omniphony_source_mix_budget_v1_transport observed_budget{};
+    std::size_t budget_calls = 0;
     std::size_t calls = 0;
     std::size_t resets = 0;
 };
 
 std::uint32_t fake_major() { return 0; }
-std::uint32_t fake_minor() { return 3; }
+std::uint32_t fake_minor() { return 4; }
 
 std::int32_t fake_reset(void* processor)
 {
@@ -24,6 +26,19 @@ std::int32_t fake_reset(void* processor)
     assert(state != nullptr);
     ++state->resets;
     state->observed_foundation = -1.0f;
+    state->observed_budget = {};
+    return 0;
+}
+
+std::int32_t fake_set_mix_budget(
+    void* processor,
+    const vgmtooling::model::omniphony_source_mix_budget_v1_transport* budget)
+{
+    auto* state = static_cast<fake_renderer_state*>(processor);
+    assert(state != nullptr);
+    assert(budget != nullptr);
+    ++state->budget_calls;
+    state->observed_budget = *budget;
     return 0;
 }
 
@@ -84,13 +99,14 @@ int main()
         fake_major,
         fake_minor,
         fake_reset,
+        fake_set_mix_budget,
         fake_process));
 
     std::array<float, frames> source_scratch{};
     std::array<float, frames * 2> stereo{};
 
-    // A renderer failure must not silently advance musical memory. A caller can
-    // retry or fall back with the same causal history still intact.
+    // A renderer failure must not silently advance musical or scene memory. A
+    // caller can retry or fall back with the same causal history still intact.
     renderer.fail = true;
     const auto failed = pipeline.process_block(
         block,
@@ -108,9 +124,12 @@ int main()
     assert(failed.renderer_status == -9);
     assert(pipeline.frontend().tracker().stream_seconds() == 0.0);
     assert(renderer.observed_foundation == 0.0f);
+    assert(renderer.observed_budget.depth_scale == 1.0f);
+    assert(renderer.observed_budget.height_scale == 1.0f);
+    assert(renderer.observed_budget.externalization_scale == 1.0f);
 
     // First successful render still has no current-block lookahead. Only after
-    // it reaches the renderer may the raw PCM update future musical memory.
+    // it reaches the renderer may raw PCM update future musical and mix memory.
     renderer.fail = false;
     const auto first = pipeline.process_block(
         block,
@@ -126,10 +145,15 @@ int main()
     assert(first.learned);
     assert(first.renderer_status == 0);
     assert(renderer.observed_foundation == 0.0f);
+    assert(renderer.observed_budget.depth_scale == 1.0f);
     assert(std::fabs(pipeline.frontend().tracker().stream_seconds() - 0.10) < 1.0e-9);
 
-    // The next block can use the completed first block as past-only musical
-    // evidence. This is the causal DSP memory path, not a soundtrack prepass.
+    // The next block can use the completed first block as past-only musical and
+    // scene evidence. This is the causal adaptive DSP path, not a soundtrack
+    // prepass or a genre preset.
+    const auto learned_budget = pipeline.frontend().mix_budget();
+    assert(learned_budget.depth_scale < 1.0f);
+    assert(learned_budget.height_scale < 1.0f);
     const auto second = pipeline.process_block(
         block,
         sample_rate,
@@ -142,14 +166,20 @@ int main()
     assert(second.rendered);
     assert(second.learned);
     assert(renderer.observed_foundation > 0.0f);
+    assert(renderer.observed_budget.depth_scale == learned_budget.depth_scale);
+    assert(renderer.observed_budget.height_scale == learned_budget.height_scale);
+    assert(renderer.observed_budget.externalization_scale
+        == learned_budget.added_externalization_scale);
     assert(std::fabs(pipeline.frontend().tracker().stream_seconds() - 0.20) < 1.0e-9);
     assert(renderer.calls == 3);
+    assert(renderer.budget_calls == 3);
 
-    // A seek/track reset clears both the musical-memory side and the renderer
-    // side. The first block after reset must again be history-free.
+    // A seek/track reset clears both musical-memory and renderer budget state.
+    // The first block after reset must again be history-free and neutral.
     assert(pipeline.reset());
     assert(renderer.resets == 1);
     assert(pipeline.frontend().tracker().stream_seconds() == 0.0);
+    assert(pipeline.frontend().mix_budget().depth_scale == 1.0f);
     const auto after_reset = pipeline.process_block(
         block,
         sample_rate,
@@ -162,6 +192,7 @@ int main()
     assert(after_reset.rendered);
     assert(after_reset.learned);
     assert(renderer.observed_foundation == 0.0f);
+    assert(renderer.observed_budget.depth_scale == 1.0f);
 
     return 0;
 }
