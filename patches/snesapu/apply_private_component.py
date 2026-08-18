@@ -42,7 +42,7 @@ def add_algorithm_include(stdafx: Path) -> None:
 def remove_obsolete_enhancer_seek_reset(source: Path) -> None:
     """Remove the final legacy SemanticStereoEnhancer state touch.
 
-    The current Spatial patch removes m_Enhancer from the class and replaces its
+    The current spatial patch removes m_Enhancer from the class and replaces its
     decode/allocation paths, but the historical backward-seek branch still
     carried one reset call. Spatial identity is reset at the seek destination by
     ResetSpatialRuntime, so retaining this dead member access is both unnecessary
@@ -71,11 +71,14 @@ def main() -> int:
     run(here / "apply_prebrr_transport_complete.py", root)
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
     run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)
+    # Preserve the historical Surround preference, but mask the old SNESAPU
+    # surround algorithm and use that saved bit to gate Omniphony instead.
+    run(here / "apply_surround_omniphony_private_bridge.py", root)
     run(here / "apply_private_child_launch_path.py", root)
     remove_obsolete_enhancer_seek_reset(parent / "input_snesapu.cpp")
     add_algorithm_include(parent / "stdafx.h")
 
-    print("private foo_snesapu enhanced + Spatial patch stack applied")
+    print("private foo_snesapu enhanced + Surround/Omniphony patch stack applied")
     return 0
 
 
