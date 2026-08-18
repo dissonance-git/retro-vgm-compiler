@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace vgmtooling::model {
 
@@ -18,6 +19,10 @@ struct realtime_musical_omniphony_result {
     bool learned = false;
     bool transport_valid = false;
     std::int32_t renderer_status = -1;
+    // Non-zero only when this call produced a new completed governor trace.
+    // A failed render can therefore never be mistaken for the previous call's
+    // still-readable last_governor_trace().
+    std::uint64_t governor_trace_index = 0;
 };
 
 struct realtime_spatial_overlap_pair_observation {
@@ -40,6 +45,9 @@ struct realtime_spatial_overlap_pair_observation {
 template <std::size_t MaxLanes>
 struct realtime_spatial_governor_trace {
     bool valid = false;
+    // Monotonic within one pipeline timeline; reset() starts a fresh generation
+    // at 1. This is diagnostic transaction identity, not musical/source identity.
+    std::uint64_t sequence_index = 0;
     std::size_t lane_count = 0;
     std::size_t frame_count = 0;
     double sample_rate = 0.0;
@@ -179,6 +187,7 @@ public:
         frontend_.reset();
         handoff_.reset();
         last_governor_trace_ = {};
+        next_governor_trace_index_ = 1;
         return client_.reset_renderer();
     }
 
@@ -233,6 +242,7 @@ public:
 
         governor_trace_type trace{};
         trace.valid = true;
+        trace.sequence_index = next_governor_trace_index_;
         trace.lane_count = frontend_.observer().lane_count();
         trace.frame_count = raw_block.frame_count;
         trace.sample_rate = sample_rate;
@@ -245,6 +255,9 @@ public:
         for (std::size_t lane_index = 0; lane_index < trace.lane_count; ++lane_index)
             trace.sources[lane_index] = frontend_.observer().source(lane_index);
         last_governor_trace_ = trace;
+        result.governor_trace_index = trace.sequence_index;
+        if (next_governor_trace_index_ != std::numeric_limits<std::uint64_t>::max())
+            ++next_governor_trace_index_;
         return result;
     }
 
@@ -260,6 +273,7 @@ private:
     client_type client_{};
     handoff_storage handoff_{};
     governor_trace_type last_governor_trace_{};
+    std::uint64_t next_governor_trace_index_ = 1;
 };
 
 } // namespace vgmtooling::model
