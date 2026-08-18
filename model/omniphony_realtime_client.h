@@ -10,8 +10,10 @@ namespace vgmtooling::model {
 using omniphony_source_reset_fn = std::int32_t (*)(omniphony_source_processor_handle*);
 
 struct omniphony_realtime_process_result {
+    bool budget_committed = false;
     bool transport_valid = false;
     std::int32_t renderer_status = -1;
+    omniphony_source_mix_budget_v1_transport renderer_budget{};
 };
 
 // Allocation-free caller for a host-resolved Omniphony source_ffi ABI 0.4
@@ -80,14 +82,16 @@ public:
 
         // Scene adaptation is committed before the block's source transaction.
         // The caller supplies only a past-derived budget; a failed setter means
-        // this block must not render under stale soundtrack geometry.
-        const omniphony_source_mix_budget_v1_transport renderer_budget =
-            make_omniphony_source_mix_budget(mix_budget);
-        const std::int32_t budget_status = set_mix_budget_(processor_, &renderer_budget);
+        // this block must not render under stale soundtrack geometry. Preserve
+        // the exact C-layout value that crossed the ABI so diagnostics do not
+        // have to infer renderer state from the compiler-side budget later.
+        result.renderer_budget = make_omniphony_source_mix_budget(mix_budget);
+        const std::int32_t budget_status = set_mix_budget_(processor_, &result.renderer_budget);
         if (budget_status != 0) {
             result.renderer_status = budget_status;
             return result;
         }
+        result.budget_committed = true;
 
         if (!transport_.build(
                 projected_block,
