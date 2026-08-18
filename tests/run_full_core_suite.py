@@ -6,8 +6,8 @@ validation. This runner reuses the generator/platform that configured the privat
 frontier, builds the root CMake project in an isolated temporary directory, runs
 every registered GAMEAUDIO_BUILD_CORE_TESTS test, then runs the nine existing
 SNESAPU causal-source contracts that historically lived outside the root registry.
-It also executes portable packaged-PE import-boundary falsifiers. All of this
-finishes before external dependency checkout begins.
+It also executes portable package/import and YM2151 guarded-patch falsifiers.
+All of this finishes before external dependency checkout begins.
 """
 
 from __future__ import annotations
@@ -21,6 +21,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SPC_PROVIDER_CONTRACTS = ROOT / "tests" / "spc_provider_contracts"
+PYTHON_CONTRACT_PATTERNS = (
+    "test_private_component_import_contract.py",
+    "test_ym2151_source_tap_patch.py",
+    "test_ym2151_reference_capture_patch.py",
+)
 
 
 def run(command: list[str]) -> None:
@@ -66,6 +71,22 @@ def configure_build_test(
     run(test_command)
 
 
+def run_python_contract(pattern: str, start_dir: Path) -> None:
+    run(
+        [
+            sys.executable,
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            str(start_dir),
+            "-p",
+            pattern,
+        ]
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--generator", default="")
@@ -91,22 +112,12 @@ def main() -> int:
             config=args.config,
         )
 
-    run(
-        [
-            sys.executable,
-            "-B",
-            "-m",
-            "unittest",
-            "discover",
-            "-s",
-            str(ROOT / "tests"),
-            "-p",
-            "test_private_component_import_contract.py",
-        ]
-    )
+    run_python_contract(PYTHON_CONTRACT_PATTERNS[0], ROOT / "tests")
+    for pattern in PYTHON_CONTRACT_PATTERNS[1:]:
+        run_python_contract(pattern, ROOT / "tests" / "vgm")
 
     print(
-        "full dependency-free core, SPC provider, and packaged import contract suites passed"
+        "full dependency-free core, SPC provider, package/import, and YM2151 patch contracts passed"
     )
     return 0
 
