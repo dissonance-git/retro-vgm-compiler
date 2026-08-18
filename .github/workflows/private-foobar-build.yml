@@ -92,7 +92,12 @@ jobs:
       - name: Build and audit installable components
         shell: pwsh
         run: |
-          ./tools/build_private_foobar_components.ps1
+          $builder = Get-Content ./tools/build_private_foobar_components.ps1 -Raw
+          $builder = $builder.Replace('$LASTEXITCODE:', '${LASTEXITCODE}:')
+          $ciBuilder = './tools/.ci-build_private_foobar_components.ps1'
+          Set-Content -LiteralPath $ciBuilder -Value $builder -NoNewline -Encoding utf8
+          & $ciBuilder
+          if ($LASTEXITCODE -ne 0) { throw "temporary builder failed with exit code $LASTEXITCODE" }
 
       - name: Show build manifest
         shell: pwsh
