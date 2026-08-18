@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 
@@ -41,6 +44,38 @@ class SpcSurroundOmniphonyPatchContractTest(unittest.TestCase):
         self.assertIn("m_CnfOptions & ~DSP_SURND", bridge)
         self.assertIn("snesapu_runtime_options", bridge)
         self.assertIn("disable legacy SNESAPU surround processing", bridge)
+
+    def test_bridge_executes_against_the_expected_generated_source_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_dir = root / "foobar2000" / "foo_snesapu"
+            source_dir.mkdir(parents=True)
+            source = source_dir / "input_snesapu.cpp"
+            source.write_text(
+                "\tm_Apu.SetAPUOpt(m_CnfMixing, m_CnfChannels, m_CnfBPS, m_CnfSampleRate, m_CnfInterpolation, m_CnfOptions);\n"
+                "\tm_Sem71Enabled = cfg_sem71_enabled;\n"
+                "\tm_Apu.SetSourceEnabled(m_Sem71Enabled);\n",
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(PATCHES / "apply_surround_omniphony_private_bridge.py"),
+                    str(root),
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+            patched = source.read_text(encoding="utf-8")
+            self.assertIn("m_CnfOptions & ~DSP_SURND", patched)
+            self.assertIn("snesapu_runtime_options", patched)
+            self.assertIn("(m_CnfOptions & DSP_SURND) != 0", patched)
+            self.assertNotIn("cfg_sem71_enabled", patched)
 
     def test_same_saved_surround_bit_gates_source_capture_and_omniphony(self) -> None:
         bridge = self.read(PATCHES / "apply_surround_omniphony_private_bridge.py")
