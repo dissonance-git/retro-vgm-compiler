@@ -494,3 +494,21 @@ add_test(
     NAME spc_realtime_musical_omniphony_pipeline
     COMMAND spc_realtime_musical_omniphony_pipeline_test
 )
+
+# Genesis owns a separate source-family fixture so its trace contract is tested
+# through the real VGM source bus rather than inferred from the SPC path.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    genesis_spatial_governor_trace_test
+)
+add_executable(
+    genesis_spatial_governor_trace_test
+    tests/vgm/genesis_spatial_governor_trace_test.cpp
+)
+target_include_directories(
+    genesis_spatial_governor_trace_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME genesis_spatial_governor_trace
+    COMMAND genesis_spatial_governor_trace_test
+)
