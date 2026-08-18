@@ -94,6 +94,7 @@ int main()
 
     constexpr double sample_rate = 48000.0;
     constexpr std::size_t frames = 4800;
+    constexpr std::size_t source_count = 4;
     constexpr double pi = 3.141592653589793238462643383279502884;
 
     std::array<float, frames> dry_voice_0{};
@@ -139,7 +140,7 @@ int main()
         spc_source_bus::echo_side::right,
         1);
 
-    std::array<spatial_audio_lane_view, 4> lanes{};
+    std::array<spatial_audio_lane_view, source_count> lanes{};
     lanes[0].kind = spatial_audio_lane_kind::dry_source;
     lanes[0].mono_pcm = dry_voice_0.data();
     lanes[0].evidence = voice_0_evidence;
@@ -171,7 +172,7 @@ int main()
         fake_process));
     assert(pipeline.renderer_bound());
 
-    std::array<float, frames * lanes.size()> source_scratch{};
+    std::array<float, frames * source_count> source_scratch{};
     std::array<float, frames * 2> stereo{};
 
     // No current-block lookahead: the first SPC block reaches Omniphony with a
@@ -188,7 +189,7 @@ int main()
     assert(first.omniphony.prepared);
     assert(first.omniphony.rendered);
     assert(first.omniphony.learned);
-    assert(renderer.observed_source_count == 4);
+    assert(renderer.observed_source_count == source_count);
     assert(renderer.budget_calls == 1);
     assert(renderer.process_calls == 1);
     assert(renderer.observed_budget.depth_scale == 1.0f);
@@ -203,8 +204,8 @@ int main()
     // echo lanes deliberately occupy very different bands. They must contribute
     // to wet occupancy but must NOT enter the dry-source masking pair itself.
     const auto& scene = pipeline.pipeline().frontend().observer().scene();
-    assert(scene.observed_lane_count == 4);
-    assert(scene.active_lane_count == 4);
+    assert(scene.observed_lane_count == source_count);
+    assert(scene.active_lane_count == source_count);
     assert(scene.shared_effect_energy_share > 0.10f);
     assert(scene.coarse_spectral_overlap > 0.99f);
 
