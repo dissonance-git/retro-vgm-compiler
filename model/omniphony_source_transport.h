@@ -1,5 +1,6 @@
 #pragma once
 
+#include "realtime_spatial_mix_budget.h"
 #include "spatial_source.h"
 
 #include <array>
@@ -9,13 +10,12 @@
 
 namespace vgmtooling::model {
 
-// Binary transport mirror for Omniphony source_ffi ABI 0.3. These records are
-// intentionally dumb C-layout values: Game Music Interpreter owns musical and
-// source semantics; Omniphony owns the eventual presentation and binaural DSP.
-// Keeping the mirror here avoids making the GMI core depend on the Rust repo or
-// on a particular dynamic-loader implementation.
+// Binary transport mirror for Omniphony source_ffi ABI 0.4. These records are
+// intentionally dumb C-layout values: Retro VGM Compiler owns musical/source
+// semantics and the causal intervention budget; Omniphony owns presentation and
+// binaural DSP. Keeping the mirror here avoids a Rust-header dependency.
 constexpr std::uint32_t omniphony_source_abi_major_required = 0;
-constexpr std::uint32_t omniphony_source_abi_minor_required = 3;
+constexpr std::uint32_t omniphony_source_abi_minor_required = 4;
 
 constexpr std::uint32_t omniphony_source_flag_persistent_part = 1u << 0u;
 constexpr std::uint32_t omniphony_source_flag_native_stereo_route = 1u << 1u;
@@ -25,6 +25,14 @@ constexpr std::uint32_t omniphony_source_flag_route_gain_preapplied = 1u << 3u;
 constexpr std::uint32_t omniphony_source_lane_dry = 0;
 constexpr std::uint32_t omniphony_source_lane_shared_wet = 1;
 constexpr std::uint32_t omniphony_source_lane_reference_mix = 2;
+
+struct omniphony_source_mix_budget_v1_transport {
+    float depth_scale = 1.0f;
+    float height_scale = 1.0f;
+    float shared_wet_strength_scale = 1.0f;
+    float shared_wet_extent_scale = 1.0f;
+    float externalization_scale = 1.0f;
+};
 
 struct omniphony_source_evidence_v1_transport {
     std::uint32_t lane_kind = 0;
@@ -50,14 +58,19 @@ struct omniphony_source_evidence_event_v1_transport {
     omniphony_source_evidence_v1_transport evidence{};
 };
 
+static_assert(std::is_standard_layout_v<omniphony_source_mix_budget_v1_transport>);
+static_assert(sizeof(omniphony_source_mix_budget_v1_transport) == 20u);
 static_assert(std::is_standard_layout_v<omniphony_source_evidence_v1_transport>);
 static_assert(std::is_standard_layout_v<omniphony_source_evidence_event_v1_transport>);
 
 // Dynamic hosts can resolve the ABI functions without importing Omniphony's
-// implementation headers into the GMI model layer. The pointee is deliberately
-// opaque here, matching OmniphonySourceProcessor.
+// implementation headers into the compiler model layer. The pointee is opaque,
+// matching OmniphonySourceProcessor.
 using omniphony_source_processor_handle = void;
 using omniphony_source_abi_version_fn = std::uint32_t (*)();
+using omniphony_source_set_mix_budget_fn = std::int32_t (*)(
+    omniphony_source_processor_handle*,
+    const omniphony_source_mix_budget_v1_transport*);
 using omniphony_source_process_events_f32_fn = std::int32_t (*)(
     omniphony_source_processor_handle*,
     const float*,
@@ -69,6 +82,18 @@ using omniphony_source_process_events_f32_fn = std::int32_t (*)(
     std::uint64_t,
     std::uint32_t,
     float*);
+
+inline omniphony_source_mix_budget_v1_transport make_omniphony_source_mix_budget(
+    const realtime_spatial_mix_budget& budget) noexcept
+{
+    return {
+        budget.depth_scale,
+        budget.height_scale,
+        budget.shared_wet_strength,
+        budget.shared_wet_extent,
+        budget.added_externalization_scale,
+    };
+}
 
 constexpr std::uint32_t omniphony_transport_lane_kind(
     spatial_audio_lane_kind kind) noexcept
@@ -84,11 +109,10 @@ constexpr std::uint32_t omniphony_transport_lane_kind(
     }
 }
 
-// Omniphony ABI 0.3 carries one u64 runtime source token while GMI keeps
-// source_id and generation separately. This mixed token is presentation-only:
-// it must never be used as a provenance identity or mapped back into GMI. A
-// change of generation deliberately changes the renderer token even if the
-// underlying source namespace reuses the same source_id.
+// Omniphony ABI carries one u64 runtime source token while Retro VGM Compiler
+// keeps source_id and generation separately. This mixed token is presentation-
+// only: it must never be used as a provenance identity or mapped back into the
+// compiler. A generation change deliberately changes the renderer token.
 constexpr std::uint64_t omniphony_transport_source_episode_id(
     std::uint64_t source_id,
     std::uint64_t generation) noexcept
@@ -138,10 +162,9 @@ inline bool make_omniphony_source_evidence(
         out.authored_z = source.authored_position[2];
     }
 
-    // The source model is now authoritative for this arithmetic fact, including
-    // timed changes. The explicit boolean remains only as a host-side override
-    // for legacy/current producers that already applied the exact route before
-    // they were upgraded to annotate spatial_source_evidence directly.
+    // The source model is authoritative for this arithmetic fact, including
+    // timed changes. The explicit boolean remains as a host-side override for
+    // producers that already applied the exact route trajectory.
     if (source.stereo_route.gain_preapplied || force_route_gain_preapplied)
         out.flags |= omniphony_source_flag_route_gain_preapplied;
 
@@ -192,9 +215,8 @@ public:
         }
 
         // Validate and materialize the complete event sequence before any PCM is
-        // exposed to the renderer. This matches Omniphony's transactional event
-        // contract: malformed timed evidence must fail the whole block before
-        // presentation state can advance.
+        // exposed to the renderer. Malformed timed evidence fails the block
+        // transactionally before presentation state can advance.
         for (std::size_t event_index = 0; event_index < block.evidence_event_count; ++event_index) {
             const spatial_source_evidence_event& event = block.evidence_events[event_index];
             if (event.lane_index >= block.lane_count || event.frame_offset > block.frame_count ||
