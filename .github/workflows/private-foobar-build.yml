@@ -41,13 +41,13 @@ jobs:
           git show fc4959dd7ea0b1222bd64cd2512d5c8eec9d3af8:.github/workflows/private-foobar-build.yml > .github/workflows/private-foobar-build.yml
           python - <<'PY'
           from pathlib import Path
-          import textwrap
 
           workflow = Path('.github/workflows/repair-private-foobar.yml').read_text(encoding='utf-8')
           marker = "          python - <<'PY'\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n          PY\n", start)
-          code = textwrap.dedent(workflow[start:end])
+          lines = workflow[start:end].splitlines()
+          code = "\n".join(line[10:] if line.startswith("          ") else line for line in lines)
           exec(compile(code, 'staged-private-foobar-repair', 'exec'), {'__name__': '__main__'})
           PY
 
