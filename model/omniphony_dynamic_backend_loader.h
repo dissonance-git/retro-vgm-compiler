@@ -112,11 +112,14 @@ public:
         create_ = resolve<omniphony_source_create_fn>("omniphony_source_create");
         destroy_ = resolve<omniphony_source_destroy_fn>("omniphony_source_destroy");
         reset_ = resolve<omniphony_source_reset_fn>("omniphony_source_reset");
+        set_mix_budget_ = resolve<omniphony_source_set_mix_budget_fn>(
+            "omniphony_source_set_mix_budget");
         process_events_ = resolve<omniphony_source_process_events_f32_fn>(
             "omniphony_source_process_events_f32");
 
         if (abi_major_ == nullptr || abi_minor_ == nullptr || create_ == nullptr ||
-            destroy_ == nullptr || reset_ == nullptr || process_events_ == nullptr) {
+            destroy_ == nullptr || reset_ == nullptr || set_mix_budget_ == nullptr ||
+            process_events_ == nullptr) {
             close();
             return fail(omniphony_dynamic_backend_error::missing_symbol);
         }
@@ -151,6 +154,7 @@ public:
         create_ = nullptr;
         destroy_ = nullptr;
         reset_ = nullptr;
+        set_mix_budget_ = nullptr;
         process_events_ = nullptr;
         if (module_ != nullptr)
             ::FreeLibrary(module_);
@@ -162,6 +166,7 @@ public:
         create_ = nullptr;
         destroy_ = nullptr;
         reset_ = nullptr;
+        set_mix_budget_ = nullptr;
         process_events_ = nullptr;
 #endif
         last_error_ = omniphony_dynamic_backend_error::none;
@@ -169,7 +174,7 @@ public:
 
     bool open() const noexcept {
         return processor_ != nullptr && abi_major_ != nullptr && abi_minor_ != nullptr &&
-            reset_ != nullptr && process_events_ != nullptr;
+            reset_ != nullptr && set_mix_budget_ != nullptr && process_events_ != nullptr;
     }
 
     omniphony_dynamic_backend_error last_error() const noexcept { return last_error_; }
@@ -184,6 +189,7 @@ public:
             abi_major_,
             abi_minor_,
             reset_,
+            set_mix_budget_,
             process_events_);
     }
 
@@ -243,6 +249,7 @@ private:
     omniphony_source_create_fn create_ = nullptr;
     omniphony_source_destroy_fn destroy_ = nullptr;
     omniphony_source_reset_fn reset_ = nullptr;
+    omniphony_source_set_mix_budget_fn set_mix_budget_ = nullptr;
     omniphony_source_process_events_f32_fn process_events_ = nullptr;
     omniphony_dynamic_backend_error last_error_ = omniphony_dynamic_backend_error::none;
 };
