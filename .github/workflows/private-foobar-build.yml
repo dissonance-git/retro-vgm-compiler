@@ -1,4 +1,4 @@
-name: Locate exact historical VGM bootstrap blob
+name: Probe public foo_input_vgm 0.31 source
 
 on:
   push:
@@ -11,13 +11,13 @@ permissions:
   statuses: write
 
 jobs:
-  locate-bootstrap:
+  probe-vgm031:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Publish locator
         shell: bash
@@ -33,38 +33,45 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"pending\",\"context\":\"private-foobar-history\",\"description\":\"run_id=$RUN_ID; scanning\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"pending\",\"context\":\"vgm031-probe\",\"description\":\"run_id=$RUN_ID; probing\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
 
-      - name: Scan every historical archive blob
-        id: scan
+      - name: Download and fingerprint public 0.31 attachment
+        id: probe
         shell: bash
         run: |
           set -euo pipefail
-          expected='93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
-          found=''
-          mapfile -t commits < <(git log --all --format='%H' -- imports/foo_input_vgm.7z)
-          echo "historical commits touching archive: ${#commits[@]}"
-          for commit in "${commits[@]}"; do
-            if ! git cat-file -e "$commit:imports/foo_input_vgm.7z" 2>/dev/null; then
-              continue
-            fi
-            git show "$commit:imports/foo_input_vgm.7z" > candidate.7z
-            size=$(wc -c < candidate.7z | tr -d ' ')
-            sha=$(sha256sum candidate.7z | awk '{print $1}')
-            subject=$(git show -s --format='%s' "$commit")
-            echo "$commit size=$size sha256=$sha subject=$subject"
-            if [ "$sha" = "$expected" ]; then
-              found="$commit"
-              break
-            fi
-          done
-          if [ -n "$found" ]; then
-            echo "FOUND_EXACT_BOOTSTRAP=$found"
-            echo "found=$found" >> "$GITHUB_OUTPUT"
-          else
-            echo 'FOUND_EXACT_BOOTSTRAP='
-            echo 'found=' >> "$GITHUB_OUTPUT"
-          fi
+          url='https://vgmrips.net/forum/download/file.php?id=5292'
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0 Retro-VGM-Compiler/0.31-probe' "$url" -o upstream.zip
+          echo "archive_size=$(wc -c < upstream.zip | tr -d ' ')"
+          sha256sum upstream.zip
+          file upstream.zip
+          rm -rf upstream
+          mkdir upstream
+          unzip -q upstream.zip -d upstream
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          expected = '36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'
+          roots = sorted({p.parent.parent for p in Path('upstream').rglob('src/my_component_client.cpp') if p.parent.parent.name == 'foo_input_vgm'})
+          if not roots:
+              raise SystemExit('foo_input_vgm source root not found in public 0.31 attachment')
+          print('candidate roots:')
+          for root in roots:
+              entries = []
+              for path in sorted(p for p in root.rglob('*') if p.is_file()):
+                  rel = path.relative_to(root).as_posix()
+                  entries.append((rel, hashlib.sha256(path.read_bytes()).hexdigest()))
+              manifest = ''.join(f'{sha}  {rel}\n' for rel, sha in entries).encode()
+              digest = hashlib.sha256(manifest).hexdigest()
+              print(f'{root}: files={len(entries)} tree_sha256={digest}')
+              if digest == expected:
+                  print(f'MATCHED_USER_UPLOAD_SOURCE={root}')
+                  Path('matched_root.txt').write_text(str(root), encoding='utf-8')
+                  break
+          else:
+              raise SystemExit('public 0.31 attachment source tree does not match user-uploaded source tree')
+          PY
 
       - name: Publish final locator
         if: always()
@@ -75,14 +82,12 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
-          FOUND: ${{ steps.scan.outputs.found }}
         run: |
           if [ "$JOB_STATUS" = "success" ]; then state=success; else state=failure; fi
-          desc="run_id=$RUN_ID; found=${FOUND:-none}"
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"$state\",\"context\":\"private-foobar-history\",\"description\":\"$desc\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"$state\",\"context\":\"vgm031-probe\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
