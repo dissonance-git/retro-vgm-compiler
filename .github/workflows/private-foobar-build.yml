@@ -1,4 +1,4 @@
-name: Verify chunked foo_input_vgm 0.31 transfer
+name: Fingerprint foo_input_vgm 0.31 transfer chunks
 
 on:
   push:
@@ -11,14 +11,13 @@ permissions:
   statuses: write
 
 jobs:
-  verify-transfer:
+  fingerprint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: temp-public-foobar-build-20260818
           fetch-depth: 1
-
       - name: Publish locator
         shell: bash
         env:
@@ -27,45 +26,23 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          curl --fail --silent --show-error -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"pending\",\"context\":\"vgm031-transfer\",\"description\":\"run_id=$RUN_ID; verifying\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
-
-      - name: Reassemble and verify exact upload
+          curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" -d "{\"state\":\"pending\",\"context\":\"vgm031-chunks\",\"description\":\"run_id=$RUN_ID; fingerprinting\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+      - name: Fingerprint chunks
         shell: bash
         run: |
           set -euo pipefail
-          cat .bootstrap-transfer/foo_input_vgm-0.31.b64.part00 \
-              .bootstrap-transfer/foo_input_vgm-0.31.b64.part01 \
-              .bootstrap-transfer/foo_input_vgm-0.31.b64.part02 \
-            | tr -d '\r\n' | base64 -d > foo_input_vgm-0.31.zip
-          actual_size=$(wc -c < foo_input_vgm-0.31.zip | tr -d ' ')
-          actual_sha=$(sha256sum foo_input_vgm-0.31.zip | awk '{print $1}')
-          echo "size=$actual_size sha256=$actual_sha"
-          test "$actual_size" = "66250"
-          test "$actual_sha" = "e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1"
-          python - <<'PY'
-          import hashlib, zipfile
-          from pathlib import PurePosixPath
-          expected='36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'
-          with zipfile.ZipFile('foo_input_vgm-0.31.zip') as z:
-              names=sorted(n for n in z.namelist() if n.startswith('foo_input_vgm/') and not n.endswith('/'))
-              entries=[]
-              for name in names:
-                  rel=name[len('foo_input_vgm/'):]
-                  entries.append((rel, hashlib.sha256(z.read(name)).hexdigest()))
-              payload=''.join(f'{sha}  {rel}\n' for rel,sha in entries).encode()
-              digest=hashlib.sha256(payload).hexdigest()
-              print(f'files={len(entries)} tree_sha256={digest}')
-              assert len(entries)==41
-              assert digest==expected
-              version=z.read('foo_input_vgm/src/my_component_client.cpp').decode('utf-8-sig')
-              assert '"0.31"' in version
+          for f in .bootstrap-transfer/foo_input_vgm-0.31.b64.part00 .bootstrap-transfer/foo_input_vgm-0.31.b64.part01 .bootstrap-transfer/foo_input_vgm-0.31.b64.part02; do
+            echo "== $f =="
+            wc -c "$f"
+            sha256sum "$f"
+            python - "$f" <<'PY'
+          import pathlib,re,sys
+          p=pathlib.Path(sys.argv[1]); s=p.read_text(encoding='utf-8')
+          clean=s.replace('\r','').replace('\n','')
+          bad=sorted(set(re.sub(r'[A-Za-z0-9+/=]','',clean)))
+          print('chars',len(s),'clean',len(clean),'mod4',len(clean)%4,'bad',repr(bad),'head',repr(clean[:24]),'tail',repr(clean[-24:]))
           PY
-
+          done
       - name: Publish final locator
         if: always()
         shell: bash
@@ -77,9 +54,4 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           if [ "$JOB_STATUS" = success ]; then state=success; else state=failure; fi
-          curl --fail --silent --show-error -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"$state\",\"context\":\"vgm031-transfer\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+          curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" -d "{\"state\":\"$state\",\"context\":\"vgm031-chunks\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
