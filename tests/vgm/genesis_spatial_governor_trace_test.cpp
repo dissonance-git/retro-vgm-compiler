@@ -170,6 +170,34 @@ int main()
             1.0e-5f));
     }
 
+    // With exactly two active dry Genesis lanes, the pairwise field has one and
+    // only one admissible pair. Its overlap must therefore reproduce the scene
+    // scalar while retaining the underlying FM/PSG source identities.
+    realtime_spatial_overlap_pair_observation pair{};
+    assert(first_trace.pair(0, 1, pair));
+    assert(pair.valid);
+    assert(pair.left_lane_index == 0);
+    assert(pair.right_lane_index == 1);
+    assert(pair.left_source_id == first_trace.sources[0].source_id);
+    assert(pair.left_generation == first_trace.sources[0].generation);
+    assert(pair.right_source_id == first_trace.sources[1].source_id);
+    assert(pair.right_generation == first_trace.sources[1].generation);
+    assert(pair.coarse_spectral_overlap > 0.99f);
+    assert(pair.pair_energy_weight > 0.0f);
+    assert(near(
+        first_trace.reconstructed_coarse_spectral_overlap(),
+        first_trace.scene.coarse_spectral_overlap,
+        1.0e-5f));
+
+    // Pair order is presentation-independent. Asking for the reverse lane order
+    // returns the same canonical pair instead of inventing a directed relation.
+    realtime_spatial_overlap_pair_observation reverse_pair{};
+    assert(first_trace.pair(1, 0, reverse_pair));
+    assert(reverse_pair.left_lane_index == pair.left_lane_index);
+    assert(reverse_pair.right_lane_index == pair.right_lane_index);
+    assert(near(reverse_pair.coarse_spectral_overlap, pair.coarse_spectral_overlap));
+    assert(near(reverse_pair.pair_energy_weight, pair.pair_energy_weight));
+
     assert(first_trace.applied_budget.dry_width_scale == 1.0f);
     assert(first_trace.applied_budget.dry_diffuse_scale == 1.0f);
     assert(first_trace.applied_budget.depth_scale == 1.0f);
