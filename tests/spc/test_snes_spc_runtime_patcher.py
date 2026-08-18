@@ -10,6 +10,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 STRICT = ROOT / "tools" / "spc" / "patch_snes_spc_runtime_strict.py"
 FORENSIC = ROOT / "tools" / "spc" / "patch_snes_spc_forensic.py"
+NATIVE_SPATIAL = ROOT / "tools" / "spc" / "patch_snes_spc_native_spatial_observer.py"
 FORENSIC_CMAKE = ROOT / "tools" / "spc" / "forensic" / "CMakeLists.txt"
 
 
@@ -25,6 +26,28 @@ def load_module(name: str, path: pathlib.Path):
 
 strict = load_module("patch_snes_spc_runtime_strict", STRICT)
 forensic = load_module("patch_snes_spc_forensic", FORENSIC)
+native_spatial = load_module("patch_snes_spc_native_spatial_observer", NATIVE_SPATIAL)
+
+
+def write_native_spatial_fixture(root: pathlib.Path) -> None:
+    source = root / "snes_spc"
+    source.mkdir(parents=True)
+    (source / "SPC_DSP.h").write_text(
+        native_spatial.DSP_API_OLD
+        + native_spatial.DSP_STATE_OLD
+        + native_spatial.DSP_INLINE_OLD,
+        encoding="utf-8",
+    )
+    (source / "SNES_SPC.h").write_text(
+        native_spatial.SNES_API_OLD + native_spatial.SNES_INLINE_OLD,
+        encoding="utf-8",
+    )
+    (source / "SPC_DSP.cpp").write_text(
+        native_spatial.DRY_TAP_OLD
+        + native_spatial.ECHO_LEFT_OLD
+        + native_spatial.ECHO_RIGHT_OLD,
+        encoding="utf-8",
+    )
 
 
 class SnesSpcRuntimePatcherTest(unittest.TestCase):
@@ -130,7 +153,64 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
                     "forensic ordering fixture",
                 )
 
-    def test_forensic_cmake_uses_only_deterministic_ordering_mode(self) -> None:
+    def test_native_spatial_patch_is_exact_and_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            write_native_spatial_fixture(root)
+
+            native_spatial.patch(root)
+            dsp_header = (root / "snes_spc" / "SPC_DSP.h").read_text(encoding="utf-8")
+            snes_header = (root / "snes_spc" / "SNES_SPC.h").read_text(encoding="utf-8")
+            dsp_cpp = (root / "snes_spc" / "SPC_DSP.cpp").read_text(encoding="utf-8")
+
+            self.assertIn("native_spatial_observer_t", dsp_header)
+            self.assertIn("native_dry_source [voice_count]", dsp_header)
+            self.assertIn("set_native_spatial_observer", snes_header)
+            self.assertIn(
+                "native_dry_source [v - m.voices] = (sample_t) m.t_output;",
+                dsp_cpp,
+            )
+            self.assertIn("m.t_echo_in [0]", dsp_cpp)
+            self.assertIn("REG(evoll)", dsp_cpp)
+            self.assertIn("m.t_echo_in [1]", dsp_cpp)
+            self.assertIn("REG(evoll + 0x10)", dsp_cpp)
+            self.assertIn("m.t_main_out [0] = echo_output( 0 );", dsp_cpp)
+            self.assertIn("int r = echo_output( 1 );", dsp_cpp)
+            self.assertIn("native_spatial_observer(", dsp_cpp)
+            self.assertIn("voice_count,", dsp_cpp)
+            self.assertIn("native_echo_left,", dsp_cpp)
+            self.assertIn("native_echo_right );", dsp_cpp)
+
+            first = {
+                path.name: path.read_text(encoding="utf-8")
+                for path in (root / "snes_spc").iterdir()
+            }
+            native_spatial.patch(root)
+            second = {
+                path.name: path.read_text(encoding="utf-8")
+                for path in (root / "snes_spc").iterdir()
+            }
+            self.assertEqual(second, first)
+
+    def test_native_spatial_patch_rejects_partial_edit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            write_native_spatial_fixture(root)
+            native_spatial.patch(root)
+
+            dsp_cpp_path = root / "snes_spc" / "SPC_DSP.cpp"
+            dsp_cpp_path.write_text(
+                dsp_cpp_path.read_text(encoding="utf-8").replace(
+                    "native_echo_left,\n",
+                    "native_echo_left + 1,\n",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(RuntimeError):
+                native_spatial.patch(root)
+
+    def test_forensic_cmake_uses_deterministic_native_spatial_contract(self) -> None:
         cmake = FORENSIC_CMAKE.read_text(encoding="utf-8")
 
         self.assertIn("tools/spc/patch_snes_spc_forensic.py", cmake)
@@ -139,9 +219,10 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
         self.assertIn("RETRO_VGM_SPC_FORENSIC_ORDERING=1", cmake)
         self.assertNotIn("SPC_MORE_ACCURACY=1", cmake)
         self.assertIn(
-            "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1",
+            "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1",
             cmake,
         )
+        self.assertIn("snes_spc_native_spatial_observer_test", cmake)
 
 
 if __name__ == "__main__":
