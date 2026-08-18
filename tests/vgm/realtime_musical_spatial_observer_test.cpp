@@ -27,6 +27,16 @@ vgmtooling::model::spatial_audio_lane_view make_lane(
     return lane;
 }
 
+float profile_distance(
+    const std::array<float, 3>& left,
+    const std::array<float, 3>& right)
+{
+    float distance = 0.0f;
+    for (std::size_t band = 0; band < left.size(); ++band)
+        distance += std::fabs(left[band] - right[band]);
+    return distance;
+}
+
 } // namespace
 
 int main()
@@ -64,17 +74,71 @@ int main()
     assert(observer.source(0).low_band_energy_ratio
         > observer.source(1).low_band_energy_ratio);
 
+    // Broad-band crowding is a deliberately coarse observation, not a masking
+    // claim. Widely separated low/high sources should overlap much less than two
+    // sources occupying the same broad spectral territory.
+    const float disjoint_overlap = observer.scene().coarse_spectral_overlap;
+    assert(disjoint_overlap < 0.25f);
+
+    observer_type similar_observer{};
+    std::array<vgmtooling::model::spatial_audio_lane_view, 2> similar_lanes{
+        make_lane(low.data(), 21, 1),
+        make_lane(low.data(), 22, 1),
+    };
+    const vgmtooling::model::spatial_source_block_view similar_block{
+        similar_lanes.data(),
+        similar_lanes.size(),
+        frame_count,
+    };
+    assert(similar_observer.process(similar_block, sample_rate));
+    assert(similar_observer.scene().coarse_spectral_overlap > 0.90f);
+    assert(similar_observer.scene().coarse_spectral_overlap > disjoint_overlap + 0.60f);
+
     // Equal-amplitude equal-duration sources should divide observed energy
     // evenly, producing a concentration near 0.5 rather than inventing width.
     assert(std::fabs(observer.source(0).relative_energy - 0.5f) < 0.01f);
     assert(std::fabs(observer.source(1).relative_energy - 0.5f) < 0.01f);
     assert(std::fabs(observer.scene().energy_concentration - 0.5f) < 0.02f);
 
+    // The persistent coarse profile is driven sample by sample, so callback
+    // partitioning must not become a hidden spectral feature.
+    observer_type split_observer{};
+    constexpr std::size_t chunk_frames = 480;
+    static_assert(frame_count % chunk_frames == 0);
+    for (std::size_t offset = 0; offset < frame_count; offset += chunk_frames) {
+        std::array<vgmtooling::model::spatial_audio_lane_view, 2> chunk_lanes{
+            make_lane(low.data() + offset, 21, 1),
+            make_lane(low.data() + offset, 22, 1),
+        };
+        const vgmtooling::model::spatial_source_block_view chunk{
+            chunk_lanes.data(),
+            chunk_lanes.size(),
+            chunk_frames,
+        };
+        assert(split_observer.process(chunk, sample_rate));
+    }
+    assert(profile_distance(
+        split_observer.source(0).coarse_band_energy_share,
+        similar_observer.source(0).coarse_band_energy_share) < 1.0e-5f);
+    assert(profile_distance(
+        split_observer.source(1).coarse_band_energy_share,
+        similar_observer.source(1).coarse_band_energy_share) < 1.0e-5f);
+    assert(std::fabs(
+        split_observer.scene().coarse_spectral_overlap
+            - similar_observer.scene().coarse_spectral_overlap) < 1.0e-5f);
+
     // Shared effect audio stays an observed field contribution, not fictional
-    // per-instrument wet stems. Its scene share follows measured energy.
-    lanes[1].kind = vgmtooling::model::spatial_audio_lane_kind::shared_effect_return;
+    // per-instrument wet stems. It is also excluded from the dry-source overlap
+    // statistic even if its spectrum resembles a dry source exactly.
+    lanes[0] = make_lane(low.data(), 31, 1);
+    lanes[1] = make_lane(
+        low.data(),
+        32,
+        1,
+        vgmtooling::model::spatial_audio_lane_kind::shared_effect_return);
     assert(observer.process(two_lane_block, sample_rate));
     assert(std::fabs(observer.scene().shared_effect_energy_share - 0.5f) < 0.01f);
+    assert(observer.scene().coarse_spectral_overlap == 0.0f);
 
     // Unavailable source samples are excluded rather than interpreted as zeros.
     std::array<std::uint8_t, frame_count> availability{};
@@ -162,7 +226,7 @@ int main()
     // A syntactically valid cutoff that exceeds Nyquist is rejected at process
     // time because its validity depends on the current audio sample rate.
     auto config = observer.config();
-    config.low_band_cutoff_hz = 30000.0f;
+    config.coarse_upper_band_split_hz = 30000.0f;
     assert(observer.set_config(config));
     assert(!observer.process(one_lane_block, sample_rate));
 
