@@ -10,10 +10,15 @@ endif()
 
 set(LIBVGM_RESAMPLER_C "${LIBVGM_ROOT}/emu/Resampler.c")
 set(LIBVGM_RESAMPLER_H "${LIBVGM_ROOT}/emu/Resampler.h")
+set(LIBVGM_MAME_OPM_C "${LIBVGM_ROOT}/emu/cores/ym2151.c")
+set(LIBVGM_MAME_OPM_H "${LIBVGM_ROOT}/emu/cores/ym2151.h")
 set(LIBVGM_NUKED_OPM_C "${LIBVGM_ROOT}/emu/cores/nukedopm.c")
 set(LIBVGM_NUKED_OPM_H "${LIBVGM_ROOT}/emu/cores/nukedopm.h")
 if(NOT EXISTS "${LIBVGM_RESAMPLER_C}" OR NOT EXISTS "${LIBVGM_RESAMPLER_H}")
     message(FATAL_ERROR "LIBVGM_ROOT does not contain emu/Resampler.c and emu/Resampler.h: ${LIBVGM_ROOT}")
+endif()
+if(NOT EXISTS "${LIBVGM_MAME_OPM_C}" OR NOT EXISTS "${LIBVGM_MAME_OPM_H}")
+    message(FATAL_ERROR "LIBVGM_ROOT does not contain the MAME YM2151 core: ${LIBVGM_ROOT}")
 endif()
 if(NOT EXISTS "${LIBVGM_NUKED_OPM_C}" OR NOT EXISTS "${LIBVGM_NUKED_OPM_H}")
     message(FATAL_ERROR "LIBVGM_ROOT does not contain the Nuked-OPM core: ${LIBVGM_ROOT}")
@@ -46,3 +51,17 @@ target_include_directories(nukedopm_channel_additivity_falsifier PRIVATE "${LIBV
 target_compile_features(nukedopm_channel_additivity_falsifier PRIVATE cxx_std_17)
 gameaudio_libvgm_test_warnings(nukedopm_channel_additivity_falsifier)
 add_test(NAME nukedopm_channel_additivity COMMAND nukedopm_channel_additivity_falsifier)
+
+add_executable(
+    ym2151_renderer_pair_probe
+    ym2151_renderer_pair_probe.cpp
+    "${LIBVGM_MAME_OPM_C}"
+    "${LIBVGM_NUKED_OPM_C}"
+)
+target_include_directories(ym2151_renderer_pair_probe PRIVATE "${LIBVGM_ROOT}")
+target_compile_features(ym2151_renderer_pair_probe PRIVATE cxx_std_17)
+gameaudio_libvgm_test_warnings(ym2151_renderer_pair_probe)
+if(UNIX)
+    target_link_libraries(ym2151_renderer_pair_probe PRIVATE m)
+endif()
+add_test(NAME ym2151_renderer_pair_probe COMMAND ym2151_renderer_pair_probe)
