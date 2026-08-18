@@ -51,12 +51,14 @@ jobs:
           exec(compile(code, 'staged-private-foobar-repair', 'exec'), {'__name__': '__main__'})
           PY
 
-      - name: Publish canonical repair to main
+      - name: Publish canonical source repair to main
         shell: bash
         run: |
           git config user.name "dissonance"
           git config user.email "ustreamusa@aim.com"
           git add -A
+          git restore --staged .github/workflows/private-foobar-build.yml
+          git restore .github/workflows/private-foobar-build.yml
           git diff --cached --check
           git commit -m "build: repair private foobar production path"
           git push origin HEAD:main
