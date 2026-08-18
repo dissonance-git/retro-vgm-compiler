@@ -25,13 +25,13 @@ int main() {
     assert(state.channel(2).pms == 7u);
     assert(state.channel(2).ams == 3u);
 
-    // Physical register slot 0x48 maps to logical operator 3 (index 2).
-    state.apply_register(0x4Au, 0x7Fu); // channel 2, slot 0: DT1/MUL
-    state.apply_register(0x6Au, 0x55u); // TL
-    state.apply_register(0x8Au, 0xDFu); // KS/AR
-    state.apply_register(0xAAu, 0x9Fu); // AM/D1R
-    state.apply_register(0xCAu, 0xDFu); // DT2/D2R
-    state.apply_register(0xEAu, 0xA9u); // D1L/RR
+    // Channel 2 (zero-based), physical slot 0 -> logical operator 1.
+    state.apply_register(0x42u, 0x7Fu); // DT1/MUL
+    state.apply_register(0x62u, 0x55u); // TL
+    state.apply_register(0x82u, 0xDFu); // KS/AR
+    state.apply_register(0xA2u, 0x9Fu); // AM/D1R
+    state.apply_register(0xC2u, 0xDFu); // DT2/D2R
+    state.apply_register(0xE2u, 0xA9u); // D1L/RR
     const auto& op1 = state.channel(2).operators[0];
     assert(op1.dt1 == 7u && op1.multiple == 15u);
     assert(op1.total_level == 0x55u);
@@ -40,7 +40,8 @@ int main() {
     assert(op1.dt2 == 3u && op1.decay2_rate == 31u);
     assert(op1.sustain_level == 10u && op1.release_rate == 9u);
 
-    state.apply_register(0x4Au + 0x08u, 0x21u);
+    // Physical slot 1 maps to logical operator 3 (index 2).
+    state.apply_register(0x4Au, 0x21u);
     assert(state.channel(2).operators[2].dt1 == 2u);
     assert(state.channel(2).operators[2].multiple == 1u);
 
@@ -70,7 +71,7 @@ int main() {
     assert(global.ct == 3u && global.lfo_waveform == 3u);
 
     assert(state.raw_register(0x19u) == 0xC2u);
-    assert(state.write_count() == 20u);
+    assert(state.write_count() == 21u);
 
     state.reset();
     assert(state.write_count() == 0u);
