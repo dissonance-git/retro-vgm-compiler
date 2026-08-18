@@ -187,6 +187,7 @@ int main()
         96);
     assert(first.source_chunk_valid);
     assert(first.omniphony.prepared);
+    assert(first.omniphony.budget_committed);
     assert(first.omniphony.rendered);
     assert(first.omniphony.learned);
     assert(renderer.observed_source_count == source_count);
@@ -216,6 +217,50 @@ int main()
     assert(learned_budget.shared_wet_extent < 1.0f);
     assert(learned_budget.added_externalization_scale < 1.0f);
 
+    // The diagnostic snapshot is passive but complete enough for corpus-scale
+    // validation: it records source spectra, scene geometry, the neutral budget
+    // used for this block, the exact ABI record that reached Omniphony, and the
+    // budget learned for the future. Shared echo remains visible as wet evidence.
+    const auto& first_trace = pipeline.pipeline().last_governor_trace();
+    assert(first_trace.valid);
+    assert(first_trace.lane_count == source_count);
+    assert(first_trace.frame_count == frames);
+    assert(first_trace.sample_rate == sample_rate);
+    assert(first_trace.absolute_sample_position == 12000);
+    assert(first_trace.scene.observed_lane_count == source_count);
+    assert(first_trace.scene.shared_effect_energy_share == scene.shared_effect_energy_share);
+    assert(first_trace.scene.coarse_spectral_overlap == scene.coarse_spectral_overlap);
+    assert(first_trace.sources[0].lane_kind == spatial_audio_lane_kind::dry_source);
+    assert(first_trace.sources[1].lane_kind == spatial_audio_lane_kind::dry_source);
+    assert(first_trace.sources[2].lane_kind == spatial_audio_lane_kind::shared_effect_return);
+    assert(first_trace.sources[3].lane_kind == spatial_audio_lane_kind::shared_effect_return);
+    for (std::size_t band = 0; band < 3; ++band) {
+        assert(near(
+            first_trace.sources[0].coarse_band_energy_share[band],
+            first_trace.sources[1].coarse_band_energy_share[band],
+            1.0e-5f));
+    }
+    assert(first_trace.applied_budget.depth_scale == 1.0f);
+    assert(first_trace.applied_budget.height_scale == 1.0f);
+    assert(first_trace.applied_budget.shared_wet_strength == 1.0f);
+    assert(first_trace.applied_budget.shared_wet_extent == 1.0f);
+    assert(first_trace.applied_budget.added_externalization_scale == 1.0f);
+    assert(first_trace.renderer_budget.depth_scale == renderer.observed_budget.depth_scale);
+    assert(first_trace.renderer_budget.height_scale == renderer.observed_budget.height_scale);
+    assert(first_trace.renderer_budget.shared_wet_strength_scale
+        == renderer.observed_budget.shared_wet_strength_scale);
+    assert(first_trace.renderer_budget.shared_wet_extent_scale
+        == renderer.observed_budget.shared_wet_extent_scale);
+    assert(first_trace.renderer_budget.externalization_scale
+        == renderer.observed_budget.externalization_scale);
+    assert(near(first_trace.learned_budget.dry_width_scale, learned_budget.dry_width_scale));
+    assert(near(first_trace.learned_budget.dry_diffuse_scale, learned_budget.dry_diffuse_scale));
+    assert(near(first_trace.learned_budget.shared_wet_strength, learned_budget.shared_wet_strength));
+    assert(near(first_trace.learned_budget.shared_wet_extent, learned_budget.shared_wet_extent));
+    assert(near(
+        first_trace.learned_budget.added_externalization_scale,
+        learned_budget.added_externalization_scale));
+
     // Only the NEXT chunk may use those completed-scene observations. This also
     // closes both presentation planes: dry width/diffuse travel in source
     // evidence, while wet/externalization travel through ABI 0.4 scene control.
@@ -228,6 +273,7 @@ int main()
         stereo.data(),
         stereo.size(),
         96);
+    assert(second.omniphony.budget_committed);
     assert(second.omniphony.rendered);
     assert(second.omniphony.learned);
     assert(renderer.budget_calls == 2);
@@ -248,6 +294,23 @@ int main()
         learned_budget.shared_wet_extent));
     assert(near(
         renderer.observed_budget.externalization_scale,
+        learned_budget.added_externalization_scale));
+
+    const auto& second_trace = pipeline.pipeline().last_governor_trace();
+    assert(second_trace.valid);
+    assert(second_trace.absolute_sample_position == 12000 + frames);
+    assert(near(second_trace.applied_budget.dry_width_scale, learned_budget.dry_width_scale));
+    assert(near(second_trace.applied_budget.dry_diffuse_scale, learned_budget.dry_diffuse_scale));
+    assert(near(second_trace.renderer_budget.depth_scale, learned_budget.depth_scale));
+    assert(near(second_trace.renderer_budget.height_scale, learned_budget.height_scale));
+    assert(near(
+        second_trace.renderer_budget.shared_wet_strength_scale,
+        learned_budget.shared_wet_strength));
+    assert(near(
+        second_trace.renderer_budget.shared_wet_extent_scale,
+        learned_budget.shared_wet_extent));
+    assert(near(
+        second_trace.renderer_budget.externalization_scale,
         learned_budget.added_externalization_scale));
 
     return 0;
