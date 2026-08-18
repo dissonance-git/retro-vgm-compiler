@@ -272,28 +272,28 @@ def verify_archive(path: Path, expected_names: set[str], label: str) -> dict[str
         folded: set[str] = set()
         payloads: dict[str, bytes] = {}
         for info in infos:
-  try:
-      name = _validate_archive_name(info.filename)
-  except AssertionError as exc:
-      raise AssertionError(
-          f"{label} package has unsafe/nested member: {info.filename}"
-      ) from exc
-  key = name.casefold()
-  if key in folded:
-      raise AssertionError(
-          f"{label} package has duplicate case-insensitive member: {name}"
-      )
-  folded.add(key)
-  names.append(name)
-  data = archive.read(info)
-  if not data:
-      raise AssertionError(f"{label} package has zero-byte runtime member: {name}")
-  payloads[name] = data
+            try:
+                name = _validate_archive_name(info.filename)
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{label} package has unsafe/nested member: {info.filename}"
+                ) from exc
+            key = name.casefold()
+            if key in folded:
+                raise AssertionError(
+                    f"{label} package has duplicate case-insensitive member: {name}"
+                )
+            folded.add(key)
+            names.append(name)
+            data = archive.read(info)
+            if not data:
+                raise AssertionError(f"{label} package has zero-byte runtime member: {name}")
+            payloads[name] = data
 
         if set(names) != expected_names:
-  raise AssertionError(
-      f"{label} payload mismatch: expected {sorted(expected_names)}, got {sorted(names)}"
-  )
+            raise AssertionError(
+                f"{label} payload mismatch: expected {sorted(expected_names)}, got {sorted(names)}"
+            )
         return payloads
 
 
@@ -306,28 +306,28 @@ def verify_runtime_contracts(
     payloads = verify_archive(path, set(contracts), label)
     for name, (machine, required_exports) in contracts.items():
         try:
-  actual_machine, exports = inspect_pe(payloads[name])
+            actual_machine, exports = inspect_pe(payloads[name])
         except (ValueError, struct.error) as exc:
-  raise AssertionError(
-      f"{label} package member {name} is not a valid packaged PE: {exc}"
-  ) from exc
+            raise AssertionError(
+                f"{label} package member {name} is not a valid packaged PE: {exc}"
+            ) from exc
         if actual_machine != machine:
-  raise AssertionError(
-      f"{label} package member {name} machine mismatch: "
-      f"expected 0x{machine:04X}, got 0x{actual_machine:04X}"
-  )
+            raise AssertionError(
+                f"{label} package member {name} machine mismatch: "
+                f"expected 0x{machine:04X}, got 0x{actual_machine:04X}"
+            )
         missing = required_exports - exports
         if missing:
-  raise AssertionError(
-      f"{label} package member {name} missing required exports: {sorted(missing)}"
-  )
+            raise AssertionError(
+                f"{label} package member {name} missing required exports: {sorted(missing)}"
+            )
 
 
 def validate_spcplayer_startup_result(returncode: int, output: str) -> None:
     """Require the no-input child to reach its own usage path, not just load."""
     if returncode != 1:
         raise AssertionError(
-  f"spcplayer expected usage exit 1 after successful startup, got {returncode}"
+            f"spcplayer expected usage exit 1 after successful startup, got {returncode}"
         )
     if "usage" not in output.casefold():
         raise AssertionError("spcplayer did not reach its own usage path")
