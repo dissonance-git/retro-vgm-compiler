@@ -1,0 +1,29 @@
+name: Sonic 3 Actions heartbeat
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sonic3-actions-heartbeat.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish heartbeat
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git checkout --detach origin/main
+          mkdir -p research/projects/sonic3/execution
+          printf '%s\n' "connector push reached GitHub Actions from $GITHUB_SHA" > research/projects/sonic3/execution/actions-heartbeat-2026-08-17.txt
+          git add research/projects/sonic3/execution/actions-heartbeat-2026-08-17.txt
+          git commit -m 'ci: confirm Sonic 3 Actions execution'
+          git push origin HEAD:main
