@@ -2,6 +2,7 @@
 
 #include "realtime_musical_role_tracker.h"
 #include "realtime_musical_spatial_projection.h"
+#include "realtime_spatial_mix_budget.h"
 
 #include <array>
 #include <cmath>
@@ -92,12 +93,14 @@ public:
     void reset() noexcept {
         observer_.reset();
         tracker_.reset();
+        mix_budget_tracker_.reset();
     }
 
     // Phase 1: prepare the semantic sidecar for the block that is about to be
     // rendered. This function consults only source evidence available at the
-    // current frame boundary and role memory learned from already-completed
-    // audio. It never inspects current-block PCM.
+    // current frame boundary, role memory learned from already-completed audio,
+    // and a mix budget learned from already-completed scene statistics. It never
+    // inspects current-block PCM.
     bool prepare_block(
         const spatial_source_block_view& input,
         handoff_storage& output) const noexcept
@@ -119,6 +122,7 @@ public:
             previous_event_offset = event.frame_offset;
         }
 
+        const realtime_spatial_mix_budget& mix_budget = mix_budget_tracker_.current();
         for (std::size_t lane_index = 0; lane_index < input.lane_count; ++lane_index) {
             const spatial_source_evidence& raw_evidence = input.lanes[lane_index].evidence;
             realtime_musical_spatial_lane_state& destination = output.lanes_[lane_index];
@@ -129,6 +133,10 @@ public:
                 raw_evidence,
                 destination.roles_available,
                 destination.roles);
+            destination.evidence = apply_realtime_spatial_mix_budget(
+                input.lanes[lane_index].kind,
+                destination.evidence,
+                mix_budget);
 
             output.projected_lanes_[lane_index] = input.lanes[lane_index];
             output.projected_lanes_[lane_index].evidence = destination.evidence;
@@ -146,6 +154,10 @@ public:
                 source_event.evidence,
                 destination.roles_available,
                 destination.roles);
+            destination.evidence = apply_realtime_spatial_mix_budget(
+                input.lanes[source_event.lane_index].kind,
+                destination.evidence,
+                mix_budget);
 
             output.projected_events_[event_index] = spatial_source_evidence_event{
                 source_event.frame_offset,
@@ -168,10 +180,10 @@ public:
     }
 
     // Phase 2: call only after the audio represented by input has passed the
-    // renderer. The just-completed RAW PCM/evidence may then update observations
-    // and role memory for later blocks. Never feed handoff.projected_view() into
-    // this phase: that would let prior semantic guesses become new evidence and
-    // create a self-reinforcing feedback loop.
+    // renderer. The just-completed RAW PCM/evidence may then update observations,
+    // the scene mix budget, and role memory for later blocks. Never feed
+    // handoff.projected_view() into this phase: that would let prior semantic or
+    // mix decisions become new evidence and create a self-reinforcing loop.
     //
     // Stream time advances even if observation fails, because the audio clock
     // itself still moved. A malformed/ambiguous analysis block therefore loses
@@ -203,6 +215,10 @@ public:
         learning_view.evidence_event_count = learning_event_count;
         if (!observer_.process(learning_view, sample_rate))
             return false;
+        if (input.frame_count != 0 && !mix_budget_tracker_.observe(
+                observer_.scene(),
+                static_cast<double>(input.frame_count) / sample_rate))
+            return false;
 
         std::array<spatial_source_evidence, MaxLanes> final_evidence{};
         for (std::size_t lane_index = 0; lane_index < input.lane_count; ++lane_index)
@@ -231,10 +247,15 @@ public:
         return tracker_;
     }
 
+    const realtime_spatial_mix_budget& mix_budget() const noexcept {
+        return mix_budget_tracker_.current();
+    }
+
 private:
     realtime_musical_spatial_observer<MaxLanes, MaxEvents> observer_{};
     realtime_musical_role_proposer proposer_{};
     realtime_musical_role_tracker<RoleCapacity> tracker_{};
+    realtime_spatial_mix_budget_tracker mix_budget_tracker_{};
 };
 
 } // namespace vgmtooling::model
