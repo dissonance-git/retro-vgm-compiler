@@ -1,0 +1,147 @@
+{
+  "schema": "sonic3-creator-blind-version-geometry-001",
+  "date": "2026-08-17",
+  "status": "tentative_creator_blind_measurement",
+  "claim_boundary": [
+    "These measurements compare musical-trajectory structure and Genesis realization fingerprints. They do not establish composer identity.",
+    "Composer-facing structure and arrangement/sound-programming evidence remain separate evidence channels.",
+    "Gleylancer/Hikichi cross-soundtrack expansion is a future confidence upgrade, not a gate on these target measurements."
+  ],
+  "instrument": {
+    "canonical_reference": "tools/vgm_creator_feature_audit.py",
+    "execution_note": "Private VGZ blobs were exposed through a detached, unreferenced Git tree containing aliases to the existing immutable blob SHAs. No branch or main ref was moved. A Wolfram byte-stream port reproduced the canonical creator-blind ordinary-full-FM-key-on semantics. Structural interval clipping and normalized-gap categories were represented by one-to-one integer labels rather than display strings. FM core-patch identity used full SHA-1 rather than the canonical 16-hex display truncation; equality semantics are otherwise the same absent a truncated-hash collision.",
+    "structural_components": ["relative_interval_cosine", "interval_bigram_cosine", "normalized_onset_gap_cosine", "contour_cosine"],
+    "realization_components": ["core_patch_use_cosine", "core_patch_set_jaccard", "algorithm_cosine", "feedback_cosine", "pan_cosine"],
+    "structural_similarity": "arithmetic mean of the four structural components",
+    "realization_similarity": "arithmetic mean of the five realization components",
+    "creator_metadata_used": false,
+    "failed_run_policy": "expired signed URLs, non-VGM 404 payloads, syntax failures, and parser-development diagnostics are excluded from the evidence set"
+  },
+  "source_blobs": {
+    "hydrocity_act1_retail": "4b91e8c414a4039b68acd9ced77eefa0529651c0",
+    "hydrocity_act2_retail": "1354ce104fb135eacd3db1034d52cb6ee276634b",
+    "carnival_night_act1_retail": "b6518f999b260aa5c1201c87934b025916a39459",
+    "carnival_night_act2_retail": "98ecc85bb6453f03a402fbdc00afe0ad9ea17737",
+    "carnival_night_act1_beta": "1bcd298d67091b04e92a09595e3f31921e2f4555",
+    "carnival_night_act2_beta": "5b084a62b46bb4dcd3e5e5b32d9dd6cb4c318cc1",
+    "icecap_act1_retail": "727f3f2810ee85da10ec70e8b151fafafea4b461",
+    "icecap_act2_retail": "81ccfbb5e3e83628b7154d5cd02d1f166fed912a",
+    "icecap_act1_beta": "0cff4e5d6fa1c55424c91e0f16136c14c4fa0a5e",
+    "icecap_act2_beta": "f2d71c0a4c78c8bad58ff9608833a8b00253634d",
+    "launch_base_act1_retail": "ce293727cd340c1d6b4e37109668676f1c004296",
+    "launch_base_act2_retail": "08cae0c722879fea820f72afda2b7e2064a5bebe",
+    "launch_base_act1_beta": "a0bb401b8daa8481bdb6dfa3de23ac9a22d7370a",
+    "launch_base_act2_beta": "ed0a7abcf36e5e3d90af7b798c84c68e1a3f5993",
+    "sky_sanctuary_retail": "39e1c36a9b1f2182b2a1fca3f1e7966d32fdba83",
+    "sky_sanctuary_beta": "0eb8e99baa8c86311aa246975dec245b3a5e56a5",
+    "knuckles_theme_s3": "95cbe64a578283d0bbc78c5a945e59ce8c1c6b5d",
+    "knuckles_theme_sandk": "6e6513d89ef2d7c34ddb85f8bf3bd20262d0e492"
+  },
+  "comparisons": {
+    "hydrocity_retail_act1_vs_act2": {
+      "key_ons": [1104, 1228],
+      "structural_components": [0.9705707336360537, 0.819782375874508, 0.825685850400695, 0.9886309249260954],
+      "structural_similarity": 0.901167471209338,
+      "realization_components": [0.6511931568918898, 0.4444444444444444, 0.9340890424973286, 0.8845441854110873, 0.8830228564057266],
+      "realization_similarity": 0.7594587371300954
+    },
+    "carnival_night_act1_retail_vs_beta": {
+      "key_ons": [777, 1181],
+      "structural_components": [0.7822865116849435, 0.615424251381032, 0.8711167245036234, 0.9603970206545585],
+      "structural_similarity": 0.8073061270560393,
+      "realization_components": [0.0, 0.0, 0.0, 0.3551648671895781, 0.9803419287077292],
+      "realization_similarity": 0.26710135917946143
+    },
+    "carnival_night_act2_retail_vs_beta": {
+      "key_ons": [486, 1307],
+      "structural_components": [0.8210495102875164, 0.6404043130879505, 0.9630174889667777, 0.9718933977855767],
+      "structural_similarity": 0.8490911775319554,
+      "realization_components": [0.0, 0.0, 0.0, 0.9681164788390945, 0.9867079919153124],
+      "realization_similarity": 0.39096489415088137
+    },
+    "icecap_act1_retail_vs_beta": {
+      "key_ons": [1604, 1562],
+      "structural_components": [0.8257591634006094, 0.663815895790355, 0.8639264727588927, 0.9928657606157475],
+      "structural_similarity": 0.8365918231414011,
+      "realization_components": [0.0, 0.0, 0.2199882885540497, 0.006284179993108665, 0.9035332219563373],
+      "realization_similarity": 0.22596113810069912,
+      "core_patch_counts": [6, 3],
+      "shared_core_patches": 0
+    },
+    "icecap_act2_retail_vs_beta": {
+      "key_ons": [1665, 1568],
+      "structural_components": [0.7703311597840459, 0.5386568094715092, 0.8828122714327674, 0.9997524843814057],
+      "structural_similarity": 0.797888181267432,
+      "realization_components": [0.0, 0.0, 0.1949674216694944, 0.010879544960217966, 0.8970447621415475],
+      "realization_similarity": 0.22057834575425198,
+      "core_patch_counts": [6, 3],
+      "shared_core_patches": 0
+    },
+    "launch_base_act1_retail_vs_beta": {
+      "key_ons": [396, 908],
+      "structural_components": [0.8733594553145103, 0.5807714916405408, 0.8365542580540013, 0.9688534654604439],
+      "structural_similarity": 0.814884667617374,
+      "realization_components": [0.0, 0.0, 0.2974620114046568, 0.6779836363393544, 0.9500624333132782],
+      "realization_similarity": 0.3851016162114579,
+      "core_patch_counts": [4, 3],
+      "shared_core_patches": 0
+    },
+    "launch_base_act2_retail_vs_beta": {
+      "key_ons": [270, 1320],
+      "structural_components": [0.8562924550055553, 0.7049621690234688, 0.8498347031486955, 0.9662083685836494],
+      "structural_similarity": 0.8443244239403421,
+      "realization_components": [0.0, 0.0, 0.0, 0.6956803447914512, 0.6767529681839596],
+      "realization_similarity": 0.2744866625950822,
+      "core_patch_counts": [4, 3],
+      "shared_core_patches": 0
+    },
+    "launch_base_retail_act1_vs_act2": {
+      "key_ons": [396, 270],
+      "structural_components": [0.9443557829580411, 0.8864388124492949, 0.9883244787760009, 0.9823285639719277],
+      "structural_similarity": 0.9503619095388162,
+      "realization_components": [0.9795359971607982, 1.0, 0.9762075751100192, 0.9907143314286708, 1.0],
+      "realization_similarity": 0.9892915807398976,
+      "core_patch_counts": [4, 4],
+      "shared_core_patches": 4
+    },
+    "launch_base_beta_act1_vs_act2": {
+      "key_ons": [908, 1320],
+      "structural_components": [0.9224078823802843, 0.8272281184504743, 0.9829477733177057, 0.9593603999700846],
+      "structural_similarity": 0.9229860435296373,
+      "realization_components": [0.0, 0.0, 0.328441504566514, 0.9015734353173186, 0.8726992350435371],
+      "realization_similarity": 0.42054283498547396,
+      "core_patch_counts": [3, 3],
+      "shared_core_patches": 0
+    },
+    "sky_sanctuary_retail_vs_beta": {
+      "key_ons": [931, 1098],
+      "structural_components": [0.5867422986590709, 0.2472234945828981, 0.8224029907648566, 0.9654497507952402],
+      "structural_similarity": 0.6554546337005165,
+      "realization_components": [0.0028257925960506417, 0.1, 0.1260551083491039, 0.9778333105505537, 0.9073564293500631],
+      "realization_similarity": 0.4228141281691543,
+      "core_patch_counts": [7, 4],
+      "shared_core_patches": 1
+    },
+    "knuckles_theme_s3_vs_sandk": {
+      "key_ons": [332, 315],
+      "structural_components": [0.8357853774786388, 0.5708118773449273, 0.7109566396457965, 0.7872239641179269],
+      "structural_similarity": 0.7261944646468224,
+      "realization_components": [0.0, 0.0, 0.12117822701389097, 0.28221288727172267, 0.9999586464999254],
+      "realization_similarity": 0.28066995215710777,
+      "core_patch_counts": [3, 6],
+      "shared_core_patches": 0
+    }
+  },
+  "current_reading": {
+    "replicated_pattern": "Carnival Night and IceCap preserve substantial beta-to-retail musical trajectory while replacing most or all core FM patch identity. Launch Base shows the same beta-to-retail separation.",
+    "strongest_internal_development_event": "Launch Base: beta Act 1 and Act 2 are structurally close but realization-divergent, whereas retail Act 1 and Act 2 are both structurally and realization-wise nearly identical, consistent with a consolidation/standardization step in the retail realization layer.",
+    "sky_sanctuary": "The beta-to-retail structural seam is weaker than Carnival Night, IceCap, or Launch Base, while feedback and pan remain strongly conserved; this track should not be treated as the same kind of version pair without further inspection.",
+    "knuckles": "S3 and S&K themes retain moderate structural affinity and near-identical pan distribution but no shared core patch identity under this representation.",
+    "authorship": "No composer assignment is made by this artifact."
+  },
+  "next_tests": [
+    "Score Data Select, Balloon Park, competition tracks, Knuckles themes, and selected zone tracks against the existing CUBE/Takaoka/Hikichi control panel, keeping structural and realization channels separate.",
+    "Add retail/beta within-family relationships to the control-calibrated ranking rather than treating raw pair similarity as authorship evidence.",
+    "Expand Hikichi cross-soundtrack control coverage later as a confidence upgrade."
+  ]
+}
