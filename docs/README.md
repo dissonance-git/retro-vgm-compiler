@@ -22,8 +22,11 @@ music-representation-systems.md
 persistent-musical-identity.md
 human-musical-discourse.md
 source-native-enhanced-rendering.md
+omniphony-realtime-spatial-path.md
 upstreams.md
 ```
+
+`omniphony-realtime-spatial-path.md` is the canonical owner for the cross-project source-to-spatial boundary: source-native objects, AUTHORED/DERIVED/EMPTY authority, dry versus shared-wet semantics, causal timing/identity, and the rule that Omniphony's 8.1.4.4 scene is a presentation vocabulary rather than a forced game-music source width.
 
 These documents describe different layers or obligations. Do not create another overview that merely restates them.
 
