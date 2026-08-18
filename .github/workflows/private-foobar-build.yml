@@ -1,3 +1,4 @@
+# build-trigger: package-verifier-repair
 name: Private foobar binary build
 
 on:
