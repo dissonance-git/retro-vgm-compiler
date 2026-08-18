@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the YM2151 host-reference capture patches on maintained player source."""
+"""Exercise YM2151 host capture through the existing Genesis HQ-FM transform."""
 
 from __future__ import annotations
 
@@ -12,9 +12,12 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PATCH = ROOT / "patches" / "foo_input_vgm" / "apply_ym2151_reference_capture.py"
-STARTUP_FIX = ROOT / "patches" / "foo_input_vgm" / "apply_ym2151_reference_startup_fix.py"
-CHAIN = ROOT / "patches" / "foo_input_vgm" / "apply_enhanced_component.py"
+PATCH_DIR = ROOT / "patches" / "foo_input_vgm"
+PATCH = PATCH_DIR / "apply_ym2151_reference_capture.py"
+COMPAT = PATCH_DIR / "apply_ym2151_hq_fm_compat.py"
+HQ = PATCH_DIR / "apply_hq_nuked_fm_lift.py"
+STARTUP_FIX = PATCH_DIR / "apply_ym2151_reference_startup_fix.py"
+CHAIN = PATCH_DIR / "apply_enhanced_component.py"
 OWNED = ROOT / "components" / "vgm" / "foo_input_vgm" / "src"
 
 
@@ -29,21 +32,25 @@ def run_patch(script: Path, root: Path) -> subprocess.CompletedProcess[str]:
 
 
 class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
-    def test_maintained_player_composes_exact_opm_reference_plane(self) -> None:
+    def test_maintained_player_composes_with_genesis_hq_fm(self) -> None:
         with tempfile.TemporaryDirectory(prefix="ym2151-host-capture-") as temporary:
             root = Path(temporary)
             shutil.copy2(OWNED / "source_aware_vgm_player.h", root / "source_aware_vgm_player.h")
             shutil.copy2(OWNED / "ym2151_source_plane.h", root / "ym2151_source_plane.h")
 
-            completed = run_patch(PATCH, root)
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            startup = run_patch(STARTUP_FIX, root)
-            self.assertEqual(startup.returncode, 0, startup.stderr)
-            text = (root / "source_aware_vgm_player.h").read_text(encoding="utf-8")
+            for script in (PATCH, COMPAT, HQ, STARTUP_FIX):
+                completed = run_patch(script, root)
+                self.assertEqual(
+                    completed.returncode,
+                    0,
+                    f"{script.name} failed:\nstdout={completed.stdout}\nstderr={completed.stderr}",
+                )
 
+            text = (root / "source_aware_vgm_player.h").read_text(encoding="utf-8")
             self.assertIn('#include "ym2151_source_plane.h"', text)
             self.assertIn("void ym2151_set_source_tap", text)
             self.assertIn("static constexpr std::size_t kOpmLaneCount", text)
+            self.assertIn("static constexpr std::size_t kHqFmLaneCount", text)
             self.assertIn("options.emuCore[0] = FCC_MAME;", text)
             self.assertIn("opm_source_topology_supported()", text)
             self.assertIn("opm_source_output(foobar_vgm::ym2151::source_lane lane)", text)
@@ -51,7 +58,10 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
             self.assertIn("sum_l != static_cast<INT64>(mix_left)", text)
             self.assertIn("mirror_opm_segment(outputOffset, outputCount)", text)
             self.assertIn("m_opm_output[lane].data() + outputOffset", text)
+            self.assertIn("promote_initial_hq_pregen(m_ym);", text)
             self.assertIn("promote_initial_pregen(m_opm);", text)
+            self.assertIn("m_hq_fm_block_valid = false;", text)
+            self.assertIn("m_opm_block_valid = false;", text)
 
             # OPM topology is independent. The existing Genesis predicate must
             # not suddenly include m_opm or m_unsupported_opm_topology.
@@ -61,17 +71,19 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
             self.assertNotIn("m_opm", genesis_predicate)
             self.assertNotIn("m_unsupported_opm_topology", genesis_predicate)
 
-    def test_component_chain_applies_capture_after_source_aware_player(self) -> None:
+    def test_component_chain_preserves_required_patch_order(self) -> None:
         chain = CHAIN.read_text(encoding="utf-8")
-        source_aware = 'run(here / "apply_source_aware_player.py", source)'
-        opm = 'run(here / "apply_ym2151_reference_capture.py", source)'
-        startup = 'run(here / "apply_ym2151_reference_startup_fix.py", source)'
-        shadow = 'run(here / "apply_source_aware_shadow_include.py", source)'
-        self.assertIn(opm, chain)
-        self.assertIn(startup, chain)
-        self.assertLess(chain.index(source_aware), chain.index(opm))
-        self.assertLess(chain.index(opm), chain.index(startup))
-        self.assertLess(chain.index(startup), chain.index(shadow))
+        names = [
+            'run(here / "apply_source_aware_player.py", source)',
+            'run(here / "apply_ym2151_reference_capture.py", source)',
+            'run(here / "apply_ym2151_hq_fm_compat.py", source)',
+            'run(here / "apply_hq_nuked_fm_lift.py", source)',
+            'run(here / "apply_ym2151_reference_startup_fix.py", source)',
+        ]
+        for item in names:
+            self.assertIn(item, chain)
+        positions = [chain.index(item) for item in names]
+        self.assertEqual(positions, sorted(positions))
 
 
 if __name__ == "__main__":
