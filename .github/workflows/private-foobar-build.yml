@@ -3,7 +3,7 @@ name: Private foobar binary build
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "temp-public-foobar-build-20260818" ]
     paths:
       - ".github/workflows/private-foobar-build.yml"
       - "components/vgm/**"
