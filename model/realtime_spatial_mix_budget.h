@@ -182,23 +182,17 @@ private:
     realtime_spatial_mix_budget current_{};
 };
 
-// Apply only controls that already have an honest representation in ABI 0.3.
-// Depth/height/externalization remain available on the budget for the renderer
-// control plane rather than being smuggled into unrelated evidence fields.
+// ABI 0.4 gives scene-wide depth, height, historical-wet, and added-room
+// controls their own renderer-side channel. Do not encode those decisions back
+// into source evidence. Only dry-object width/diffuseness still use the existing
+// per-source presentation vocabulary because they genuinely describe how that
+// individual recovered object should occupy the remix.
 inline spatial_source_evidence apply_realtime_spatial_mix_budget(
     spatial_audio_lane_kind lane_kind,
     const spatial_source_evidence& input,
     const realtime_spatial_mix_budget& budget) noexcept
 {
     spatial_source_evidence out = input;
-    if (lane_kind == spatial_audio_lane_kind::shared_effect_return) {
-        out.presentation.diffuse = clamp_unit_interval(
-            out.presentation.diffuse * budget.shared_wet_strength);
-        out.presentation.width = clamp_unit_interval(
-            out.presentation.width * budget.shared_wet_extent);
-        return out;
-    }
-
     if (lane_kind == spatial_audio_lane_kind::dry_source) {
         out.presentation.diffuse = clamp_unit_interval(
             out.presentation.diffuse * budget.dry_diffuse_scale);
