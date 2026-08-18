@@ -34,6 +34,7 @@ public:
         vgmtooling::model::omniphony_source_abi_version_fn abi_major,
         vgmtooling::model::omniphony_source_abi_version_fn abi_minor,
         vgmtooling::model::omniphony_source_reset_fn reset,
+        vgmtooling::model::omniphony_source_set_mix_budget_fn set_mix_budget,
         vgmtooling::model::omniphony_source_process_events_f32_fn process_events) noexcept
     {
         return pipeline_.bind_renderer(
@@ -41,6 +42,7 @@ public:
             abi_major,
             abi_minor,
             reset,
+            set_mix_budget,
             process_events);
     }
 
