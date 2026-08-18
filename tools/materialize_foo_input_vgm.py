@@ -34,6 +34,7 @@ import tempfile
 # snapshot.
 PROJECT_OWNED_VGM_SOURCE_FILES = (
     "genesis_source_plane.h",
+    "ym2151_source_plane.h",
     "input_vgm_qsound_consumer.cpp",
     "input_vgm_shadow.cpp",
     "linear_source_resampler.h",
