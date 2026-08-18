@@ -95,6 +95,9 @@ jobs:
           $builder = Get-Content ./tools/build_private_foobar_components.ps1 -Raw
           $builder = $builder.Replace('$LASTEXITCODE:', '${LASTEXITCODE}:')
           $builder = $builder.Replace('$Path:', '${Path}:')
+          $builder = $builder.Replace('[string[]]$Args', '[string[]]$CommandArgs')
+          $builder = $builder.Replace('& $Exe @Args', '& $Exe @CommandArgs')
+          $builder = $builder.Replace('$($Args -join '' '')', '$($CommandArgs -join '' '')')
           $ciBuilder = './tools/.ci-build_private_foobar_components.ps1'
           Set-Content -LiteralPath $ciBuilder -Value $builder -NoNewline -Encoding utf8
           & $ciBuilder
