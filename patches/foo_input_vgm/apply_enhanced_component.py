@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Apply the independent enhanced + source-aware VGM foobar shell patches.
 
-The enhanced option is the sole source-native quality option. A few patch
+The enhanced option is the sole source-native quality option. The existing
+foobar Surround preference is the sole user-facing spatial switch. A few patch
 filenames still carry a legacy ``studio_*`` development prefix; they are
 implementation names, not a separate mode, tier, or proper name.
 """
@@ -33,7 +34,7 @@ def main() -> int:
 
     run(here / "apply_enhanced_ui.py", source)
     # Private package output is one 48 kHz host timeline in every source-quality
-    # and Spatial combination. This does not select enhanced or presentation.
+    # and surround combination. This does not select enhanced or presentation.
     run(here / "apply_private_48khz_output.py", source)
     run(here / "apply_source_aware_player.py", source)
     # OPM reference capture is independent of the enhanced choice. It exposes
@@ -67,12 +68,15 @@ def main() -> int:
     run(here / "apply_enhanced_dac_runtime.py", source)
     run(here / "apply_enhanced_dac_stream_session_reset.py", source)
     run(here / "apply_enhanced_dac_stream_mix.py", source)
-    # Spatial consumes only the already-finalized source choices. Keep this
-    # after every source-quality patch so presentation cannot affect admission.
+    # Spatial presentation consumes only already-finalized source choices. Keep
+    # it after every source-quality patch so presentation cannot affect admission.
     run(here / "apply_spatial_selected_source_transport.py", source)
     run(here / "apply_spatial_omniphony_runtime.py", source)
+    # Reuse the historical Surround preference and neutralize libvgm's old
+    # channel-inversion surround effect before any audio reaches the user.
+    run(here / "apply_surround_omniphony_bridge.py", source)
     run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
-    print("foo_input_vgm enhanced + Spatial component patch set applied")
+    print("foo_input_vgm enhanced + Surround/Omniphony component patch set applied")
     return 0
 
 
