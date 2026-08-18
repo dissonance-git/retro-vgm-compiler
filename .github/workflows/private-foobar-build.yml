@@ -1,4 +1,4 @@
-name: Repair package verifier helper block
+name: Locate exact historical VGM bootstrap blob
 
 on:
   push:
@@ -7,19 +7,19 @@ on:
       - ".github/workflows/private-foobar-build.yml"
 
 permissions:
-  contents: write
+  contents: read
   statuses: write
 
 jobs:
-  repair-main:
+  locate-bootstrap:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Publish repair run locator
+      - name: Publish locator
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -33,118 +33,40 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"pending\",\"context\":\"private-foobar-repair\",\"description\":\"run_id=$RUN_ID; verifier repair\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"pending\",\"context\":\"private-foobar-history\",\"description\":\"run_id=$RUN_ID; scanning\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
 
-      - name: Repair verifier helper block
+      - name: Scan every historical archive blob
+        id: scan
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          set -euo pipefail
+          expected='93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
+          found=''
+          mapfile -t commits < <(git log --all --format='%H' -- imports/foo_input_vgm.7z)
+          echo "historical commits touching archive: ${#commits[@]}"
+          for commit in "${commits[@]}"; do
+            if ! git cat-file -e "$commit:imports/foo_input_vgm.7z" 2>/dev/null; then
+              continue
+            fi
+            git show "$commit:imports/foo_input_vgm.7z" > candidate.7z
+            size=$(wc -c < candidate.7z | tr -d ' ')
+            sha=$(sha256sum candidate.7z | awk '{print $1}')
+            subject=$(git show -s --format='%s' "$commit")
+            echo "$commit size=$size sha256=$sha subject=$subject"
+            if [ "$sha" = "$expected" ]; then
+              found="$commit"
+              break
+            fi
+          done
+          if [ -n "$found" ]; then
+            echo "FOUND_EXACT_BOOTSTRAP=$found"
+            echo "found=$found" >> "$GITHUB_OUTPUT"
+          else
+            echo 'FOUND_EXACT_BOOTSTRAP='
+            echo 'found=' >> "$GITHUB_OUTPUT"
+          fi
 
-          path = Path('tools/verify_private_component_packages.py')
-          text = path.read_text(encoding='utf-8')
-          start = text.index('def verify_archive(')
-          end = text.index('def validate_package(', start)
-          block = '''def verify_archive(path: Path, expected_names: set[str], label: str) -> dict[str, bytes]:
-              """Verify only the flat sibling payload envelope and return its bytes."""
-              if not path.is_file():
-                  raise AssertionError(f"{label} component package missing: {path}")
-              if path.stat().st_size <= 0:
-                  raise AssertionError(f"{label} component package is empty: {path}")
-
-              try:
-                  archive = zipfile.ZipFile(path, "r")
-              except zipfile.BadZipFile as exc:
-                  raise AssertionError(f"{label} component package is not a valid ZIP: {path}") from exc
-
-              with archive:
-                  infos = [info for info in archive.infolist() if not info.is_dir()]
-                  names: list[str] = []
-                  folded: set[str] = set()
-                  payloads: dict[str, bytes] = {}
-                  for info in infos:
-                      try:
-                          name = _validate_archive_name(info.filename)
-                      except AssertionError as exc:
-                          raise AssertionError(
-                              f"{label} package has unsafe/nested member: {info.filename}"
-                          ) from exc
-                      key = name.casefold()
-                      if key in folded:
-                          raise AssertionError(
-                              f"{label} package has duplicate case-insensitive member: {name}"
-                          )
-                      folded.add(key)
-                      names.append(name)
-                      data = archive.read(info)
-                      if not data:
-                          raise AssertionError(f"{label} package has zero-byte runtime member: {name}")
-                      payloads[name] = data
-
-                  if set(names) != expected_names:
-                      raise AssertionError(
-                          f"{label} payload mismatch: expected {sorted(expected_names)}, got {sorted(names)}"
-                      )
-                  return payloads
-
-
-          def verify_runtime_contracts(
-              path: Path,
-              contracts: dict[str, tuple[int, frozenset[str]]],
-              label: str,
-          ) -> None:
-              """Verify PE machine/export contracts independently of runtime loading."""
-              payloads = verify_archive(path, set(contracts), label)
-              for name, (machine, required_exports) in contracts.items():
-                  try:
-                      actual_machine, exports = inspect_pe(payloads[name])
-                  except (ValueError, struct.error) as exc:
-                      raise AssertionError(
-                          f"{label} package member {name} is not a valid packaged PE: {exc}"
-                      ) from exc
-                  if actual_machine != machine:
-                      raise AssertionError(
-                          f"{label} package member {name} machine mismatch: "
-                          f"expected 0x{machine:04X}, got 0x{actual_machine:04X}"
-                      )
-                  missing = required_exports - exports
-                  if missing:
-                      raise AssertionError(
-                          f"{label} package member {name} missing required exports: {sorted(missing)}"
-                      )
-
-
-          def validate_spcplayer_startup_result(returncode: int, output: str) -> None:
-              """Require the no-input child to reach its own usage path, not just load."""
-              if returncode != 1:
-                  raise AssertionError(
-                      f"spcplayer expected usage exit 1 after successful startup, got {returncode}"
-                  )
-              if "usage" not in output.casefold():
-                  raise AssertionError("spcplayer did not reach its own usage path")
-
-
-          '''
-          import textwrap
-          block = textwrap.dedent(block)
-          path.write_text(text[:start] + block + text[end:], encoding='utf-8', newline='\n')
-          compile(path.read_text(encoding='utf-8'), str(path), 'exec')
-          PY
-
-          python -B -m unittest tests.vgm.test_omniphony_private_build_contract
-          python -B -m unittest tests.test_private_component_package_contract
-
-      - name: Publish verifier repair to main
-        shell: bash
-        run: |
-          git config user.name "dissonance"
-          git config user.email "ustreamusa@aim.com"
-          git add tools/verify_private_component_packages.py
-          git diff --cached --check
-          git commit -m "build: repair private package verifier helpers"
-          git push origin HEAD:main
-
-      - name: Publish final repair status
+      - name: Publish final locator
         if: always()
         shell: bash
         env:
@@ -153,12 +75,14 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
+          FOUND: ${{ steps.scan.outputs.found }}
         run: |
           if [ "$JOB_STATUS" = "success" ]; then state=success; else state=failure; fi
+          desc="run_id=$RUN_ID; found=${FOUND:-none}"
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"$state\",\"context\":\"private-foobar-repair\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"$state\",\"context\":\"private-foobar-history\",\"description\":\"$desc\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
