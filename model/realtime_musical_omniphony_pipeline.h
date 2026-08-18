@@ -20,8 +20,8 @@ struct realtime_musical_omniphony_result {
 // into future musical memory. The ordering is intentionally encapsulated:
 //
 //   raw current block
-//       -> prepare past-only presentation
-//       -> render projected view through Omniphony
+//       -> prepare past-only presentation + past-only scene mix budget
+//       -> apply budget and render projected view through Omniphony
 //       -> only after successful rendering, learn from the RAW completed block
 //
 // A caller therefore cannot accidentally let current PCM spatialize itself or
@@ -42,9 +42,16 @@ public:
         omniphony_source_abi_version_fn abi_major,
         omniphony_source_abi_version_fn abi_minor,
         omniphony_source_reset_fn reset,
+        omniphony_source_set_mix_budget_fn set_mix_budget,
         omniphony_source_process_events_f32_fn process_events) noexcept
     {
-        return client_.bind(processor, abi_major, abi_minor, reset, process_events);
+        return client_.bind(
+            processor,
+            abi_major,
+            abi_minor,
+            reset,
+            set_mix_budget,
+            process_events);
     }
 
     void unbind_renderer() noexcept {
@@ -56,9 +63,9 @@ public:
     }
 
     // Track changes, seeks and decoder restarts must clear both halves of the
-    // causal state machine. Resetting only GMI would leave old Omniphony pose /
-    // source-identity history alive; resetting only Omniphony would leave old
-    // musical memory steering a fresh timeline.
+    // causal state machine. Resetting only the compiler would leave old Omniphony
+    // pose/source-identity/budget state alive; resetting only Omniphony would
+    // leave old musical and scene memory steering a fresh timeline.
     bool reset() noexcept {
         frontend_.reset();
         handoff_.reset();
@@ -85,8 +92,11 @@ public:
             return result;
         result.prepared = true;
 
+        // This is the budget learned only from blocks that have already sounded.
+        // The current raw PCM cannot alter its own scene capacity.
         const omniphony_realtime_process_result render_result = client_.process(
             handoff_.projected_view(),
+            frontend_.mix_budget(),
             interleaved_source_scratch,
             interleaved_source_capacity,
             stereo_output,
@@ -103,9 +113,8 @@ public:
         result.rendered = true;
 
         // Learn only after the block was accepted by the renderer. On a render
-        // failure the caller may retry or fall back without having advanced
-        // musical memory behind its back. complete_block itself keeps its
-        // documented fail-closed semantics if post-render observation fails.
+        // failure the caller may retry or fall back without semantic state or
+        // the adaptive scene budget jumping ahead of the audio that sounded.
         result.learned = frontend_.complete_block(raw_block, sample_rate);
         return result;
     }
