@@ -1,4 +1,4 @@
-# build-trigger: package-verifier-repair
+# build-trigger: verified-031-runtime-delivery
 name: Private foobar binary build
 
 on:
