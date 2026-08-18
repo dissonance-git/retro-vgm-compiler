@@ -13,7 +13,7 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RetroR
 $LibvgmCommit = '64e1de284e9a4305c54dd162ee8c33539a9bc0d1'
 $WtlCommit = 'd1cd80e9ce76c4d79da4cf556401ad7a970ce46f'
 $SpcPlayCommit = 'fc770e268ecacb4523699e2edc5c0efdf80957d6'
-$OmniphonyCommit = '0fabccb165e6d957cefecc6eeb1264467e7406a4'
+$OmniphonyCommit = '819668d1366710d663ae9c810edbcf9b7e923e19'
 $RustToolchain = '1.88.0'
 $FoobarSdkDate = '2025-03-07'
 $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
@@ -163,6 +163,7 @@ Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', '
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
 Require-File $OmniDll 'Omniphony source DLL'
 Assert-PEMachine $OmniDll 0x8664 'Omniphony source DLL'
+Run 'python' @((Join-Path $RetroRoot 'tools\verify_omniphony_runtime_abi.py'), $OmniDll)
 
 Write-Host '== 4. Patch and build pinned libvgm for exact source observation/replacement =='
 Run 'python' @((Join-Path $RetroRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
@@ -314,10 +315,10 @@ Install by opening:
   $(Split-Path $VgmComponentPackage -Leaf)
   $(Split-Path $SpcComponentPackage -Leaf)
 
-Both components use one 48 kHz final playback timeline in every enhanced/Spatial
+Both components use one 48 kHz final playback timeline in every enhanced/Surround
 combination. Each component carries its exact omniphony_source.dll. The SPC
 package also carries its exact x86 spcplayer.exe and patched SNESAPU.dll.
-enhanced and Spatial remain independent controls; failed source/renderer evidence
+enhanced and Surround remain independent controls; failed source/renderer evidence
 falls back to the ordinary stereo path.
 "@ | Set-Content (Join-Path $OutputRoot 'README.txt') -Encoding UTF8
 
