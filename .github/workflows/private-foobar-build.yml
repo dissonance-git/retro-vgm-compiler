@@ -1,4 +1,4 @@
-name: Probe public foo_input_vgm 0.31 source
+name: Promote verified foo_input_vgm 0.31 bootstrap
 
 on:
   push:
@@ -7,17 +7,17 @@ on:
       - ".github/workflows/private-foobar-build.yml"
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 jobs:
-  probe-vgm031:
+  promote-vgm031:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 1
+          fetch-depth: 3
 
       - name: Publish locator
         shell: bash
@@ -33,45 +33,144 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"pending\",\"context\":\"vgm031-probe\",\"description\":\"run_id=$RUN_ID; probing\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"pending\",\"context\":\"vgm031-promote\",\"description\":\"run_id=$RUN_ID; validating\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
 
-      - name: Download and fingerprint public 0.31 attachment
-        id: probe
+      - name: Patch canonical bootstrap ownership
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
+
+          builder_path = Path('tools/build_private_foobar_components.ps1')
+          builder = builder_path.read_text(encoding='utf-8')
+          builder = replace_once(
+              builder,
+              "$VgmBootstrapUrl = 'https://uu.getuploader.com/foobar2000/download/248'\n$VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'",
+              "$VgmBootstrapUrl = 'https://vgmrips.net/forum/download/file.php?id=5292'\n$VgmBootstrapVersion = '0.31'\n$VgmBootstrapTreeSha256 = '36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'\n$VgmBootstrapWitnessArchiveSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'",
+              'VGM bootstrap constants',
+          )
+          builder = replace_once(
+              builder,
+              "$VgmBootstrap = Join-Path $WorkRoot 'foo_input_vgm_v0.30.7z'",
+              "$VgmBootstrap = Join-Path $WorkRoot 'foo_input_vgm-0.31.zip'",
+              'VGM bootstrap path',
+          )
+          builder = replace_once(
+              builder,
+              "Write-Host '== 0. Recover and verify the historical foo_input_vgm bootstrap =='\n& (Join-Path $RetroRoot 'tools\\fetch_foo_input_vgm_bootstrap.ps1') -OutputPath $VgmBootstrap -DownloadPage $VgmBootstrapUrl -ExpectedSha256 $VgmBootstrapSha256\n$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap",
+              "Write-Host '== 0. Download and verify the foo_input_vgm 0.31 bootstrap =='\nInvoke-WebRequest -Uri $VgmBootstrapUrl -OutFile $VgmBootstrap -UseBasicParsing -Headers @{ 'User-Agent' = 'Mozilla/5.0 Retro-VGM-Compiler/0.31-bootstrap' }\nRequire-File $VgmBootstrap 'foo_input_vgm 0.31 bootstrap archive'\n$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap\n$env:RETRO_VGM_BOOTSTRAP_TREE_SHA256 = $VgmBootstrapTreeSha256",
+              'VGM bootstrap stage',
+          )
+          builder = replace_once(
+              builder,
+              "foo_input_vgm_bootstrap = [ordered]@{ source = $VgmBootstrapUrl; sha256 = $VgmBootstrapSha256 }",
+              "foo_input_vgm_bootstrap = [ordered]@{ version = $VgmBootstrapVersion; source = $VgmBootstrapUrl; source_tree_sha256 = $VgmBootstrapTreeSha256; witness_archive_sha256 = $VgmBootstrapWitnessArchiveSha256 }",
+              'VGM manifest record',
+          )
+          builder_path.write_text(builder, encoding='utf-8', newline='\n')
+
+          materializer_path = Path('tools/materialize_foo_input_vgm.py')
+          materializer = materializer_path.read_text(encoding='utf-8')
+          materializer = replace_once(
+              materializer,
+              'import argparse\nfrom pathlib import Path',
+              'import argparse\nimport hashlib\nimport os\nfrom pathlib import Path',
+              'materializer imports',
+          )
+          materializer = replace_once(
+              materializer,
+              'import tempfile\n\n\n# These files are project-owned additions.',
+              'import tempfile\n\n\nDEFAULT_BOOTSTRAP_VERSION = "0.31"\nDEFAULT_BOOTSTRAP_TREE_SHA256 = "36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc"\n\n\n# These files are project-owned additions.',
+              'materializer bootstrap constants',
+          )
+          helper = '''\n\ndef source_tree_sha256(root: Path) -> str:\n    entries: list[tuple[str, str]] = []\n    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):\n        relative = path.relative_to(root).as_posix()\n        digest = hashlib.sha256(path.read_bytes()).hexdigest()\n        entries.append((relative, digest))\n    manifest = "".join(f"{digest}  {relative}\\n" for relative, digest in entries).encode("utf-8")\n    return hashlib.sha256(manifest).hexdigest()\n\n\ndef require_bootstrap_identity(root: Path, expected_tree_sha256: str) -> None:\n    actual = source_tree_sha256(root)\n    expected = expected_tree_sha256.strip().lower()\n    if actual != expected:\n        raise RuntimeError(\n            "foo_input_vgm bootstrap source-tree mismatch: "\n            f"expected {expected}, got {actual}"\n        )\n    version_file = root / "src" / "my_component_client.cpp"\n    if not version_file.is_file():\n        raise RuntimeError(f"foo_input_vgm bootstrap version file missing: {version_file}")\n    version_text = version_file.read_text(encoding="utf-8-sig", errors="strict")\n    if f'"{DEFAULT_BOOTSTRAP_VERSION}"' not in version_text:\n        raise RuntimeError(\n            f"foo_input_vgm bootstrap is not version {DEFAULT_BOOTSTRAP_VERSION}"\n        )\n'''
+          materializer = replace_once(
+              materializer,
+              '\n\ndef main() -> int:',
+              helper + '\n\ndef main() -> int:',
+              'materializer identity helper insertion',
+          )
+          materializer = replace_once(
+              materializer,
+              '        require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")\n        shutil.copytree(bootstrap, component)',
+              '        require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")\n        expected_tree = os.environ.get("RETRO_VGM_BOOTSTRAP_TREE_SHA256", DEFAULT_BOOTSTRAP_TREE_SHA256)\n        require_bootstrap_identity(bootstrap, expected_tree)\n        print(f"verified foo_input_vgm {DEFAULT_BOOTSTRAP_VERSION} source tree: {expected_tree.lower()}")\n        shutil.copytree(bootstrap, component)',
+              'materializer identity gate',
+          )
+          materializer = materializer.replace(
+              'The historical upstream plugin is preserved immutably in imports/foo_input_vgm.7z.\nCurrent Retro VGM Compiler additions live under components/vgm/ and the guarded\ntransformations live under patches/foo_input_vgm/.  This tool combines those\nthree sources into a disposable build tree without consulting the retired\nvgmspc repository or copying its stale patched host tree.',
+              'The pristine upstream plugin is supplied as a verified bootstrap archive.\nCurrent Retro VGM Compiler additions live under components/vgm/ and the guarded\ntransformations live under patches/foo_input_vgm/. This tool verifies the exact\nbootstrap source tree, combines it with those project-owned additions, and builds\na disposable tree without consulting the retired vgmspc repository.',
+          )
+          materializer_path.write_text(materializer, encoding='utf-8', newline='\n')
+
+          manifest_path = Path('imports/MANIFEST.md')
+          manifest = manifest_path.read_text(encoding='utf-8')
+          old_paragraph = ('The archive identity is immutable, but the current GitHub transport copy is known to be truncated and is not accepted as a build input. '
+                           'Canonical Windows builds recover `foo_input_vgm_v0.30.7z` from `https://uu.getuploader.com/foobar2000/download/248` into disposable build state and require the SHA-256 above before extraction. '
+                           'This is a recovery route for the same audited source object, not permission to substitute v0.31 or another release. Normal development occurs from the expanded source under `components/vgm/`; the historical archive is never edited or repacked.')
+          new_paragraph = (old_paragraph.split(' Canonical Windows builds recover')[0] +
+                           ' The original 0.30 object remains historical provenance only: its repository copy is truncated and the former uploader recovery no longer reproduces the recorded archive hash. It is therefore not a production build input.\n\n'
+                           '### Current VGM build baseline: foo_input_vgm 0.31\n\n'
+                           '- Version: `0.31`\n'
+                           '- Public source package: `https://vgmrips.net/forum/download/file.php?id=5292`\n'
+                           '- User-supplied source-only ZIP SHA-256: `e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1`\n'
+                           '- Exact source-tree identity: 41 files, canonical tree SHA-256 `36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc`\n'
+                           '- License in source: Mozilla Public License 2.0\n\n'
+                           'Production builds download the public 0.31 package into disposable build state and accept it only when the extracted `foo_input_vgm/` source tree matches the exact tree digest above. The independent user-supplied ZIP is a provenance witness for that source-tree identity, not a hidden runtime dependency.')
+          if old_paragraph not in manifest:
+              raise SystemExit('import manifest 0.30 paragraph did not match expected text')
+          manifest = manifest.replace(old_paragraph, new_paragraph, 1)
+          manifest_path.write_text(manifest, encoding='utf-8', newline='\n')
+          PY
+
+      - name: Validate public 0.31 package against supplied source witness
         shell: bash
         run: |
           set -euo pipefail
+          python -m py_compile tools/materialize_foo_input_vgm.py
+          python -B -m unittest tests.vgm.test_omniphony_private_build_contract
           url='https://vgmrips.net/forum/download/file.php?id=5292'
-          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0 Retro-VGM-Compiler/0.31-probe' "$url" -o upstream.zip
-          echo "archive_size=$(wc -c < upstream.zip | tr -d ' ')"
-          sha256sum upstream.zip
-          file upstream.zip
-          rm -rf upstream
-          mkdir upstream
-          unzip -q upstream.zip -d upstream
+          curl -L --fail --retry 3 --retry-delay 2 -A 'Mozilla/5.0 Retro-VGM-Compiler/0.31-bootstrap' "$url" -o upstream.zip
           python - <<'PY'
-          from pathlib import Path
+          from pathlib import Path, PurePosixPath
           import hashlib
+          import zipfile
 
           expected = '36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'
-          roots = sorted({p.parent.parent for p in Path('upstream').rglob('src/my_component_client.cpp') if p.parent.parent.name == 'foo_input_vgm'})
-          if not roots:
-              raise SystemExit('foo_input_vgm source root not found in public 0.31 attachment')
-          print('candidate roots:')
-          for root in roots:
+          with zipfile.ZipFile('upstream.zip') as archive:
+              names = [name for name in archive.namelist() if not name.endswith('/')]
+              markers = [name for name in names if name.endswith('foo_input_vgm/src/my_component_client.cpp')]
+              if len(markers) != 1:
+                  raise SystemExit(f'expected one foo_input_vgm 0.31 source marker, got {markers}')
+              marker = PurePosixPath(markers[0])
+              root = marker.parents[1].as_posix().rstrip('/') + '/'
               entries = []
-              for path in sorted(p for p in root.rglob('*') if p.is_file()):
-                  rel = path.relative_to(root).as_posix()
-                  entries.append((rel, hashlib.sha256(path.read_bytes()).hexdigest()))
+              for name in sorted(name for name in names if name.startswith(root)):
+                  rel = name[len(root):]
+                  if not rel:
+                      continue
+                  entries.append((rel, hashlib.sha256(archive.read(name)).hexdigest()))
               manifest = ''.join(f'{sha}  {rel}\n' for rel, sha in entries).encode()
               digest = hashlib.sha256(manifest).hexdigest()
-              print(f'{root}: files={len(entries)} tree_sha256={digest}')
-              if digest == expected:
-                  print(f'MATCHED_USER_UPLOAD_SOURCE={root}')
-                  Path('matched_root.txt').write_text(str(root), encoding='utf-8')
-                  break
-          else:
-              raise SystemExit('public 0.31 attachment source tree does not match user-uploaded source tree')
+              print(f'public foo_input_vgm source: files={len(entries)} tree_sha256={digest}')
+              if digest != expected:
+                  raise SystemExit(f'public 0.31 source tree mismatch: expected {expected}, got {digest}')
           PY
+
+      - name: Publish canonical 0.31 bootstrap repair
+        shell: bash
+        run: |
+          git config user.name "dissonance"
+          git config user.email "ustreamusa@aim.com"
+          git add tools/build_private_foobar_components.ps1 tools/materialize_foo_input_vgm.py imports/MANIFEST.md
+          git diff --cached --check
+          git commit -m "build: promote foo_input_vgm 0.31 baseline"
+          git push origin HEAD:main
 
       - name: Publish final locator
         if: always()
@@ -90,4 +189,4 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"$state\",\"context\":\"vgm031-probe\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"$state\",\"context\":\"vgm031-promote\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
