@@ -82,6 +82,11 @@ class SpcSurroundOmniphonyPatchContractTest(unittest.TestCase):
         self.assertIn("(m_CnfOptions & DSP_SURND) != 0", bridge)
         self.assertIn("m_Apu.SetSourceEnabled(m_Sem71Enabled);", bridge)
 
+    def test_surround_opens_the_immersive_omniphony_presentation(self) -> None:
+        runtime = self.read(PATCHES / "apply_spatial_omniphony_private_runtime.py")
+        self.assertIn("omniphony_source_spatial_full_sphere", runtime)
+        self.assertIn("config.externalization = 1u;", runtime)
+
     def test_private_patch_stack_installs_bridge_after_omniphony_runtime(self) -> None:
         master = self.read(PATCHES / "apply_private_component.py")
         runtime = 'run(here / "apply_spatial_omniphony_private_runtime.py", root)'
