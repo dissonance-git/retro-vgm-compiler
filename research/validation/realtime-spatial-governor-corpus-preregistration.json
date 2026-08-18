@@ -1,0 +1,146 @@
+{
+  "experiment_id": "realtime-spatial-governor-corpus-001",
+  "status": "preregistered_not_executed",
+  "preregistered_utc_date": "2026-08-18",
+  "code_head_before_preregistration": "7e62e72f7515174f479f4b790043bf9106765bdc",
+  "objective": "Test whether the causal coarse spectral-crowding observer and its newly exposed pairwise evidence remain internally consistent and musically useful across immutable real Genesis and SPC playback before any pair-aware renderer control is introduced.",
+  "control_boundary": {
+    "runtime_inputs_may_include": [
+      "source-native PCM lanes",
+      "source identity and generation",
+      "source lane kind",
+      "source-native route evidence",
+      "shared-effect-return identity where the source family establishes it",
+      "past-only realtime observer and mix-budget state"
+    ],
+    "runtime_inputs_must_not_include": [
+      "creator labels",
+      "game title",
+      "track title",
+      "genre labels",
+      "corpus selection labels",
+      "future audio",
+      "whole-song preanalysis"
+    ],
+    "outer_experiment_routing": "Corpus IDs and source-family labels may select immutable fixtures and choose the correct decoder/runtime frontend, but they may not alter crowding measurements, thresholds, pair eligibility, budgets, or Omniphony presentation decisions. Rows should use immutable object SHA-256 as the primary fixture identity so titles can be joined only after measurement."
+  },
+  "frozen_corpora": [
+    {
+      "corpus_id": "sonic-3-knuckles",
+      "source_family": "VGM/VGZ",
+      "declared_device_families": ["YM2612", "SN76489"],
+      "fixture_count": 58,
+      "purpose": "Genesis adversarial integration surface"
+    },
+    {
+      "corpus_id": "front-mission-gun-hazard",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 61,
+      "purpose": "large SPC soundtrack control"
+    },
+    {
+      "corpus_id": "terranigma-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 47,
+      "purpose": "large independent SPC soundtrack control"
+    },
+    {
+      "corpus_id": "ancient-magic-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 19,
+      "purpose": "SPC orchestration/routing control"
+    },
+    {
+      "corpus_id": "battle-master-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 22,
+      "purpose": "SPC orchestration/routing control"
+    },
+    {
+      "corpus_id": "america-oudan-ultra-quiz-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 18,
+      "purpose": "SPC orchestration/routing control"
+    },
+    {
+      "corpus_id": "kakinoki-shougi-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 5,
+      "purpose": "small SPC control"
+    },
+    {
+      "corpus_id": "super-black-bass-spc",
+      "source_family": "SPC",
+      "declared_device_families": ["SPC700", "S-DSP"],
+      "fixture_count": 4,
+      "purpose": "small SPC control"
+    }
+  ],
+  "fixture_totals": {
+    "genesis": 58,
+    "spc": 176,
+    "all": 234
+  },
+  "required_per_block_record": [
+    "fixture_sha256",
+    "trace_sequence_index",
+    "absolute_sample_position",
+    "frame_count",
+    "sample_rate",
+    "lane_count",
+    "observed_lane_count",
+    "active_lane_count",
+    "source_id_generation_lane_kind",
+    "source_relative_energy",
+    "source_low_mid_high_energy_shares",
+    "shared_effect_energy_share",
+    "coarse_spectral_overlap_scalar",
+    "active_dry_pair_count",
+    "pair_source_id_generation",
+    "pair_coarse_spectral_overlap",
+    "pair_energy_weight",
+    "applied_budget",
+    "renderer_abi_budget",
+    "learned_budget"
+  ],
+  "hard_admission_rules": [
+    "A recorded block must come from a process call with learned=true and governor_trace_index!=0.",
+    "validate_realtime_spatial_governor_trace(trace) must return valid=true for every admitted block.",
+    "Within one uninterrupted fixture timeline, validate_realtime_spatial_governor_trace_continuity(previous,current) must return valid=true for every adjacent admitted pair.",
+    "The exact ABI 0.4 renderer budget must equal the transport projection of the compiler budget applied to that block.",
+    "The applied budget of block n+1 must equal the learned budget of block n within the frozen validator tolerance.",
+    "The lazy pair field must reconstruct the existing scene coarse_spectral_overlap within the frozen validator tolerance.",
+    "Only active dry-source lanes may form spectral-overlap pairs. Shared effect returns remain scene wet-occupancy evidence and are never dry masking pairs.",
+    "A decoder seek, track change, or restart begins a new trace timeline; its first successful trace index must be 1 and is not checked for continuity against the previous timeline."
+  ],
+  "frozen_validator_tolerance": 0.0001,
+  "diagnostic_metrics": [
+    "distribution of scene coarse_spectral_overlap",
+    "distribution of strongest dry-pair overlap",
+    "distribution of active dry-pair counts",
+    "distribution of shared-effect energy share",
+    "per-source coarse-band profile occupancy",
+    "frequency and magnitude of learned dry-width/diffuse contraction",
+    "frequency and magnitude of learned shared-wet contraction",
+    "frequency and magnitude of learned externalization contraction",
+    "Genesis versus SPC distributions reported separately before any pooled summary"
+  ],
+  "falsifiers": [
+    "Any admitted shared-effect-return pair is a contract failure.",
+    "Any per-block scalar/pair reconstruction mismatch beyond tolerance is a contract failure.",
+    "Any adjacent-block applied-budget/prior-learned-budget mismatch beyond tolerance is a causality failure.",
+    "Any compiler-applied/renderer-ABI budget mismatch beyond tolerance is a transport failure.",
+    "Any duplicate or stale trace accepted after a failed process call is a transaction-identity failure.",
+    "If real dry-source pair overlaps show no meaningful within-scene variation, pair-aware separation is not justified by this three-band representation.",
+    "If pair behavior differs strongly by source family in a way explained by transport artifacts rather than measured source spectra, pair-aware separation is not admitted until that artifact is resolved.",
+    "Listening preference alone cannot rescue a failed evidence or causality rule."
+  ],
+  "promotion_rule": "Do not add a pair-aware Omniphony separation-pressure control from this preregistration alone. Promotion requires admitted real-corpus traces, a non-degenerate pairwise signal, preserved source-native routing semantics, and a separate renderer-side control contract that cannot rewrite authored pan or claim invented source coordinates.",
+  "current_execution_note": "The conversational GitHub connector exposes the committed binary corpus but truncates binary payloads before they can be reconstructed in the local execution runtime. No real-corpus numerical result is claimed by this preregistration."
+}
