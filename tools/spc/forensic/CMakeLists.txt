@@ -175,3 +175,20 @@ add_executable(
 )
 gameaudio_configure_forensic_first_party(spc_spatial_governor_trace)
 gameaudio_add_forensic_provenance(spc_spatial_governor_trace)
+
+# One-second real-file smoke only. This does not count as the preregistered
+# 24-second corpus result; it exists to make the exact pinned DSP patch, snapshot
+# seed, route events, ten source planes, ABI transport and trace validator prove
+# that they can execute together on an immutable SPC object.
+add_test(
+    NAME spc_spatial_governor_trace_smoke
+    COMMAND spc_spatial_governor_trace
+        "${RETRO_VGM_COMPILER_ROOT}/tests/corpus/super-black-bass-spc/01 - Title Screen.spc"
+        "${CMAKE_CURRENT_BINARY_DIR}/spc-governor-smoke.json"
+        "c04e06a65e964746beb594b87317e8eb5caaaf0020f328fc9eb8305ff6812d98"
+        1
+)
+set_tests_properties(
+    spc_spatial_governor_trace_smoke
+    PROPERTIES TIMEOUT 60
+)
