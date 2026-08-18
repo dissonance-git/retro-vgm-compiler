@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Apply the pinned runtime hooks plus deterministic forensic ordering.
+"""Apply pinned SPC runtime, ordering, and native spatial observer hooks.
 
 The upstream SPC_MORE_ACCURACY switch changes more than host callback ordering,
 including a probabilistic timer-glitch model. The forensic build does not enable
-that broad switch. Instead this coordinator adds one exact-sentinel MEM_ACCESS
-branch that only catches the accurate DSP up before SPC700 memory accesses.
+that broad switch. This coordinator applies the existing runtime evidence hooks,
+one exact-sentinel MEM_ACCESS ordering branch, and the read-only ten-plane native
+spatial observer used by the governor experiment.
 """
 
 from __future__ import annotations
@@ -25,6 +26,19 @@ if SPEC is None or SPEC.loader is None:
 strict = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = strict
 SPEC.loader.exec_module(strict)
+
+NATIVE_SPATIAL_PATH = Path(__file__).with_name(
+    "patch_snes_spc_native_spatial_observer.py"
+)
+NATIVE_SPEC = importlib.util.spec_from_file_location(
+    "patch_snes_spc_native_spatial_observer_forensic",
+    NATIVE_SPATIAL_PATH,
+)
+if NATIVE_SPEC is None or NATIVE_SPEC.loader is None:
+    raise RuntimeError(f"could not load {NATIVE_SPATIAL_PATH}")
+native_spatial = importlib.util.module_from_spec(NATIVE_SPEC)
+sys.modules[NATIVE_SPEC.name] = native_spatial
+NATIVE_SPEC.loader.exec_module(native_spatial)
 
 
 ORDERING_OLD = """#if SPC_MORE_ACCURACY
@@ -72,13 +86,17 @@ def main() -> None:
     strict.patcher.replace_once = strict.strict_replace_once
     strict.patcher.patch(root)
 
-    # Then add only the host-order synchronization needed by the experiment.
+    # Add only the host-order synchronization needed by the experiment.
     strict.strict_replace_once(
         root / "snes_spc" / "SNES_SPC.cpp",
         ORDERING_OLD,
         ORDERING_NEW,
         "forensic MEM_ACCESS DSP synchronization",
     )
+
+    # Finally expose read-only dry/wet source amplitudes from the same pinned
+    # accurate DSP. The observer patch is independently exact-sentinel guarded.
+    native_spatial.patch(root)
 
 
 if __name__ == "__main__":
