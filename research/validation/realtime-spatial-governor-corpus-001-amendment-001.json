@@ -1,0 +1,27 @@
+{
+  "experiment_id": "realtime-spatial-governor-corpus-001",
+  "amendment_id": "realtime-spatial-governor-corpus-001-amendment-001",
+  "status": "frozen_before_first_real_corpus_execution",
+  "amended_utc_date": "2026-08-18",
+  "reason": "The pinned snes_spc forensic observer exposes each dry S-DSP voice before signed VOLL/VOLR routing. The existing acoustic observer measures lane PCM energy directly. Without an explicit route projection, a voice with VOLL=VOLR=0 could be counted as an audible crowding source. This transport-definition defect was found while building the real runner, before any preregistered corpus measurement was executed.",
+  "changes_to_measurement_transport": [
+    "Seed frame-zero per-voice VOLL/VOLR and EON state from the exact saved 128-byte S-DSP register image in each SPC snapshot.",
+    "Retain the native observer tap after interpolation/noise selection, PMON consequences and envelope, before VOLL/VOLR.",
+    "For the dry PCM presented to the spatial governor, apply the exact time-varying route energy magnitude sqrt((L^2+R^2)/2), where L and R are the signed S-DSP /128 coefficients established by snapshot state and runtime observations.",
+    "Retain the signed L/R route as device-authored evidence and mark route gain preapplied so Omniphony cannot multiply its amplitude twice.",
+    "Continue to carry the two post-EVOL echo contributions as shared_effect_return lanes; they remain in wet occupancy and remain excluded from dry overlap pairs."
+  ],
+  "unchanged_frozen_items": [
+    "all corpora and fixture counts",
+    "three coarse spectral bands and their cutoffs",
+    "activity threshold",
+    "pair eligibility",
+    "all validator tolerances",
+    "all diagnostic thresholds and falsifiers",
+    "all promotion rules",
+    "creator/game/title/genre blindness",
+    "past-only governor causality"
+  ],
+  "precedent": "The existing SNESAPU SRCE-v2 source-object projection already applies the same energy-equivalent route magnitude while preserving signed route evidence and marking the arithmetic preapplied.",
+  "execution_claim": "No preregistered real Genesis or SPC corpus result had been produced when this amendment was frozen."
+}
