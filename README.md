@@ -365,12 +365,37 @@ Enhanced rendering asks whether an implementation ceiling can be relaxed while p
 
 See `docs/source-native-enhanced-rendering.md`.
 
+## Source-aware immersive playback
+
+When a source family can expose real causal voices or channels, Retro VGM Compiler can hand those objects to Omniphony before historical stereo collapse.
+
+The audible Surround goal is intentionally creative:
+
+> **Make the soundtrack sound as though those real sources had always been mixed for a larger immersive format.**
+
+This does not change source provenance. Native route, timing, identity, effects structure and genuinely authored position remain source facts. Width, rear depth, height, distance and source extent may be modern `DERIVED` presentation choices in Omniphony `FullSphere`.
+
+```text
+source-native truth
+→ recovered causal objects
+→ authored route / timing / identity
+→ musical presentation evidence
+→ Omniphony FullSphere
+→ 8.1.4.4 semantic world + dynamic objects
+→ 22-direction shell
+→ binaural
+```
+
+The compiler does not manufacture 17 speaker-bed lanes. Omniphony does not decide which emulator or reconstruction is truthful. The protected historical/reference path remains available as the control.
+
+See `docs/omniphony-realtime-spatial-path.md`.
+
 ## Relationship to other projects
 
 - **Helix** supplies shared research execution, provenance discipline, and project continuity.
-- **Retro VGM Compiler** owns game-music source, driver, device, performance, analysis, and source-native rendering semantics.
+- **Retro VGM Compiler** owns game-music source, driver, device, performance, analysis, source-native rendering and source evidence.
 - **libaural** is the general artificial-hearing research layer.
-- **Omniphony** is the general headphone spatial renderer.
+- **Omniphony** owns the creative immersive presentation, canonical 8.1.4.4 world, full-sphere render shell and headphone spatial rendering.
 
 Chip-specific machinery stays here unless it becomes genuinely general.
 
@@ -401,6 +426,7 @@ Start with:
 - `docs/persistent-musical-identity.md`
 - `docs/human-musical-discourse.md`
 - `docs/source-native-enhanced-rendering.md`
+- `docs/omniphony-realtime-spatial-path.md`
 
 ## Testing
 
