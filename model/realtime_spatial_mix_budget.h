@@ -58,24 +58,39 @@ inline realtime_spatial_mix_budget target_realtime_spatial_mix_budget(
     const float wet = std::clamp(scene.shared_effect_energy_share, 0.0f, 1.0f);
     const float low = std::clamp(scene.low_band_energy_ratio, 0.0f, 1.0f);
     const float edge = std::clamp(scene.edge_ratio, 0.0f, 1.0f);
+    const float overlap = std::clamp(scene.coarse_spectral_overlap, 0.0f, 1.0f);
+
+    // Pairwise spectral overlap only becomes a useful crowding pressure when
+    // there are active sources sharing the scene. Distributed energy makes that
+    // competition more important than a scene where one source dominates. This
+    // is explicitly a broad-band overlap proxy, not a psychoacoustic masking
+    // probability.
+    const float spectral_crowding = std::clamp(
+        overlap * density * (0.60f + 0.40f * distributed),
+        0.0f,
+        1.0f);
 
     // Sparse/focused scenes can afford larger individual objects. Dense,
-    // transient-rich, or bass-heavy scenes stay tighter to protect articulation
-    // and the foundation. This scales *presentation*, never source gain.
+    // transient-rich, bass-heavy, or spectrally crowded scenes stay tighter to
+    // protect articulation and the foundation. Spectral crowding reduces object
+    // *extent* and diffuseness here; it does not pretend that making an object
+    // wider is the same thing as spatially separating two masking sources.
     out.dry_width_scale = clamp_mix_budget(
         0.78f + 0.30f * open_space + 0.10f * concentration
-            - 0.12f * edge - 0.08f * low,
-        0.62f,
+            - 0.12f * edge - 0.08f * low - 0.16f * spectral_crowding,
+        0.58f,
         1.15f);
     out.dry_diffuse_scale = clamp_mix_budget(
         0.68f + 0.24f * open_space + 0.10f * distributed
-            - 0.20f * edge - 0.12f * low,
-        0.45f,
+            - 0.20f * edge - 0.12f * low - 0.24f * spectral_crowding,
+        0.38f,
         1.05f);
 
     // Depth and height are global capacity suggestions for the renderer. They
     // are intentionally conservative in low-heavy or very dense material and
-    // become more available when the arrangement leaves perceptual room.
+    // become more available when the arrangement leaves perceptual room. True
+    // masking-aware object separation will need its own explicit control; do not
+    // smuggle that future behavior into these global capacity fields.
     out.depth_scale = clamp_mix_budget(
         0.82f + 0.20f * open_space + 0.12f * distributed - 0.10f * low,
         0.70f,
@@ -88,22 +103,26 @@ inline realtime_spatial_mix_budget target_realtime_spatial_mix_budget(
 
     // A source-native shared effect field is useful envelopment already. Let it
     // remain a strong spatial layer, especially when it is an important part of
-    // the soundtrack, instead of drowning it in a second generic room.
+    // the soundtrack, but trim some field size when dry sources are already
+    // fighting for the same broad spectral territory.
     out.shared_wet_strength = clamp_mix_budget(
-        0.72f + 0.18f * wet + 0.10f * distributed,
-        0.65f,
+        0.72f + 0.18f * wet + 0.10f * distributed
+            - 0.06f * spectral_crowding,
+        0.60f,
         1.0f);
     out.shared_wet_extent = clamp_mix_budget(
-        0.78f + 0.12f * wet + 0.10f * distributed,
-        0.72f,
+        0.78f + 0.12f * wet + 0.10f * distributed
+            - 0.08f * spectral_crowding,
+        0.66f,
         1.0f);
 
     // Historical/shared wet and modern listening-room support compete for the
-    // same perceptual real estate. An echo-heavy soundtrack therefore asks for
-    // much less added externalization than a dry soundtrack.
+    // same perceptual real estate. An echo-heavy or spectrally crowded
+    // soundtrack therefore asks for less added externalization than a dry,
+    // clearly separated one.
     out.added_externalization_scale = clamp_mix_budget(
-        0.98f - 0.72f * wet - 0.12f * density,
-        0.20f,
+        0.98f - 0.72f * wet - 0.12f * density - 0.18f * spectral_crowding,
+        0.16f,
         1.0f);
     return out;
 }
