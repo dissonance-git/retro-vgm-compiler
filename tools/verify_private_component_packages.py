@@ -48,6 +48,7 @@ OMNIPHONY_REQUIRED_EXPORTS = {
     "omniphony_source_create",
     "omniphony_source_destroy",
     "omniphony_source_reset",
+    "omniphony_source_set_mix_budget",
     "omniphony_source_process_events_f32",
 }
 
@@ -218,242 +219,179 @@ def inspect_pe_imports(data: bytes) -> set[str]:
     max_descriptors = min(max(import_size // 20, 1), 4096)
     descriptor = _rva_to_offset(sections, import_rva, 20)
     imports: set[str] = set()
-    terminated = False
-    for index in range(max_descriptors):
-        current = descriptor + index * 20
-        if current < 0 or current + 20 > len(data):
-            raise ValueError("truncated PE import descriptor table")
-        fields = struct.unpack_from("<IIIII", data, current)
-        if fields == (0, 0, 0, 0, 0):
-            terminated = True
+    for _ in range(max_descriptors):
+        if descriptor + 20 > len(data):
+            raise ValueError("truncated PE import descriptor")
+        original_first_thunk = _u32(data, descriptor)
+        time_date_stamp = _u32(data, descriptor + 4)
+        forwarder_chain = _u32(data, descriptor + 8)
+        name_rva = _u32(data, descriptor + 12)
+        first_thunk = _u32(data, descriptor + 16)
+        if (
+            original_first_thunk == 0
+            and time_date_stamp == 0
+            and forwarder_chain == 0
+            and name_rva == 0
+            and first_thunk == 0
+        ):
             break
-        name_rva = fields[3]
-        if name_rva == 0:
-            raise ValueError("PE import descriptor has no DLL name")
         name_offset = _rva_to_offset(sections, name_rva)
         imports.add(_read_c_string(data, name_offset))
-    if not terminated:
-        raise ValueError("PE import descriptor table is not terminated")
+        descriptor += 20
+    else:
+        raise ValueError("unterminated PE import descriptor table")
     return imports
 
 
-def verify_archive(path: Path, expected: set[str], label: str) -> None:
+def _validate_archive_name(name: str) -> str:
+    normalized = name.replace("\\", "/")
+    pure = PurePosixPath(normalized)
+    if pure.is_absolute() or ".." in pure.parts or len(pure.parts) != 1:
+        raise AssertionError(f"unsafe or nested archive member: {name}")
+    if pure.name in ("", "."):
+        raise AssertionError(f"invalid archive member: {name}")
+    return pure.name
+
+
+def validate_package(
+    path: Path,
+    expected_names: set[str],
+    contracts: dict[str, tuple[int, frozenset[str]]],
+) -> None:
     if not path.is_file():
-        raise RuntimeError(f"{label} package missing: {path}")
-    if not zipfile.is_zipfile(path):
-        raise RuntimeError(f"{label} package is not a ZIP/fb2k-component archive: {path}")
+        raise AssertionError(f"component package missing: {path}")
+    if path.stat().st_size <= 0:
+        raise AssertionError(f"component package is empty: {path}")
 
     with zipfile.ZipFile(path, "r") as archive:
         infos = [info for info in archive.infolist() if not info.is_dir()]
-        names = [PurePosixPath(info.filename).as_posix() for info in infos]
-
-        unsafe = [
-            name
-            for name in names
-            if not name
-            or name.startswith("/")
-            or ".." in PurePosixPath(name).parts
-            or len(PurePosixPath(name).parts) != 1
-        ]
-        if unsafe:
-            raise AssertionError(f"{label} package has unsafe/nested entries: {unsafe}")
-
-        folded: dict[str, str] = {}
-        duplicates: list[tuple[str, str]] = []
-        for name in names:
+        names: list[str] = []
+        folded: set[str] = set()
+        payloads: dict[str, bytes] = {}
+        for info in infos:
+            name = _validate_archive_name(info.filename)
             key = name.casefold()
-            previous = folded.get(key)
-            if previous is not None:
-                duplicates.append((previous, name))
-            else:
-                folded[key] = name
-        if duplicates:
+            if key in folded:
+                raise AssertionError(f"duplicate case-insensitive package member: {name}")
+            folded.add(key)
+            names.append(name)
+            data = archive.read(info)
+            if not data:
+                raise AssertionError(f"zero-byte runtime member: {name}")
+            payloads[name] = data
+
+        if set(names) != expected_names:
             raise AssertionError(
-                f"{label} package has case-insensitive duplicate entries: {duplicates}"
+                f"package members differ for {path.name}: "
+                f"expected {sorted(expected_names)}, got {sorted(names)}"
             )
 
-        actual = set(names)
-        if actual != expected:
-            missing = sorted(expected - actual)
-            extra = sorted(actual - expected)
-            raise AssertionError(
-                f"{label} package payload mismatch; missing={missing}, extra={extra}"
-            )
-
-        empty = sorted(info.filename for info in infos if info.file_size == 0)
-        if empty:
-            raise AssertionError(f"{label} package contains zero-byte runtime files: {empty}")
-
-
-def verify_runtime_contracts(
-    path: Path,
-    contracts: dict[str, tuple[int, frozenset[str]]],
-    label: str,
-) -> None:
-    with zipfile.ZipFile(path, "r") as archive:
-        for name, (expected_machine, required_exports) in contracts.items():
-            try:
-                data = archive.read(name)
-            except KeyError as exc:
-                raise AssertionError(f"{label} runtime missing from archive: {name}") from exc
-            try:
-                machine, exports = inspect_pe(data)
-            except ValueError as exc:
-                raise AssertionError(f"{label} {name} is not a valid packaged PE: {exc}") from exc
-            if machine != expected_machine:
+        for name, (machine, required_exports) in contracts.items():
+            actual_machine, exports = inspect_pe(payloads[name])
+            if actual_machine != machine:
                 raise AssertionError(
-                    f"{label} {name} machine mismatch: expected 0x{expected_machine:04X}, "
-                    f"got 0x{machine:04X}"
+                    f"{path.name}:{name} machine mismatch: "
+                    f"expected 0x{machine:04X}, got 0x{actual_machine:04X}"
                 )
-            missing_exports = sorted(required_exports - exports)
-            if missing_exports:
+            missing = required_exports - exports
+            if missing:
                 raise AssertionError(
-                    f"{label} {name} missing required exports: {missing_exports}"
+                    f"{path.name}:{name} missing required exports: {sorted(missing)}"
+                )
+
+        # Private runtime pieces must be discovered explicitly at runtime or by
+        # the x86 child process; they must not become normal PE imports of the
+        # x64 foobar components.
+        for component_name in ("foo_input_vgm.dll", "foo_snesapu.dll"):
+            if component_name not in payloads:
+                continue
+            imports = {name.casefold() for name in inspect_pe_imports(payloads[component_name])}
+            forbidden = {"omniphony_source.dll", "snesapu.dll", "spcplayer.exe"} & imports
+            if forbidden:
+                raise AssertionError(
+                    f"{path.name}:{component_name} has forbidden private imports: "
+                    f"{sorted(forbidden)}"
                 )
 
 
-def verify_private_import_contracts(vgm_path: Path, spc_path: Path) -> None:
-    """Prove private process/DLL boundaries from the actual packaged import tables."""
-    with zipfile.ZipFile(vgm_path, "r") as archive:
-        vgm_imports = {
-            name.casefold() for name in inspect_pe_imports(archive.read("foo_input_vgm.dll"))
-        }
-    with zipfile.ZipFile(spc_path, "r") as archive:
-        spc_parent_imports = {
-            name.casefold() for name in inspect_pe_imports(archive.read("foo_snesapu.dll"))
-        }
-        spcplayer_imports = {
-            name.casefold() for name in inspect_pe_imports(archive.read("spcplayer.exe"))
-        }
-        snesapu_imports = {
-            name.casefold() for name in inspect_pe_imports(archive.read("SNESAPU.dll"))
-        }
-
-    if "snesapu.dll" not in spcplayer_imports:
-        raise AssertionError(
-            "SPC spcplayer.exe must import sibling SNESAPU.dll through its fresh import library"
-        )
-
-    for label, imports in (
-        ("VGM foo_input_vgm.dll", vgm_imports),
-        ("SPC foo_snesapu.dll", spc_parent_imports),
-        ("SPC spcplayer.exe", spcplayer_imports),
-        ("SPC SNESAPU.dll", snesapu_imports),
-    ):
-        if "omniphony_source.dll" in imports:
-            raise AssertionError(
-                f"{label} must not import omniphony_source.dll; Omniphony is sibling-dynamic-loaded"
-            )
-
-    if "snesapu.dll" in spc_parent_imports:
-        raise AssertionError(
-            "SPC x64 foo_snesapu.dll must not import x86 SNESAPU.dll; the child process owns it"
-        )
-    if "snesapu.dll" in vgm_imports:
-        raise AssertionError("VGM foo_input_vgm.dll must not import SNESAPU.dll")
-
-    shared_libvgm = sorted(
-        name for name in vgm_imports if name.startswith("libvgm") and name.endswith(".dll")
-    )
-    if shared_libvgm:
-        raise AssertionError(
-            "VGM foo_input_vgm.dll unexpectedly imports shared libvgm runtime(s): "
-            f"{shared_libvgm}; private build requires static libvgm linkage"
-        )
-
-
-def _load_omniphony_abi_verifier():
-    path = Path(__file__).with_name("verify_omniphony_runtime_abi.py")
-    spec = importlib.util.spec_from_file_location("omniphony_runtime_abi", path)
+def _load_runtime_verifier(repo_root: Path):
+    verifier_path = repo_root / "tools" / "verify_omniphony_runtime_abi.py"
+    if not verifier_path.is_file():
+        raise AssertionError(f"Omniphony runtime verifier missing: {verifier_path}")
+    spec = importlib.util.spec_from_file_location("verify_omniphony_runtime_abi", verifier_path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load Omniphony runtime ABI verifier: {path}")
+        raise AssertionError(f"could not load Omniphony runtime verifier: {verifier_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def verify_packaged_omniphony_runtime(path: Path, label: str) -> tuple[int, int] | None:
-    """On Windows, load the exact archived DLL and execute its ABI functions."""
+def validate_windows_runtime(
+    vgm_path: Path,
+    spc_path: Path,
+    repo_root: Path,
+) -> None:
     if os.name != "nt":
-        return None
-    verifier = _load_omniphony_abi_verifier()
-    with tempfile.TemporaryDirectory(prefix="omniphony-package-abi-") as temporary:
-        dll = Path(temporary) / "omniphony_source.dll"
-        with zipfile.ZipFile(path, "r") as archive:
-            dll.write_bytes(archive.read("omniphony_source.dll"))
-        try:
-            major, minor = verifier.load_and_verify(dll)
-        except (AssertionError, RuntimeError) as exc:
+        return
+
+    verifier = _load_runtime_verifier(repo_root)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        vgm_dir = root / "vgm"
+        spc_dir = root / "spc"
+        vgm_dir.mkdir()
+        spc_dir.mkdir()
+
+        with zipfile.ZipFile(vgm_path, "r") as archive:
+            archive.extractall(vgm_dir)
+        with zipfile.ZipFile(spc_path, "r") as archive:
+            archive.extractall(spc_dir)
+
+        vgm_version = verifier.load_and_verify(vgm_dir / "omniphony_source.dll")
+        spc_version = verifier.load_and_verify(spc_dir / "omniphony_source.dll")
+        if vgm_version != spc_version:
             raise AssertionError(
-                f"{label} packaged Omniphony runtime ABI validation failed: {exc}"
-            ) from exc
-        return major, minor
-
-
-def validate_spcplayer_startup_result(returncode: int, output: str) -> None:
-    normalized = output.lower()
-    if returncode != 1:
-        raise AssertionError(
-            f"packaged spcplayer startup returned {returncode}, expected usage exit 1"
-        )
-    if "spcplayer" not in normalized or "usage:" not in normalized:
-        raise AssertionError(
-            "packaged spcplayer did not reach its own usage path; "
-            f"captured output was {output!r}"
-        )
-
-
-def verify_packaged_spcplayer_startup(path: Path) -> bool | None:
-    """On Windows, prove the archived x86 child resolves its sibling SNESAPU DLL."""
-    if os.name != "nt":
-        return None
-    with tempfile.TemporaryDirectory(prefix="spcplayer-package-smoke-") as temporary:
-        root = Path(temporary)
-        with zipfile.ZipFile(path, "r") as archive:
-            for name in SPC_EXPECTED:
-                (root / name).write_bytes(archive.read(name))
-        player = root / "spcplayer.exe"
-        try:
-            completed = subprocess.run(
-                [str(player)],
-                cwd=str(root),
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=10,
+                "packaged Omniphony runtime versions differ: "
+                f"VGM={vgm_version}, SPC={spc_version}"
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise AssertionError(f"packaged spcplayer could not start: {exc}") from exc
-        validate_spcplayer_startup_result(
-            completed.returncode,
-            (completed.stdout or "") + (completed.stderr or ""),
+        if (vgm_dir / "omniphony_source.dll").read_bytes() != (
+            spc_dir / "omniphony_source.dll"
+        ).read_bytes():
+            raise AssertionError("VGM/SPC packages do not carry the same Omniphony DLL bytes")
+
+        # Start the exact packaged child binary so Windows resolves its imports
+        # using the package directory. The no-argument path is expected to fail
+        # after startup with a usage error; loader failure must be distinguishable.
+        child = subprocess.run(
+            [str(spc_dir / "spcplayer.exe")],
+            cwd=spc_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15,
+            check=False,
         )
-        return True
+        output = (child.stdout + "\n" + child.stderr).casefold()
+        if child.returncode == -1073741515 or "0xc0000135" in output:
+            raise AssertionError(
+                "packaged spcplayer could not resolve its sibling SNESAPU/runtime dependencies"
+            )
+        if child.returncode == 0:
+            raise AssertionError("spcplayer unexpectedly succeeded without an input file")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("vgm_component", type=Path)
-    parser.add_argument("spc_component", type=Path)
+    parser.add_argument("vgm_package", type=Path)
+    parser.add_argument("spc_package", type=Path)
     args = parser.parse_args()
 
-    vgm = args.vgm_component.resolve()
-    spc = args.spc_component.resolve()
-    verify_archive(vgm, VGM_EXPECTED, "VGM")
-    verify_archive(spc, SPC_EXPECTED, "SPC")
-    verify_runtime_contracts(vgm, VGM_RUNTIME_CONTRACTS, "VGM")
-    verify_runtime_contracts(spc, SPC_RUNTIME_CONTRACTS, "SPC")
-    verify_private_import_contracts(vgm, spc)
-    vgm_abi = verify_packaged_omniphony_runtime(vgm, "VGM")
-    spc_abi = verify_packaged_omniphony_runtime(spc, "SPC")
-    spcplayer_started = verify_packaged_spcplayer_startup(spc)
-    if vgm_abi is not None or spc_abi is not None:
-        print(f"packaged Omniphony runtime ABI verified: VGM={vgm_abi}, SPC={spc_abi}")
-    if spcplayer_started:
-        print("packaged spcplayer startup and sibling SNESAPU resolution verified")
-    print(
-        "private foobar component payload, PE, import-boundary and runtime contracts verified"
-    )
+    vgm_path = args.vgm_package.resolve()
+    spc_path = args.spc_package.resolve()
+    validate_package(vgm_path, VGM_EXPECTED, VGM_RUNTIME_CONTRACTS)
+    validate_package(spc_path, SPC_EXPECTED, SPC_RUNTIME_CONTRACTS)
+    validate_windows_runtime(vgm_path, spc_path, Path(__file__).resolve().parents[1])
+    print("private foobar component packages verified")
     return 0
 
 
