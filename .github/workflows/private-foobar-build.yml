@@ -1,4 +1,4 @@
-name: Promote vendored foo_input_vgm 0.31 baseline
+name: Verify chunked foo_input_vgm 0.31 transfer
 
 on:
   push:
@@ -7,17 +7,17 @@ on:
       - ".github/workflows/private-foobar-build.yml"
 
 permissions:
-  contents: write
+  contents: read
   statuses: write
 
 jobs:
-  promote-vgm031:
+  verify-transfer:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 3
+          ref: temp-public-foobar-build-20260818
+          fetch-depth: 1
 
       - name: Publish locator
         shell: bash
@@ -27,135 +27,44 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          curl --fail --silent --show-error \
-            -X POST \
+          curl --fail --silent --show-error -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"pending\",\"context\":\"vgm031-promote\",\"description\":\"run_id=$RUN_ID; validating vendored 0.31\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"pending\",\"context\":\"vgm031-transfer\",\"description\":\"run_id=$RUN_ID; verifying\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
 
-      - name: Move canonical VGM bootstrap to vendored 0.31
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          ARCHIVE_SHA = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'
-          TREE_SHA = '36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'
-
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected one match, found {count}')
-              return text.replace(old, new, 1)
-
-          builder_path = Path('tools/build_private_foobar_components.ps1')
-          builder = builder_path.read_text(encoding='utf-8')
-          builder = replace_once(
-              builder,
-              "$VgmBootstrapUrl = 'https://uu.getuploader.com/foobar2000/download/248'\n$VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'",
-              f"$VgmBootstrapVersion = '0.31'\n$VgmBootstrapArchiveSha256 = '{ARCHIVE_SHA}'\n$VgmBootstrapTreeSha256 = '{TREE_SHA}'",
-              'VGM bootstrap constants',
-          )
-          builder = replace_once(
-              builder,
-              "$VgmBootstrap = Join-Path $WorkRoot 'foo_input_vgm_v0.30.7z'",
-              "$VgmBootstrap = Join-Path $RetroRoot 'imports\\foo_input_vgm-0.31.zip'",
-              'VGM bootstrap path',
-          )
-          builder = replace_once(
-              builder,
-              "Write-Host '== 0. Recover and verify the historical foo_input_vgm bootstrap =='\n& (Join-Path $RetroRoot 'tools\\fetch_foo_input_vgm_bootstrap.ps1') -OutputPath $VgmBootstrap -DownloadPage $VgmBootstrapUrl -ExpectedSha256 $VgmBootstrapSha256\n$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap",
-              "Write-Host '== 0. Verify the vendored foo_input_vgm 0.31 bootstrap =='\nRequire-File $VgmBootstrap 'foo_input_vgm 0.31 bootstrap archive'\n$vgmBootstrapArchiveHash = (Get-FileHash -LiteralPath $VgmBootstrap -Algorithm SHA256).Hash.ToLowerInvariant()\nif ($vgmBootstrapArchiveHash -ne $VgmBootstrapArchiveSha256) { throw \"foo_input_vgm 0.31 archive drift: expected $VgmBootstrapArchiveSha256, got $vgmBootstrapArchiveHash\" }\n$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap\n$env:RETRO_VGM_BOOTSTRAP_TREE_SHA256 = $VgmBootstrapTreeSha256",
-              'VGM bootstrap stage',
-          )
-          builder = replace_once(
-              builder,
-              "foo_input_vgm_bootstrap = [ordered]@{ source = $VgmBootstrapUrl; sha256 = $VgmBootstrapSha256 }",
-              "foo_input_vgm_bootstrap = [ordered]@{ version = $VgmBootstrapVersion; source = 'imports/foo_input_vgm-0.31.zip'; archive_sha256 = $VgmBootstrapArchiveSha256; source_tree_sha256 = $VgmBootstrapTreeSha256 }",
-              'VGM manifest record',
-          )
-          builder_path.write_text(builder, encoding='utf-8', newline='\n')
-
-          materializer_path = Path('tools/materialize_foo_input_vgm.py')
-          materializer = materializer_path.read_text(encoding='utf-8')
-          materializer = replace_once(
-              materializer,
-              'import argparse\nfrom pathlib import Path',
-              'import argparse\nimport hashlib\nimport os\nfrom pathlib import Path',
-              'materializer imports',
-          )
-          materializer = replace_once(
-              materializer,
-              'import tempfile\n\n\n# These files are project-owned additions.',
-              f'import tempfile\n\n\nDEFAULT_BOOTSTRAP_VERSION = "0.31"\nDEFAULT_BOOTSTRAP_TREE_SHA256 = "{TREE_SHA}"\n\n\n# These files are project-owned additions.',
-              'materializer constants',
-          )
-          helper = '''\n\ndef source_tree_sha256(root: Path) -> str:\n    entries: list[tuple[str, str]] = []\n    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):\n        relative = path.relative_to(root).as_posix()\n        digest = hashlib.sha256(path.read_bytes()).hexdigest()\n        entries.append((relative, digest))\n    manifest = "".join(f"{digest}  {relative}\\n" for relative, digest in entries).encode("utf-8")\n    return hashlib.sha256(manifest).hexdigest()\n\n\ndef require_bootstrap_identity(root: Path, expected_tree_sha256: str) -> None:\n    actual = source_tree_sha256(root)\n    expected = expected_tree_sha256.strip().lower()\n    if actual != expected:\n        raise RuntimeError(\n            "foo_input_vgm bootstrap source-tree mismatch: "\n            f"expected {expected}, got {actual}"\n        )\n    version_file = root / "src" / "my_component_client.cpp"\n    if not version_file.is_file():\n        raise RuntimeError(f"foo_input_vgm bootstrap version file missing: {version_file}")\n    version_text = version_file.read_text(encoding="utf-8-sig", errors="strict")\n    if f'"{DEFAULT_BOOTSTRAP_VERSION}"' not in version_text:\n        raise RuntimeError(f"foo_input_vgm bootstrap is not version {DEFAULT_BOOTSTRAP_VERSION}")\n'''
-          materializer = replace_once(
-              materializer,
-              '\n\ndef main() -> int:',
-              helper + '\n\ndef main() -> int:',
-              'materializer identity helpers',
-          )
-          materializer = replace_once(
-              materializer,
-              '    archive = (selected_archive or (repo / "imports" / "foo_input_vgm.7z")).resolve()',
-              '    archive = (selected_archive or (repo / "imports" / "foo_input_vgm-0.31.zip")).resolve()',
-              'materializer default archive',
-          )
-          materializer = replace_once(
-              materializer,
-              '        require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")\n        shutil.copytree(bootstrap, component)',
-              '        require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")\n        expected_tree = os.environ.get("RETRO_VGM_BOOTSTRAP_TREE_SHA256", DEFAULT_BOOTSTRAP_TREE_SHA256)\n        require_bootstrap_identity(bootstrap, expected_tree)\n        print(f"verified foo_input_vgm {DEFAULT_BOOTSTRAP_VERSION} source tree: {expected_tree.lower()}")\n        shutil.copytree(bootstrap, component)',
-              'materializer identity gate',
-          )
-          materializer = materializer.replace(
-              'The historical upstream plugin is preserved immutably in imports/foo_input_vgm.7z.\nCurrent Retro VGM Compiler additions live under components/vgm/ and the guarded\ntransformations live under patches/foo_input_vgm/.  This tool combines those\nthree sources into a disposable build tree without consulting the retired\nvgmspc repository or copying its stale patched host tree.',
-              'The current upstream bootstrap is preserved immutably in imports/foo_input_vgm-0.31.zip.\nCurrent Retro VGM Compiler additions live under components/vgm/ and the guarded\ntransformations live under patches/foo_input_vgm/. This tool verifies that exact\nsource tree before combining it into a disposable build tree.',
-          )
-          materializer_path.write_text(materializer, encoding='utf-8', newline='\n')
-
-          manifest_path = Path('imports/MANIFEST.md')
-          manifest = manifest_path.read_text(encoding='utf-8')
-          old = ('The archive identity is immutable, but the current GitHub transport copy is known to be truncated and is not accepted as a build input. '
-                 'Canonical Windows builds recover `foo_input_vgm_v0.30.7z` from `https://uu.getuploader.com/foobar2000/download/248` into disposable build state and require the SHA-256 above before extraction. '
-                 'This is a recovery route for the same audited source object, not permission to substitute v0.31 or another release. Normal development occurs from the expanded source under `components/vgm/`; the historical archive is never edited or repacked.')
-          new = ('The 0.30 archive identity above remains immutable historical provenance. Its GitHub transport copy is truncated and the former uploader recovery no longer reproduces the recorded archive hash, so it is not a production build input.\n\n'
-                 '### Current VGM build baseline: foo_input_vgm 0.31\n\n'
-                 '- File: `foo_input_vgm-0.31.zip`\n'
-                 '- Repository copy: `imports/foo_input_vgm-0.31.zip`\n'
-                 f'- SHA-256: `{ARCHIVE_SHA}`\n'
-                 f'- Exact source-tree identity: 41 files, canonical tree SHA-256 `{TREE_SHA}`\n'
-                 '- Version declared by source: `0.31`\n'
-                 '- License in supplied source: Mozilla Public License 2.0\n\n'
-                 'The 0.31 ZIP was supplied directly for this build and is preserved byte-for-byte. Production builds verify both its archive SHA-256 and the extracted 41-file source-tree digest before any project overlay or guarded patch is applied.')
-          if old not in manifest:
-              raise SystemExit('import manifest 0.30 paragraph did not match expected text')
-          manifest_path.write_text(manifest.replace(old, new, 1), encoding='utf-8', newline='\n')
-
-          test_path = Path('tests/vgm/test_vgm031_bootstrap_contract.py')
-          test_path.write_text(f'''from __future__ import annotations\n\nimport hashlib\nfrom pathlib import Path\nimport unittest\nimport zipfile\n\nROOT = Path(__file__).resolve().parents[2]\nARCHIVE = ROOT / "imports" / "foo_input_vgm-0.31.zip"\nBUILD = ROOT / "tools" / "build_private_foobar_components.ps1"\nMATERIALIZER = ROOT / "tools" / "materialize_foo_input_vgm.py"\nMANIFEST = ROOT / "imports" / "MANIFEST.md"\nEXPECTED_ARCHIVE_SHA256 = "{ARCHIVE_SHA}"\nEXPECTED_TREE_SHA256 = "{TREE_SHA}"\n\n\ndef source_tree_digest(archive: zipfile.ZipFile) -> tuple[int, str]:\n    prefix = "foo_input_vgm/"\n    names = sorted(name for name in archive.namelist() if name.startswith(prefix) and not name.endswith("/"))\n    entries = []\n    for name in names:\n        relative = name[len(prefix):]\n        entries.append((relative, hashlib.sha256(archive.read(name)).hexdigest()))\n    payload = "".join(f"{{digest}}  {{relative}}\\n" for relative, digest in entries).encode("utf-8")\n    return len(entries), hashlib.sha256(payload).hexdigest()\n\n\nclass Vgm031BootstrapContractTest(unittest.TestCase):\n    def test_vendored_archive_is_exact(self) -> None:\n        self.assertTrue(ARCHIVE.is_file())\n        self.assertEqual(hashlib.sha256(ARCHIVE.read_bytes()).hexdigest(), EXPECTED_ARCHIVE_SHA256)\n        with zipfile.ZipFile(ARCHIVE) as archive:\n            count, digest = source_tree_digest(archive)\n            self.assertEqual(count, 41)\n            self.assertEqual(digest, EXPECTED_TREE_SHA256)\n            version = archive.read("foo_input_vgm/src/my_component_client.cpp").decode("utf-8-sig")\n            self.assertIn('"0.31"', version)\n\n    def test_builder_uses_only_vendored_031_bootstrap(self) -> None:\n        text = BUILD.read_text(encoding="utf-8")\n        self.assertIn("imports\\\\foo_input_vgm-0.31.zip", text)\n        self.assertIn(EXPECTED_ARCHIVE_SHA256, text)\n        self.assertIn(EXPECTED_TREE_SHA256, text)\n        self.assertNotIn("uu.getuploader.com", text)\n        self.assertNotIn("foo_input_vgm_v0.30", text)\n\n    def test_materializer_and_manifest_share_identity(self) -> None:\n        materializer = MATERIALIZER.read_text(encoding="utf-8")\n        manifest = MANIFEST.read_text(encoding="utf-8")\n        self.assertIn("foo_input_vgm-0.31.zip", materializer)\n        self.assertIn(EXPECTED_TREE_SHA256, materializer)\n        self.assertIn(EXPECTED_ARCHIVE_SHA256, manifest)\n        self.assertIn(EXPECTED_TREE_SHA256, manifest)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8', newline='\n')
-          PY
-
-      - name: Validate vendored 0.31 identity and current contracts
+      - name: Reassemble and verify exact upload
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile tools/materialize_foo_input_vgm.py tests/vgm/test_vgm031_bootstrap_contract.py
-          python -B -m unittest tests.vgm.test_vgm031_bootstrap_contract
-          python -B -m unittest tests.vgm.test_omniphony_private_build_contract
-
-      - name: Publish canonical 0.31 migration
-        shell: bash
-        run: |
-          git config user.name "dissonance"
-          git config user.email "ustreamusa@aim.com"
-          git add tools/build_private_foobar_components.ps1 tools/materialize_foo_input_vgm.py imports/MANIFEST.md tests/vgm/test_vgm031_bootstrap_contract.py
-          git diff --cached --check
-          git commit -m "build: promote foo_input_vgm 0.31 baseline"
-          git push origin HEAD:main
+          cat .bootstrap-transfer/foo_input_vgm-0.31.b64.part00 \
+              .bootstrap-transfer/foo_input_vgm-0.31.b64.part01 \
+              .bootstrap-transfer/foo_input_vgm-0.31.b64.part02 \
+            | tr -d '\r\n' | base64 -d > foo_input_vgm-0.31.zip
+          actual_size=$(wc -c < foo_input_vgm-0.31.zip | tr -d ' ')
+          actual_sha=$(sha256sum foo_input_vgm-0.31.zip | awk '{print $1}')
+          echo "size=$actual_size sha256=$actual_sha"
+          test "$actual_size" = "66250"
+          test "$actual_sha" = "e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1"
+          python - <<'PY'
+          import hashlib, zipfile
+          from pathlib import PurePosixPath
+          expected='36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc'
+          with zipfile.ZipFile('foo_input_vgm-0.31.zip') as z:
+              names=sorted(n for n in z.namelist() if n.startswith('foo_input_vgm/') and not n.endswith('/'))
+              entries=[]
+              for name in names:
+                  rel=name[len('foo_input_vgm/'):]
+                  entries.append((rel, hashlib.sha256(z.read(name)).hexdigest()))
+              payload=''.join(f'{sha}  {rel}\n' for rel,sha in entries).encode()
+              digest=hashlib.sha256(payload).hexdigest()
+              print(f'files={len(entries)} tree_sha256={digest}')
+              assert len(entries)==41
+              assert digest==expected
+              version=z.read('foo_input_vgm/src/my_component_client.cpp').decode('utf-8-sig')
+              assert '"0.31"' in version
+          PY
 
       - name: Publish final locator
         if: always()
@@ -167,11 +76,10 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
         run: |
-          if [ "$JOB_STATUS" = "success" ]; then state=success; else state=failure; fi
-          curl --fail --silent --show-error \
-            -X POST \
+          if [ "$JOB_STATUS" = success ]; then state=success; else state=failure; fi
+          curl --fail --silent --show-error -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/$REPOSITORY/statuses/$SOURCE_SHA" \
-            -d "{\"state\":\"$state\",\"context\":\"vgm031-promote\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
+            -d "{\"state\":\"$state\",\"context\":\"vgm031-transfer\",\"description\":\"run_id=$RUN_ID; $JOB_STATUS\",\"target_url\":\"https://github.com/$REPOSITORY/actions/runs/$RUN_ID\"}" >/dev/null
