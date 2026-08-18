@@ -6,7 +6,7 @@ Executable understanding, musical analysis, source-native rendering, perceptual 
 
 Retro VGM Compiler follows the transformations that actually produce and are heard as game music instead of flattening every source into MIDI, stems, final PCM, or a detached analytical summary.
 
-**The primary objective is holistic musical understanding.** Exact decoding, execution tracing, synthesis reconstruction, source isolation, and provenance are supporting machinery. They matter because they can improve, constrain, explain, or validate the musical model.
+**The primary objective is holistic musical understanding.** Exact decoding, execution tracing, synthesis reconstruction, source isolation, driver archaeology, and provenance are supporting machinery. They matter because they improve, constrain, explain, or validate the musical model.
 
 The compiler architecture and current/future roadmap live in `docs/retro-vgm-compiler-roadmap.md`.
 
@@ -19,9 +19,11 @@ That benchmark is downstream of understanding, not a replacement for it.
 ```text
 native encoded truth
         ↓
-format / memory / sequence semantics
+authoring language / source project / sequence semantics
         ↓
-driver and program execution
+compiler / assembler / conversion tool
+        ↓
+driver program / logical tracks / scheduling / arbitration
         ↓
 device / synthesis / sample state
         ↓
@@ -42,16 +44,18 @@ blind composer-attribution stress tests
 holistic soundtrack understanding and human explanation
 ```
 
-The project is vertically end-to-end. The lowest useful fact may be a bit field, byte, address, register write, sample, or machine-state transition. The highest useful result may be an integrated explanation of what a cue is doing musically, how it relates to the soundtrack, and which creator-specific behaviors recur in other projects.
+The project is vertically end-to-end. The lowest useful fact may be a bit field, byte, address, pointer rule, register write, sample, driver state transition, or machine cycle. The highest useful result may be an integrated explanation of what a cue is doing musically, how it relates to the soundtrack, and which creator-specific behaviors recur in other projects.
 
 ## Two generalization axes
 
-Composer-level understanding must generalize in two different directions.
+Composer-level understanding must generalize in two directions.
 
 ### Same work across representations
 
 ```text
-MIDI / MML / tracker / native sequence
+MIDI / MML / tracker / native sequence / source ASM
+↕
+driver program / compiled sequence / runtime state
 ↕
 VGM / SPC / PSF-family execution
 ↕
@@ -93,14 +97,6 @@ The stronger question is:
 > What musical behaviors follow the composer when the soundtrack around them changes?
 
 Prefer controls from different games/soundtracks, platforms, collaborators, and career periods whenever possible.
-
-```text
-composer A
-├── soundtrack 1
-├── soundtrack 2
-├── soundtrack 3
-└── soundtrack 4
-```
 
 Useful validation includes:
 
@@ -176,9 +172,7 @@ composition
 != final realization
 ```
 
-This does not mean timbre, arrangement, synthesis, or execution are forbidden from composer attribution.
-
-It means **every observation carries role provenance**.
+This does not mean timbre, arrangement, synthesis, or execution are forbidden from composer attribution. It means **every observation carries role provenance**.
 
 A patch, articulation, orchestration, or control habit can support composer attribution when historical evidence shows that the composer authored or reliably controlled that layer. The same feature may instead belong to an arranger, programmer, shared library, driver, or platform in another soundtrack.
 
@@ -186,8 +180,8 @@ A legitimate result may therefore be:
 
 ```text
 cross-representation composer grammar → composer A
-arrangement/programming subgrammar → programmer B
-patch/sample vocabulary → shared team/library
+arrangement/programming subgrammar   → programmer B
+patch/sample vocabulary              → shared team/library
 ```
 
 These are complementary claims, not one averaged `artist` score.
@@ -239,6 +233,17 @@ simultaneous pitches
 
 Higher analysis may summarize lower evidence, but it may not erase uncertainty underneath it.
 
+The same rule now applies explicitly above chip execution:
+
+```text
+same chip state != same upstream intention
+same opcode != same meaning across driver / scope / revision
+same driver family != same revision behavior
+same physical channel != same logical musical part
+transformed runtime != authoring source
+reconstructed source candidate != exact authored source
+```
+
 ## Source families
 
 Current work spans materially different representations and architectures, including:
@@ -248,8 +253,8 @@ Current work spans materially different representations and architectures, inclu
 - NSF and other executable-rip formats;
 - PSF1, GSF, USF, 2SF, and NCSF executable-object families;
 - native music drivers and sequence formats;
-- MIDI, MML, tracker source, and other symbolic music representations;
-- ROM-derived samples, patches, sequences, and control data;
+- MIDI, MML, tracker source, source ASM, and other symbolic music representations;
+- ROM-derived samples, patches, sequences, executables, and control data;
 - rendered audio and documentary evidence.
 
 These remain source-specific until independent systems force the same abstraction.
@@ -257,6 +262,63 @@ These remain source-specific until independent systems force the same abstractio
 PSF1, GSF, USF, 2SF, and NCSF share an xSF envelope/dependency mechanism here, but their effective objects remain platform-specific executable or memory objects. A reconstructed effective object is not automatically an understood driver, sequence, part structure, or musical interpretation.
 
 The common execution substrate lives in `model/`. Source-specific work lives under `components/` and retains its own timing, device, driver, and provenance semantics.
+
+## Driver and toolchain ancestry
+
+Accurate chip playback is not the top of the causal graph. On systems such as the Mega Drive/Genesis, very different software worlds can converge on the same YM2612 + SN76489 + DAC hardware.
+
+Retro VGM Compiler therefore treats the authoring and driver cloud as first-class evidence:
+
+```text
+authored source / MML / tracker / ASM
+        ↓
+compiler / assembler / conversion tool
+        ↓
+driver dialect + revision
+        ↓
+logical tracks / envelopes / articulation / control flow
+        ↓
+channel arbitration / PCM ownership / timing
+        ↓
+chip writes
+```
+
+Driver identity is not a decorative label. Revision can change command meaning, pointer interpretation, note/rest continuation, timing arithmetic, modulation behavior, envelope arithmetic, pitch tables, instrument layout, and DAC playback timing.
+
+Recent SMPS research-pack inspection strengthened this with concrete differential evidence across pre-SMPS, 68k SMPS, Z80 Type 1/Type 2, Sonic-family revisions, DAC subdrivers, prototypes, 32X branches, and other variants. The transport archives were inspected and deleted; only the useful research conclusions remain.
+
+Particularly important findings include:
+
+- 68k, Ristar-like, and Z80 pointer rules differ;
+- identical command bytes can mean different operations in different SMPS families;
+- tick multiplier behavior differs in how it affects note timeout;
+- note/rest/delay continuation differs between 68k and Z80 semantics;
+- envelope multipliers and modulation algorithms differ across pre-SMPS, 68k, and Z80;
+- FM operator ordering and FM/PSG frequency tables can be dialect-specific;
+- DAC sample rate may be an emergent property of driver loop/timer timing rather than an explicit source field;
+- old extraction tools contain useful structural ideas for finding driver images and pointer tables in ROMs, but their labels must be independently validated.
+
+The strongest future experiment is not merely another disassembly. It is a paired forward/inverse test:
+
+```text
+known source-native sequence + known driver
+→ execute
+→ hide source
+→ observe device-facing trajectory
+→ blind reconstruct upstream semantics
+→ compare with hidden answer key
+```
+
+Every field is scored independently as exact, non-unique, ambiguous, lost, or wrong.
+
+See:
+
+- `research/formats/genesis/genesis-driver-source-ledger.md`
+- `research/formats/genesis/smps-research-pack-harvest.md`
+- `research/formats/genesis-driver-dialect-census.md`
+- `research/formats/genesis-open-driver-anatomy.md`
+- `research/formats/genesis/genesis-authoring-driver-toolchain-quarry.md`
+- `research/formats/genesis/genesis-driver-source-vgm-boundary.md`
 
 ## Real corpus
 
@@ -272,7 +334,7 @@ A source that breaks an assumption is as valuable as one that confirms it.
 
 ## Driver and tracker observatories
 
-Source-available trackers, compilers, engines, and reconstructed drivers expose the semantic layer between symbolic music and hardware writes.
+Source-available trackers, compilers, engines, reconstructed drivers, historical disassemblies, and driver extraction tools expose the semantic layer between symbolic music and hardware writes.
 
 They help establish mechanisms such as:
 
@@ -281,13 +343,25 @@ source note / instrument / effect
 + previous state
 + control flow
 + driver timing
++ dialect / revision
         ↓
 performed device trajectory
 ```
 
 They do not prove that an unrelated commercial soundtrack used the same toolchain. Historical linkage must be established independently.
 
-See `research/validation/game-music-driver-observatories.md`.
+A project-native driver detector should therefore emit evidence and confidence rather than silently mapping a ROM filename to a driver name:
+
+```text
+ROM / executable bytes
+→ structural loader evidence
+→ candidate driver image
+→ code-family evidence
+→ bounded dialect/revision hypothesis
+→ pointer/table recovery
+```
+
+See `research/validation/game-music-driver-observatories.md` and the Genesis driver documents above.
 
 ## Musical understanding
 
@@ -373,7 +447,7 @@ The audible Surround goal is intentionally creative:
 
 > **Make the soundtrack sound as though those real sources had always been mixed for a larger immersive format.**
 
-This does not change source provenance. Native route, timing, identity, effects structure and genuinely authored position remain source facts. Width, rear depth, height, distance and source extent may be modern `DERIVED` presentation choices in Omniphony `FullSphere`.
+This does not change source provenance. Native route, timing, identity, effects structure, and genuinely authored position remain source facts. Width, rear depth, height, distance, and source extent may be modern `DERIVED` presentation choices in Omniphony `FullSphere`.
 
 ```text
 source-native truth
@@ -390,12 +464,31 @@ The compiler does not manufacture 17 speaker-bed lanes. Omniphony does not decid
 
 See `docs/omniphony-realtime-spatial-path.md`.
 
+## Current Genesis execution frontier
+
+The driver/source research does not replace the current empirical execution program.
+
+The immediate Genesis target remains:
+
+```text
+VGZ bytes
+→ pinned/patched libvgm PlayerA + source-aware capture
+→ exact FM1-6 + DAC + PSG1-4 source planes
+→ Genesis realtime musical/Omniphony pipeline
+→ passive ABI 0.4 renderer
+→ block + continuity validators
+→ creator/game/title-blind JSON sidecar
+→ local SHA-driven corpus orchestrator
+```
+
+The frozen real control surface is the 58-file Sonic 3 & Knuckles VGZ set already preregistered for the spatial-governor experiment. Driver archaeology may improve future semantic calibration, but it must not move preregistered thresholds or promote pair-aware presentation controls before the real corpus executes and passes.
+
 ## Relationship to other projects
 
 - **Helix** supplies shared research execution, provenance discipline, and project continuity.
-- **Retro VGM Compiler** owns game-music source, driver, device, performance, analysis, source-native rendering and source evidence.
+- **Retro VGM Compiler** owns game-music source, driver, device, performance, analysis, source-native rendering, and source evidence.
 - **libaural** is the general artificial-hearing research layer.
-- **Omniphony** owns the creative immersive presentation, canonical 8.1.4.4 world, full-sphere render shell and headphone spatial rendering.
+- **Omniphony** owns the creative immersive presentation, canonical 8.1.4.4 world, full-sphere render shell, and headphone spatial rendering.
 
 Chip-specific machinery stays here unless it becomes genuinely general.
 
@@ -419,6 +512,8 @@ Start with:
 - `docs/holistic-musical-understanding.md`
 - `docs/composer-level-understanding.md`
 - `research/README.md`
+- `research/formats/genesis/genesis-driver-source-ledger.md`
+- `research/formats/genesis/smps-research-pack-harvest.md`
 - `research/music/composer-grammar-attribution.md`
 - `docs/musical-execution-model.md`
 - `docs/musical-inference-evidence.md`
@@ -438,7 +533,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Important mechanisms should also be challenged by real corpus controls, negative controls, independent implementations, matched-decoy tests, cross-soundtrack holdouts, and confound interventions.
+Important mechanisms should also be challenged by real corpus controls, negative controls, independent implementations, matched-decoy tests, revision differentials, cross-soundtrack holdouts, and confound interventions.
 
 ## Working rules
 
@@ -450,17 +545,22 @@ Important mechanisms should also be challenged by real corpus controls, negative
 6. All modalities may contribute, but every contribution carries role provenance.
 7. Keep composition, arrangement/programming, driver/toolchain, patch/sample, and realization attribution distinct.
 8. Recover symbolic note/sequence information whenever the source supports it.
-9. Use same-composer cross-soundtrack and cross-platform controls to distinguish creator invariants from project artifacts.
-10. Group related versions and derivative cues so the system cannot win by recognizing the work.
-11. Actively intervene on timbre, patch/sample identity, platform, tempo, transposition, soundtrack-local, and arranger/programmer confounders.
-12. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model distinctions where they exist.
-13. Keep exact, derived, inferred, perceptual, and external claims distinct.
-14. Do not call a physical channel a persistent musical part without evidence.
-15. Do not jump from low-level pitch directly to harmony, creator grammar, or authorship.
-16. A correct composer label without a traceable musical explanation is not sufficient evidence of understanding.
-17. Composer evolution is expected; do not force all works into one static centroid.
-18. Corrections outrank narrative coherence.
-19. Accuracy/reference behavior remains available beneath every enhancement.
-20. Traceability supports understanding but does not substitute for it.
+9. Preserve authoring source, compiled sequence, runtime sequence, transformed runtime, and register capture as distinct artifact roles.
+10. Preserve driver family, dialect/revision, semantic scope, timing domain, and capability state when they affect interpretation.
+11. Never infer command semantics from opcode bytes without the required dialect/scope context.
+12. Treat executable PCM timing as part of the performed object when the driver defines playback rate implicitly.
+13. Use same-composer cross-soundtrack and cross-platform controls to distinguish creator invariants from project artifacts.
+14. Group related versions and derivative cues so the system cannot win by recognizing the work.
+15. Actively intervene on timbre, patch/sample identity, platform, tempo, transposition, soundtrack-local, and arranger/programmer confounders.
+16. Preserve encoded/source, authored, driver, device, sample, acoustic, perceptual, and listener-model distinctions where they exist.
+17. Keep exact, derived, inferred, perceptual, and external claims distinct.
+18. Do not call a physical channel a persistent musical part without evidence.
+19. Do not jump from low-level pitch directly to harmony, creator grammar, or authorship.
+20. A correct composer label without a traceable musical explanation is not sufficient evidence of understanding.
+21. Composer evolution is expected; do not force all works into one static centroid.
+22. Unknown is not unsupported; missing evidence is not negative evidence.
+23. Corrections outrank narrative coherence.
+24. Accuracy/reference behavior remains available beneath every enhancement.
+25. Traceability supports understanding but does not substitute for it.
 
 > **Understand each musical work across its representations, then understand each composer across different soundtracks deeply enough that authorship can emerge as a consequence of the music rather than the production environment.**
