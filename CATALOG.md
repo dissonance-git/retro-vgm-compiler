@@ -44,6 +44,7 @@ Dense shelves have their own `README.md`. Descend there before searching globall
 | current frontier | `docs/retro-vgm-compiler-roadmap.md` |
 | implemented source family | `components/README.md` → family |
 | shared musical semantics | `model/README.md` → exact model header/test |
+| game-music → Omniphony spatial handoff / 8.1.4.4 authority | `docs/omniphony-realtime-spatial-path.md` |
 | existing corpus / soundtrack | `tests/corpus/README.md` → `manifest.json` → set |
 | research program | `research/README.md` → owning trunk/project |
 | existing utility | `tools/README.md` → exact tool |
