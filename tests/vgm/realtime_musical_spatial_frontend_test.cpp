@@ -53,12 +53,16 @@ int main()
     assert(handoff.projected_view().lane_count == 1);
     assert(handoff.projected_view().lanes[0].mono_pcm == low.data());
     assert(handoff.projected_view().lanes[0].evidence.presentation.confidence == 0.0f);
+    assert(frontend.mix_budget().dry_width_scale == 1.0f);
 
     // Learning occurs only after the block completes. The following block can
     // then receive that past-only musical-role memory and project it into the
-    // presentation vocabulary consumed by the realtime spatial DSP.
+    // presentation vocabulary consumed by the realtime spatial DSP. The global
+    // mix budget also moves from neutral using only that completed scene.
     assert(frontend.complete_block(block, sample_rate));
     assert(source_lane.evidence.presentation.confidence == 0.0f); // raw evidence stayed raw
+    assert(frontend.mix_budget().dry_width_scale < 1.0f);
+    assert(frontend.mix_budget().height_scale < 1.0f);
     assert(frontend.prepare_block(block, handoff));
     assert(handoff.lane(0).roles_available);
     assert(handoff.lane(0).roles.foundation.confidence > 0.0f);
@@ -69,8 +73,8 @@ int main()
     assert(std::fabs(handoff.history_seconds() - 0.10) < 1.0e-9);
 
     // No-lookahead regression: two frontends with identical completed history
-    // must prepare identical role and projected presentation state even when
-    // their current PCM differs.
+    // must prepare identical role, mix-budget, and projected presentation state
+    // even when their current PCM differs.
     frontend_type causal_a{};
     frontend_type causal_b{};
     assert(causal_a.complete_block(block, sample_rate));
@@ -84,6 +88,9 @@ int main()
     frontend_type::handoff_storage high_handoff{};
     assert(causal_a.prepare_block(low_block, low_handoff));
     assert(causal_b.prepare_block(high_block, high_handoff));
+    assert(causal_a.mix_budget().dry_width_scale == causal_b.mix_budget().dry_width_scale);
+    assert(causal_a.mix_budget().added_externalization_scale
+        == causal_b.mix_budget().added_externalization_scale);
     assert(low_handoff.lane(0).roles_available);
     assert(high_handoff.lane(0).roles_available);
     assert(low_handoff.lane(0).roles.foundation.score
@@ -176,6 +183,30 @@ int main()
     // The actually heard source did earn memory from the completed block.
     assert(terminal_frontend.prepare_block(terminal_block, handoff));
     assert(handoff.lane(0).roles_available);
+
+    // Source-native shared wet is its own adaptive layer. A wet-dominated scene
+    // keeps the historical return, but future presentation backs off its added
+    // scale and strongly suppresses a second generic externalization layer.
+    frontend_type wet_frontend{};
+    auto wet_lane = make_lane(high.data(), 500);
+    wet_lane.kind = spatial_audio_lane_kind::shared_effect_return;
+    wet_lane.evidence.presentation.diffuse = 1.0f;
+    wet_lane.evidence.presentation.width = 1.0f;
+    wet_lane.evidence.presentation.confidence = 1.0f;
+    const spatial_source_block_view wet_block{&wet_lane, 1, frame_count};
+    frontend_type::handoff_storage wet_handoff{};
+    assert(wet_frontend.prepare_block(wet_block, wet_handoff));
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.diffuse == 1.0f);
+    assert(wet_frontend.complete_block(wet_block, sample_rate));
+    assert(wet_frontend.mix_budget().shared_wet_strength < 1.0f);
+    assert(wet_frontend.mix_budget().shared_wet_extent < 1.0f);
+    assert(wet_frontend.mix_budget().added_externalization_scale < 0.9f);
+    assert(wet_frontend.prepare_block(wet_block, wet_handoff));
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.diffuse < 1.0f);
+    assert(wet_handoff.projected_view().lanes[0].evidence.presentation.width < 1.0f);
+    // The source-native record remains untouched; only the renderer sidecar moves.
+    assert(wet_lane.evidence.presentation.diffuse == 1.0f);
+    assert(wet_lane.evidence.presentation.width == 1.0f);
 
     return 0;
 }
