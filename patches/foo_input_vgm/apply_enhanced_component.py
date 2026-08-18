@@ -40,6 +40,7 @@ def main() -> int:
     # exact primary-YM2151 MAME lanes at the host clock for validation and later
     # family-local admission without making Nuked-OPM a source-quality choice yet.
     run(here / "apply_ym2151_reference_capture.py", source)
+    run(here / "apply_ym2151_reference_startup_fix.py", source)
     run(here / "apply_source_aware_shadow_include.py", source)
     # Install the source-bank observer while the base seek/decode anchors are
     # still intact. Later deferred FM/PSG patches extend those same lifecycle
