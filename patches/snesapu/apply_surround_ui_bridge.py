@@ -65,7 +65,7 @@ def main() -> int:
         """    CONTROL         "Spatial",IDC_SEM71_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,60,15
     CONTROL         "enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,240,65,70,15
 """,
-        """    CONTROL         "Enable \"surround\" sound",IDC_DSP_SURROUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,145,15
+        """    CONTROL         "Surround",IDC_DSP_SURROUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,145,15
     CONTROL         "enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,143,70,15
 """,
         "restore SNES Surround UI slot",
