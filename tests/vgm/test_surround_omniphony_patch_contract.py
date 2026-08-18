@@ -66,6 +66,11 @@ class VgmSurroundOmniphonyPatchContractTest(unittest.TestCase):
         self.assertIn("disable legacy VGM surround inversion", bridge)
         self.assertNotIn("pa_cfg.chnInvert = cfg_surround_sound ? 0x02 : 0x00;\n\tpa_cfg.chnInvert", bridge)
 
+    def test_surround_opens_the_immersive_omniphony_presentation(self) -> None:
+        runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
+        self.assertIn("omniphony_source_spatial_full_sphere", runtime)
+        self.assertIn("config.externalization = 1u;", runtime)
+
     def test_master_patch_orders_source_selection_before_surround_bridge(self) -> None:
         master = self.read(PATCHES / "apply_enhanced_component.py")
         runtime = 'run(here / "apply_spatial_omniphony_runtime.py", source)'
