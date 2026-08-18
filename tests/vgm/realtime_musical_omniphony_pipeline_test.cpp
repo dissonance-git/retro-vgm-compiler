@@ -123,6 +123,7 @@ int main()
     assert(!failed.rendered);
     assert(!failed.learned);
     assert(failed.renderer_status == -9);
+    assert(failed.governor_trace_index == 0);
     assert(pipeline.frontend().tracker().stream_seconds() == 0.0);
     assert(renderer.observed_foundation == 0.0f);
     assert(renderer.observed_budget.depth_scale == 1.0f);
@@ -146,12 +147,15 @@ int main()
     assert(first.rendered);
     assert(first.learned);
     assert(first.renderer_status == 0);
+    assert(first.governor_trace_index == 1);
     assert(renderer.observed_foundation == 0.0f);
     assert(renderer.observed_budget.depth_scale == 1.0f);
     assert(std::fabs(pipeline.frontend().tracker().stream_seconds() - 0.10) < 1.0e-9);
 
+    const auto first_trace = pipeline.last_governor_trace();
+    assert(first_trace.sequence_index == first.governor_trace_index);
     const auto first_trace_validation =
-        validate_realtime_spatial_governor_trace(pipeline.last_governor_trace());
+        validate_realtime_spatial_governor_trace(first_trace);
     assert(first_trace_validation.valid);
     assert(first_trace_validation.error == realtime_spatial_governor_trace_error::none);
     assert(first_trace_validation.observed_lane_count == 1);
@@ -175,6 +179,7 @@ int main()
         96);
     assert(second.rendered);
     assert(second.learned);
+    assert(second.governor_trace_index == 2);
     assert(renderer.observed_foundation > 0.0f);
     assert(renderer.observed_budget.depth_scale == learned_budget.depth_scale);
     assert(renderer.observed_budget.height_scale == learned_budget.height_scale);
@@ -184,8 +189,30 @@ int main()
     assert(renderer.calls == 3);
     assert(renderer.budget_calls == 3);
 
+    const auto second_trace = pipeline.last_governor_trace();
+    assert(second_trace.sequence_index == second.governor_trace_index);
+    const auto continuity = validate_realtime_spatial_governor_trace_continuity(
+        first_trace,
+        second_trace);
+    assert(continuity.valid);
+    assert(continuity.error == realtime_spatial_governor_trace_error::none);
+
+    auto bad_sequence_budget = second_trace;
+    bad_sequence_budget.applied_budget.depth_scale = 1.0f;
+    bad_sequence_budget.renderer_budget =
+        make_omniphony_source_mix_budget(bad_sequence_budget.applied_budget);
+    const auto bad_sequence_budget_continuity =
+        validate_realtime_spatial_governor_trace_continuity(
+            first_trace,
+            bad_sequence_budget);
+    assert(!bad_sequence_budget_continuity.valid);
+    assert(bad_sequence_budget_continuity.error
+        == realtime_spatial_governor_trace_error::sequence_budget_mismatch);
+
     // A seek/track reset clears both musical-memory and renderer budget state.
-    // The first block after reset must again be history-free and neutral.
+    // The first block after reset must again be history-free and neutral, and a
+    // fresh trace timeline starts at transaction 1 rather than pretending to be
+    // contiguous with the track that ended above.
     assert(pipeline.reset());
     assert(renderer.resets == 1);
     assert(pipeline.frontend().tracker().stream_seconds() == 0.0);
@@ -201,6 +228,8 @@ int main()
         96);
     assert(after_reset.rendered);
     assert(after_reset.learned);
+    assert(after_reset.governor_trace_index == 1);
+    assert(pipeline.last_governor_trace().sequence_index == 1);
     assert(renderer.observed_foundation == 0.0f);
     assert(renderer.observed_budget.depth_scale == 1.0f);
 
@@ -210,6 +239,7 @@ int main()
     // be able to admit before any pair-aware renderer control is allowed.
     realtime_spatial_governor_trace<4> synthetic{};
     synthetic.valid = true;
+    synthetic.sequence_index = 1;
     synthetic.lane_count = 4;
     synthetic.frame_count = frames;
     synthetic.sample_rate = sample_rate;
@@ -269,6 +299,13 @@ int main()
 
     // Corruptions are classified, not hand-waved. This makes the same validator
     // usable as an admission gate for future Sonic 3 and SPC corpus traces.
+    auto bad_sequence = synthetic;
+    bad_sequence.sequence_index = 0;
+    const auto bad_sequence_validation = validate_realtime_spatial_governor_trace(bad_sequence);
+    assert(!bad_sequence_validation.valid);
+    assert(bad_sequence_validation.error
+        == realtime_spatial_governor_trace_error::invalid_sequence);
+
     auto bad_renderer = synthetic;
     bad_renderer.renderer_budget.depth_scale = 0.5f;
     const auto bad_renderer_validation =
