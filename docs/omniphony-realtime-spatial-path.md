@@ -199,7 +199,7 @@ NativeRouting or FullSphere
         ↓
 22-DIRECTION RENDER SHELL
         ↓
-BINAURAL
+CASCADED BINAURAL IN FULLSPHERE
 ```
 
 The ownership rule is:
@@ -268,13 +268,16 @@ NativeRouting
 → recovered real source objects
 → native laterality + source identity
 → no creative rear / elevation / extra depth
+→ direct binaural control
 
 FullSphere
 → same recovered real source objects
 → preserve authored route / position constraints
 → stable identity-aware creative placement
 → adaptive width + rear depth + height + distance + extent
-→ 8.1.4.4 world → 22-direction shell → binaural
+→ 8.1.4.4 world
+→ exact embedded 22-direction System-H-derived shell
+→ cascaded binaural
 ```
 
 `FullSphere` is a production mode, not an evidence-confidence threshold.
@@ -344,7 +347,7 @@ shared echo rear bias
 shared echo elevation
 shared echo radial depth
 shared echo presentation strength
-shared echo eventual audible extent
+shared echo audible shell extent
 Omniphony added externalization room
 ```
 
@@ -358,6 +361,8 @@ historical S-DSP echo
 A soundtrack with a strong, characteristic S-DSP echo field can use that field as much of its immersive glue and ask for less generic added room. A dry SPC can do the opposite.
 
 The source record itself remains untouched. `diffuse=1,width=1` on the recovered wet field can remain a statement about what kind of source lane it is; the adaptive amount applied to that field lives separately in the ABI 0.4 scene budget.
+
+In FullSphere, changing shared-wet extent does not need to move the field center. The same post-EVOL echo can occupy more or less of the 22-direction shell while rear bias, elevation and radial target stay fixed. That gives the S-DSP return a real spatial-layer control instead of treating it as an extra pair of point sources.
 
 ## Device-family authority examples
 
@@ -440,24 +445,24 @@ The common lesson is useful here: localization, width/extent, direct/reverberant
 
 ## Immersive source extent
 
-Source width/extent is a valid production dimension, but the implementation is not complete merely because `SourcePresentation.size` exists.
+Source width/extent is now an audible FullSphere production dimension rather than metadata waiting for a future direct-binaural widening stage.
 
-The active Omniphony direct-binaural path currently consumes object world position and gain but does not yet convert object `size` into a physical binaural spread mechanism.
-
-Therefore:
+The implemented path is:
 
 ```text
-azimuth / rear placement / elevation / radial depth
-→ audible today
-
-size metadata
-→ carried today
-
-true direct-binaural apparent source extent
-→ still an implementation frontier
+SourcePresentation.size [width, depth, height]
+→ SpatialChannelEvent.size
+→ size-aware VBAP over Omniphony's embedded 22-direction shell
+→ fixed virtual-speaker field
+→ cascaded binaural HRTF / ITD
+→ headphones
 ```
 
-A future implementation should preserve a stable localizable center while widening the apparent event, likely with bounded multi-direction HRTF rendering or a fidelity-constrained decorrelation/covariance technique. It must not sacrifice transient impact or introduce obvious combing/colouration merely to make the source wider.
+The precomputed FullSphere evaluator forces at least four object-size intervals, yielding five spread states at `0, .25, .5, .75, 1`, with interpolation between them. A finer user setting is retained. This prevents the precomputed source path from silently freezing every object at the build-time point-source size.
+
+`NativeRouting` remains the direct-binaural control and deliberately closes creative source extent. A future direct-HRTF extended-source algorithm using covariance matching, decorrelation or bounded multi-point rendering remains worth comparing, but it is not required for FullSphere extent to be audible anymore.
+
+The fidelity law still applies: do not buy width by smearing transients, destroying tonal identity or turning every source into diffuse ambience. Foundation and strong foreground objects should remain more compact; shared wet fields may legitimately occupy much more of the shell.
 
 ## Temporal stability and confidence
 
@@ -619,6 +624,12 @@ NativeRouting disables creative rear / height / extra depth
 IMMERSIVE EXPANSION
 FullSphere gives neutral real sources deterministic larger width/depth/height
 
+FULLSPHERE SHELL
+FullSphere uses the exact embedded 22-direction System-H-derived shell before binauralisation
+
+EXTENT AUDIBILITY
+source `size` changes FullSphere headphone audio without moving the chosen source center
+
 SOUNDTRACK ADAPTATION
 same aesthetic target can spend spatial capacity differently by completed scene structure
 
@@ -640,6 +651,9 @@ one shared return never becomes N fabricated wet stems
 SPC ECHO LAYER
 post-EVOL L/R stay linked components of one historical shared field
 
+SPC ECHO EXTENT
+shared-wet extent can change the headphone field without moving its center
+
 ROOM COMPETITION
 source-native wet can reduce added Omniphony externalization without changing source evidence
 
@@ -657,9 +671,6 @@ whole-chip fidelity does not imply independent additive stems
 
 REFERENCE PROTECTION
 the protected reference control remains available
-
-EXTENT AUDIBILITY
-source `size` must reach an actual binaural extent/spread mechanism before extent is called implemented
 ```
 
 Useful adversarial fixtures include Genesis PSG versus Game Gear PSG, YM2612 exact pan events, YM2151 channel-vs-operator boundaries, SNES dry voices plus linked shared wet L/R, dry versus echo-heavy SPC, source-lane reuse by unrelated musical parts and the same source scene rendered at several block sizes.
@@ -674,8 +685,8 @@ source-native truth
 → ABI 0.4 exact timed transport + scene control
 → Omniphony NativeRouting / FullSphere
 → 8.1.4.4 world + dynamic objects
-→ 22-direction shell
-→ binaural DSP
+→ size-aware 22-direction shell in FullSphere
+→ cascaded binaural DSP
 ```
 
 Format/source-extraction coverage remains upstream work. A format without trustworthy causal source audio cannot be promoted by guessing stems.
@@ -690,4 +701,4 @@ code compiles / tests pass
 != physical listening quality improved
 ```
 
-The transport, timing, identity, reset, source-authority and adaptive-budget mechanisms are now represented in code. Creative mix tuning, direct-binaural source extent, coordinated ensemble placement and physical listening across a broad soundtrack corpus remain empirical work.
+The transport, timing, identity, reset, source-authority, adaptive-budget and FullSphere shell-extent mechanisms are now represented in code. Creative mix tuning, coordinated ensemble placement and physical listening across a broad soundtrack corpus remain empirical work. A direct-HRTF extended-source renderer remains a research comparison path rather than a prerequisite for the product FullSphere path.
