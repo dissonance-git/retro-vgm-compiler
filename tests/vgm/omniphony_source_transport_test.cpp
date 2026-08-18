@@ -97,15 +97,14 @@ int main()
     assert(wet.diffuse == 1.0f);
     assert(wet.width == 0.65f);
 
-    const realtime_spatial_mix_budget scene_budget{
-        .dry_width_scale = 0.75f,
-        .dry_diffuse_scale = 0.8f,
-        .depth_scale = 0.7f,
-        .height_scale = 0.6f,
-        .shared_wet_strength = 0.9f,
-        .shared_wet_extent = 0.65f,
-        .added_externalization_scale = 0.4f,
-    };
+    realtime_spatial_mix_budget scene_budget{};
+    scene_budget.dry_width_scale = 0.75f;
+    scene_budget.dry_diffuse_scale = 0.8f;
+    scene_budget.depth_scale = 0.7f;
+    scene_budget.height_scale = 0.6f;
+    scene_budget.shared_wet_strength = 0.9f;
+    scene_budget.shared_wet_extent = 0.65f;
+    scene_budget.added_externalization_scale = 0.4f;
     const auto abi_budget = make_omniphony_source_mix_budget(scene_budget);
     assert(abi_budget.depth_scale == scene_budget.depth_scale);
     assert(abi_budget.height_scale == scene_budget.height_scale);
