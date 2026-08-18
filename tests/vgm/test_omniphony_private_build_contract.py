@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import unittest
+import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / "tools" / "build_private_foobar_components.ps1"
 RUNTIME_VERIFIER = ROOT / "tools" / "verify_omniphony_runtime_abi.py"
 PACKAGE_VERIFIER = ROOT / "tools" / "verify_private_component_packages.py"
+VGM_BOOTSTRAP = ROOT / "imports" / "foo_input_vgm-0.31.zip"
 EXPECTED_OMNIPHONY_COMMIT = "819668d1366710d663ae9c810edbcf9b7e923e19"
 RETIRED_INCOMPATIBLE_COMMIT = "0fabccb165e6d957cefecc6eeb1264467e7406a4"
+EXPECTED_VGM_BOOTSTRAP_VERSION = "0.31"
+EXPECTED_VGM_BOOTSTRAP_FILES = 41
+EXPECTED_VGM_BOOTSTRAP_TREE_SHA256 = (
+    "36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc"
+)
 
 
 def load_module(path: Path, name: str):
@@ -23,6 +31,36 @@ def load_module(path: Path, name: str):
     return module
 
 
+def vgm_bootstrap_source_identity(path: Path) -> tuple[int, str, str]:
+    with zipfile.ZipFile(path) as archive:
+        names = [name for name in archive.namelist() if not name.endswith("/")]
+        markers = [
+            name
+            for name in names
+            if name.endswith("foo_input_vgm/src/my_component_client.cpp")
+        ]
+        if len(markers) != 1:
+            raise AssertionError(
+                "foo_input_vgm bootstrap must contain exactly one component version marker: "
+                f"{markers}"
+            )
+        marker = PurePosixPath(markers[0])
+        root = marker.parents[1].as_posix().rstrip("/") + "/"
+        entries: list[tuple[str, str]] = []
+        for name in sorted(candidate for candidate in names if candidate.startswith(root)):
+            relative = name[len(root) :]
+            if not relative:
+                continue
+            digest = hashlib.sha256(archive.read(name)).hexdigest()
+            entries.append((relative, digest))
+        manifest = "".join(
+            f"{digest}  {relative}\n" for relative, digest in entries
+        ).encode("utf-8")
+        tree_sha256 = hashlib.sha256(manifest).hexdigest()
+        version_text = archive.read(markers[0]).decode("utf-8-sig")
+    return len(entries), tree_sha256, version_text
+
+
 class OmniphonyPrivateBuildContractTest(unittest.TestCase):
     def test_private_build_pins_the_source_renderer_contract_used_by_clients(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
@@ -31,6 +69,13 @@ class OmniphonyPrivateBuildContractTest(unittest.TestCase):
         assert match is not None
         self.assertEqual(match.group(1), EXPECTED_OMNIPHONY_COMMIT)
         self.assertNotIn(RETIRED_INCOMPATIBLE_COMMIT, text)
+
+    def test_vgm_bootstrap_is_exact_supplied_031_source_tree(self) -> None:
+        self.assertTrue(VGM_BOOTSTRAP.is_file(), VGM_BOOTSTRAP)
+        file_count, tree_sha256, version_text = vgm_bootstrap_source_identity(VGM_BOOTSTRAP)
+        self.assertEqual(file_count, EXPECTED_VGM_BOOTSTRAP_FILES)
+        self.assertEqual(tree_sha256, EXPECTED_VGM_BOOTSTRAP_TREE_SHA256)
+        self.assertIn(f'"{EXPECTED_VGM_BOOTSTRAP_VERSION}"', version_text)
 
     def test_build_executes_runtime_contract_verifier_before_packaging(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
