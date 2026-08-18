@@ -1,0 +1,51 @@
+name: Run exact VGM 0.31 promotion now
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/vgm031-promote-now.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Reconstruct and patch
+        shell: bash
+        run: |
+          set -o pipefail
+          python .bootstrap-transfer/promote_vgm031.py 2>&1 | tee /tmp/vgm031-promote.log
+
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/materialize_foo_input_vgm.py
+          python -B -m unittest tests.vgm.test_omniphony_private_build_contract
+          python -B -m unittest discover -s tests/vgm -p 'test_*.py'
+          git diff --check
+
+      - name: Publish exact bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "dissonance"
+          git config user.email "ustreamusa@aim.com"
+          git rm -r .bootstrap-transfer
+          git rm -f .github/workflows/vgm031-bootstrap-repair.yml
+          git rm -f .github/workflows/vgm031-bootstrap-promote.yml
+          git rm -f .github/workflows/vgm031-promote-now.yml
+          git add imports/foo_input_vgm-0.31.zip \
+                  tools/build_private_foobar_components.ps1 \
+                  tools/materialize_foo_input_vgm.py \
+                  imports/MANIFEST.md
+          git diff --cached --check
+          git commit -m "build: promote verified foo_input_vgm 0.31 bootstrap"
+          git push origin HEAD:main
