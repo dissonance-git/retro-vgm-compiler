@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Apply pinned SPC runtime, ordering, and native spatial observer hooks.
+"""Apply pinned SPC runtime, ordering, route, and native-source hooks.
 
 The upstream SPC_MORE_ACCURACY switch changes more than host callback ordering,
 including a probabilistic timer-glitch model. The forensic build does not enable
 that broad switch. This coordinator applies the existing runtime evidence hooks,
-one exact-sentinel MEM_ACCESS ordering branch, and the read-only ten-plane native
-spatial observer used by the governor experiment.
+one exact-sentinel MEM_ACCESS ordering branch, exact live VOLL/VOLR/EON state
+observations, and the read-only ten-plane native spatial observer used by the
+governor experiment.
 """
 
 from __future__ import annotations
@@ -26,6 +27,19 @@ if SPEC is None or SPEC.loader is None:
 strict = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = strict
 SPEC.loader.exec_module(strict)
+
+SPATIAL_REGISTER_PATH = Path(__file__).with_name(
+    "patch_snes_spc_spatial_register_observer.py"
+)
+SPATIAL_REGISTER_SPEC = importlib.util.spec_from_file_location(
+    "patch_snes_spc_spatial_register_observer_forensic",
+    SPATIAL_REGISTER_PATH,
+)
+if SPATIAL_REGISTER_SPEC is None or SPATIAL_REGISTER_SPEC.loader is None:
+    raise RuntimeError(f"could not load {SPATIAL_REGISTER_PATH}")
+spatial_register = importlib.util.module_from_spec(SPATIAL_REGISTER_SPEC)
+sys.modules[SPATIAL_REGISTER_SPEC.name] = spatial_register
+SPATIAL_REGISTER_SPEC.loader.exec_module(spatial_register)
 
 NATIVE_SPATIAL_PATH = Path(__file__).with_name(
     "patch_snes_spc_native_spatial_observer.py"
@@ -93,6 +107,9 @@ def main() -> None:
         ORDERING_NEW,
         "forensic MEM_ACCESS DSP synchronization",
     )
+
+    # Observe exact live route/effect-send register state after real DSP writes.
+    spatial_register.patch(root)
 
     # Finally expose read-only dry/wet source amplitudes from the same pinned
     # accurate DSP. The observer patch is independently exact-sentinel guarded.
