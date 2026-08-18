@@ -1,4 +1,5 @@
 #include "../../model/realtime_musical_omniphony_pipeline.h"
+#include "../../model/realtime_spatial_governor_trace_validation.h"
 
 #include <array>
 #include <cassert>
@@ -141,12 +142,21 @@ int main()
         0,
         96);
     assert(first.prepared);
+    assert(first.budget_committed);
     assert(first.rendered);
     assert(first.learned);
     assert(first.renderer_status == 0);
     assert(renderer.observed_foundation == 0.0f);
     assert(renderer.observed_budget.depth_scale == 1.0f);
     assert(std::fabs(pipeline.frontend().tracker().stream_seconds() - 0.10) < 1.0e-9);
+
+    const auto first_trace_validation =
+        validate_realtime_spatial_governor_trace(pipeline.last_governor_trace());
+    assert(first_trace_validation.valid);
+    assert(first_trace_validation.error == realtime_spatial_governor_trace_error::none);
+    assert(first_trace_validation.observed_lane_count == 1);
+    assert(first_trace_validation.active_dry_pair_count == 0);
+    assert(first_trace_validation.reconstructed_coarse_spectral_overlap == 0.0f);
 
     // The next block can use the completed first block as past-only musical and
     // scene evidence. This is the causal adaptive DSP path, not a soundtrack
@@ -193,6 +203,100 @@ int main()
     assert(after_reset.learned);
     assert(renderer.observed_foundation == 0.0f);
     assert(renderer.observed_budget.depth_scale == 1.0f);
+
+    // Build a source-family-blind four-lane trace with three dry sources and one
+    // shared wet field. Dry 0/1 occupy nearly the same broad spectrum while dry
+    // 2 lives elsewhere. This is the geometry the real-corpus observatory must
+    // be able to admit before any pair-aware renderer control is allowed.
+    realtime_spatial_governor_trace<4> synthetic{};
+    synthetic.valid = true;
+    synthetic.lane_count = 4;
+    synthetic.frame_count = frames;
+    synthetic.sample_rate = sample_rate;
+    synthetic.absolute_sample_position = 64000;
+    synthetic.active_threshold = 0.15f;
+    synthetic.applied_budget = {};
+    synthetic.renderer_budget = make_omniphony_source_mix_budget(synthetic.applied_budget);
+    synthetic.learned_budget = {};
+    synthetic.scene.audio_observed = true;
+    synthetic.scene.observed_lane_count = 4;
+    synthetic.scene.active_lane_count = 4;
+    synthetic.scene.energy_concentration = 0.26f;
+    synthetic.scene.shared_effect_energy_share = 0.20f;
+
+    synthetic.sources[0].audio_observed = true;
+    synthetic.sources[0].source_id = 100;
+    synthetic.sources[0].generation = 1;
+    synthetic.sources[0].lane_kind = spatial_audio_lane_kind::dry_source;
+    synthetic.sources[0].activity = 0.8f;
+    synthetic.sources[0].relative_energy = 0.30f;
+    synthetic.sources[0].coarse_band_energy_share = {0.80f, 0.15f, 0.05f};
+
+    synthetic.sources[1] = synthetic.sources[0];
+    synthetic.sources[1].source_id = 101;
+    synthetic.sources[1].coarse_band_energy_share = {0.75f, 0.20f, 0.05f};
+
+    synthetic.sources[2] = synthetic.sources[0];
+    synthetic.sources[2].source_id = 102;
+    synthetic.sources[2].relative_energy = 0.20f;
+    synthetic.sources[2].coarse_band_energy_share = {0.05f, 0.10f, 0.85f};
+
+    synthetic.sources[3] = synthetic.sources[0];
+    synthetic.sources[3].source_id = 103;
+    synthetic.sources[3].lane_kind = spatial_audio_lane_kind::shared_effect_return;
+    synthetic.sources[3].relative_energy = 0.20f;
+    synthetic.sources[3].coarse_band_energy_share = {0.80f, 0.15f, 0.05f};
+
+    realtime_spatial_overlap_pair_observation close_pair{};
+    realtime_spatial_overlap_pair_observation far_pair{};
+    assert(synthetic.pair(0, 1, close_pair));
+    assert(synthetic.pair(0, 2, far_pair));
+    assert(close_pair.coarse_spectral_overlap > 0.90f);
+    assert(far_pair.coarse_spectral_overlap < 0.30f);
+    realtime_spatial_overlap_pair_observation wet_pair{};
+    assert(!synthetic.pair(0, 3, wet_pair));
+    synthetic.scene.coarse_spectral_overlap =
+        synthetic.reconstructed_coarse_spectral_overlap();
+
+    const auto synthetic_validation = validate_realtime_spatial_governor_trace(synthetic);
+    assert(synthetic_validation.valid);
+    assert(synthetic_validation.active_dry_pair_count == 3);
+    assert(synthetic_validation.strongest_pair_overlap > 0.90f);
+    assert(std::fabs(
+        synthetic_validation.reconstructed_shared_effect_energy_share - 0.20f) < 1.0e-5f);
+    assert(std::fabs(
+        synthetic_validation.reconstructed_energy_concentration - 0.26f) < 1.0e-5f);
+
+    // Corruptions are classified, not hand-waved. This makes the same validator
+    // usable as an admission gate for future Sonic 3 and SPC corpus traces.
+    auto bad_renderer = synthetic;
+    bad_renderer.renderer_budget.depth_scale = 0.5f;
+    const auto bad_renderer_validation =
+        validate_realtime_spatial_governor_trace(bad_renderer);
+    assert(!bad_renderer_validation.valid);
+    assert(bad_renderer_validation.error
+        == realtime_spatial_governor_trace_error::renderer_budget_mismatch);
+
+    auto bad_pair = synthetic;
+    bad_pair.scene.coarse_spectral_overlap = 0.0f;
+    const auto bad_pair_validation = validate_realtime_spatial_governor_trace(bad_pair);
+    assert(!bad_pair_validation.valid);
+    assert(bad_pair_validation.error
+        == realtime_spatial_governor_trace_error::pair_overlap_mismatch);
+
+    auto bad_count = synthetic;
+    bad_count.scene.active_lane_count = 3;
+    const auto bad_count_validation = validate_realtime_spatial_governor_trace(bad_count);
+    assert(!bad_count_validation.valid);
+    assert(bad_count_validation.error
+        == realtime_spatial_governor_trace_error::scene_count_mismatch);
+
+    auto bad_wet = synthetic;
+    bad_wet.scene.shared_effect_energy_share = 0.90f;
+    const auto bad_wet_validation = validate_realtime_spatial_governor_trace(bad_wet);
+    assert(!bad_wet_validation.valid);
+    assert(bad_wet_validation.error
+        == realtime_spatial_governor_trace_error::scene_energy_mismatch);
 
     return 0;
 }
