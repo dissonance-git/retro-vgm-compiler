@@ -1,4 +1,5 @@
 #include "../../model/realtime_musical_spatial_observer.h"
+#include "../../model/realtime_spatial_mix_budget.h"
 
 #include <array>
 #include <cassert>
@@ -93,6 +94,26 @@ int main()
     assert(similar_observer.process(similar_block, sample_rate));
     assert(similar_observer.scene().coarse_spectral_overlap > 0.90f);
     assert(similar_observer.scene().coarse_spectral_overlap > disjoint_overlap + 0.60f);
+
+    // The adaptive mix may react to this proxy only as crowding pressure. With
+    // every other scene statistic held constant, more overlap must not make dry
+    // objects or the shared field hazier. Global depth/height capacity remains
+    // unchanged until a future explicit masking-aware separation control exists.
+    auto clear_scene = similar_observer.scene();
+    clear_scene.coarse_spectral_overlap = 0.0f;
+    auto crowded_scene = clear_scene;
+    crowded_scene.coarse_spectral_overlap = 1.0f;
+    const auto clear_budget =
+        vgmtooling::model::target_realtime_spatial_mix_budget(clear_scene);
+    const auto crowded_budget =
+        vgmtooling::model::target_realtime_spatial_mix_budget(crowded_scene);
+    assert(crowded_budget.dry_width_scale < clear_budget.dry_width_scale);
+    assert(crowded_budget.dry_diffuse_scale < clear_budget.dry_diffuse_scale);
+    assert(crowded_budget.shared_wet_strength < clear_budget.shared_wet_strength);
+    assert(crowded_budget.shared_wet_extent < clear_budget.shared_wet_extent);
+    assert(crowded_budget.added_externalization_scale < clear_budget.added_externalization_scale);
+    assert(crowded_budget.depth_scale == clear_budget.depth_scale);
+    assert(crowded_budget.height_scale == clear_budget.height_scale);
 
     // Equal-amplitude equal-duration sources should divide observed energy
     // evenly, producing a concentration near 0.5 rather than inventing width.
