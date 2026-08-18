@@ -40,13 +40,17 @@ def main() -> int:
     # exact primary-YM2151 MAME lanes at the host clock for validation and later
     # family-local admission without making Nuked-OPM a source-quality choice yet.
     run(here / "apply_ym2151_reference_capture.py", source)
-    run(here / "apply_ym2151_reference_startup_fix.py", source)
     run(here / "apply_source_aware_shadow_include.py", source)
     # Install the source-bank observer while the base seek/decode anchors are
     # still intact. Later deferred FM/PSG patches extend those same lifecycle
     # seams, while the final DAC mix patch composes their resulting frame.
     run(here / "apply_enhanced_dac_stream_observer.py", source)
+    # OPM and Genesis HQ-FM touch two shared SourceAwareVGMPlayer syntactic
+    # anchors. Normalize only those shapes, let the existing guarded HQ patch
+    # apply unchanged, then restore OPM startup/overflow handling afterward.
+    run(here / "apply_ym2151_hq_fm_compat.py", source)
     run(here / "apply_hq_nuked_fm_lift.py", source)
+    run(here / "apply_ym2151_reference_startup_fix.py", source)
     # Legacy filenames below are all part of the one enhanced option.
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
