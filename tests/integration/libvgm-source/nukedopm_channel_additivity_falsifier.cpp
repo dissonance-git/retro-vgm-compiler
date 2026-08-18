@@ -128,16 +128,6 @@ void program_hot_algorithm7_patch(Instances& instances) {
 int main() {
     try {
         nuked_opm_instance full(0x00u);
-        std::array<nuked_opm_instance*, kChannels + 1u> all{};
-        all[0] = &full;
-
-        std::array<nuked_opm_instance*, kChannels> solo_ptrs{};
-        std::array<nuked_opm_instance, kChannels>* impossible_stack_array = nullptr;
-        (void)impossible_stack_array;
-
-        // std::array cannot directly construct eight instances with different mute
-        // masks, so keep explicit ownership in a small fixed pointer/unique object
-        // pattern without introducing heap behavior into the comparison itself.
         nuked_opm_instance solo0(0xFEu);
         nuked_opm_instance solo1(0xFDu);
         nuked_opm_instance solo2(0xFBu);
@@ -146,9 +136,11 @@ int main() {
         nuked_opm_instance solo5(0xDFu);
         nuked_opm_instance solo6(0xBFu);
         nuked_opm_instance solo7(0x7Fu);
-        solo_ptrs = {&solo0, &solo1, &solo2, &solo3, &solo4, &solo5, &solo6, &solo7};
-        for (std::size_t channel = 0; channel < kChannels; ++channel)
-            all[channel + 1u] = solo_ptrs[channel];
+
+        std::array<nuked_opm_instance*, kChannels> solo_ptrs{
+            &solo0, &solo1, &solo2, &solo3, &solo4, &solo5, &solo6, &solo7};
+        std::array<nuked_opm_instance*, kChannels + 1u> all{
+            &full, &solo0, &solo1, &solo2, &solo3, &solo4, &solo5, &solo6, &solo7};
 
         program_hot_algorithm7_patch(all);
 
