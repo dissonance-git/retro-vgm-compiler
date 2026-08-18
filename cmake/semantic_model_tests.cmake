@@ -14,6 +14,9 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     realization_role_deployment_test
     cross_realization_part_correspondence_test
     genesis_psg_analysis_features_test
+    execution_semantic_provenance_test
+    execution_semantic_dialect_test
+    execution_semantic_scope_test
 )
 
 add_executable(
@@ -48,6 +51,18 @@ add_executable(
     genesis_psg_analysis_features_test
     tests/vgm/genesis_psg_analysis_features_test.cpp
 )
+add_executable(
+    execution_semantic_provenance_test
+    tests/model/execution_semantic_provenance_test.cpp
+)
+add_executable(
+    execution_semantic_dialect_test
+    tests/model/execution_semantic_dialect_test.cpp
+)
+add_executable(
+    execution_semantic_scope_test
+    tests/model/execution_semantic_scope_test.cpp
+)
 
 target_include_directories(
     tonal_region_evidence_adapter_test
@@ -79,6 +94,18 @@ target_include_directories(
 )
 target_include_directories(
     genesis_psg_analysis_features_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    execution_semantic_provenance_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    execution_semantic_dialect_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    execution_semantic_scope_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -113,6 +140,18 @@ add_test(
 add_test(
     NAME genesis_psg_analysis_features
     COMMAND genesis_psg_analysis_features_test
+)
+add_test(
+    NAME execution_semantic_provenance
+    COMMAND execution_semantic_provenance_test
+)
+add_test(
+    NAME execution_semantic_dialect
+    COMMAND execution_semantic_dialect_test
+)
+add_test(
+    NAME execution_semantic_scope
+    COMMAND execution_semantic_scope_test
 )
 
 add_test(
