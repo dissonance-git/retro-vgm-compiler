@@ -7,6 +7,11 @@ on:
         description: Controlled execution seconds per SPC fixture
         required: true
         default: "5"
+      run_spatial_governor_corpus:
+        description: Run frozen 176-file 24-second spatial governor experiment
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -54,6 +59,21 @@ jobs:
 
       - name: Phase-accurate DSP bridge regression
         run: ctest --test-dir build-spc-forensic --output-on-failure
+
+      - name: Run frozen creator-blind SPC spatial governor corpus
+        if: ${{ inputs.run_spatial_governor_corpus }}
+        run: |
+          python3 -B tools/spc/run_spatial_governor_corpus.py \
+            --runner build-spc-forensic/spc_spatial_governor_trace \
+            --output-dir spc-spatial-governor-corpus
+
+      - name: Upload frozen SPC spatial governor evidence
+        if: ${{ inputs.run_spatial_governor_corpus }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spc-spatial-governor-corpus-001
+          path: spc-spatial-governor-corpus/
+          if-no-files-found: error
 
       - name: Capture and freeze creator-blind four-world panel
         env:
