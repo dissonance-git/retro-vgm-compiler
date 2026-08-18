@@ -20,6 +20,7 @@ TEXT_SUFFIXES = {".c", ".cc", ".cpp", ".h", ".hpp", ".md", ".py", ".txt"}
 # style; only the maintained active surfaces belong in this wording contract.
 SCAN_ROOTS = (
     ROOT / "patches" / "foo_input_vgm",
+    ROOT / "patches" / "libvgm",
     ROOT / "docs" / "source-native-enhanced-rendering.md",
     ROOT / "research" / "enhancement",
     ROOT / "components" / "vgm" / "enhancement" / "genesis_enhanced_recomposition.h",
