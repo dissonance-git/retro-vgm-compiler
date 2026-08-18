@@ -72,6 +72,9 @@ jobs:
           if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
             choco install 7zip -y --no-progress
           }
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
           git --version
           python --version
           cmake --version
