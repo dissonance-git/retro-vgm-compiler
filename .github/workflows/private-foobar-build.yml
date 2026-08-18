@@ -6,6 +6,7 @@ on:
     branches: [ "main" ]
     paths:
       - ".github/workflows/private-foobar-build.yml"
+      - "build-private-foobar.cmd"
       - "components/vgm/**"
       - "components/spc/**"
       - "model/**"
