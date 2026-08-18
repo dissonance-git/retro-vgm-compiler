@@ -476,3 +476,21 @@ set_tests_properties(
     vgm_studio_hq_fm_runtime_patch_python
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# SPC's realtime Omniphony seam owns its own ABI-0.4 budget regression here so
+# the dry-voice/shared-echo contract cannot silently drift out of the host gate.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    spc_realtime_musical_omniphony_pipeline_test
+)
+add_executable(
+    spc_realtime_musical_omniphony_pipeline_test
+    tests/spc/spc_realtime_musical_omniphony_pipeline_test.cpp
+)
+target_include_directories(
+    spc_realtime_musical_omniphony_pipeline_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_test(
+    NAME spc_realtime_musical_omniphony_pipeline
+    COMMAND spc_realtime_musical_omniphony_pipeline_test
+)
