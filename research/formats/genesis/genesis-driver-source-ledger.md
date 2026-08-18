@@ -1,13 +1,18 @@
 # Genesis driver source ledger
 
-Status: durable provenance and re-entry ledger for the Genesis driver/toolchain quarry.  
-Scope: sources, artifacts, and research leads that can reveal semantics above YM2612/SN76489/DAC execution. This file is not a renderer-control table and must never turn game, composer, studio, or driver identity into an audio-control feature.
+Status: durable provenance and re-entry ledger for the Genesis driver/toolchain quarry.
 
-This ledger exists so research sources do not disappear into chat history. Conceptual conclusions live in `../genesis-driver-dialect-census.md`, `../genesis-open-driver-anatomy.md`, `genesis-authoring-driver-toolchain-quarry.md`, and `genesis-driver-source-vgm-boundary.md`. This file owns the durable source/checkpoint inventory and the next exact experiments enabled by those sources.
+Scope: sources, artifacts, and research leads that can reveal semantics above YM2612/SN76489/DAC execution. Game, composer, studio, or driver identity must never become renderer-control features.
+
+Conceptual conclusions live in:
+
+- `../genesis-driver-dialect-census.md`
+- `../genesis-open-driver-anatomy.md`
+- `genesis-authoring-driver-toolchain-quarry.md`
+- `genesis-driver-source-vgm-boundary.md`
+- `smps-research-pack-harvest.md`
 
 ## Research question
-
-The remaining gap above accurate Genesis chip execution is often not another register. It is the software and authoring cloud that produced the register stream:
 
 ```text
 authored source / MML / ASM
@@ -16,24 +21,18 @@ compiler / assembler / conversion tool
         ↓
 driver sequence + instruments + envelopes + samples
         ↓
-logical tracks / scheduling / channel arbitration / control flow
+logical tracks / scheduling / arbitration / control flow
         ↓
 YM2612 + SN76489 + DAC execution
         ↓
 VGM/VGZ device-facing projection
 ```
 
-Each arrow can erase distinctions. The compiler should recover exact upstream semantics only when evidence survives, otherwise preserve a bounded hypothesis or explicit information gap.
+Each arrow can erase distinctions. Recover upstream semantics only when evidence survives; otherwise preserve a bounded hypothesis or an explicit information gap.
 
-## User-supplied and high-priority Genesis observatories
+## High-priority source observatories
 
-### Sonic Retro organization
-
-Organization route:
-
-- https://github.com/orgs/sonicretro/repositories
-
-High-value repositories already identified:
+### Sonic Retro
 
 - https://github.com/sonicretro/s1disasm
 - https://github.com/sonicretro/s2disasm
@@ -41,280 +40,168 @@ High-value repositories already identified:
 - https://github.com/sonicretro/smps-rips
 - https://github.com/sonicretro/SMPSPlay-DLL
 
-Why they matter:
-
-- S1 supplies an earlier 68k SMPS branch with sound priorities and its own tempo/update behavior.
-- S2 supplies the original Sonic 2 driver state and coordination semantics rather than a later compatibility implementation.
-- S&K supplies the Z80 Type 2 DAC branch with richer track state including no-attack, alternate-frequency, pitch-slide, sustain-frequency, modulation/volume envelopes, FM3-special behavior, source voice references, loops/stacks, and SFX override.
-- `smps-rips` supplies driver-specific data/configuration alongside songs, instruments, envelopes, drum mappings, PCM material, and driver binaries.
-- SMPSPlay-family tooling provides a forward execution/logging observatory for known-source -> VGM controls.
-
 Important law:
 
 ```text
 S1 SMPS != S2 SMPS != S3/S&K SMPS != later FlameDriver behavior
 ```
 
-They are related lineages with revision-specific semantics, timing, bugs, capabilities, and data layouts.
+These are related lineages with revision-specific semantics, timing, bugs, capabilities, and layouts.
 
 ### Sonic 2 original and enhanced specimens
-
-Repositories:
 
 - https://github.com/MainMemory/s2-sound-driver-plus
 - https://github.com/sonicretro/s2disasm
 
-The Sonic 2 specimen exposes a useful set of driver-native state above chip execution:
+Useful driver-native state includes no-attack/retrigger suppression, transpose, detune, modulation, note-fill state, per-track tempo division, PSG envelope state, control-flow stacks, SFX override, and DAC/FM6 ownership.
 
-- no-attack / retrigger suppression;
-- transpose and detune;
-- modulation state;
-- note-fill master/timeout;
-- per-track tempo divider plus global tempo state;
-- logical-track control flow and stacks;
-- PSG envelope state;
-- SFX override;
-- DAC/FM6 ownership.
-
-A key derived distinction is that timing and articulation can depend on driver state. `note_fill` cannot be interpreted correctly without the timing domain that scales/counts it.
-
-### FlameDriver lineage and source songs
-
-Repositories:
+### FlameDriver
 
 - https://github.com/flamewing/flamedriver
 - https://github.com/TheBlad768/s2disasm-flamedriver
 - https://github.com/TheBlad768/Sonic-Clean-Engine-S.C.E.-/tree/flamedriver
 
-`flamewing/flamedriver` is the upstream implementation lineage and contains the driver itself, SMPS2ASM support material, family-specific directories, DAC support, and real ASM song material. The source-song material is especially important because it can provide a known upstream semantic answer key instead of forcing inference from VGM.
+FlameDriver provides readable source and real song material for forward/inverse semantic tests. It must not be treated as a pristine proxy for historical Sonic 2 or S&K behavior.
 
-High-value paired experiment:
-
-```text
-source-native song ASM
-        ↓
-FlameDriver / SMPS lowering
-        ↓
-chip execution
-        ↓
-VGM/VGZ projection
-        ↓
-blind reverse inference
-        ↓
-compare with hidden ASM answer key
-```
-
-Measure separately:
-
-- exact recovered semantics;
-- ambiguous semantics where several source explanations fit the same execution;
-- genuinely lost source distinctions;
-- reconstruction errors.
-
-FlameDriver must not be used as a proxy for historical Sonic 2 or S&K behavior. Its compatibility paths and generalizations are themselves evidence that family identity and revision behavior must stay separate.
-
-### `vgm2smps` reverse-lowering control
-
-Repository:
+### Reverse-lowering control
 
 - https://github.com/Ivan-YO/vgm2smps
 
-This tool converts flattened VGM execution back toward Sonic 1 SMPS. Its own README is valuable because it documents the inverse problem directly: note/frequency reconstruction and note-duration reconstruction can occasionally be wrong, and its alternate instrument reconstruction is heuristic.
-
-Use it as a scientific control for the distinction:
+Use it as a control for:
 
 ```text
 candidate reconstructed upstream sequence
-!= source-native authored semantics
+!= exact source-native authored semantics
 ```
 
-Future test:
-
-1. take a known source ASM/SMPS song;
-2. execute to VGM;
-3. hide source;
-4. reconstruct with Retro VGM Compiler and `vgm2smps` independently;
-5. compare both with the hidden source;
-6. classify every semantic field as recovered, ambiguous, lost, or wrong.
-
-### Cube / Iwadare-family material
-
-Repositories:
+### Cube / Iwadare family
 
 - https://github.com/CubeTaguchiCentral/CubeWiz
 - https://github.com/CubeTaguchiCentral/CubeDocs
 - https://github.com/CubeTaguchiCentral/CubeAssets
 - https://github.com/CubeTaguchiCentral/CubeTools
 
-`CubeAssets` is especially valuable because it preserves command-level ASM song material. It exposes source-native operations such as instrument selection, volume, release control, vibrato, notes/waits, loops, repeated sections, alternate endings, and main-loop structure before these become chip writes.
-
-Cube also established two generic invariants already promoted into the semantic model:
-
-```text
-same opcode byte can mean different things in FM / DAC / PSG scopes
-command meaning can depend on driver timing state such as YM Timer B
-```
-
-Therefore semantic capability is scope-aware and timing-domain-aware.
+Cube material proves that opcode meaning can depend on channel scope and driver timing state. ASM song assets also provide known upstream control-flow and articulation semantics.
 
 ### Multi-driver and signature observatories
 
-Repositories:
-
 - https://github.com/Awuwunya/MDmusicPlayer
 - https://github.com/Awuwunya/GEMS2ASM
+- https://github.com/realmonster/GEMS
 - https://github.com/jvisser/md-driver-signatures
-
-`MDmusicPlayer` is useful as a comparative-driver laboratory because it hosts multiple driver families behind one playback environment, including GEMS and SMPS material. `md-driver-signatures` provides a route toward automatic code-family identification from ROM evidence, currently including GEMS and Krisalis signatures.
 
 Firewall:
 
 ```text
 driver signature match -> code-family evidence
 driver signature match !-> composer identity
-driver signature match !-> authored musical intention
+driver signature match !-> authored intention
 ```
 
-### XGM / XGM2 controlled transformed-runtime bench
-
-Repository:
+### Transformed-runtime controls
 
 - https://github.com/Ganso/md-soundtest
-
-This project gives a controlled XGM versus XGM2 bench from shared source material and exposes practical CPU/PCM/resource behavior. It is useful for testing what a later runtime changes while holding source content relatively stable.
-
-Because XGM-family material can be derived from VGM, its new runtime scheduling/container semantics must remain downstream of the original capture. A transformed runtime cannot manufacture source-native ancestry that its input no longer carried.
-
-### KokonoePlayer-Lite transformed-runtime specimen
-
-Repository:
-
 - https://github.com/karmic64/KokonoePlayer-Lite
+- https://github.com/Stephane-D/SGDK
 
-This is another VGM-derived runtime with its own song-slot priority, pause/resume/stop behavior, sample playback, and configurable processing interval. It is a useful negative control:
+A runtime derived from VGM may add real scheduling/container semantics, but it cannot recreate source-native ancestry that was already absent from the capture.
 
-```text
-new runtime semantics are real
-but they are not evidence of original composer/driver semantics
-```
-
-### Echo, MiniMusic, MDSDRV and modern open-source controls
-
-Repositories:
+### Independent modern driver controls
 
 - https://github.com/sikthehedgehog/Echo
 - https://github.com/sikthehedgehog/minimusic
 - https://github.com/superctr/MDSDRV
 - https://github.com/superctr/ctrmml
-- https://github.com/Stephane-D/SGDK
 - https://github.com/vladikcomper/MegaPCM
 
-These provide independent implementations of several recurring abstract semantics:
+These provide independent examples of attack/release, pitch change without retrigger, ties/slurs, detune/transpose/portamento, channel stealing, PCM/FM6 arbitration, raw-register escape, loops/subroutines, and priority behavior.
 
-- note attack/release;
-- pitch change without retrigger;
-- ties/slurs and gate control;
-- detune/transpose/portamento/modulation;
-- logical-track versus physical-channel assignment;
-- SFX priority/channel stealing;
-- PCM versus FM6 arbitration;
-- raw-register escape;
-- loops/subroutines;
-- transformed-runtime buffering/scheduling.
+## Harvested SMPS transport-pack findings
 
-A generic capability is trusted more when it recurs independently across different driver languages, but each native token and execution path must remain provenance-separated.
+The supplied `.7z` packs were inspected and then deleted as transport media. Their durable value is summarized in `smps-research-pack-harvest.md`.
 
-## Composer / programmer / toolchain testimony
+The bulk song-rip payload is largely redundant with public Sonic Retro material. Spot checks of supplied Sonic 3 Hydrocity sequence files matched the corresponding `sonicretro/smps-rips` Git blobs exactly.
 
-These documentary sources tell the compiler what distinctions may have existed upstream. They are external annotations until linked to a particular source artifact or execution.
+The useful nonredundant findings are:
 
-### Hitoshi Sakimoto / Terpsichorean
+- pointer-base rules differ by 68k, Ristar-like, and Z80 dialects;
+- the same command byte can mean different operations in different SMPS families;
+- tick multipliers interact with note timeouts differently on 68k versus Z80;
+- note/rest/delay continuation differs between families;
+- modulation and envelope arithmetic differ between pre-SMPS, 68k, and Z80;
+- operator order and FM/PSG pitch tables vary by dialect;
+- FM volume semantics differ between family implementations;
+- the old extractor source contains useful structural driver-detection ideas;
+- a broad historical driver/disassembly collection suggests strong cross-revision differential fixtures;
+- DAC cycle-count tables show that source-native PCM rate can depend on executable loop timing rather than an explicit rate field.
 
-- https://www.timeextension.com/features/interview-it-felt-very-computer-y-to-give-english-names-to-things-hitoshi-sakimoto-on-creating-his-famous-terpsichorean-sound-driver
+Do **not** preserve the transport archives, bundled executables, IDA databases, or duplicate public rips merely because they were supplied.
 
-Useful consequence: composition, sequencing/sound data, driver programming, and hardware control did not necessarily belong to cleanly separated roles. Sakimoto's workflow is a concrete example of a composer/programmer building the representation through which the music was authored.
+## New calibration directions earned by the harvest
 
-### Yuzo Koshiro / MUCOM88 and MML
+### Driver dialect differentials
 
-Primary/repository routes already harvested in the driver census include Koshiro interviews plus the preserved MUCOM88 ecosystem and MML documentation. The durable lesson is that composer-facing MML can explicitly encode articulation, timing, pitch control, instrument/control state, macros, and direct hardware escapes before lowering.
-
-Important boundary:
+Build small executable fixtures that falsify incorrect genericization of:
 
 ```text
-MML dialect + revision is part of the source identity
+pointer interpretation
+command meaning
+timing domain
+note/rest continuation
+tick-multiplier behavior
+envelope arithmetic
+instrument/operator order
+pitch tables
 ```
 
-Do not retroactively claim every command in a modern/preserved MUCOM88 reference existed in every historical version Koshiro used.
+### Structural driver detector
 
-### Hiroshi Kubota and Sega SMPS tooling
+The old extractor suggests a project-native detector:
 
-First-party Sega preservation route:
+```text
+ROM/executable bytes
+→ structural loader evidence
+→ candidate driver image
+→ code-family evidence
+→ bounded dialect/revision hypothesis
+→ pointer/table recovery
+```
 
-- https://hiddenpalace.org/News/Sega_of_Japan_Sound_Documents_and_Source_Code
+Port only generic ideas. Do not copy opaque detector labels as truth. Require negative controls and confidence-bearing evidence.
 
-Useful consequence: Sega's PC-98 authoring/assembly/ROM-RAM-board workflow and differing driver branches show that the development toolchain is part of the execution ancestry. A driver revision can remove or alter expressive commands, so `unsupported` and `unknown` must remain separate capability states.
+### DAC playback-clock evidence
 
-### Yoshiaki Kashima / Sonic-family Z80 lineage
+Future native-driver analysis should represent PCM playback timing explicitly:
 
-Kashima-related lineage evidence is useful for revision history and later Sonic-family branches. Personal attribution must remain conservative unless source headers, first-party documentation, or comparably strong evidence supports a specific claim. The compiler needs the branch behavior, not a romanticized ownership story.
+```text
+sample identity
++ playback loop / timer provenance
++ cycle timing
++ memory source
++ interpolation / DPCM behavior
+→ performed PCM object
+```
 
-### Other harvested composer/programmer controls
+### Broad blind inverse tests
 
-The existing driver dialect census preserves research leads and documentary evidence for:
+Use several SMPS families, not only Sonic:
 
-- Matt Furniss + Shaun Hollingworth custom tracker/driver workflow;
-- Noriyuki Iwadare and Cube-family development constraints;
-- Hiroshi Kawaguchi rewriting Sega drivers in assembler;
-- Chris Huelsbeck and bespoke sampled-audio support;
-- Tim Follin + Dean Belfield one-off driver work.
+```text
+known driver + known raw sequence
+→ forward execution
+→ hide source
+→ observe device-facing trajectory
+→ blind reconstruct
+→ compare with hidden sequence
+```
 
-These exist to prevent one Sega/Sonic workflow from becoming a universal model of Genesis composition.
+Score command capability, note/rest structure, articulation, timing, transpose/detune, modulation/envelope behavior, control flow, instrument identity, and DAC/sample events separately.
 
-## Academic / SciSpace quarry retained
+## Generic semantic invariants
 
-Methodological controls already preserved in the driver census and ancestry documents include:
+Implemented model distinctions now include semantic ancestry, dialect/revision, artifact role, capability state, semantic scope, and timing domain.
 
-- Kevin R. Burke, *Hard Limitations and Soft Possibilities*;
-- James Newman, *Driving the SID chip: assembly language, composition and sound design for the C64*;
-- Karen Collins, *In the Loop: Creativity and Constraint in 8-bit Video Game Audio*;
-- Kenneth B. McAlpine, *Bits and Pieces: A History of Chiptunes*.
-
-The literature supports treating software affordances, coding practice, and historical tool constraints as part of the compositional medium. It does not identify a fixture-specific driver command and cannot override source-native runtime evidence.
-
-## User-supplied archival packs
-
-Two local 7z archives were supplied in the conversation and have been preserved by exact hash in this ledger. Their internal contents have **not** been inspected in the current runtime because no 7z reader is installed here. No claim depends on unseen archive contents.
-
-### `SMPS_Research_Pack_v5.7z`
-
-- observed local size: approximately 13 MiB
-- SHA-256: `9e680ab8ed0e784afdb1cb2c534ac8abf3a13009a747552966484901f1518fbc`
-- state: exact archive identity observed; contents not yet enumerated
-
-### `SMPS_Research_Pack_v5_DriverDisasm.7z`
-
-- observed local size: approximately 23 MiB
-- SHA-256: `872319651092281e3b3ef6f9d15ed6ae5153f3885d6e50d6f1cb805e821c70ad`
-- state: exact archive identity observed; contents not yet enumerated
-
-When an environment with 7z support is available:
-
-1. enumerate paths without modifying the archives;
-2. hash extracted source objects individually;
-3. classify raw/original versus cleaned/reconstructed material;
-4. compare overlapping driver disassemblies with public Sonic Retro / FlameDriver sources;
-5. preserve disagreements rather than choosing one silently;
-6. use exact source-song objects as hidden answer keys for forward/inverse tests where licensing/provenance permit.
-
-## Generic semantic invariants earned so far
-
-The source quarry has already justified code-level distinctions in:
-
-- `model/execution_semantic_provenance.h`;
-- `model/execution_semantic_dialect.h`;
-- `model/execution_semantic_scope.h`.
-
-The durable rules are:
+Durable rules:
 
 ```text
 same chip state != same upstream intention
@@ -327,69 +214,37 @@ transformed runtime != authoring source
 reconstructed source candidate != exact authored source
 ```
 
-The model also preserves explicit information gaps rather than inventing upstream semantics.
-
-## Calibration program enabled by this ledger
+## Calibration program
 
 ### A. Source ASM -> driver -> VGM -> blind inverse
 
-Highest-value route because it measures semantic loss directly.
-
-Preferred controls include real FlameDriver/SMPS ASM songs and Cube ASM assets where the forward execution path can be pinned.
-
-Grade fields separately:
-
-```text
-exactly recovered
-strongly reconstructed but non-unique
-ambiguous
-lost in projection
-incorrectly reconstructed
-```
+Preferred controls include source-native FlameDriver/SMPS ASM songs and Cube ASM assets. Grade each semantic field as exact, non-unique reconstruction, ambiguous, lost, or wrong.
 
 ### B. Historical driver -> independent reconstruction differential
 
-Examples:
-
-```text
-Sonic disassembly <-> FlameDriver compatibility path
-S&K disassembly <-> readable reconstructed/runtime implementation
-raw/cleaned GEMS assembly <-> player/reconstruction
-```
-
-Compare command/state traces and chip writes, not only final PCM.
+Compare command/state traces and chip writes between historical disassemblies and independent readable implementations, not only final PCM.
 
 ### C. Same-hardware, different-driver decoys
 
-Use SMPS, GEMS, Cube, Echo/MDSDRV-like modern controls, and transformed runtimes to identify which inferred features are truly driver-semantic rather than generic YM2612/PSG behavior.
+Use SMPS, GEMS, Cube, Echo/MDSDRV-like controls, and transformed runtimes to separate genuine driver semantics from generic YM2612/PSG behavior.
 
 ### D. Reverse-lowering competition
 
-Compare Retro VGM Compiler against tools such as `vgm2smps` on hidden-source fixtures. A tool that guesses a plausible sequence should not receive exact-evidence status merely because the rendered result is close.
+Compare Retro VGM Compiler with independent reverse-lowering tools on hidden-source fixtures. Plausible rendering similarity does not earn exact source-evidence status.
 
 ## Current implementation checkpoint
 
-As of the source-quarry checkpoint:
+The research layer is now broad enough that further source hunting should be discriminator-driven.
 
-- semantic ancestry can preserve distinct upstream causes above identical synthesis state;
-- dialect/revision/artifact-role identity is first-class;
-- capability state distinguishes `supported`, `unsupported`, and `unknown`;
-- semantic scope is first-class;
-- timing domain is first-class;
-- the semantic regressions are registered in CTest;
-- the repository-owned local fallback runner remains available while hosted GitHub Actions are unavailable.
+The immediate engineering priority remains the standalone local Genesis real-trace/corpus path using the existing source-aware libvgm + Nuked OPN2 + PSG source plane.
 
-The research layer is now sufficiently broad that further source hunting should be discriminator-driven. The next engineering priority is the standalone local Genesis real-trace/corpus path using the existing source-aware libvgm + Nuked OPN2 + PSG source plane, not another playback implementation.
-
-## Re-entry handle
-
-Resume implementation from current `main` by inspecting:
+Re-entry:
 
 ```text
 components/vgm/foo_input_vgm/src/source_aware_vgm_player.h
-patches/libvgm-source/ and/or the current libvgm materialization path
-existing Genesis realtime Omniphony/governor pipeline
-SPC real trace runner as the behavioral template
+patches/libvgm/
+components/vgm/enhancement/genesis_realtime_musical_omniphony_pipeline.h
+SPC real trace runner as behavioral template
 58-file Sonic 3/S&K frozen VGZ corpus + SHA manifests
 ```
 
@@ -397,13 +252,13 @@ Target:
 
 ```text
 VGZ bytes
-→ pinned/patched libvgm PlayerA + SourceAwareVGMPlayer
+→ pinned/patched libvgm PlayerA + source-aware capture
 → exact FM1-6 + DAC + PSG1-4 source planes
-→ existing Genesis realtime musical/Omniphony pipeline
+→ Genesis realtime musical/Omniphony pipeline
 → passive ABI 0.4 renderer
 → block + continuity validators
 → creator/game/title-blind JSON sidecar
 → local SHA-driven corpus orchestrator
 ```
 
-No pair-aware presentation control and no `separation_pressure` promotion until the preregistered real corpus evidence actually executes and passes.
+No pair-aware presentation control and no `separation_pressure` promotion until preregistered real-corpus evidence actually executes and passes.
