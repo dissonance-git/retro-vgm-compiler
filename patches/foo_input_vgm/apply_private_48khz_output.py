@@ -2,7 +2,7 @@
 """Pin the private foo_input_vgm host output contract to 48 kHz.
 
 This is deliberately below source-quality and Spatial policy. Reference and
-Enhanced playback both render to the same final 48 kHz host timeline; Spatial
+enhanced playback both render to the same final 48 kHz host timeline; Spatial
 receives that already-selected timeline. The stored historical UI preference is
 left intact but is not allowed to change this private build's playback rate.
 """

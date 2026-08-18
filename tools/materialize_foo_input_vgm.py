@@ -97,7 +97,7 @@ def main() -> int:
         "--archive",
         type=Path,
         default=None,
-        help="override imports/foo_input_vgm.7z",
+        help="override the historical foo_input_vgm bootstrap archive",
     )
     parser.add_argument(
         "--seven-zip",
@@ -112,7 +112,9 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
-    archive = (args.archive or (repo / "imports" / "foo_input_vgm.7z")).resolve()
+    env_archive = os.environ.get("RETRO_VGM_BOOTSTRAP_ARCHIVE")
+    selected_archive = args.archive or (Path(env_archive) if env_archive else None)
+    archive = (selected_archive or (repo / "imports" / "foo_input_vgm.7z")).resolve()
     sdk_root = args.sdk_root.resolve()
     component = sdk_root / "foo_input_vgm"
     enhancement = sdk_root / "enhancement"

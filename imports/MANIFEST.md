@@ -10,7 +10,7 @@ These are the exact inputs supplied when the repository was initialized.
 - Extracted source tree observed locally: 41 files, approximately 340 KiB
 - License in supplied source: Mozilla Public License 2.0
 
-The archive is an immutable bootstrap copy. Normal development should occur from the expanded source under `components/vgm/`, not by editing/repacking the archive.
+The archive identity is immutable, but the current GitHub transport copy is known to be truncated and is not accepted as a build input. Canonical Windows builds recover `foo_input_vgm_v0.30.7z` from `https://uu.getuploader.com/foobar2000/download/248` into disposable build state and require the SHA-256 above before extraction. This is a recovery route for the same audited source object, not permission to substitute v0.31 or another release. Normal development occurs from the expanded source under `components/vgm/`; the historical archive is never edited or repacked.
 
 ## SPCPlay / SNESAPU behavioral reference
 

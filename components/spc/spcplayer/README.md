@@ -47,4 +47,4 @@ The eventual Windows integration workflow owns the exact staging paths. The inva
 
 ## License and provenance
 
-The migrated `spcplayer` source retains its Mozilla Public License 2.0 notices. The migration ledger in `imports/vgmspc/MIGRATION.md` records why this code moved and which portions of the old project were intentionally not carried forward.
+The migrated `spcplayer` source retains its Mozilla Public License 2.0 notices. The preserved historical migration ledger records why this code moved and which portions of the old project were intentionally not carried forward.

@@ -17,6 +17,8 @@ $OmniphonyCommit = '819668d1366710d663ae9c810edbcf9b7e923e19'
 $RustToolchain = '1.88.0'
 $FoobarSdkDate = '2025-03-07'
 $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
+$VgmBootstrapUrl = 'https://uu.getuploader.com/foobar2000/download/248'
+$VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
 $ExpectedSdkProjectBlob = 'a1074e4aa8b2fc03cbc1738c9cddd912158bff67'
 $ExpectedPfcProjectBlob = '57cbc91551935cd6f12c13a0e41c4c6bf601ac94'
 $ExpectedLibvgmCmakeBlob = '1f8fb7f99ec45e1d2af12231f624498e6e252732'
@@ -34,16 +36,17 @@ $LibvgmSourceTestBuild = Join-Path $WorkRoot 'libvgm-source-tests'
 $VgmOutDir = Join-Path $WorkRoot 'out-vgm-x64'
 $SpcPlayerOutDir = Join-Path $WorkRoot 'out-spcplayer-x86'
 $SpcComponentOutDir = Join-Path $WorkRoot 'out-spc-x64'
+$VgmBootstrap = Join-Path $WorkRoot 'foo_input_vgm_v0.30.7z'
 
 function Need-Command([string]$Name) {
     if (!(Get-Command $Name -ErrorAction SilentlyContinue)) { throw "Required command is not on PATH: $Name" }
 }
 
-function Run([string]$Exe, [string[]]$Args, [string]$WorkingDirectory = '') {
+function Run([string]$Exe, [string[]]$CommandArgs, [string]$WorkingDirectory = '') {
     if ($WorkingDirectory) { Push-Location $WorkingDirectory }
     try {
-        & $Exe @Args
-        if ($LASTEXITCODE -ne 0) { throw "$Exe failed with exit code $LASTEXITCODE: $($Args -join ' ')" }
+        & $Exe @CommandArgs
+        if ($LASTEXITCODE -ne 0) { throw "$Exe failed with exit code ${LASTEXITCODE}: $($CommandArgs -join ' ')" }
     } finally {
         if ($WorkingDirectory) { Pop-Location }
     }
@@ -108,7 +111,7 @@ function Clone-Pin([string]$Url, [string]$Path, [string]$Commit) {
     Run 'git' @('clone', '--filter=blob:none', '--no-checkout', $Url, $Path)
     Run 'git' @('-C', $Path, 'checkout', '--detach', $Commit)
     $actual = (& git -C $Path rev-parse HEAD).Trim()
-    if ($actual -ne $Commit) { throw "revision drift for $Path: expected $Commit, got $actual" }
+    if ($actual -ne $Commit) { throw "revision drift for ${Path}: expected $Commit, got $actual" }
 }
 
 foreach ($command in @('git', 'python', 'cmake', 'ctest', 'rustup', 'cargo', 'nasm', '7z')) { Need-Command $command }
@@ -125,6 +128,10 @@ if (!(Test-Path $vcvars32)) { throw "vcvars32.bat not found: $vcvars32" }
 Remove-Item $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $OutputRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory $WorkRoot, $OutputRoot, $VgmOutDir, $SpcPlayerOutDir, $SpcComponentOutDir -Force | Out-Null
+
+Write-Host '== 0. Recover and verify the historical foo_input_vgm bootstrap =='
+& (Join-Path $RetroRoot 'tools\fetch_foo_input_vgm_bootstrap.ps1') -OutputPath $VgmBootstrap -DownloadPage $VgmBootstrapUrl -ExpectedSha256 $VgmBootstrapSha256
+$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap
 
 Write-Host '== 1. Compile the private source-transport frontier tests =='
 Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\private_components'), '-B', $FrontierBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64')
@@ -286,6 +293,7 @@ $manifest = [ordered]@{
     foobar_sdk_source = $FoobarSdkUrl
     wtl = $WtlCommit
     libvgm = $LibvgmCommit
+    foo_input_vgm_bootstrap = [ordered]@{ source = $VgmBootstrapUrl; sha256 = $VgmBootstrapSha256 }
     spcplay = $SpcPlayCommit
     omniphony = $OmniphonyCommit
     rust_toolchain = $RustToolchain

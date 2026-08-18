@@ -86,10 +86,10 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertIn("$Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'", self.text)
 
     def test_generated_readme_keeps_enhanced_descriptive(self) -> None:
-        self.assertIn("every enhanced/Spatial", self.text)
-        self.assertIn("enhanced and Spatial remain independent controls", self.text)
-        self.assertNotIn("every Enhanced/Spatial", self.text)
-        self.assertNotIn("Enhanced and Spatial remain independent controls", self.text)
+        self.assertIn("every enhanced/Surround", self.text)
+        self.assertIn("enhanced and Surround remain independent controls", self.text)
+        self.assertNotIn("every Enhanced/Surround", self.text)
+        self.assertNotIn("Enhanced and Surround remain independent controls", self.text)
 
 
 if __name__ == "__main__":

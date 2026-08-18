@@ -253,6 +253,86 @@ def _validate_archive_name(name: str) -> str:
     return pure.name
 
 
+
+def verify_archive(path: Path, expected_names: set[str], label: str) -> dict[str, bytes]:
+    """Verify only the flat sibling payload envelope and return its bytes."""
+    if not path.is_file():
+        raise AssertionError(f"{label} component package missing: {path}")
+    if path.stat().st_size <= 0:
+        raise AssertionError(f"{label} component package is empty: {path}")
+
+    try:
+        archive = zipfile.ZipFile(path, "r")
+    except zipfile.BadZipFile as exc:
+        raise AssertionError(f"{label} component package is not a valid ZIP: {path}") from exc
+
+    with archive:
+        infos = [info for info in archive.infolist() if not info.is_dir()]
+        names: list[str] = []
+        folded: set[str] = set()
+        payloads: dict[str, bytes] = {}
+        for info in infos:
+  try:
+      name = _validate_archive_name(info.filename)
+  except AssertionError as exc:
+      raise AssertionError(
+          f"{label} package has unsafe/nested member: {info.filename}"
+      ) from exc
+  key = name.casefold()
+  if key in folded:
+      raise AssertionError(
+          f"{label} package has duplicate case-insensitive member: {name}"
+      )
+  folded.add(key)
+  names.append(name)
+  data = archive.read(info)
+  if not data:
+      raise AssertionError(f"{label} package has zero-byte runtime member: {name}")
+  payloads[name] = data
+
+        if set(names) != expected_names:
+  raise AssertionError(
+      f"{label} payload mismatch: expected {sorted(expected_names)}, got {sorted(names)}"
+  )
+        return payloads
+
+
+def verify_runtime_contracts(
+    path: Path,
+    contracts: dict[str, tuple[int, frozenset[str]]],
+    label: str,
+) -> None:
+    """Verify PE machine/export contracts independently of runtime loading."""
+    payloads = verify_archive(path, set(contracts), label)
+    for name, (machine, required_exports) in contracts.items():
+        try:
+  actual_machine, exports = inspect_pe(payloads[name])
+        except (ValueError, struct.error) as exc:
+  raise AssertionError(
+      f"{label} package member {name} is not a valid packaged PE: {exc}"
+  ) from exc
+        if actual_machine != machine:
+  raise AssertionError(
+      f"{label} package member {name} machine mismatch: "
+      f"expected 0x{machine:04X}, got 0x{actual_machine:04X}"
+  )
+        missing = required_exports - exports
+        if missing:
+  raise AssertionError(
+      f"{label} package member {name} missing required exports: {sorted(missing)}"
+  )
+
+
+def validate_spcplayer_startup_result(returncode: int, output: str) -> None:
+    """Require the no-input child to reach its own usage path, not just load."""
+    if returncode != 1:
+        raise AssertionError(
+  f"spcplayer expected usage exit 1 after successful startup, got {returncode}"
+        )
+    if "usage" not in output.casefold():
+        raise AssertionError("spcplayer did not reach its own usage path")
+
+
 def validate_package(
     path: Path,
     expected_names: set[str],
@@ -371,13 +451,8 @@ def validate_windows_runtime(
             timeout=15,
             check=False,
         )
-        output = (child.stdout + "\n" + child.stderr).casefold()
-        if child.returncode == -1073741515 or "0xc0000135" in output:
-            raise AssertionError(
-                "packaged spcplayer could not resolve its sibling SNESAPU/runtime dependencies"
-            )
-        if child.returncode == 0:
-            raise AssertionError("spcplayer unexpectedly succeeded without an input file")
+        output = child.stdout + "\n" + child.stderr
+        validate_spcplayer_startup_result(child.returncode, output)
 
 
 def main() -> int:

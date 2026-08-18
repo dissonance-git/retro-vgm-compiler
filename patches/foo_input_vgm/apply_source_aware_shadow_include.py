@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Expose SourceAwareVGMPlayer to the separate input_vgm_shadow.cpp TU.
 
-The source-aware player selector patches input_vgm.cpp, while Enhanced runtime
+The source-aware player selector patches input_vgm.cpp, while enhanced runtime
 logic lives in input_vgm_shadow.cpp. Keep the type include ABI-guarded so an
 unpatched libvgm build never has to parse the private SourceAwareVGMPlayer
 contract.

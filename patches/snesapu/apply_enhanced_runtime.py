@@ -49,6 +49,10 @@ def main() -> int:
     root = parser.parse_args().source_dir.resolve()
     input_cpp = root / "input_snesapu.cpp"
 
+    existing_text, _, _ = decode_source(input_cpp.read_bytes())
+    if "Private playback has one final host clock in every combination." in existing_text:
+        raise RuntimeError("SNES private 48 kHz host and enhanced source policy is already applied")
+
     replace_once(
         input_cpp,
         """\tm_CnfSampleRate\t\t         = cfg_samplerate;

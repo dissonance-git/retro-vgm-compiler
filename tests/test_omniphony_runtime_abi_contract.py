@@ -34,6 +34,7 @@ class FakeApi:
         self.omniphony_source_create = object()
         self.omniphony_source_destroy = object()
         self.omniphony_source_reset = object()
+        self.omniphony_source_set_mix_budget = object()
         self.omniphony_source_process_events_f32 = object()
 
 
@@ -41,10 +42,10 @@ class OmniphonyRuntimeAbiContractTest(unittest.TestCase):
     def test_verifier_matches_compiler_transport_version(self) -> None:
         text = MODEL_PATH.read_text(encoding="utf-8")
         major = re.search(
-            r"omniphony_source_abi_major_required\s*=\s*(\d+)u", text
+            r"omniphony_source_abi_major_required\s*=\s*(\d+)(?:u)?", text
         )
         minor = re.search(
-            r"omniphony_source_abi_minor_required\s*=\s*(\d+)u", text
+            r"omniphony_source_abi_minor_required\s*=\s*(\d+)(?:u)?", text
         )
         self.assertIsNotNone(major)
         self.assertIsNotNone(minor)
@@ -52,18 +53,18 @@ class OmniphonyRuntimeAbiContractTest(unittest.TestCase):
         self.assertEqual(int(minor.group(1)), _verifier.MINIMUM_ABI_MINOR)
 
     def test_accepts_exact_required_version(self) -> None:
-        self.assertEqual(_verifier.verify_api(FakeApi(0, 3)), (0, 3))
+        self.assertEqual(_verifier.verify_api(FakeApi(0, 4)), (0, 4))
 
     def test_accepts_newer_minor_with_same_major(self) -> None:
         self.assertEqual(_verifier.verify_api(FakeApi(0, 7)), (0, 7))
 
     def test_rejects_wrong_major(self) -> None:
         with self.assertRaisesRegex(AssertionError, "ABI mismatch"):
-            _verifier.verify_api(FakeApi(1, 3))
+            _verifier.verify_api(FakeApi(1, 4))
 
     def test_rejects_older_minor(self) -> None:
         with self.assertRaisesRegex(AssertionError, "ABI mismatch"):
-            _verifier.verify_api(FakeApi(0, 2))
+            _verifier.verify_api(FakeApi(0, 3))
 
     def test_rejects_missing_loader_symbol(self) -> None:
         api = FakeApi()

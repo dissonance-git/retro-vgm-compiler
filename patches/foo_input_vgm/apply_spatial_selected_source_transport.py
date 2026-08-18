@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Mirror the audible Genesis source choices into an ordinal source transport.
 
-This patch runs after every current Enhanced family has been composed. It does
+This patch runs after every current enhanced family has been composed. It does
 not render Spatial audio and does not inspect the Spatial preference. Its only
 job is to make the already-selected FM/PSG/DAC realization available at the
 same PlayerA output ordinal as the audible whole-frame transport.
 
-Reference source frames are captured even when Enhanced is off. Each successful
-family-local Enhanced transaction then replaces only that family's source lanes.
+Reference source frames are captured even when enhanced is off. Each successful
+family-local enhanced transaction then replaces only that family's source lanes.
 A failed family transaction leaves its reference lanes untouched, exactly like
 the audible stereo path.
 """
@@ -166,7 +166,7 @@ bool input_vgm::replace_genesis_selected_source(
     )
 
     # Source capture must sit outside the quality gate. Spatial-only playback
-    # needs the exact protected source lanes even when Enhanced is disabled.
+    # needs the exact protected source lanes even when enhanced is disabled.
     replace_once(
         shadow,
         """#if defined(FOO_INPUT_VGM_GAMEAUDIO_ENHANCED_UI_ABI)

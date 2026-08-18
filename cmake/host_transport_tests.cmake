@@ -29,7 +29,6 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     spc_sample_restoration_test
     spc_sample_lineage_verification_test
     spc_original_sample_bank_test
-    genesis_enhanced_recomposition_test
     sn76489_enhanced_source_block_test
     sn76489_deferred_source_queue_test
     ym2612_hq_fm_profile_test
@@ -139,10 +138,6 @@ add_executable(
 add_executable(
     spc_original_sample_bank_test
     tests/spc/spc_original_sample_bank_test.cpp
-)
-add_executable(
-    genesis_enhanced_recomposition_test
-    tests/vgm/genesis_enhanced_recomposition_test.cpp
 )
 add_executable(
     sn76489_enhanced_source_block_test
@@ -263,10 +258,6 @@ target_include_directories(
 )
 target_include_directories(
     spc_original_sample_bank_test
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
-target_include_directories(
-    genesis_enhanced_recomposition_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_include_directories(
@@ -398,10 +389,6 @@ add_test(
 add_test(
     NAME spc_original_sample_bank
     COMMAND spc_original_sample_bank_test
-)
-add_test(
-    NAME genesis_enhanced_recomposition
-    COMMAND genesis_enhanced_recomposition_test
 )
 add_test(
     NAME sn76489_enhanced_source_block

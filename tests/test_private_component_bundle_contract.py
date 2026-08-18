@@ -26,7 +26,7 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
         vgm: bytes = b"vgm-component",
         spc: bytes = b"spc-component",
         commit: str = "1" * 40,
-        readme: str = "enhanced and Spatial remain independent controls.\n",
+        readme: str = "enhanced and Surround remain independent controls.\n",
         mutate_manifest=None,
         mutate_sums=None,
         extra_entries: dict[str, bytes] | None = None,
@@ -117,7 +117,7 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             bundle = Path(tmp) / "bundle.zip"
             self.make_bundle(
                 bundle,
-                readme="Enhanced and Spatial remain independent controls.\n",
+                readme="Enhanced and Surround remain independent controls.\n",
             )
             with self.assertRaisesRegex(AssertionError, "lowercase descriptive"):
                 _verifier.verify_bundle_metadata(bundle)
