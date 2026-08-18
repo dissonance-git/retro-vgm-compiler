@@ -72,14 +72,16 @@ jobs:
           if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
             choco install 7zip -y --no-progress
           }
-          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-          $env:Path = "$machinePath;$userPath"
+          $nasmExe = Get-ChildItem -Path 'C:\Program Files', 'C:\ProgramData\chocolatey' -Filter nasm.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $nasmExe) { throw 'NASM was installed but nasm.exe could not be located' }
+          $nasmDir = Split-Path $nasmExe.FullName -Parent
+          $nasmDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:Path = "$nasmDir;$env:Path"
           git --version
           python --version
           cmake --version
           cargo --version
-          nasm -v
+          & $nasmExe.FullName -v
           7z | Select-Object -First 2
 
       - name: Run source and bridge regression guards
