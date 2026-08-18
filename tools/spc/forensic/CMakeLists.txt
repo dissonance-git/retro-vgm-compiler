@@ -33,7 +33,7 @@ set(
 )
 set(
     SNES_SPC_FORENSIC_PATCH_CONTRACT
-    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1"
+    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1-route-events-v1"
 )
 
 if(NOT SNES_SPC_FORENSIC_COMMIT STREQUAL
@@ -125,6 +125,16 @@ function(gameaudio_configure_forensic_first_party target)
     endif()
 endfunction()
 
+function(gameaudio_add_forensic_provenance target)
+    target_compile_definitions(
+        ${target}
+        PRIVATE
+            RETRO_VGM_COMPILER_FORENSIC_COMMIT="${RETRO_VGM_COMPILER_FORENSIC_COMMIT}"
+            SNES_SPC_FORENSIC_COMMIT="${SNES_SPC_FORENSIC_COMMIT}"
+            SNES_SPC_FORENSIC_PATCH_CONTRACT="${SNES_SPC_FORENSIC_PATCH_CONTRACT}"
+    )
+endfunction()
+
 add_executable(
     snes_spc_forensic_bridge_test
     ${RETRO_VGM_COMPILER_ROOT}/tests/spc/snes_spc_forensic_bridge_test.cpp
@@ -143,14 +153,25 @@ add_test(
 )
 
 add_executable(
+    spc_native_routed_source_projection_test
+    ${RETRO_VGM_COMPILER_ROOT}/tests/spc/spc_native_routed_source_projection_test.cpp
+)
+gameaudio_configure_forensic_first_party(spc_native_routed_source_projection_test)
+add_test(
+    NAME spc_native_routed_source_projection
+    COMMAND spc_native_routed_source_projection_test
+)
+
+add_executable(
     spc_forensic_features
     ${CMAKE_CURRENT_LIST_DIR}/spc_forensic_features.cpp
 )
 gameaudio_configure_forensic_first_party(spc_forensic_features)
-target_compile_definitions(
-    spc_forensic_features
-    PRIVATE
-        RETRO_VGM_COMPILER_FORENSIC_COMMIT="${RETRO_VGM_COMPILER_FORENSIC_COMMIT}"
-        SNES_SPC_FORENSIC_COMMIT="${SNES_SPC_FORENSIC_COMMIT}"
-        SNES_SPC_FORENSIC_PATCH_CONTRACT="${SNES_SPC_FORENSIC_PATCH_CONTRACT}"
+gameaudio_add_forensic_provenance(spc_forensic_features)
+
+add_executable(
+    spc_spatial_governor_trace
+    ${CMAKE_CURRENT_LIST_DIR}/spc_spatial_governor_trace.cpp
 )
+gameaudio_configure_forensic_first_party(spc_spatial_governor_trace)
+gameaudio_add_forensic_provenance(spc_spatial_governor_trace)
