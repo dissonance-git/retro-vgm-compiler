@@ -29,11 +29,23 @@ A game gets a project folder only when it is itself an integrative testbed. Othe
 | whole-track / soundtrack understanding | `music/` + current semantic docs |
 | composer grammar / attribution method | `music/` |
 | Sonic 3 integrative attribution case | `projects/sonic3/` |
+| Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
 | source/driver/chip mechanism | `formats/` |
 | runtime/state relation | `runtime/` |
 | external pressure test | `validation/` |
 | rendering equivalence/reconstruction | `rendering/` / `enhancement/` |
 | reusable parsed-song analysis | `cache/` |
+
+For Genesis source semantics, use the ledger only as the provenance/re-entry surface. The conceptual and experimental owners remain:
+
+```text
+formats/genesis-driver-dialect-census.md
+formats/genesis-open-driver-anatomy.md
+formats/genesis/genesis-authoring-driver-toolchain-quarry.md
+formats/genesis/genesis-driver-source-vgm-boundary.md
+```
+
+This keeps source inventory, generic model conclusions, comparative driver anatomy, and forward/inverse validation distinct.
 
 ## Sonic 3
 
