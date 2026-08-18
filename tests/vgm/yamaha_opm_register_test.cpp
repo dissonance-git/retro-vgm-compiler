@@ -1,4 +1,5 @@
 #include "yamaha_opm_register.h"
+#include "ym2151_authority_state.h"
 #include "ym2151_enhanced_recomposition.h"
 #include "ym2151_selected_source_transport.h"
 #include "ym2151_spatial_route_transport.h"
@@ -81,6 +82,22 @@ int main() {
     static_assert(left_only.left && !left_only.right);
     static_assert(!right_only.left && right_only.right);
     static_assert(both.left && both.right);
+
+    // The authority shadow records authored OPM controls without pretending to
+    // own renderer-internal phase/envelope/timer evolution.
+    ym2151_authority_state authority;
+    authority.apply_register(0x20u, static_cast<std::uint8_t>(0x40u | (5u << 3u) | 6u));
+    authority.apply_register(0x08u, static_cast<std::uint8_t>((0x0Bu << 3u) | 0u));
+    authority.apply_register(0x40u, 0x7Fu);
+    authority.apply_register(0x19u, 0x45u); // AMD
+    authority.apply_register(0x19u, 0xC2u); // PMD
+    assert(authority.channel(0).route_left && !authority.channel(0).route_right);
+    assert(authority.channel(0).feedback == 5u && authority.channel(0).algorithm == 6u);
+    assert(authority.channel(0).key_mask == 0x0Bu);
+    assert(authority.channel(0).operators[0].dt1 == 7u);
+    assert(authority.channel(0).operators[0].multiple == 15u);
+    assert(authority.global().amd == 0x45u);
+    assert(authority.global().pmd == 0x42u);
 
     // YM2151 is the first non-Genesis client of the generic source-family
     // transaction engine. Eight complete OPM channels are replacement sources;
