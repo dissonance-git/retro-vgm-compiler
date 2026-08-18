@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Load the built Omniphony source DLL and prove its runtime ABI contract.
+"""Load the built Omniphony source DLL and prove its runtime contract.
 
 The package verifier can prove that the named PE exports exist, but the host also
-requires the ABI version functions to execute and report a compatible version.
-This Windows-only build gate loads the exact DLL that will be packaged, resolves
-all symbols used by omniphony_dynamic_backend_loader, and calls the zero-argument
-ABI functions before either foobar component is packaged.
+requires the version functions to execute and report a compatible contract. This
+Windows-only build gate loads the exact DLL that will be packaged, resolves all
+symbols used by omniphony_dynamic_backend_loader, and calls the zero-argument
+version functions before either foobar component is packaged.
 """
 
 from __future__ import annotations
@@ -18,13 +18,14 @@ from typing import Any
 
 
 EXPECTED_ABI_MAJOR = 0
-MINIMUM_ABI_MINOR = 3
+MINIMUM_ABI_MINOR = 4
 REQUIRED_SYMBOLS = (
     "omniphony_source_abi_major",
     "omniphony_source_abi_minor",
     "omniphony_source_create",
     "omniphony_source_destroy",
     "omniphony_source_reset",
+    "omniphony_source_set_mix_budget",
     "omniphony_source_process_events_f32",
 )
 
@@ -45,7 +46,7 @@ def verify_api(api: Any) -> tuple[int, int]:
     minor = int(minor_fn())
     if major != EXPECTED_ABI_MAJOR or minor < MINIMUM_ABI_MINOR:
         raise AssertionError(
-            "Omniphony runtime ABI mismatch: "
+            "Omniphony runtime contract mismatch: "
             f"required {EXPECTED_ABI_MAJOR}.{MINIMUM_ABI_MINOR}+ within major, "
             f"got {major}.{minor}"
         )
@@ -55,11 +56,11 @@ def verify_api(api: Any) -> tuple[int, int]:
 def load_and_verify(path: Path) -> tuple[int, int]:
     if struct.calcsize("P") != 8:
         raise RuntimeError(
-            "Omniphony ABI validation must run under 64-bit Python so the x64 DLL can load"
+            "Omniphony runtime validation must run under 64-bit Python so the x64 DLL can load"
         )
     win_dll = getattr(ctypes, "WinDLL", None)
     if win_dll is None:
-        raise RuntimeError("Omniphony runtime ABI validation requires Windows")
+        raise RuntimeError("Omniphony runtime validation requires Windows")
     if not path.is_file():
         raise RuntimeError(f"Omniphony source DLL missing: {path}")
 
@@ -76,7 +77,7 @@ def main() -> int:
     args = parser.parse_args()
 
     major, minor = load_and_verify(args.dll.resolve())
-    print(f"Omniphony source runtime ABI verified: {major}.{minor}")
+    print(f"Omniphony source runtime contract verified: {major}.{minor}")
     return 0
 
 
