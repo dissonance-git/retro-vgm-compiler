@@ -1,0 +1,88 @@
+name: Private foobar binary build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/private-foobar-build.yml"
+      - "components/vgm/**"
+      - "components/spc/**"
+      - "model/**"
+      - "patches/foo_input_vgm/**"
+      - "patches/libvgm/**"
+      - "patches/snesapu/**"
+      - "tests/private_components/**"
+      - "tests/integration/libvgm-source/**"
+      - "tests/vgm/test_surround_omniphony_patch_contract.py"
+      - "tests/spc/test_surround_omniphony_patch_contract.py"
+      - "tests/vgm/test_omniphony_private_build_contract.py"
+      - "tools/build_private_foobar_components.ps1"
+      - "tools/materialize_foo_input_vgm.py"
+      - "tools/materialize_foo_snesapu.py"
+      - "tools/verify_omniphony_runtime_abi.py"
+      - "tools/verify_private_component_packages.py"
+      - "tools/verify_private_component_bundle.py"
+
+permissions:
+  contents: read
+
+jobs:
+  build-private-components:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Ensure native build tools
+        shell: pwsh
+        run: |
+          if (-not (Get-Command nasm -ErrorAction SilentlyContinue)) {
+            choco install nasm -y --no-progress
+          }
+          if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
+            choco install 7zip -y --no-progress
+          }
+          git --version
+          python --version
+          cmake --version
+          cargo --version
+          nasm -v
+          7z | Select-Object -First 2
+
+      - name: Run source and bridge regression guards
+        shell: pwsh
+        run: |
+          python -B -m unittest tests.vgm.test_surround_omniphony_patch_contract
+          if ($LASTEXITCODE -ne 0) { throw 'VGM Surround/Omniphony contract failed' }
+          python -B -m unittest tests.spc.test_surround_omniphony_patch_contract
+          if ($LASTEXITCODE -ne 0) { throw 'SPC Surround/Omniphony contract failed' }
+          python -B -m unittest tests.vgm.test_omniphony_private_build_contract
+          if ($LASTEXITCODE -ne 0) { throw 'private Omniphony dependency contract failed' }
+
+      - name: Build and audit installable components
+        shell: pwsh
+        run: |
+          ./tools/build_private_foobar_components.ps1
+
+      - name: Show build manifest
+        shell: pwsh
+        run: |
+          Get-Content dist/private-components/build-manifest.json
+          Get-Content dist/private-components/SHA256SUMS.txt
+
+      - name: Upload installable foobar components
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-foobar-vgm-spc-${{ github.sha }}
+          path: |
+            dist/private-components/foo_input_vgm.private.fb2k-component
+            dist/private-components/foo_snesapu.private.fb2k-component
+            dist/private-components/private-foobar-vgm-spc.zip
+            dist/private-components/build-manifest.json
+            dist/private-components/SHA256SUMS.txt
+            dist/private-components/README.txt
+          if-no-files-found: error
+          retention-days: 14
