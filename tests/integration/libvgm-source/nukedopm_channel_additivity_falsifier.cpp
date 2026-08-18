@@ -69,8 +69,11 @@ public:
             devDef_YM2151_Nuked.Stop(chip_);
     }
 
+    // Match VGMPlayer::SendYMCommand for command 0x54. Nuked's ordinary
+    // RWF_WRITE function is a port writer, not a direct (register, value) API.
     void write(std::uint8_t reg, std::uint8_t value) {
-        write_(chip_, reg, value);
+        write_(chip_, 0u, reg);
+        write_(chip_, 1u, value);
     }
 
     stereo_buffer render() {
