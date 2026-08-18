@@ -22,6 +22,36 @@ The executable succeeds only when it finds at least one sample where that equali
 
 This is a negative/admission-boundary test. It does **not** claim that Nuked-OPM is unsuitable as a whole-chip high-fidelity candidate. It prevents a whole-chip candidate from being mislabeled as eight independent enhanced sources without an exact decomposition proof.
 
+## MAME / Nuked renderer-pair diagnostic
+
+`ym2151_renderer_pair_probe.cpp` measures the protected MAME reference core and Nuked-OPM as two whole-chip realizations without converting numerical difference into a quality verdict.
+
+The probe reproduces libvgm's production YM2151 command contract: each register update is sent through the ordinary `RWF_WRITE` port function as address-port then data-port, matching VGM command `0x54`. It deliberately does not use MAME's quick direct-register helper because the VGM player does not use that helper for `0x54` playback.
+
+Four deterministic fixtures stress different authority surfaces:
+
+```text
+algorithm7_attack
+feedback_chain
+lfo_modulation
+channel8_noise
+```
+
+For each fixture the probe requires both renderers to be deterministic across reset/replay and non-silent. It then reports, separately for the attack/transient region, late steady region, and whole render:
+
+```text
+reference RMS
+candidate RMS / reference RMS
+least-squares candidate gain
+normalized RMS error after that gain match
+zero-lag correlation
+best correlation within +/-64 native samples
+best lag
+first audible frame for each renderer
+```
+
+These are diagnostics, not admission thresholds. A small waveform error does not prove perceptual superiority, and a large raw error does not prove inferiority. The next evaluation layer should add pitch-sensitive and perceptual/spectral measures plus, when available, an external hardware/measurement reference. MAME remains the protected product reference even when a separate physical-fidelity question is being investigated.
+
 ## Running the integration suite
 
 Configure against the same libvgm checkout that will receive `patches/libvgm/apply_source_capture.py`:
