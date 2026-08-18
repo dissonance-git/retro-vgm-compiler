@@ -2,6 +2,7 @@
 
 #include "spatial_source.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -31,6 +32,13 @@ struct realtime_source_spatial_observation {
     // pitch detector and not an instrument classifier.
     float low_band_energy_ratio = 0.0f;
 
+    // Persistent causal coarse spectrum [low, middle, high]. The three values
+    // are normalized energy shares derived from two one-pole split filters and
+    // a time-based power envelope. They are intentionally too coarse to claim
+    // psychoacoustic masking; their job is only to describe whether active
+    // sources occupy similar broad spectral territory.
+    std::array<float, 3> coarse_band_energy_share{};
+
     // Mean absolute sample-to-sample change relative to mean absolute signal.
     // Useful as a bounded edge/transient proxy, but deliberately not called
     // "percussion" or "foreground" because those are higher musical claims.
@@ -57,10 +65,18 @@ struct realtime_scene_spatial_observation {
     float low_band_energy_ratio = 0.0f;
     float edge_ratio = 0.0f;
     float shared_effect_energy_share = 0.0f;
+
+    // Energy-weighted pairwise overlap of the persistent three-band profiles of
+    // ACTIVE DRY sources only. 0 means no usable overlapping dry pair; 1 means
+    // the measured broad-band distributions are essentially identical. This is
+    // a low-cost crowding proxy, explicitly not a psychoacoustic masking score.
+    float coarse_spectral_overlap = 0.0f;
 };
 
 struct realtime_musical_spatial_observer_config {
     float low_band_cutoff_hz = 300.0f;
+    float coarse_upper_band_split_hz = 2500.0f;
+    float coarse_profile_time_constant_seconds = 0.20f;
     float activity_reference_rms = 0.035f;
     float active_threshold = 0.15f;
 };
@@ -134,7 +150,8 @@ public:
         }
 
         const double nyquist = sample_rate * 0.5;
-        if (!(static_cast<double>(config_.low_band_cutoff_hz) < nyquist))
+        if (!(static_cast<double>(config_.low_band_cutoff_hz) < nyquist) ||
+            !(static_cast<double>(config_.coarse_upper_band_split_hz) < nyquist))
             return false;
 
         auto next_lanes = lanes_;
@@ -148,6 +165,12 @@ public:
         const double lowpass_memory = std::exp(
             -2.0 * pi * static_cast<double>(config_.low_band_cutoff_hz) / sample_rate);
         const double lowpass_input = 1.0 - lowpass_memory;
+        const double upper_lowpass_memory = std::exp(
+            -2.0 * pi * static_cast<double>(config_.coarse_upper_band_split_hz) / sample_rate);
+        const double upper_lowpass_input = 1.0 - upper_lowpass_memory;
+        const double profile_memory = std::exp(
+            -1.0 / (static_cast<double>(config_.coarse_profile_time_constant_seconds) * sample_rate));
+        const double profile_input = 1.0 - profile_memory;
 
         for (std::size_t lane_index = 0; lane_index < block.lane_count; ++lane_index) {
             const spatial_audio_lane_view& lane = block.lanes[lane_index];
@@ -170,7 +193,7 @@ public:
 
             if (lane.mono_pcm == nullptr || block.frame_count == 0) {
                 state.have_previous_sample = false;
-                state.have_lowpass = false;
+                state.have_band_filters = false;
                 continue;
             }
 
@@ -183,30 +206,53 @@ public:
 
             for (std::size_t frame = 0; frame < block.frame_count; ++frame) {
                 if (lane.availability != nullptr && lane.availability[frame] == 0) {
-                    // Unknown audio cannot be advanced through the analysis
-                    // filter as if it were silence. Break local continuity and
-                    // restart from the next actually observed sample.
+                    // Unknown audio cannot be advanced through analysis filters
+                    // as if it were silence. Break local waveform/filter
+                    // continuity, but retain the slow spectral-profile memory.
                     state.have_previous_sample = false;
-                    state.have_lowpass = false;
+                    state.have_band_filters = false;
                     continue;
                 }
 
                 const float sample = lane.mono_pcm[frame];
                 if (!std::isfinite(sample)) {
                     state.have_previous_sample = false;
-                    state.have_lowpass = false;
+                    state.have_band_filters = false;
                     continue;
                 }
 
-                if (!state.have_lowpass) {
-                    state.lowpass = static_cast<double>(sample);
-                    state.have_lowpass = true;
+                const double value = static_cast<double>(sample);
+                if (!state.have_band_filters) {
+                    state.lowpass = value;
+                    state.upper_lowpass = value;
+                    state.have_band_filters = true;
                 } else {
-                    state.lowpass = lowpass_input * static_cast<double>(sample)
+                    state.lowpass = lowpass_input * value
                         + lowpass_memory * state.lowpass;
+                    state.upper_lowpass = upper_lowpass_input * value
+                        + upper_lowpass_memory * state.upper_lowpass;
                 }
 
-                const double value = static_cast<double>(sample);
+                const std::array<double, 3> band_sample{
+                    state.lowpass,
+                    state.upper_lowpass - state.lowpass,
+                    value - state.upper_lowpass,
+                };
+                const std::array<double, 3> band_power{
+                    band_sample[0] * band_sample[0],
+                    band_sample[1] * band_sample[1],
+                    band_sample[2] * band_sample[2],
+                };
+                if (!state.have_coarse_profile) {
+                    state.coarse_band_power = band_power;
+                    state.have_coarse_profile = true;
+                } else {
+                    for (std::size_t band = 0; band < state.coarse_band_power.size(); ++band) {
+                        state.coarse_band_power[band] = profile_input * band_power[band]
+                            + profile_memory * state.coarse_band_power[band];
+                    }
+                }
+
                 sum_square += value * value;
                 sum_low_square += state.lowpass * state.lowpass;
                 sum_absolute += std::fabs(value);
@@ -235,6 +281,7 @@ public:
             observation.activity = activity_from_rms(observation.rms, config_.activity_reference_rms);
             observation.low_band_energy_ratio = ratio(sum_low_square, sum_square);
             observation.edge_ratio = ratio(sum_edge, sum_absolute);
+            observation.coarse_band_energy_share = normalize_band_power(state.coarse_band_power);
 
             energy[lane_index] = sum_square;
             low_energy[lane_index] = sum_low_square;
@@ -288,6 +335,11 @@ public:
             next_scene.shared_effect_energy_share = ratio(shared_effect_energy, total_energy);
         }
         next_scene.edge_ratio = ratio(total_edge, total_absolute);
+        next_scene.coarse_spectral_overlap = scene_coarse_spectral_overlap(
+            next_sources,
+            energy,
+            block.lane_count,
+            config_.active_threshold);
 
         for (std::size_t lane_index = block.lane_count; lane_index < MaxLanes; ++lane_index)
             next_lanes[lane_index] = {};
@@ -306,13 +358,20 @@ private:
         std::uint64_t generation = 0;
         std::uint64_t age_frames = 0;
         double lowpass = 0.0;
-        bool have_lowpass = false;
+        double upper_lowpass = 0.0;
+        bool have_band_filters = false;
+        std::array<double, 3> coarse_band_power{};
+        bool have_coarse_profile = false;
         float previous_sample = 0.0f;
         bool have_previous_sample = false;
     };
 
     static bool valid_config(const realtime_musical_spatial_observer_config& config) noexcept {
         return std::isfinite(config.low_band_cutoff_hz) && config.low_band_cutoff_hz > 0.0f &&
+            std::isfinite(config.coarse_upper_band_split_hz) &&
+            config.coarse_upper_band_split_hz > config.low_band_cutoff_hz &&
+            std::isfinite(config.coarse_profile_time_constant_seconds) &&
+            config.coarse_profile_time_constant_seconds > 0.0f &&
             std::isfinite(config.activity_reference_rms) && config.activity_reference_rms > 0.0f &&
             std::isfinite(config.active_threshold) && config.active_threshold >= 0.0f &&
             config.active_threshold <= 1.0f;
@@ -339,6 +398,65 @@ private:
         if (!(denominator > 0.0) || !(numerator > 0.0))
             return 0.0f;
         return clamp_unit_interval(static_cast<float>(numerator / denominator));
+    }
+
+    static std::array<float, 3> normalize_band_power(
+        const std::array<double, 3>& power) noexcept
+    {
+        const double total = std::max(0.0, power[0])
+            + std::max(0.0, power[1])
+            + std::max(0.0, power[2]);
+        if (!(total > 0.0) || !std::isfinite(total))
+            return {};
+        return {
+            clamp_unit_interval(static_cast<float>(std::max(0.0, power[0]) / total)),
+            clamp_unit_interval(static_cast<float>(std::max(0.0, power[1]) / total)),
+            clamp_unit_interval(static_cast<float>(std::max(0.0, power[2]) / total)),
+        };
+    }
+
+    static float profile_overlap(
+        const std::array<float, 3>& left,
+        const std::array<float, 3>& right) noexcept
+    {
+        float overlap = 0.0f;
+        for (std::size_t band = 0; band < left.size(); ++band)
+            overlap += std::min(clamp_unit_interval(left[band]), clamp_unit_interval(right[band]));
+        return clamp_unit_interval(overlap);
+    }
+
+    static float scene_coarse_spectral_overlap(
+        const std::array<realtime_source_spatial_observation, MaxLanes>& sources,
+        const std::array<double, MaxLanes>& energy,
+        std::size_t lane_count,
+        float active_threshold) noexcept
+    {
+        double weighted_overlap = 0.0;
+        double total_pair_weight = 0.0;
+        for (std::size_t left = 0; left < lane_count; ++left) {
+            const auto& left_source = sources[left];
+            if (!left_source.audio_observed ||
+                left_source.lane_kind != spatial_audio_lane_kind::dry_source ||
+                left_source.activity < active_threshold || !(energy[left] > 0.0))
+                continue;
+
+            for (std::size_t right = left + 1; right < lane_count; ++right) {
+                const auto& right_source = sources[right];
+                if (!right_source.audio_observed ||
+                    right_source.lane_kind != spatial_audio_lane_kind::dry_source ||
+                    right_source.activity < active_threshold || !(energy[right] > 0.0))
+                    continue;
+
+                const double pair_weight = std::sqrt(energy[left] * energy[right]);
+                if (!(pair_weight > 0.0) || !std::isfinite(pair_weight))
+                    continue;
+                weighted_overlap += pair_weight * static_cast<double>(profile_overlap(
+                    left_source.coarse_band_energy_share,
+                    right_source.coarse_band_energy_share));
+                total_pair_weight += pair_weight;
+            }
+        }
+        return ratio(weighted_overlap, total_pair_weight);
     }
 
     realtime_musical_spatial_observer_config config_{};
