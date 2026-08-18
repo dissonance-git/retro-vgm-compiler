@@ -153,7 +153,7 @@ def verify_bundle_metadata(bundle: Path) -> dict[str, object]:
         readme = archive.read("README.txt").decode("utf-8-sig")
         if PROPER_ENHANCED.search(readme):
             raise AssertionError("bundle README must use lowercase descriptive 'enhanced'")
-        if "enhanced" not in readme or "Spatial" not in readme:
+        if "enhanced" not in readme or "Surround" not in readme:
             raise AssertionError("bundle README is missing playback-control description")
 
     return manifest
