@@ -10,11 +10,20 @@ int main()
     using namespace vgmtooling::model;
 
     static_assert(omniphony_source_abi_major_required == 0);
-    static_assert(omniphony_source_abi_minor_required >= 3);
+    static_assert(omniphony_source_abi_minor_required == 4);
 
-    // Omniphony source_ffi ABI 0.3 uses the same C layout on its Rust side.
-    // Pin the binary shape so a future field insertion/reorder cannot silently
-    // reinterpret musical evidence across the DLL boundary.
+    // ABI 0.4 retains the source-evidence/event binary records introduced by
+    // ABI 0.3 and adds the separate scene mix-budget control record. Pin both
+    // shapes so future field insertion/reorder cannot silently reinterpret
+    // musical evidence or renderer intervention across the DLL boundary.
+    static_assert(sizeof(omniphony_source_mix_budget_v1_transport) == 20);
+    static_assert(alignof(omniphony_source_mix_budget_v1_transport) == 4);
+    static_assert(offsetof(omniphony_source_mix_budget_v1_transport, depth_scale) == 0);
+    static_assert(offsetof(omniphony_source_mix_budget_v1_transport, height_scale) == 4);
+    static_assert(offsetof(omniphony_source_mix_budget_v1_transport, shared_wet_strength_scale) == 8);
+    static_assert(offsetof(omniphony_source_mix_budget_v1_transport, shared_wet_extent_scale) == 12);
+    static_assert(offsetof(omniphony_source_mix_budget_v1_transport, externalization_scale) == 16);
+
     static_assert(sizeof(omniphony_source_evidence_v1_transport) == 72);
     static_assert(alignof(omniphony_source_evidence_v1_transport) == 8);
     static_assert(offsetof(omniphony_source_evidence_v1_transport, lane_kind) == 0);
@@ -88,10 +97,27 @@ int main()
     assert(wet.diffuse == 1.0f);
     assert(wet.width == 0.65f);
 
+    const realtime_spatial_mix_budget scene_budget{
+        .dry_width_scale = 0.75f,
+        .dry_diffuse_scale = 0.8f,
+        .depth_scale = 0.7f,
+        .height_scale = 0.6f,
+        .shared_wet_strength = 0.9f,
+        .shared_wet_extent = 0.65f,
+        .added_externalization_scale = 0.4f,
+    };
+    const auto abi_budget = make_omniphony_source_mix_budget(scene_budget);
+    assert(abi_budget.depth_scale == scene_budget.depth_scale);
+    assert(abi_budget.height_scale == scene_budget.height_scale);
+    assert(abi_budget.shared_wet_strength_scale == scene_budget.shared_wet_strength);
+    assert(abi_budget.shared_wet_extent_scale == scene_budget.shared_wet_extent);
+    assert(abi_budget.externalization_scale == scene_budget.added_externalization_scale);
+
     // Generation is part of the renderer-local episode token even though the
-    // ABI 0.3 record has only one u64 source identity coordinate. The same timed
-    // event also proves arithmetic provenance can change inside the host block:
-    // the renderer must begin treating route gain as already applied at frame 2.
+    // evidence record still has only one u64 source identity coordinate. The
+    // same timed event also proves arithmetic provenance can change inside the
+    // host block: the renderer must begin treating route gain as already
+    // applied at frame 2.
     assert(transport.events()[0].frame_offset == 2);
     assert(transport.events()[0].lane_index == 0);
     assert(transport.events()[0].evidence.source_id != first.source_id);
