@@ -36,6 +36,10 @@ def main() -> int:
     # Private package output is one 48 kHz host timeline in every source-quality
     # and surround combination. This does not select enhanced or presentation.
     run(here / "apply_private_48khz_output.py", source)
+    # Reconstruct the small source-aware host seam that the later guarded
+    # transformations historically consumed, without copying the old patched
+    # host snapshot over the exact foo_input_vgm 0.31 source tree.
+    run(here / "apply_source_aware_host_foundation.py", source)
     run(here / "apply_source_aware_player.py", source)
 
     # This first installable private VGM runtime is intentionally Genesis-first:
