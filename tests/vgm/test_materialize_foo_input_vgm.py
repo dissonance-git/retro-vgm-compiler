@@ -74,14 +74,16 @@ def main() -> int:
         ):
             assert marker in shadow, f"materialized input_vgm_shadow.cpp missing {marker}"
 
-        # Fail closed at the final audible seam. The delivered decode path has
-        # already written protected stereo into p_chunk before Spatial is tried.
-        # The Spatial helper itself does not touch the chunk until every source,
-        # route and Omniphony condition succeeds.
+        # Fail closed at the final audible seam. input_base::decode_run is the
+        # protected foo_input_vgm 0.31 renderer and must complete before Spatial
+        # is attempted. The Spatial helper itself does not touch the chunk until
+        # every source, route and Omniphony condition succeeds.
         call_marker = "render_genesis_spatial_output(\n\t\t\tp_chunk,"
         call = shadow.index(call_marker)
-        protected_stereo = shadow.rfind("p_chunk.set_data", 0, call)
-        assert protected_stereo >= 0, "VGM Spatial call no longer follows protected stereo output"
+        protected_stereo = shadow.rfind(
+            "result = input_base::decode_run(p_chunk, p_abort);", 0, call
+        )
+        assert protected_stereo >= 0, "VGM Spatial call no longer follows protected 0.31 decode"
         assert protected_stereo < call
 
         helper_start = shadow.index("bool input_vgm::render_genesis_spatial_output(")
