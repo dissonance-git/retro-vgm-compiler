@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Add the independent enhanced preference without inventing a spatial UI.
+"""Add the independent enhanced preference to foo_input_vgm 0.31.
 
-The historical foo_input_vgm Surround preference is the sole user-facing switch
-for source-native Omniphony presentation. The temporary semantic-7.1/spatial
-preference is removed from the materialized component instead of being exposed
-as a second way to ask for the same thing.
-
-enhanced remains an independent lowercase descriptive option and defaults off.
+The historical foo_input_vgm Surround preference remains the sole user-facing
+switch for source-native Omniphony presentation. enhanced is a separate quality
+choice, defaults off, and does not create a second spatial control.
 """
 
 from __future__ import annotations
@@ -20,8 +17,6 @@ def decode_source(raw: bytes) -> tuple[str, str, bool]:
     try:
         return raw.decode("utf-8-sig"), "utf-8", has_utf8_bom
     except UnicodeDecodeError:
-        # The historical VGM resource files declare code page 932 and some
-        # checkouts preserve that encoding on disk.
         return raw.decode("cp932"), "cp932", False
 
 
@@ -51,39 +46,43 @@ def main() -> int:
     resource_h = root / "resource.h"
     resource_rc = root / "config_foo_input_vgm.rc"
 
-    # Retire the temporary second spatial control. Keep its numeric hole rather
-    # than renumbering unrelated historical controls.
+    # 0.31 already owns the real historical Surround control. Add only the
+    # independent source-quality control beside it. No second spatial switch.
     replace_once(
         resource_h,
-        """#define IDC_SEM71_ENABLED_VGM           1028
+        """#define IDC_BPS                         1027
 #define IDC_CHIP_TYPE                   1100
 """,
-        """#define IDC_ENHANCED_ENABLED_VGM        1029
+        """#define IDC_BPS                         1027
+#define IDC_ENHANCED_ENABLED_VGM        1028
 #define IDC_CHIP_TYPE                   1100
 """,
-        "VGM enhanced control id without duplicate spatial id",
+        "VGM enhanced control id",
     )
     replace_once(
         resource_rc,
-        """    CONTROL         "Enable Spatial Pre-Conditioning",IDC_SEM71_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,120,10
+        """    CONTROL         """Surround"" sound",IDC_SURROUND_SOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,73,10
+    LTEXT           "Volume",IDC_STATIC,13,242,24,8
 """,
-        """    CONTROL         "enhanced",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,70,10
+        """    CONTROL         """Surround"" sound",IDC_SURROUND_SOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,73,10
+    CONTROL         "enhanced",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,97,222,70,10
+    LTEXT           "Volume",IDC_STATIC,13,242,24,8
 """,
-        "VGM enhanced control reuses no spatial surface",
+        "VGM enhanced checkbox beside existing Surround",
     )
-
-    # Remove the temporary spatial preference entirely. The historical
-    # cfg_surround_sound preference already owns persistence for the real UI.
     replace_once(
         config,
-        """// {A3F12E01-CC47-4D89-B2F1-8DC34E7A1204}
-static const GUID guid_cfg_vgm_sem71_enabled =
-{ 0xa3f12e01, 0xcc47, 0x4d89, { 0xb2, 0xf1, 0x8d, 0xc3, 0x4e, 0x7a, 0x12, 0x04 } };
+        """// {1320E264-D0DF-4019-955C-B685694191D7}
+static const GUID guid_cfg_bps =
+{ 0x1320e264, 0xd0df, 0x4019, { 0x95, 0x5c, 0xb6, 0x85, 0x69, 0x41, 0x91, 0xd7 } };
 
 
 cfg_int cfg_resampling_mode(guid_cfg_resampling_mode, 0);
 """,
-        """// {DD6D49F2-2401-4793-83B0-2986B480C9D7}
+        """// {1320E264-D0DF-4019-955C-B685694191D7}
+static const GUID guid_cfg_bps =
+{ 0x1320e264, 0xd0df, 0x4019, { 0x95, 0x5c, 0xb6, 0x85, 0x69, 0x41, 0x91, 0xd7 } };
+// {DD6D49F2-2401-4793-83B0-2986B480C9D7}
 static const GUID guid_cfg_vgm_enhanced_enabled =
 { 0xdd6d49f2, 0x2401, 0x4793, { 0x83, 0xb0, 0x29, 0x86, 0xb4, 0x80, 0xc9, 0xd7 } };
 
@@ -96,21 +95,21 @@ cfg_int cfg_resampling_mode(guid_cfg_resampling_mode, 0);
         config,
         """cfg_int cfg_surround_sound(guid_cfg_surround_sound, 0);
 cfg_int cfg_volume(guid_cfg_volume, 100);
-cfg_int cfg_vgm_sem71_enabled(guid_cfg_vgm_sem71_enabled, 1);  // default ON
 """,
         """cfg_int cfg_surround_sound(guid_cfg_surround_sound, 0);
 cfg_int cfg_volume(guid_cfg_volume, 100);
-cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected reference default
+cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0);
 """,
         "VGM enhanced cfg var",
     )
     replace_once(
         config,
         """\t\tCOMMAND_HANDLER_EX(IDC_HARD_STOP_OLD_VGMS, BN_CLICKED, OnButtonClick)
-\t\tCOMMAND_HANDLER_EX(IDC_SEM71_ENABLED_VGM, BN_CLICKED, OnButtonClick)
+\t\tCOMMAND_HANDLER_EX(IDC_SURROUND_SOUND, BN_CLICKED, OnButtonClick)
 \t\tCOMMAND_HANDLER_EX(IDC_VOLUME, EN_CHANGE, OnEditChange)
 """,
         """\t\tCOMMAND_HANDLER_EX(IDC_HARD_STOP_OLD_VGMS, BN_CLICKED, OnButtonClick)
+\t\tCOMMAND_HANDLER_EX(IDC_SURROUND_SOUND, BN_CLICKED, OnButtonClick)
 \t\tCOMMAND_HANDLER_EX(IDC_ENHANCED_ENABLED_VGM, BN_CLICKED, OnButtonClick)
 \t\tCOMMAND_HANDLER_EX(IDC_VOLUME, EN_CHANGE, OnEditChange)
 """,
@@ -119,11 +118,12 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
     replace_once(
         config,
         """\tCheckDlgButton(IDC_HARD_STOP_OLD_VGMS, (UINT)cfg_hard_stop_old_vgms);
-\tCheckDlgButton(IDC_SEM71_ENABLED_VGM, (UINT)cfg_vgm_sem71_enabled);
+\tCheckDlgButton(IDC_SURROUND_SOUND, (UINT)cfg_surround_sound);
 
 \tSetDlgItemInt(IDC_VOLUME, (UINT)cfg_volume, FALSE);
 """,
         """\tCheckDlgButton(IDC_HARD_STOP_OLD_VGMS, (UINT)cfg_hard_stop_old_vgms);
+\tCheckDlgButton(IDC_SURROUND_SOUND, (UINT)cfg_surround_sound);
 \tCheckDlgButton(IDC_ENHANCED_ENABLED_VGM, (UINT)cfg_vgm_enhanced_enabled);
 
 \tSetDlgItemInt(IDC_VOLUME, (UINT)cfg_volume, FALSE);
@@ -132,12 +132,11 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
     )
     replace_once(
         config,
-        """\t\tcfg_pause_non_looping != GetDlgItemInt(IDC_PAUSE_NON_LOOPING, NULL, FALSE) ||
-\t\tcfg_vgm_sem71_enabled != (int)IsDlgButtonChecked(IDC_SEM71_ENABLED_VGM) ||
+        """\t\tcfg_surround_sound != IsDlgButtonChecked(IDC_SURROUND_SOUND) ||
 \t\tcfg_volume != GetDlgItemInt(IDC_VOLUME, NULL, FALSE) ||
 """,
-        """\t\tcfg_pause_non_looping != GetDlgItemInt(IDC_PAUSE_NON_LOOPING, NULL, FALSE) ||
-\t\tcfg_vgm_enhanced_enabled != (int)IsDlgButtonChecked(IDC_ENHANCED_ENABLED_VGM) ||
+        """\t\tcfg_surround_sound != IsDlgButtonChecked(IDC_SURROUND_SOUND) ||
+\t\tcfg_vgm_enhanced_enabled != IsDlgButtonChecked(IDC_ENHANCED_ENABLED_VGM) ||
 \t\tcfg_volume != GetDlgItemInt(IDC_VOLUME, NULL, FALSE) ||
 """,
         "VGM enhanced dirty-state tracking",
@@ -145,11 +144,12 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
     replace_once(
         config,
         """\tcfg_hard_stop_old_vgms = IsDlgButtonChecked(IDC_HARD_STOP_OLD_VGMS);
-\tcfg_vgm_sem71_enabled = IsDlgButtonChecked(IDC_SEM71_ENABLED_VGM);
+\tcfg_surround_sound = IsDlgButtonChecked(IDC_SURROUND_SOUND);
 
 \tcfg_volume = GetDlgItemInt(IDC_VOLUME, NULL, FALSE);
 """,
         """\tcfg_hard_stop_old_vgms = IsDlgButtonChecked(IDC_HARD_STOP_OLD_VGMS);
+\tcfg_surround_sound = IsDlgButtonChecked(IDC_SURROUND_SOUND);
 \tcfg_vgm_enhanced_enabled = IsDlgButtonChecked(IDC_ENHANCED_ENABLED_VGM);
 
 \tcfg_volume = GetDlgItemInt(IDC_VOLUME, NULL, FALSE);
@@ -159,10 +159,11 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
     replace_once(
         config,
         """\tCheckDlgButton(IDC_HARD_STOP_OLD_VGMS, BST_UNCHECKED);
-\tCheckDlgButton(IDC_SEM71_ENABLED_VGM, BST_CHECKED);  // default ON
+\tCheckDlgButton(IDC_SURROUND_SOUND, BST_UNCHECKED);
 \tSetDlgItemInt(IDC_VOLUME, (UINT)100, FALSE);
 """,
         """\tCheckDlgButton(IDC_HARD_STOP_OLD_VGMS, BST_UNCHECKED);
+\tCheckDlgButton(IDC_SURROUND_SOUND, BST_UNCHECKED);
 \tCheckDlgButton(IDC_ENHANCED_ENABLED_VGM, BST_UNCHECKED);
 \tSetDlgItemInt(IDC_VOLUME, (UINT)100, FALSE);
 """,
@@ -170,10 +171,13 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0); // protected
     )
     replace_once(
         external,
-        """extern cfg_int cfg_vgm_sem71_enabled;
+        """extern cfg_int cfg_surround_sound;
+extern cfg_int cfg_volume;
 extern cfg_int cfg_prefer_jpn_tag;
 """,
-        """extern cfg_int cfg_vgm_enhanced_enabled;
+        """extern cfg_int cfg_surround_sound;
+extern cfg_int cfg_volume;
+extern cfg_int cfg_vgm_enhanced_enabled;
 extern cfg_int cfg_prefer_jpn_tag;
 """,
         "VGM enhanced external declaration",
