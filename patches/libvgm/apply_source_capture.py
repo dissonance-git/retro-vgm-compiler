@@ -20,11 +20,12 @@ def run(script: Path, libvgm_root: Path) -> None:
 
 
 def apply_numbered_patch(patch: Path, libvgm_root: Path) -> None:
-    # Numbered observer patches are pinned source contracts. Be idempotent for a
-    # checkout that already contains them, but never fuzz/guess around upstream
-    # drift: either the patch applies exactly or its exact reverse does.
+    # Numbered observer patches are pinned source contracts. Some historical
+    # patch files were edited after generation and therefore carry stale hunk
+    # line counts. --recount repairs only that bookkeeping; exact surrounding
+    # source context must still match, so upstream drift remains fail-closed.
     check = subprocess.run(
-        ["git", "apply", "--check", str(patch)],
+        ["git", "apply", "--recount", "--check", str(patch)],
         cwd=str(libvgm_root),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -33,7 +34,7 @@ def apply_numbered_patch(patch: Path, libvgm_root: Path) -> None:
     )
     if check.returncode == 0:
         applied = subprocess.run(
-            ["git", "apply", str(patch)],
+            ["git", "apply", "--recount", str(patch)],
             cwd=str(libvgm_root),
             check=False,
         )
@@ -42,7 +43,7 @@ def apply_numbered_patch(patch: Path, libvgm_root: Path) -> None:
         return
 
     reverse = subprocess.run(
-        ["git", "apply", "--reverse", "--check", str(patch)],
+        ["git", "apply", "--recount", "--reverse", "--check", str(patch)],
         cwd=str(libvgm_root),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
