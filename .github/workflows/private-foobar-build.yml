@@ -162,9 +162,9 @@ jobs:
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
           # WTL 9.10 predates standard two-phase template lookup and refers to
           # CDCHandle from CDCT before the typedef appears later in the header.
-          # MSVC documents /Zc:twoPhase- as the compatibility switch for this
-          # legacy lookup behavior under modern conformance-mode projects.
-          $env:CL = "/Zc:twoPhase- $env:CL"
+          # _CL_ is processed after project command-line flags, so this wins even
+          # when libPPUI explicitly enables modern two-phase lookup.
+          $env:_CL_ = "$env:_CL_ /Zc:twoPhase-"
           ./tools/build_private_foobar_components.ps1
 
       - name: Show build manifest
