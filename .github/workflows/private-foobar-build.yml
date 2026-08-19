@@ -162,12 +162,13 @@ jobs:
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
           # The pinned WTL 9.10 headers rely on legacy MSVC dependent-base lookup.
           # Directory.Build.rsp is an MSBuild autoresponse file, so this becomes a
-          # global command-line property for every nested VS project and cannot be
-          # overridden by libPPUI's project-level ConformanceMode setting.
+          # global command-line property for every nested VS project.
           $rsp = Join-Path $PWD 'Directory.Build.rsp'
           '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
-          # Retain the compiler-level fallback for old template parsing as well.
-          $env:_CL_ = "$env:_CL_ /Zc:twoPhase-"
+          # _CL_ is appended after project and /std flags. /permissive must come
+          # after any option that can imply /permissive-, then the two-phase
+          # fallback closes the remaining legacy WTL template lookup seam.
+          $env:_CL_ = "$env:_CL_ /permissive /Zc:twoPhase-"
           try {
             ./tools/build_private_foobar_components.ps1
           } finally {
