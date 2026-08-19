@@ -1,0 +1,81 @@
+name: Generated VGM host diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/vgm-generated-host-diagnostic.yml"
+      - ".delivery-safe/**"
+      - "imports/foo_input_vgm-0.31.zip"
+      - "components/vgm/**"
+      - "patches/foo_input_vgm/**"
+      - "tools/materialize_foo_input_vgm.py"
+      - "tools/reconstruct_vgm031_bootstrap.py"
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  diagnose-generated-host:
+    runs-on: windows-2022
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Publish running locator
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          $body = @{
+            state = 'pending'
+            context = 'vgm-generated-host-diagnostic'
+            description = "run_id=$($env:RUN_ID); running"
+            target_url = "https://github.com/$($env:REPOSITORY)/actions/runs/$($env:RUN_ID)"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/$($env:REPOSITORY)/statuses/$($env:SHA)" `
+            -Headers @{ Authorization = "Bearer $($env:GH_TOKEN)"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' } `
+            -ContentType 'application/json' -Body $body | Out-Null
+
+      - name: Reconstruct exact VGM 0.31 source
+        shell: pwsh
+        run: |
+          python -B tools/reconstruct_vgm031_bootstrap.py
+          if ($LASTEXITCODE -ne 0) { throw 'VGM 0.31 reconstruction failed' }
+
+      - name: Materialize patched VGM host and print narrow diagnostics
+        shell: pwsh
+        run: |
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-generated-host'
+          python -B tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot
+          if ($LASTEXITCODE -ne 0) { throw 'VGM host materialization failed' }
+
+      - name: Publish final locator
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $state = switch ($env:JOB_STATUS) { 'success' { 'success' } 'cancelled' { 'error' } default { 'failure' } }
+          $body = @{
+            state = $state
+            context = 'vgm-generated-host-diagnostic'
+            description = "run_id=$($env:RUN_ID); $($env:JOB_STATUS)"
+            target_url = "https://github.com/$($env:REPOSITORY)/actions/runs/$($env:RUN_ID)"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/$($env:REPOSITORY)/statuses/$($env:SHA)" `
+            -Headers @{ Authorization = "Bearer $($env:GH_TOKEN)"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' } `
+            -ContentType 'application/json' -Body $body | Out-Null
