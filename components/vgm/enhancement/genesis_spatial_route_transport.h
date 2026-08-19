@@ -1,5 +1,6 @@
 #pragma once
 
+#include "genesis_enhanced_recomposition.h"
 #include "genesis_spatial_source.h"
 #include "spatial_route_transport.h"
 #include "vgm_command_event.h"
