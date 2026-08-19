@@ -10,6 +10,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / "tools" / "build_private_foobar_components.ps1"
+BOOTSTRAP_HELPER = ROOT / "tools" / "fetch_foo_input_vgm_bootstrap.ps1"
+MATERIALIZER = ROOT / "tools" / "materialize_foo_input_vgm.py"
 RUNTIME_VERIFIER = ROOT / "tools" / "verify_omniphony_runtime_abi.py"
 PACKAGE_VERIFIER = ROOT / "tools" / "verify_private_component_packages.py"
 VGM_BOOTSTRAP = ROOT / "imports" / "foo_input_vgm-0.31.zip"
@@ -17,6 +19,9 @@ EXPECTED_OMNIPHONY_COMMIT = "819668d1366710d663ae9c810edbcf9b7e923e19"
 RETIRED_INCOMPATIBLE_COMMIT = "0fabccb165e6d957cefecc6eeb1264467e7406a4"
 EXPECTED_VGM_BOOTSTRAP_VERSION = "0.31"
 EXPECTED_VGM_BOOTSTRAP_FILES = 41
+EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256 = (
+    "e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1"
+)
 EXPECTED_VGM_BOOTSTRAP_TREE_SHA256 = (
     "36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc"
 )
@@ -72,10 +77,27 @@ class OmniphonyPrivateBuildContractTest(unittest.TestCase):
 
     def test_vgm_bootstrap_is_exact_supplied_031_source_tree(self) -> None:
         self.assertTrue(VGM_BOOTSTRAP.is_file(), VGM_BOOTSTRAP)
+        archive_sha256 = hashlib.sha256(VGM_BOOTSTRAP.read_bytes()).hexdigest()
+        self.assertEqual(archive_sha256, EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256)
         file_count, tree_sha256, version_text = vgm_bootstrap_source_identity(VGM_BOOTSTRAP)
         self.assertEqual(file_count, EXPECTED_VGM_BOOTSTRAP_FILES)
         self.assertEqual(tree_sha256, EXPECTED_VGM_BOOTSTRAP_TREE_SHA256)
         self.assertIn(f'"{EXPECTED_VGM_BOOTSTRAP_VERSION}"', version_text)
+
+    def test_vgm_bootstrap_helper_is_exact_offline_031_transport(self) -> None:
+        helper = BOOTSTRAP_HELPER.read_text(encoding="utf-8")
+        self.assertIn(EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256, helper)
+        self.assertIn("foo_input_vgm-0.31.zip", helper)
+        self.assertIn(".delivery-safe\\pre00", helper)
+        self.assertIn("CanonicalBase64Sha256", helper)
+        self.assertNotIn("Invoke-WebRequest", helper)
+        self.assertNotIn("uploader.jp", helper)
+
+    def test_vgm_materializer_defaults_to_031_and_imports_os(self) -> None:
+        text = MATERIALIZER.read_text(encoding="utf-8")
+        self.assertIn("import os", text)
+        self.assertIn('repo / "imports" / "foo_input_vgm-0.31.zip"', text)
+        self.assertNotIn('repo / "imports" / "foo_input_vgm.7z"', text)
 
     def test_build_executes_runtime_contract_verifier_before_packaging(self) -> None:
         text = BUILD.read_text(encoding="utf-8")

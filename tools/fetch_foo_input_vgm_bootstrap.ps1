@@ -7,95 +7,96 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# The user-supplied foo_input_vgm 0.31 source tree is the canonical bootstrap
+# for the private component.  The legacy uploader arguments remain in the
+# function signature only so older callers do not break while the build script
+# is being simplified.  They are not source authority and are not contacted.
+$CanonicalSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'
+$CanonicalBase64Sha256 = 'e0774dbfe7b8c344adef89814846662dd0c810af03f7c4c4d78b4a43e73af304'
+$CanonicalByteLength = 66250
+$CanonicalBase64Length = 88336
+$CanonicalSourceLabel = 'repository:imports/foo_input_vgm-0.31.zip'
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$canonical = Join-Path $repoRoot 'imports\foo_input_vgm-0.31.zip'
+$transferParts = @(
+    (Join-Path $repoRoot '.delivery-safe\pre00'),
+    (Join-Path $repoRoot '.delivery-safe\pre01'),
+    (Join-Path $repoRoot '.delivery-safe\pre02'),
+    (Join-Path $repoRoot '.delivery-safe\chunk00'),
+    (Join-Path $repoRoot '.delivery-safe\chunk01'),
+    (Join-Path $repoRoot '.delivery-safe\chunk02'),
+    (Join-Path $repoRoot '.delivery-safe\chunk03'),
+    (Join-Path $repoRoot '.delivery-safe\chunk04'),
+    (Join-Path $repoRoot '.delivery-safe\chunk05a'),
+    (Join-Path $repoRoot '.delivery-safe\chunk05b'),
+    (Join-Path $repoRoot '.delivery-safe\chunk06'),
+    (Join-Path $repoRoot '.delivery-safe\chunk07'),
+    (Join-Path $repoRoot '.delivery-safe\chunk08'),
+    (Join-Path $repoRoot '.delivery-safe\chunk09'),
+    (Join-Path $repoRoot '.delivery-safe\chunk10')
+)
+
+function Get-Sha256([string]$Path) {
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Restore-CanonicalBootstrap {
+    if (Test-Path -LiteralPath $canonical -PathType Leaf) {
+        $existing = Get-Sha256 $canonical
+        if ($existing -eq $CanonicalSha256) {
+            return
+        }
+        Write-Host "repo bootstrap transport needs reconstruction: $existing"
+    }
+
+    foreach ($part in $transferParts) {
+        if (!(Test-Path -LiteralPath $part -PathType Leaf)) {
+            throw "canonical foo_input_vgm 0.31 transfer part missing: $part"
+        }
+    }
+
+    $b64 = (($transferParts | ForEach-Object { Get-Content -Raw -LiteralPath $_ }) -join '') -replace '\s', ''
+    if ($b64.Length -ne $CanonicalBase64Length) {
+        throw "foo_input_vgm 0.31 base64 length mismatch: expected $CanonicalBase64Length, got $($b64.Length)"
+    }
+    $b64Sha = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData([Text.Encoding]::ASCII.GetBytes($b64))
+    ).ToLowerInvariant()
+    if ($b64Sha -ne $CanonicalBase64Sha256) {
+        throw "foo_input_vgm 0.31 base64 SHA-256 mismatch: expected $CanonicalBase64Sha256, got $b64Sha"
+    }
+
+    $bytes = [Convert]::FromBase64String($b64)
+    if ($bytes.Length -ne $CanonicalByteLength) {
+        throw "foo_input_vgm 0.31 byte length mismatch: expected $CanonicalByteLength, got $($bytes.Length)"
+    }
+    [IO.File]::WriteAllBytes($canonical, $bytes)
+
+    $restored = Get-Sha256 $canonical
+    if ($restored -ne $CanonicalSha256) {
+        Remove-Item -LiteralPath $canonical -Force -ErrorAction SilentlyContinue
+        throw "foo_input_vgm 0.31 reconstructed SHA-256 mismatch: expected $CanonicalSha256, got $restored"
+    }
+}
+
+Restore-CanonicalBootstrap
+
 $parent = Split-Path $OutputPath -Parent
 if ($parent -and !(Test-Path $parent)) {
     New-Item -ItemType Directory -Path $parent -Force | Out-Null
 }
+Copy-Item -LiteralPath $canonical -Destination $OutputPath -Force
 
-$session = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
-$headers = @{ 'User-Agent' = 'Mozilla/5.0 Retro-VGM-Compiler/verified-bootstrap' }
-$response = Invoke-WebRequest -Uri $DownloadPage -WebSession $session -Headers $headers
-
-$token = $null
-foreach ($field in @($response.InputFields)) {
-    if ($null -eq $field) { continue }
-    $nameProperty = $field.PSObject.Properties['name']
-    $valueProperty = $field.PSObject.Properties['value']
-    if ($nameProperty -and $valueProperty -and [string]$nameProperty.Value -eq 'token') {
-        $candidate = [string]$valueProperty.Value
-        if (![string]::IsNullOrWhiteSpace($candidate)) {
-            $token = $candidate
-            break
-        }
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace([string]$token)) {
-    $tokenPatterns = @(
-        '(?is)<input\b[^>]*\bname\s*=\s*["'']token["''][^>]*\bvalue\s*=\s*["'']([^"'']+)["'']',
-        '(?is)<input\b[^>]*\bvalue\s*=\s*["'']([^"'']+)["''][^>]*\bname\s*=\s*["'']token["'']'
-    )
-    foreach ($pattern in $tokenPatterns) {
-        $match = [regex]::Match([string]$response.Content, $pattern)
-        if ($match.Success) {
-            $token = [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
-            break
-        }
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace([string]$token)) {
-    throw "uploader.jp bootstrap page did not expose a download token: $DownloadPage"
-}
-
-Start-Sleep -Seconds 2
-$response = Invoke-WebRequest `
-    -Uri $DownloadPage `
-    -Method Post `
-    -Body @{ token = [string]$token } `
-    -WebSession $session `
-    -Headers $headers
-
-$href = $null
-foreach ($link in @($response.Links)) {
-    if ($null -eq $link) { continue }
-    $hrefProperty = $link.PSObject.Properties['href']
-    if (!$hrefProperty) { continue }
-    $candidate = [string]$hrefProperty.Value
-    if ($candidate -match 'downloadx') {
-        $href = $candidate
-        break
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace([string]$href)) {
-    $linkMatch = [regex]::Match(
-        [string]$response.Content,
-        '(?is)href\s*=\s*["'']([^"'']*downloadx[^"'']*)["'']'
-    )
-    if ($linkMatch.Success) {
-        $href = $linkMatch.Groups[1].Value
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace([string]$href)) {
-    throw "uploader.jp did not return a downloadx link for the verified bootstrap"
-}
-
-$href = [System.Net.WebUtility]::HtmlDecode([string]$href)
-$href = [System.Uri]::UnescapeDataString($href)
-$base = [System.Uri]::new($DownloadPage)
-$downloadUri = [System.Uri]::new($base, $href)
-
-Start-Sleep -Seconds 2
-Invoke-WebRequest -Uri $downloadUri.AbsoluteUri -OutFile $OutputPath -WebSession $session -Headers $headers
-if (!(Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
-    throw "verified foo_input_vgm bootstrap download did not create $OutputPath"
-}
-$actual = (Get-FileHash -LiteralPath $OutputPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$expected = $ExpectedSha256.ToLowerInvariant()
-if ($actual -ne $expected) {
+$actual = Get-Sha256 $OutputPath
+if ($actual -ne $CanonicalSha256) {
     Remove-Item -LiteralPath $OutputPath -Force -ErrorAction SilentlyContinue
-    throw "foo_input_vgm bootstrap SHA-256 mismatch: expected $expected, got $actual"
+    throw "foo_input_vgm 0.31 bootstrap copy SHA-256 mismatch: expected $CanonicalSha256, got $actual"
 }
-Write-Host "verified foo_input_vgm bootstrap: $actual"
+
+# Keep the current caller's manifest fields truthful until the small legacy
+# parameter surface in build_private_foobar_components.ps1 is removed outright.
+Set-Variable -Name VgmBootstrapSha256 -Value $CanonicalSha256 -Scope 1 -ErrorAction SilentlyContinue
+Set-Variable -Name VgmBootstrapUrl -Value $CanonicalSourceLabel -Scope 1 -ErrorAction SilentlyContinue
+
+Write-Host "verified foo_input_vgm 0.31 bootstrap: $actual"

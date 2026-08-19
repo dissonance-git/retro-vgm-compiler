@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Materialize a buildable foo_input_vgm source tree from canonical inputs.
 
-The historical upstream plugin is preserved immutably in imports/foo_input_vgm.7z.
-Current Retro VGM Compiler additions live under components/vgm/ and the guarded
-transformations live under patches/foo_input_vgm/.  This tool combines those
-three sources into a disposable build tree without consulting the retired
-vgmspc repository or copying its stale patched host tree.
+The exact user-supplied foo_input_vgm 0.31 source archive is the private
+component bootstrap. Current Retro VGM Compiler additions live under
+components/vgm/ and guarded transformations live under patches/foo_input_vgm/.
+This tool combines those sources into a disposable build tree without consulting
+the retired vgmspc repository or copying its stale patched host tree.
 
 The materialized layout intentionally mirrors the historical foobar SDK layout:
 
@@ -13,13 +13,14 @@ The materialized layout intentionally mirrors the historical foobar SDK layout:
     <sdk-root>/enhancement/
 
 External dependencies such as libvgm, WTL and the foobar SDK itself remain the
-responsibility of the caller/build workflow.  The current patch chain is applied
+responsibility of the caller/build workflow. The current patch chain is applied
 exactly once to the pristine bootstrap source.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ import sys
 import tempfile
 
 
-# These files are project-owned additions.  The similarly named base plugin
+# These files are project-owned additions. The similarly named base plugin
 # files (input_vgm.cpp, input_base.cpp, stdafx.*, etc.) deliberately do not
 # appear here: they must come from the immutable bootstrap and be transformed by
 # the current guarded patch chain rather than copied from a previously patched
@@ -97,7 +98,7 @@ def main() -> int:
         "--archive",
         type=Path,
         default=None,
-        help="override the historical foo_input_vgm bootstrap archive",
+        help="override the canonical foo_input_vgm 0.31 bootstrap archive",
     )
     parser.add_argument(
         "--seven-zip",
@@ -114,7 +115,9 @@ def main() -> int:
     repo = Path(__file__).resolve().parents[1]
     env_archive = os.environ.get("RETRO_VGM_BOOTSTRAP_ARCHIVE")
     selected_archive = args.archive or (Path(env_archive) if env_archive else None)
-    archive = (selected_archive or (repo / "imports" / "foo_input_vgm.7z")).resolve()
+    archive = (
+        selected_archive or (repo / "imports" / "foo_input_vgm-0.31.zip")
+    ).resolve()
     sdk_root = args.sdk_root.resolve()
     component = sdk_root / "foo_input_vgm"
     enhancement = sdk_root / "enhancement"
@@ -143,7 +146,7 @@ def main() -> int:
         require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")
         shutil.copytree(bootstrap, component)
 
-    # Keep the historical base pristine until after extraction.  Only files
+    # Keep the historical base pristine until after extraction. Only files
     # which do not belong to that base are overlaid before the guarded patchers
     # run, so each base-file transformation has exactly one authoritative path.
     for filename in PROJECT_OWNED_VGM_SOURCE_FILES:

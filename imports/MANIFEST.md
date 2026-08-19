@@ -1,16 +1,20 @@
 # Import manifest
 
-These are the exact inputs supplied when the repository was initialized.
+These are the exact source and reference inputs used by the private component build.
 
 ## VGM component source
 
-- File: `foo_input_vgm.7z`
-- Repository copy: `imports/foo_input_vgm.7z`
-- SHA-256: `93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff`
-- Extracted source tree observed locally: 41 files, approximately 340 KiB
+- File: `foo_input_vgm-0.31.zip`
+- Build workspace path: `imports/foo_input_vgm-0.31.zip`
+- Version marker: `0.31`
+- Archive SHA-256: `e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1`
+- Component source files: 41
+- Component source-tree SHA-256: `36a25ee0cc5d9e8df6c7f7f3f0f06ce305dbbe27dbf8abbc28caa97a8ddb64fc`
 - License in supplied source: Mozilla Public License 2.0
 
-The archive identity is immutable, but the current GitHub transport copy is known to be truncated and is not accepted as a build input. Canonical Windows builds recover `foo_input_vgm_v0.30.7z` from `https://uu.getuploader.com/foobar2000/download/248` into disposable build state and require the SHA-256 above before extraction. This is a recovery route for the same audited source object, not permission to substitute v0.31 or another release. Normal development occurs from the expanded source under `components/vgm/`; the historical archive is never edited or repacked.
+The user-supplied 0.31 source tree is the canonical VGM bootstrap for the private foobar build. GitHub text-only connector transport cannot safely publish the binary ZIP directly, so the repository currently also carries exact base64 transfer slices under `.delivery-safe/`. The canonical builder helper reconstructs those slices only when the checked-out ZIP is not already the exact archive above, verifies the base64 transport SHA-256 and final archive SHA-256, and refuses to continue on any mismatch. The transfer slices are transport, not a second source object.
+
+The older `imports/foo_input_vgm.7z` / uploader.jp 0.30 recovery route is retained only as historical repository lineage and is not an accepted private-build input. Normal development occurs from the materialized 0.31 base plus current project-owned overlays and guarded patches; the canonical source archive itself is never semantically edited in place.
 
 ## SPCPlay / SNESAPU behavioral reference
 
