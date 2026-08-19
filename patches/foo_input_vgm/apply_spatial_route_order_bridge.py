@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Bridge the DAC source-clock seam across the Genesis spatial runtime patch.
+"""Bridge established decode ordering across the Genesis spatial runtime patch.
 
-The source-bank DAC observer predates the final spatial route patch and inserts
-its PCM interval advance between the two lines used by that patch's historical
-route-observation anchor. Both operations are required. During materialization
-this bridge temporarily exposes the old structural anchor, then restores the PCM
-advance immediately after the newly inserted route event.
+Two older transformations legitimately occupy text that the final spatial patch
+historically used as anchors:
 
-Final order:
+* the source-bank DAC observer advances PCM state at each command boundary;
+* the deferred FM path wraps the delivered decode tail so render-ahead state is
+  kept on the engine clock while ordinary delivery still performs QSound replay.
+
+During materialization this bridge temporarily exposes the older spatial patch's
+expected anchors. After that patch succeeds, both established behaviors are
+restored around the new spatial operations.
+
+Final command-event order:
 
     resolve absolute sample
     observe authored Genesis route event
     advance source-bank PCM interval to that sample
     enter the block-local source-capture branch
+
+Final delivered-block order:
+
+    deferred engine-clock maintenance OR ordinary QSound projection
+    Genesis Omniphony attempt over finalized delivered sources
+    ordinary QSound replay only when not in deferred render-ahead
+    return protected/final chunk
 
 No intermediate source is compiled or executed between prepare and restore.
 """
@@ -68,6 +80,30 @@ def prepare(shadow: Path) -> None:
         "prepare Genesis spatial route observation anchor",
     )
 
+    replace_once(
+        shadow,
+        """\tif (m_studio_deferred_capture_bypass)
+\t{
+\t\t// PlayerA may have rendered beyond m_render_done to satisfy the FIR. The
+\t\t// command tap was in direct-shadow mode, so advance the continuous state
+\t\t// to the actual engine clock rather than the delivered foobar clock.
+\t\tif (m_vgm_player != nullptr)
+\t\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
+\t}
+\telse
+\t{
+\t\tproject_qsound_consumer_sources(block_start, m_render_done);
+\t\treplay_captured_sources(m_render_done);
+\t}
+\treturn true;
+""",
+        """\tproject_qsound_consumer_sources(block_start, m_render_done);
+\treplay_captured_sources(m_render_done);
+\treturn true;
+""",
+        "prepare Genesis spatial delivered-block anchor",
+    )
+
 
 def restore(shadow: Path) -> None:
     replace_once(
@@ -90,6 +126,51 @@ def restore(shadow: Path) -> None:
 \tif (self->m_source_capture_active)
 """,
         "restore PCM advance after Genesis spatial route observation",
+    )
+
+    replace_once(
+        shadow,
+        """\tproject_qsound_consumer_sources(block_start, m_render_done);
+\tconst std::uint64_t genesis_block_start = m_genesis_delivered_ordinal;
+\tif (m_render_done != 0)
+\t{
+\t\trender_genesis_spatial_output(
+\t\t\tp_chunk,
+\t\t\tgenesis_block_start,
+\t\t\tstatic_cast<std::size_t>(m_render_done));
+\t\tm_genesis_delivered_ordinal += static_cast<std::uint64_t>(m_render_done);
+\t}
+\treplay_captured_sources(m_render_done);
+\treturn true;
+""",
+        """\tif (m_studio_deferred_capture_bypass)
+\t{
+\t\t// PlayerA may have rendered beyond m_render_done to satisfy the FIR. The
+\t\t// command tap was in direct-shadow mode, so advance the continuous state
+\t\t// to the actual engine clock rather than the delivered foobar clock.
+\t\tif (m_vgm_player != nullptr)
+\t\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
+\t}
+\telse
+\t{
+\t\tproject_qsound_consumer_sources(block_start, m_render_done);
+\t}
+
+\tconst std::uint64_t genesis_block_start = m_genesis_delivered_ordinal;
+\tif (m_render_done != 0)
+\t{
+\t\trender_genesis_spatial_output(
+\t\t\tp_chunk,
+\t\t\tgenesis_block_start,
+\t\t\tstatic_cast<std::size_t>(m_render_done));
+\t\tm_genesis_delivered_ordinal += static_cast<std::uint64_t>(m_render_done);
+\t}
+
+\tif (!m_studio_deferred_capture_bypass)
+\t\treplay_captured_sources(m_render_done);
+\treturn true;
+""",
+        "restore deferred delivery around Genesis spatial output",
     )
 
 
