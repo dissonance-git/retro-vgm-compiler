@@ -144,6 +144,13 @@ jobs:
           python -B -m unittest tests.vgm.test_omniphony_private_build_contract
           if ($LASTEXITCODE -ne 0) { throw 'private Omniphony dependency contract failed' }
 
+      - name: Restore tracked transport placeholder
+        shell: pwsh
+        run: |
+          git restore --source=HEAD --worktree -- imports/foo_input_vgm-0.31.zip
+          git diff --quiet -- imports/foo_input_vgm-0.31.zip
+          if ($LASTEXITCODE -ne 0) { throw 'tracked VGM bootstrap transport did not restore cleanly' }
+
       - name: Build and audit installable components
         shell: pwsh
         run: |
