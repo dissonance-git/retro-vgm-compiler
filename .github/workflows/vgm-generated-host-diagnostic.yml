@@ -6,9 +6,11 @@ on:
     branches: [ "main" ]
     paths:
       - ".github/workflows/vgm-generated-host-diagnostic.yml"
+      - ".delivery-safe/**"
       - "imports/foo_input_vgm-0.31.zip"
       - "components/vgm/**"
       - "patches/foo_input_vgm/**"
+      - "tools/fetch_foo_input_vgm_bootstrap.ps1"
       - "tools/materialize_foo_input_vgm.py"
 
 permissions:
@@ -46,8 +48,13 @@ jobs:
       - name: Materialize patched VGM host and print narrow diagnostics
         shell: pwsh
         run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'foo_input_vgm-0.31.zip'
+          ./tools/fetch_foo_input_vgm_bootstrap.ps1 `
+            -OutputPath $archive `
+            -DownloadPage 'https://uu.getuploader.com/foobar2000/download/248' `
+            -ExpectedSha256 '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
           $sdkRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-generated-host'
-          python -B tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot --archive imports/foo_input_vgm-0.31.zip
+          python -B tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot --archive $archive
           if ($LASTEXITCODE -ne 0) { throw 'VGM host materialization failed' }
 
       - name: Publish final locator
