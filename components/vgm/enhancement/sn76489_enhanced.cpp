@@ -211,7 +211,7 @@ void sn76489_enhanced::render(float* const outputs[stem_count], std::size_t fram
     }
 
     const std::uint8_t oversample = cfg_.oversample;
-    const double internal_rate = std::max(minimum_rate, cfg_.sample_rate_hz * static_cast<double>(oversample));
+    const double internal_rate = (std::max)(minimum_rate, cfg_.sample_rate_hz * static_cast<double>(oversample));
     const double inv_oversample = 1.0 / static_cast<double>(oversample);
 
     for (std::size_t frame = 0; frame < frames; ++frame) {
@@ -239,7 +239,7 @@ void sn76489_enhanced::render_timed(
 
     for (std::size_t index = 0; index < write_count; ++index) {
         const sn76489_timed_write& event = writes[index];
-        const std::size_t event_offset = std::min(event.sample_offset, frames);
+        const std::size_t event_offset = (std::min)(event.sample_offset, frames);
         if (event_offset < cursor)
             continue;
 

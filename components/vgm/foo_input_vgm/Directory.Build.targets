@@ -6,6 +6,11 @@
     original foo_input_vgm project can stay close to upstream while this repo's
     realtime engine participates in the same DLL build.
   -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\libvgm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\input_vgm_shadow.cpp" />
     <ClCompile Include="src\input_vgm_qsound_consumer.cpp" />

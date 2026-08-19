@@ -27,7 +27,7 @@ void ym2612_dac_enhanced::render_exact_hold(
     std::size_t cursor = 0;
     for (std::size_t index = 0; index < event_count; ++index) {
         const auto& event = events[index];
-        const std::size_t offset = std::min(event.sample_offset, frames);
+        const std::size_t offset = (std::min)(event.sample_offset, frames);
         if (offset < cursor)
             continue;
         if (output != nullptr && offset > cursor)
@@ -50,7 +50,7 @@ void ym2612_dac_enhanced::render_timed(
     std::size_t cursor = 0;
     for (std::size_t index = 0; index < event_count; ++index) {
         const auto& event = events[index];
-        const std::size_t offset = std::min(event.sample_offset, frames);
+        const std::size_t offset = (std::min)(event.sample_offset, frames);
         if (offset < cursor)
             continue;
         const std::size_t segment = offset - cursor;

@@ -118,9 +118,9 @@ float ym2612_pcm_stream::interpolate(double logical_position) const noexcept {
 }
 
 void ym2612_pcm_stream::start(const dac_stream_source_event& event) noexcept {
-    if (event.start_offset != std::numeric_limits<std::uint32_t>::max()) {
+    if (event.start_offset != (std::numeric_limits<std::uint32_t>::max)()) {
         const std::uint64_t start = static_cast<std::uint64_t>(event.start_offset) + step_base_;
-        if (start > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        if (start > static_cast<std::uint64_t>((std::numeric_limits<std::size_t>::max)())) {
             valid_ = false;
             active_ = false;
             return;
