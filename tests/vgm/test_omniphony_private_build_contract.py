@@ -127,8 +127,13 @@ class OmniphonyPrivateBuildContractTest(unittest.TestCase):
 
     def test_generated_readme_names_the_existing_surround_control(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
-        self.assertIn("enhanced/Surround", text)
-        self.assertIn("enhanced and Surround remain independent controls", text)
+        self.assertIn(
+            "Existing Surround enables Omniphony source-aware Genesis rendering.", text
+        )
+        self.assertIn(
+            "Existing Surround enables Omniphony source-aware SPC rendering.", text
+        )
+        self.assertIn("enhanced is independent.", text)
         self.assertNotIn("enhanced/Spatial", text)
         self.assertNotIn("enhanced and Spatial remain independent controls", text)
 
