@@ -6,12 +6,10 @@ on:
     branches: [ "main" ]
     paths:
       - ".github/workflows/vgm-generated-host-diagnostic.yml"
-      - ".delivery-safe/**"
       - "imports/foo_input_vgm-0.31.zip"
       - "components/vgm/**"
       - "patches/foo_input_vgm/**"
       - "tools/materialize_foo_input_vgm.py"
-      - "tools/reconstruct_vgm031_bootstrap.py"
 
 permissions:
   contents: read
@@ -45,17 +43,11 @@ jobs:
             -Headers @{ Authorization = "Bearer $($env:GH_TOKEN)"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' } `
             -ContentType 'application/json' -Body $body | Out-Null
 
-      - name: Reconstruct exact VGM 0.31 source
-        shell: pwsh
-        run: |
-          python -B tools/reconstruct_vgm031_bootstrap.py
-          if ($LASTEXITCODE -ne 0) { throw 'VGM 0.31 reconstruction failed' }
-
       - name: Materialize patched VGM host and print narrow diagnostics
         shell: pwsh
         run: |
           $sdkRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-generated-host'
-          python -B tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot
+          python -B tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot --archive imports/foo_input_vgm-0.31.zip
           if ($LASTEXITCODE -ne 0) { throw 'VGM host materialization failed' }
 
       - name: Publish final locator
