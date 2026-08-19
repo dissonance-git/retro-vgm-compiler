@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Select SourceAwareVGMPlayer when the guarded libvgm source ABI is present.
 
-This patch is intentionally tiny. It does not change ordinary VGMPlayer behavior
-when libvgm was built without Retro VGM Compiler's source hooks.
+This patch runs after apply_source_aware_host_foundation.py has recreated the
+small command-observer host seam on pristine foo_input_vgm 0.31. Ordinary
+VGMPlayer behavior remains untouched when the private source ABI is absent.
 """
 
 from __future__ import annotations
@@ -39,45 +40,37 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source_dir", type=Path, help="foo_input_vgm/src directory")
     args = parser.parse_args()
-    root = args.source_dir.resolve()
-    input_cpp = root / "input_vgm.cpp"
+    input_cpp = args.source_dir.resolve() / "input_vgm.cpp"
 
     replace_once(
         input_cpp,
-        """#include "my_cfg_external.h"
-""",
-        """#include "my_cfg_external.h"
+        '#include "my_cfg_external.h"\n',
+        '''#include "my_cfg_external.h"
 #ifdef LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI
 #include "source_aware_vgm_player.h"
 #endif
-""",
+''',
         "source-aware player include",
     )
 
-    # foo_input_vgm 0.31 owns a compact register_player() with no historical
-    # command-observer seam. Keep its exact registration flow and change only
-    # which VGMPlayer implementation is constructed when the guarded source
-    # capture ABI is present.
     replace_once(
         input_cpp,
-        """void input_vgm::register_player()
+        '''void input_vgm::register_player()
 {
 \tm_vgm_player = new VGMPlayer;
-\tm_main_player.RegisterPlayerEngine(m_vgm_player);
-}
-""",
-        """void input_vgm::register_player()
+#ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
+''',
+        '''void input_vgm::register_player()
 {
 #ifdef LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI
-\t// SourceAwareVGMPlayer observes the exact same ordinary libvgm render. It
-\t// never advances a second shadow chip and leaves protected stereo untouched.
+\t// SourceAwareVGMPlayer observes the same ordinary libvgm render. It does not
+\t// advance a second audible chip and protected stereo remains the fallback.
 \tm_vgm_player = new SourceAwareVGMPlayer;
 #else
 \tm_vgm_player = new VGMPlayer;
 #endif
-\tm_main_player.RegisterPlayerEngine(m_vgm_player);
-}
-""",
+#ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
+''',
         "source-aware player registration",
     )
 
