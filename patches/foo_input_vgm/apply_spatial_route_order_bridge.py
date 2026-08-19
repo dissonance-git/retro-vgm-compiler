@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Bridge established decode ordering across the Genesis spatial runtime patch.
 
-Two older transformations legitimately occupy text that the final spatial patch
+Three older transformations legitimately occupy text that the final spatial patch
 historically used as anchors:
 
 * the source-bank DAC observer advances PCM state at each command boundary;
 * the deferred FM path wraps the delivered decode tail so render-ahead state is
-  kept on the engine clock while ordinary delivery still performs QSound replay.
+  kept on the engine clock while ordinary delivery still performs QSound replay;
+* the DAC seek rebase advances both shadow/PCM state and rebases the PCM queue
+  after PlayerA seek replay.
 
 During materialization this bridge temporarily exposes the older spatial patch's
-expected anchors. After that patch succeeds, both established behaviors are
+expected anchors. After that patch succeeds, all established behaviors are
 restored around the new spatial operations.
 
 Final command-event order:
@@ -25,6 +27,13 @@ Final delivered-block order:
     Genesis Omniphony attempt over finalized delivered sources
     ordinary QSound replay only when not in deferred render-ahead
     return protected/final chunk
+
+Final seek order:
+
+    replay seek through PlayerA
+    advance continuous shadow state to the resolved destination
+    advance/rebase source-bank PCM state to the same destination
+    reset/reseed Genesis spatial route/source state at that destination
 
 No intermediate source is compiled or executed between prepare and restore.
 """
@@ -104,6 +113,25 @@ def prepare(shadow: Path) -> None:
         "prepare Genesis spatial delivered-block anchor",
     )
 
+    replace_once(
+        shadow,
+        """\tif (m_vgm_player != nullptr)
+\t{
+\t\tconst uint_fast64_t seek_sample =
+\t\t\tstatic_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE));
+\t\tadvance_shadow_to(seek_sample);
+\t\t(void)advance_pcm_streams_to(seek_sample);
+\t\tm_pcm_stream_queue.reset(static_cast<std::uint64_t>(seek_sample));
+\t}
+}
+""",
+        """\tif (m_vgm_player != nullptr)
+\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
+}
+""",
+        "prepare Genesis spatial seek reseed anchor",
+    )
+
 
 def restore(shadow: Path) -> None:
     replace_once(
@@ -171,6 +199,39 @@ def restore(shadow: Path) -> None:
 \treturn true;
 """,
         "restore deferred delivery around Genesis spatial output",
+    )
+
+    replace_once(
+        shadow,
+        """\tstd::uint64_t genesis_seek_sample = static_cast<std::uint64_t>(
+\t\taudio_math::time_to_samples(p_seconds, m_sample_rate));
+\tif (m_vgm_player != nullptr)
+\t{
+\t\tconst auto player_sample = static_cast<uint_fast64_t>(
+\t\t\tm_vgm_player->GetCurPos(PLAYPOS_SAMPLE));
+\t\tadvance_shadow_to(player_sample);
+\t\tgenesis_seek_sample = static_cast<std::uint64_t>(player_sample);
+\t}
+\treset_genesis_spatial_transport(genesis_seek_sample);
+\tseed_genesis_spatial_routes_from_current_state();
+}
+""",
+        """\tstd::uint64_t genesis_seek_sample = static_cast<std::uint64_t>(
+\t\taudio_math::time_to_samples(p_seconds, m_sample_rate));
+\tif (m_vgm_player != nullptr)
+\t{
+\t\tconst auto player_sample = static_cast<uint_fast64_t>(
+\t\t\tm_vgm_player->GetCurPos(PLAYPOS_SAMPLE));
+\t\tadvance_shadow_to(player_sample);
+\t\t(void)advance_pcm_streams_to(player_sample);
+\t\tm_pcm_stream_queue.reset(static_cast<std::uint64_t>(player_sample));
+\t\tgenesis_seek_sample = static_cast<std::uint64_t>(player_sample);
+\t}
+\treset_genesis_spatial_transport(genesis_seek_sample);
+\tseed_genesis_spatial_routes_from_current_state();
+}
+""",
+        "restore PCM rebase inside Genesis spatial seek reseed",
     )
 
 
