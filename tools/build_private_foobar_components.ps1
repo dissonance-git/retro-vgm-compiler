@@ -22,7 +22,7 @@ $VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd
 $ExpectedSdkProjectBlob = 'a1074e4aa8b2fc03cbc1738c9cddd912158bff67'
 $ExpectedPfcProjectBlob = '57cbc91551935cd6f12c13a0e41c4c6bf601ac94'
 $ExpectedLibvgmCmakeBlob = '1f8fb7f99ec45e1d2af12231f624498e6e252732'
-$ExpectedWtlAtlappBlob = '4b3fe38dfd930dfedf1fe642d5a2fe7d167ac099'
+$ExpectedWtlAtlappBlob = '4b3fe38d846da65e2f04257dec2bd4c0bb63cf8e'
 
 $Libvgm = Join-Path $WorkRoot 'libvgm'
 $Wtl = Join-Path $WorkRoot 'WTL'
