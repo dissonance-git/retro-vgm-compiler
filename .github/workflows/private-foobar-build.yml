@@ -154,6 +154,10 @@ jobs:
       - name: Build and audit installable components
         shell: pwsh
         run: |
+          # Pinned external-source provenance is checked against Git blob IDs.
+          # Prevent Windows checkout line-ending conversion from changing those
+          # immutable bytes before the builder performs its blob checks.
+          git config --global core.autocrlf false
           ./tools/build_private_foobar_components.ps1
 
       - name: Show build manifest
