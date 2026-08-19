@@ -160,12 +160,19 @@ jobs:
           # WTL tree into this stable work path before any foobar project builds.
           $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
-          # WTL 9.10 predates standard two-phase template lookup and refers to
-          # CDCHandle from CDCT before the typedef appears later in the header.
-          # _CL_ is processed after project command-line flags, so this wins even
-          # when libPPUI explicitly enables modern two-phase lookup.
+          # The pinned WTL 9.10 headers rely on legacy MSVC dependent-base lookup.
+          # Directory.Build.rsp is an MSBuild autoresponse file, so this becomes a
+          # global command-line property for every nested VS project and cannot be
+          # overridden by libPPUI's project-level ConformanceMode setting.
+          $rsp = Join-Path $PWD 'Directory.Build.rsp'
+          '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
+          # Retain the compiler-level fallback for old template parsing as well.
           $env:_CL_ = "$env:_CL_ /Zc:twoPhase-"
-          ./tools/build_private_foobar_components.ps1
+          try {
+            ./tools/build_private_foobar_components.ps1
+          } finally {
+            Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Show build manifest
         shell: pwsh
