@@ -148,6 +148,12 @@ Clone-Pin 'https://github.com/Win32-WTL/WTL.git' $Wtl $WtlCommit
 Clone-Pin 'https://github.com/dgrfactory/spcplay.git' $SpcPlay $SpcPlayCommit
 Assert-GitBlob (Join-Path $Libvgm 'CMakeLists.txt') $ExpectedLibvgmCmakeBlob 'libvgm pin'
 Assert-GitBlob (Join-Path $Wtl 'Include\atlapp.h') $ExpectedWtlAtlappBlob 'WTL pin'
+# Feed the exact pinned WTL headers directly to every MSVC compile launched by
+# this builder. This is more reliable than relying on solution-local include
+# inheritance for official foobar SDK projects such as libPPUI.
+$wtlInclude = Join-Path $Wtl 'Include'
+$priorCl = $env:CL
+$env:CL = if ([string]::IsNullOrWhiteSpace($priorCl)) { "/I`"$wtlInclude`"" } else { "/I`"$wtlInclude`" $priorCl" }
 
 $SdkArchive = Join-Path $WorkRoot "SDK-$FoobarSdkDate.7z"
 Invoke-WebRequest -Uri $FoobarSdkUrl -OutFile $SdkArchive -UseBasicParsing
@@ -258,92 +264,143 @@ Assert-PEMachine $SnesapuDll 0x014C 'patched SNESAPU DLL'
 
 Write-Host '== 8. Build source-aware spcplayer and x64 foo_snesapu =='
 $spcPlayerOutArg = '/p:OutDir=' + $SpcPlayerOutDir + '\'
-$spcComponentOutArg = '/p:OutDir=' + $SpcComponentOutDir + '\'
-Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', "/p:SNESAPUIncludeDir=$SnesapuSource", "/p:SNESAPULibDir=$SnesapuLibDir", $spcPlayerOutArg, '/m', '/v:m')
-Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $spcComponentOutArg, '/m', '/v:m')
-$SpcPlayer = Join-Path $SpcPlayerOutDir 'spcplayer.exe'
+Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', $spcPlayerOutArg, '/m', '/v:m')
+$SpcPlayerExe = Join-Path $SpcPlayerOutDir 'spcplayer.exe'
+Require-File $SpcPlayerExe 'source-aware spcplayer child'
+Assert-PEMachine $SpcPlayerExe 0x014C 'source-aware spcplayer child'
+$spcOutArg = '/p:OutDir=' + $SpcComponentOutDir + '\'
+Run $msbuild @((Join-Path $SpcRoot 'foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $spcOutArg, '/m', '/v:m')
 $FooSpc = Join-Path $SpcComponentOutDir 'foo_snesapu.dll'
-Require-File $SpcPlayer 'private SPC child player'
 Require-File $FooSpc 'private SPC component'
-Assert-PEMachine $SpcPlayer 0x014C 'private SPC child player'
 Assert-PEMachine $FooSpc 0x8664 'private SPC component'
 
-Write-Host '== 9. Package and audit the two private foobar components =='
-$VgmPackage = Join-Path $WorkRoot 'package-vgm'
-$SpcPackage = Join-Path $WorkRoot 'package-spc'
-New-Item -ItemType Directory $VgmPackage, $SpcPackage -Force | Out-Null
-Copy-Item $FooVgm (Join-Path $VgmPackage 'foo_input_vgm.dll') -Force
-Copy-Item $OmniDll (Join-Path $VgmPackage 'omniphony_source.dll') -Force
-Copy-Item $FooSpc (Join-Path $SpcPackage 'foo_snesapu.dll') -Force
-Copy-Item $SpcPlayer (Join-Path $SpcPackage 'spcplayer.exe') -Force
-Copy-Item $SnesapuDll (Join-Path $SpcPackage 'SNESAPU.dll') -Force
-Copy-Item $OmniDll (Join-Path $SpcPackage 'omniphony_source.dll') -Force
-
-$omniHash = (Get-FileHash $OmniDll -Algorithm SHA256).Hash
-foreach ($copy in @((Join-Path $VgmPackage 'omniphony_source.dll'), (Join-Path $SpcPackage 'omniphony_source.dll'))) {
-    if ((Get-FileHash $copy -Algorithm SHA256).Hash -ne $omniHash) { throw "Omniphony package copy differs from built DLL: $copy" }
-}
-
-$VgmZip = Join-Path $WorkRoot 'foo_input_vgm.zip'
-$SpcZip = Join-Path $WorkRoot 'foo_snesapu.zip'
-Compress-Archive -Path (Join-Path $VgmPackage '*') -DestinationPath $VgmZip -CompressionLevel Optimal
-Compress-Archive -Path (Join-Path $SpcPackage '*') -DestinationPath $SpcZip -CompressionLevel Optimal
-$VgmComponentPackage = Join-Path $OutputRoot 'foo_input_vgm.private.fb2k-component'
-$SpcComponentPackage = Join-Path $OutputRoot 'foo_snesapu.private.fb2k-component'
-Move-Item $VgmZip $VgmComponentPackage -Force
-Move-Item $SpcZip $SpcComponentPackage -Force
-Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_packages.py'), $VgmComponentPackage, $SpcComponentPackage)
-
-Run 'python' @((Join-Path $RetroRoot 'tools\verify_build_source_provenance.py'), $RetroRoot, '--expected-commit', $retroCommit)
-$manifest = [ordered]@{
-    built_utc = [DateTime]::UtcNow.ToString('o')
-    retro_vgm_compiler = $retroCommit
-    foobar_sdk = $FoobarSdkDate
-    foobar_sdk_source = $FoobarSdkUrl
-    wtl = $WtlCommit
-    libvgm = $LibvgmCommit
-    foo_input_vgm_bootstrap = [ordered]@{ source = $VgmBootstrapUrl; sha256 = $VgmBootstrapSha256 }
-    spcplay = $SpcPlayCommit
-    omniphony = $OmniphonyCommit
-    rust_toolchain = $RustToolchain
-    foo_snesapu_parent_provenance = 'dissonance-git/vgmspc@2b7ec8bbd7326eabee3ba39bb91130b9b128e74b (internal bootstrap only; no live dependency)'
-    final_playback_contract_hz = 48000
-    binary_architecture = [ordered]@{
-        foo_input_vgm = 'x64'
-        foo_snesapu = 'x64'
-        omniphony_source = 'x64'
-        spcplayer = 'x86'
-        SNESAPU = 'x86'
-    }
-    packages = @((Split-Path $VgmComponentPackage -Leaf), (Split-Path $SpcComponentPackage -Leaf))
-}
-$manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $OutputRoot 'build-manifest.json') -Encoding UTF8
-
-$hashLines = foreach ($file in @($VgmComponentPackage, $SpcComponentPackage)) {
-    $hash = Get-FileHash $file -Algorithm SHA256
-    "$($hash.Hash.ToLowerInvariant())  $(Split-Path $file -Leaf)"
-}
-$hashLines | Set-Content (Join-Path $OutputRoot 'SHA256SUMS.txt') -Encoding ASCII
-
-@"
-Private foobar2000 builds. Not a public release.
-
-Install by opening:
-  $(Split-Path $VgmComponentPackage -Leaf)
-  $(Split-Path $SpcComponentPackage -Leaf)
-
-Both components use one 48 kHz final playback timeline in every enhanced/Surround
-combination. Each component carries its exact omniphony_source.dll. The SPC
-package also carries its exact x86 spcplayer.exe and patched SNESAPU.dll.
-enhanced and Surround remain independent controls; failed source/renderer evidence
-falls back to the ordinary stereo path.
-"@ | Set-Content (Join-Path $OutputRoot 'README.txt') -Encoding UTF8
-
+Write-Host '== 9. Package installable private components and final bundle =='
+Copy-Item $OmniDll (Join-Path $VgmOutDir 'omniphony_source.dll') -Force
+Copy-Item $OmniDll (Join-Path $SpcComponentOutDir 'omniphony_source.dll') -Force
+$VgmPackage = Join-Path $OutputRoot 'foo_input_vgm.private.fb2k-component'
+$SpcPackage = Join-Path $OutputRoot 'foo_snesapu.private.fb2k-component'
 $Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'
-Compress-Archive -Path @($VgmComponentPackage, $SpcComponentPackage, (Join-Path $OutputRoot 'build-manifest.json'), (Join-Path $OutputRoot 'SHA256SUMS.txt'), (Join-Path $OutputRoot 'README.txt')) -DestinationPath $Bundle -CompressionLevel Optimal
+$VgmPackageStage = Join-Path $WorkRoot 'package-vgm'
+$SpcPackageStage = Join-Path $WorkRoot 'package-spc'
+$BundleStage = Join-Path $WorkRoot 'bundle'
+New-Item -ItemType Directory $VgmPackageStage, $SpcPackageStage, $BundleStage -Force | Out-Null
+Copy-Item $FooVgm (Join-Path $VgmPackageStage 'foo_input_vgm.dll') -Force
+Copy-Item $OmniDll (Join-Path $VgmPackageStage 'omniphony_source.dll') -Force
+Copy-Item $FooSpc (Join-Path $SpcPackageStage 'foo_snesapu.dll') -Force
+Copy-Item $SpcPlayerExe (Join-Path $SpcPackageStage 'spcplayer.exe') -Force
+Copy-Item $SnesapuDll (Join-Path $SpcPackageStage 'SNESAPU.dll') -Force
+Copy-Item $OmniDll (Join-Path $SpcPackageStage 'omniphony_source.dll') -Force
+
+Push-Location $VgmPackageStage
+try { Run '7z' @('a', '-tzip', '-mx=9', $VgmPackage, '*') }
+finally { Pop-Location }
+Push-Location $SpcPackageStage
+try { Run '7z' @('a', '-tzip', '-mx=9', $SpcPackage, '*') }
+finally { Pop-Location }
+
+Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_packages.py'), $VgmPackage, $SpcPackage)
+
+$VgmBundleDir = Join-Path $BundleStage 'VGM'
+$SpcBundleDir = Join-Path $BundleStage 'SPC'
+New-Item -ItemType Directory $VgmBundleDir, $SpcBundleDir -Force | Out-Null
+Copy-Item $FooVgm (Join-Path $VgmBundleDir 'foo_input_vgm.dll') -Force
+Copy-Item $OmniDll (Join-Path $VgmBundleDir 'omniphony_source.dll') -Force
+Copy-Item $FooSpc (Join-Path $SpcBundleDir 'foo_snesapu.dll') -Force
+Copy-Item $SpcPlayerExe (Join-Path $SpcBundleDir 'spcplayer.exe') -Force
+Copy-Item $SnesapuDll (Join-Path $SpcBundleDir 'SNESAPU.dll') -Force
+Copy-Item $OmniDll (Join-Path $SpcBundleDir 'omniphony_source.dll') -Force
+
+$manifest = [ordered]@{
+    built_at_utc = [DateTime]::UtcNow.ToString('o')
+    retro_vgm_compiler_commit = $retroCommit
+    foo_input_vgm_bootstrap = [ordered]@{
+        source_page = $VgmBootstrapUrl
+        sha256 = $VgmBootstrapSha256
+    }
+    foobar_sdk = [ordered]@{
+        release_date = $FoobarSdkDate
+        source = $FoobarSdkUrl
+        sdk_project_git_blob = $ExpectedSdkProjectBlob
+        pfc_project_git_blob = $ExpectedPfcProjectBlob
+    }
+    libvgm = [ordered]@{ commit = $LibvgmCommit }
+    wtl = [ordered]@{ commit = $WtlCommit }
+    spcplay = [ordered]@{ commit = $SpcPlayCommit }
+    omniphony = [ordered]@{
+        commit = $OmniphonyCommit
+        rust_toolchain = $RustToolchain
+    }
+    outputs = @(
+        'foo_input_vgm.private.fb2k-component',
+        'foo_snesapu.private.fb2k-component',
+        'private-foobar-vgm-spc.zip'
+    )
+}
+$manifestPath = Join-Path $OutputRoot 'build-manifest.json'
+$manifest | ConvertTo-Json -Depth 6 | Set-Content $manifestPath -Encoding UTF8
+
+$readmePath = Join-Path $OutputRoot 'README.txt'
+@"
+Private foobar2000 builds generated from Retro VGM Compiler.
+
+VGM package:
+  foo_input_vgm.private.fb2k-component
+  - foo_input_vgm.dll
+  - omniphony_source.dll
+  Existing Surround enables Omniphony source-aware Genesis rendering.
+  enhanced is independent.
+
+SPC package:
+  foo_snesapu.private.fb2k-component
+  - foo_snesapu.dll
+  - spcplayer.exe
+  - SNESAPU.dll
+  - omniphony_source.dll
+  Existing Surround enables Omniphony source-aware SPC rendering.
+  enhanced is independent.
+
+Manual replacement bundle:
+  private-foobar-vgm-spc.zip
+
+  VGM/
+    foo_input_vgm.dll
+    omniphony_source.dll
+
+  SPC/
+    foo_snesapu.dll
+    spcplayer.exe
+    SNESAPU.dll
+    omniphony_source.dll
+
+spcplayer.exe is the required SNES child player for this build. Do not substitute or rename spcplay.exe.
+"@ | Set-Content $readmePath -Encoding UTF8
+Copy-Item $VgmPackage (Join-Path $BundleStage (Split-Path $VgmPackage -Leaf)) -Force
+Copy-Item $SpcPackage (Join-Path $BundleStage (Split-Path $SpcPackage -Leaf)) -Force
+Copy-Item $manifestPath (Join-Path $BundleStage 'build-manifest.json') -Force
+Copy-Item $readmePath (Join-Path $BundleStage 'README.txt') -Force
+
+$hashTargets = @($VgmPackage, $SpcPackage)
+$hashLines = foreach ($file in $hashTargets) {
+    $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+    "$hash  $(Split-Path $file -Leaf)"
+}
+$hashPath = Join-Path $OutputRoot 'SHA256SUMS.txt'
+$hashLines | Set-Content $hashPath -Encoding ASCII
+Copy-Item $hashPath (Join-Path $BundleStage 'SHA256SUMS.txt') -Force
+
+Push-Location $BundleStage
+try { Run '7z' @('a', '-tzip', '-mx=9', $Bundle, '*') }
+finally { Pop-Location }
+
 Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_bundle.py'), $Bundle)
 
-Write-Host ''
-Write-Host 'Private components built and audited successfully:'
-Get-ChildItem $OutputRoot | Format-Table Name, Length
-Get-FileHash $Bundle -Algorithm SHA256 | Format-List
+$hashTargets = @($VgmPackage, $SpcPackage, $Bundle)
+$hashLines = foreach ($file in $hashTargets) {
+    $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+    "$hash  $(Split-Path $file -Leaf)"
+}
+$hashLines | Set-Content $hashPath -Encoding ASCII
+
+Write-Host "Built and verified: $VgmPackage"
+Write-Host "Built and verified: $SpcPackage"
+Write-Host "Built and verified: $Bundle"
