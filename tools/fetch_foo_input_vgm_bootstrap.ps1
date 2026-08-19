@@ -8,11 +8,11 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 # The user-supplied foo_input_vgm 0.31 source tree is the canonical bootstrap
-# for the private component.  The legacy uploader arguments remain in the
+# for the private component. The legacy uploader arguments remain in the
 # function signature only so older callers do not break while the build script
-# is being simplified.  They are not source authority and are not contacted.
+# is being simplified. They are not source authority and are not contacted.
 $CanonicalSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'
-$CanonicalBase64Sha256 = 'e0774dbfe7b8c344adef89814846662dd0c810af03f7c4c4d78b4a43e73af304'
+$CanonicalBase64Sha256 = 'e0774db2137a56d3c592b9238be3727ed7521b1da4673f1f2f109c9e2d78b5b1'
 $CanonicalByteLength = 66250
 $CanonicalBase64Length = 88336
 $CanonicalSourceLabel = 'repository:imports/foo_input_vgm-0.31.zip'
@@ -41,15 +41,7 @@ function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-function Restore-CanonicalBootstrap {
-    if (Test-Path -LiteralPath $canonical -PathType Leaf) {
-        $existing = Get-Sha256 $canonical
-        if ($existing -eq $CanonicalSha256) {
-            return
-        }
-        Write-Host "repo bootstrap transport needs reconstruction: $existing"
-    }
-
+function Write-TransferBootstrap([string]$Destination) {
     foreach ($part in $transferParts) {
         if (!(Test-Path -LiteralPath $part -PathType Leaf)) {
             throw "canonical foo_input_vgm 0.31 transfer part missing: $part"
@@ -71,27 +63,26 @@ function Restore-CanonicalBootstrap {
     if ($bytes.Length -ne $CanonicalByteLength) {
         throw "foo_input_vgm 0.31 byte length mismatch: expected $CanonicalByteLength, got $($bytes.Length)"
     }
-    [IO.File]::WriteAllBytes($canonical, $bytes)
-
-    $restored = Get-Sha256 $canonical
-    if ($restored -ne $CanonicalSha256) {
-        Remove-Item -LiteralPath $canonical -Force -ErrorAction SilentlyContinue
-        throw "foo_input_vgm 0.31 reconstructed SHA-256 mismatch: expected $CanonicalSha256, got $restored"
-    }
+    [IO.File]::WriteAllBytes($Destination, $bytes)
 }
-
-Restore-CanonicalBootstrap
 
 $parent = Split-Path $OutputPath -Parent
 if ($parent -and !(Test-Path $parent)) {
     New-Item -ItemType Directory -Path $parent -Force | Out-Null
 }
-Copy-Item -LiteralPath $canonical -Destination $OutputPath -Force
+
+if ((Test-Path -LiteralPath $canonical -PathType Leaf) -and ((Get-Sha256 $canonical) -eq $CanonicalSha256)) {
+    Copy-Item -LiteralPath $canonical -Destination $OutputPath -Force
+} else {
+    # Reconstruct directly into the disposable build workspace. Do not mutate
+    # the tracked repository transport object merely to make a Windows build.
+    Write-TransferBootstrap $OutputPath
+}
 
 $actual = Get-Sha256 $OutputPath
 if ($actual -ne $CanonicalSha256) {
     Remove-Item -LiteralPath $OutputPath -Force -ErrorAction SilentlyContinue
-    throw "foo_input_vgm 0.31 bootstrap copy SHA-256 mismatch: expected $CanonicalSha256, got $actual"
+    throw "foo_input_vgm 0.31 bootstrap SHA-256 mismatch: expected $CanonicalSha256, got $actual"
 }
 
 # Keep the current caller's manifest fields truthful until the small legacy
