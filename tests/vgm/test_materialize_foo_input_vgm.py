@@ -61,11 +61,16 @@ def main() -> int:
         ):
             assert marker in header, f"materialized input_vgm.h missing {marker}"
 
+        # The current audible seam consumes the finalized delivered source bank
+        # directly into timed Omniphony processing. genesis_selected_source_block
+        # remains a shared type/header contract but is no longer instantiated as
+        # a named local in input_vgm_shadow.cpp.
         for marker in (
             "capture_genesis_reference_sources",
             "render_genesis_spatial_output",
             "cfg_vgm_enhanced_enabled",
-            "genesis_selected_source_block",
+            "m_genesis_delivered_sources.consume",
+            "process_selected_sources_timed",
         ):
             assert marker in shadow, f"materialized input_vgm_shadow.cpp missing {marker}"
 
