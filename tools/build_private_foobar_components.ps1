@@ -165,6 +165,12 @@ Write-Host '== 3. Checkout and validate the Omniphony source renderer =='
 Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git' $Omniphony $OmniphonyCommit
 Run 'rustup' @('toolchain', 'install', $RustToolchain, '--profile', 'minimal')
 $OmniRenderer = Join-Path $Omniphony 'omniphony-renderer'
+$OmniSourceFfi = Join-Path $OmniRenderer 'source_ffi\src\lib.rs'
+$omniSourceText = [IO.File]::ReadAllText($OmniSourceFfi)
+$omniOld = "            Some(extent_retention),`n            absolute_sample,"
+$omniNew = "            Some(extent_retention),`n            None,`n            absolute_sample,"
+if ($omniSourceText.Split($omniOld).Length -ne 2) { throw 'Omniphony source_ffi presentation-ramp compatibility anchor drifted' }
+[IO.File]::WriteAllText($OmniSourceFfi, $omniSourceText.Replace($omniOld, $omniNew))
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi') $OmniRenderer
 Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', 'source_ffi') $OmniRenderer
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
