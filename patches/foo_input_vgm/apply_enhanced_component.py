@@ -36,6 +36,10 @@ def main() -> int:
     # Private package output is one 48 kHz host timeline in every source-quality
     # and surround combination. This does not select enhanced or presentation.
     run(here / "apply_private_48khz_output.py", source)
+    # The preserved 0.31 host uses libvgm's newer Game Boy interface header
+    # name. Keep the verified libvgm pin and translate that one include to the
+    # equivalent public header owned by the pinned revision.
+    run(here / "apply_pinned_libvgm_compat.py", source)
     # Reconstruct the small source-aware host seam that the later guarded
     # transformations historically consumed, without copying the old patched
     # host snapshot over the exact foo_input_vgm 0.31 source tree.
