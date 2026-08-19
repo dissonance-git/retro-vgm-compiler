@@ -10,7 +10,6 @@ patches are then applied exactly once unless --no-patches is requested.
 from __future__ import annotations
 
 import argparse
-import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,8 +22,10 @@ SPCPLAYER = REPO / "components" / "spc" / "spcplayer"
 WIRE = REPO / "components" / "spc" / "snesapu_source_wire_v2.h"
 PATCHER = REPO / "patches" / "snesapu" / "apply_private_component.py"
 
-# Files consumed by guarded patchers must remain byte-identical to the audited
-# SRCE-v2 parent cut. Verify Git blob identity before copying anything.
+# Files consumed by guarded patchers must remain identical to the audited
+# SRCE-v2 Git objects. Resolve the repository object itself rather than hashing
+# checkout bytes, because Windows may perform a reversible CRLF worktree
+# conversion even when the checked-out Git object is exact.
 EXPECTED_BOOTSTRAP_BLOBS = {
     "input_snesapu.cpp": "e25b123bf71e64e14bfa89169d2f2d8caf8c38c9",
     "input_snesapu.hpp": "f1c3dad16bf6a0abd7eeccc13cde28ba472f70c7",
@@ -38,10 +39,31 @@ EXPECTED_BOOTSTRAP_BLOBS = {
 }
 
 
-def git_blob_sha(path: Path) -> str:
-    payload = path.read_bytes()
-    header = f"blob {len(payload)}\0".encode("ascii")
-    return hashlib.sha1(header + payload).hexdigest()
+def repository_blob_sha(relative: str) -> str:
+    repo_path = (BOOTSTRAP / relative).relative_to(REPO).as_posix()
+    completed = subprocess.run(
+        ["git", "rev-parse", f"HEAD:{repo_path}"],
+        cwd=REPO,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"could not resolve audited Git object for {repo_path}: "
+            f"{completed.stderr.strip()}"
+        )
+    return completed.stdout.strip().lower()
+
+
+def worktree_matches_head(path: Path) -> bool:
+    relative = path.relative_to(REPO).as_posix()
+    completed = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "--", relative],
+        cwd=REPO,
+        check=False,
+    )
+    return completed.returncode == 0
 
 
 def verify_bootstrap() -> None:
@@ -51,11 +73,13 @@ def verify_bootstrap() -> None:
         path = BOOTSTRAP / relative
         if not path.is_file():
             raise RuntimeError(f"missing audited bootstrap file: {path}")
-        actual = git_blob_sha(path)
+        actual = repository_blob_sha(relative)
         if actual != expected:
             raise RuntimeError(
-                f"bootstrap drift for {relative}: expected {expected}, got {actual}"
+                f"bootstrap Git-object drift for {relative}: expected {expected}, got {actual}"
             )
+        if not worktree_matches_head(path):
+            raise RuntimeError(f"bootstrap worktree differs from audited HEAD object: {path}")
     for required in (SPCPLAYER / "main.cpp", SPCPLAYER / "spcplayer.h", WIRE, PATCHER):
         if not required.is_file():
             raise RuntimeError(f"missing canonical SPC input: {required}")
