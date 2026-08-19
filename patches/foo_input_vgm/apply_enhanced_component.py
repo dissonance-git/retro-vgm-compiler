@@ -25,6 +25,58 @@ def run(script: Path, source_dir: Path, *extra: str) -> None:
         raise RuntimeError(f"{script.name} failed with exit code {completed.returncode}")
 
 
+def diagnose_generated_host(source_dir: Path) -> None:
+    """Print narrow contexts for the identifiers from the current MSVC failure.
+
+    The historical host is reconstructed only inside the private Windows build,
+    so these diagnostics make the generated patch boundary observable without
+    checking that private source snapshot into Git. Keep the context deliberately
+    small: enough to identify a bad insertion scope, not a source dump.
+    """
+    tokens = (
+        "enhancedDacStream",
+        "CurLoop",
+        "dacState",
+        "rawSample",
+        "subtick",
+        "TempByt",
+        "TempSht",
+        "sampleIndex",
+        "playbackClock",
+        "hostSampleRate",
+        "frameIndex",
+        "outputScratch",
+        "lastObservedSourceState",
+        "enhancedPsgSource",
+        "enhancedFmSource",
+        "routeEnhancedGenesisFrame",
+        "clearEnhancedGenesisRoute",
+        "setEnhancedGenesisRouteSampleRate",
+    )
+    suffixes = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
+    print("== generated VGM host diagnostic ==")
+    for path in sorted(source_dir.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in suffixes:
+            continue
+        raw = path.read_bytes()
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = raw.decode("cp932")
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            hits = [token for token in tokens if token in line]
+            if not hits:
+                continue
+            rel = path.relative_to(source_dir)
+            print(f"VGM_GENERATED_DIAG {rel}:{index + 1} tokens={','.join(hits)}")
+            lo = max(0, index - 2)
+            hi = min(len(lines), index + 3)
+            for context_index in range(lo, hi):
+                print(f"  {context_index + 1:05d}: {lines[context_index]}")
+    print("== end generated VGM host diagnostic ==")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source_dir", type=Path, help="foo_input_vgm/src directory")
@@ -88,6 +140,7 @@ def main() -> int:
     # channel-inversion surround effect before any audio reaches the user.
     run(here / "apply_surround_omniphony_bridge.py", source)
     run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
+    diagnose_generated_host(source)
     print("foo_input_vgm Genesis enhanced + Surround/Omniphony component patch set applied")
     return 0
 
