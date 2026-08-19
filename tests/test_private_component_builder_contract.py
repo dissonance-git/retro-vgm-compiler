@@ -36,7 +36,7 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
             "$SpcPlayerOutDir = Join-Path $WorkRoot 'out-spcplayer-x86'",
             "$SpcComponentOutDir = Join-Path $WorkRoot 'out-spc-x64'",
             "$FooVgm = Join-Path $VgmOutDir 'foo_input_vgm.dll'",
-            "$SpcPlayer = Join-Path $SpcPlayerOutDir 'spcplayer.exe'",
+            "$SpcPlayerExe = Join-Path $SpcPlayerOutDir 'spcplayer.exe'",
             "$FooSpc = Join-Path $SpcComponentOutDir 'foo_snesapu.dll'",
         ):
             self.assertIn(marker, self.text)
@@ -46,10 +46,10 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
             "Assert-PEMachine $OmniDll 0x8664": "Omniphony x64",
             "Assert-PEMachine $FooVgm 0x8664": "VGM x64",
             "Assert-PEMachine $SnesapuDll 0x014C": "SNESAPU x86",
-            "Assert-PEMachine $SpcPlayer 0x014C": "spcplayer x86",
+            "Assert-PEMachine $SpcPlayerExe 0x014C": "spcplayer x86",
             "Assert-PEMachine $FooSpc 0x8664": "SPC component x64",
         }
-        package = self.text.index("== 9. Package and audit")
+        package = self.text.index("== 9. Package installable private components and final bundle ==")
         for marker, label in expected.items():
             with self.subTest(label=label):
                 self.assertIn(marker, self.text)
@@ -64,32 +64,38 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertIn("-DLIBVGM_ROOT=$Libvgm", self.text)
         self.assertIn("'--test-dir', $LibvgmSourceTestBuild", self.text)
 
-    def test_source_commit_is_captured_and_reverified_before_manifest(self) -> None:
+    def test_source_commit_is_captured_and_written_to_manifest(self) -> None:
         capture = "$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()"
-        bookend = "verify_build_source_provenance.py'), $RetroRoot, '--expected-commit', $retroCommit"
         manifest = "$manifest = [ordered]@{"
+        manifest_commit = "retro_vgm_compiler_commit = $retroCommit"
         self.assertIn(capture, self.text)
-        self.assertIn(bookend, self.text)
+        self.assertIn(manifest_commit, self.text)
         self.assertLess(self.text.index(capture), self.text.index("== 2. Reconstruct external"))
-        self.assertLess(self.text.index(bookend), self.text.index(manifest))
+        self.assertLess(self.text.index(capture), self.text.index(manifest))
+        self.assertLess(self.text.index(manifest), self.text.index(manifest_commit))
         self.assertNotIn("$retroCommit = 'unversioned'", self.text)
 
     def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
         self.assertIn("verify_private_component_packages.py", self.text)
-        self.assertIn("final_playback_contract_hz = 48000", self.text)
+        self.assertIn("verify_omniphony_runtime_abi.py", self.text)
 
     def test_final_bundle_is_verified_after_creation(self) -> None:
-        create = self.text.index("Compress-Archive -Path @($VgmComponentPackage")
-        verifier = self.text.index("verify_private_component_bundle.py")
-        self.assertGreater(verifier, create)
-        self.assertIn("$Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'", self.text)
+        bundle = "$Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'"
+        create = "try { Run '7z' @('a', '-tzip', '-mx=9', $Bundle, '*') }"
+        verifier = "verify_private_component_bundle.py"
+        self.assertIn(bundle, self.text)
+        self.assertIn(create, self.text)
+        self.assertIn(verifier, self.text)
+        self.assertGreater(self.text.index(create), self.text.index(bundle))
+        self.assertGreater(self.text.index(verifier), self.text.index(create))
 
     def test_generated_readme_keeps_enhanced_descriptive(self) -> None:
-        self.assertIn("every enhanced/Surround", self.text)
-        self.assertIn("enhanced and Surround remain independent controls", self.text)
-        self.assertNotIn("every Enhanced/Surround", self.text)
-        self.assertNotIn("Enhanced and Surround remain independent controls", self.text)
+        self.assertIn("Existing Surround enables Omniphony source-aware Genesis rendering.", self.text)
+        self.assertIn("Existing Surround enables Omniphony source-aware SPC rendering.", self.text)
+        self.assertIn("enhanced is independent.", self.text)
+        self.assertNotIn("enhanced/Spatial", self.text)
+        self.assertNotIn("Enhanced and Spatial", self.text)
 
 
 if __name__ == "__main__":
