@@ -37,21 +37,19 @@ def main() -> int:
     # and surround combination. This does not select enhanced or presentation.
     run(here / "apply_private_48khz_output.py", source)
     run(here / "apply_source_aware_player.py", source)
-    # OPM reference capture is independent of the enhanced choice. It exposes
-    # exact primary-YM2151 MAME lanes at the host clock for validation and later
-    # family-local admission without making Nuked-OPM a source-quality choice yet.
-    run(here / "apply_ym2151_reference_capture.py", source)
+
+    # This first installable private VGM runtime is intentionally Genesis-first:
+    # YM2612 + DAC + PSG are the promoted chip-specific implementation. The
+    # independent YM2151/OPM reference-capture experiment remains in the repo,
+    # but it is not a prerequisite for shipping this Genesis + SPC milestone.
+    # Ordinary 0.31 playback for non-Genesis VGM families remains untouched.
     run(here / "apply_source_aware_shadow_include.py", source)
+
     # Install the source-bank observer while the base seek/decode anchors are
     # still intact. Later deferred FM/PSG patches extend those same lifecycle
     # seams, while the final DAC mix patch composes their resulting frame.
     run(here / "apply_enhanced_dac_stream_observer.py", source)
-    # OPM and Genesis HQ-FM touch two shared SourceAwareVGMPlayer syntactic
-    # anchors. Normalize only those shapes, let the existing guarded HQ patch
-    # apply unchanged, then restore OPM startup/overflow handling afterward.
-    run(here / "apply_ym2151_hq_fm_compat.py", source)
     run(here / "apply_hq_nuked_fm_lift.py", source)
-    run(here / "apply_ym2151_reference_startup_fix.py", source)
     # Legacy filenames below are all part of the one enhanced option.
     run(here / "apply_studio_hq_fm_observer.py", source)
     run(here / "apply_enhanced_runtime.py", source)
@@ -76,7 +74,7 @@ def main() -> int:
     # channel-inversion surround effect before any audio reaches the user.
     run(here / "apply_surround_omniphony_bridge.py", source)
     run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
-    print("foo_input_vgm enhanced + Surround/Omniphony component patch set applied")
+    print("foo_input_vgm Genesis enhanced + Surround/Omniphony component patch set applied")
     return 0
 
 
