@@ -19,11 +19,78 @@ def run(script: Path, libvgm_root: Path) -> None:
         raise RuntimeError(f"{script.name} failed with exit code {completed.returncode}")
 
 
+def apply_exact_hunks(patch: Path, libvgm_root: Path) -> None:
+    """Apply unified-diff hunks by exact old-text identity, never fuzzy context."""
+    current_path: Path | None = None
+    old_lines: list[str] | None = None
+    new_lines: list[str] | None = None
+    hunks: list[tuple[Path, str, str]] = []
+
+    def flush() -> None:
+        nonlocal old_lines, new_lines
+        if current_path is not None and old_lines is not None and new_lines is not None:
+            hunks.append((current_path, "".join(old_lines), "".join(new_lines)))
+        old_lines = None
+        new_lines = None
+
+    for line in patch.read_text(encoding="utf-8").splitlines(keepends=True):
+        if line.startswith("diff --git "):
+            flush()
+            current_path = None
+            continue
+        if line.startswith("+++ b/"):
+            current_path = Path(line[6:].rstrip("\r\n"))
+            continue
+        if line.startswith("@@ "):
+            flush()
+            if current_path is None:
+                raise RuntimeError(f"{patch.name}: hunk before target path")
+            old_lines = []
+            new_lines = []
+            continue
+        if old_lines is None or new_lines is None:
+            continue
+        if line.startswith("\\ No newline at end of file"):
+            continue
+        if line.startswith(" "):
+            old_lines.append(line[1:])
+            new_lines.append(line[1:])
+        elif line.startswith("-"):
+            old_lines.append(line[1:])
+        elif line.startswith("+"):
+            new_lines.append(line[1:])
+    flush()
+
+    if not hunks:
+        raise RuntimeError(f"{patch.name}: no hunks parsed")
+
+    by_path: dict[Path, list[tuple[str, str]]] = {}
+    for rel, old, new in hunks:
+        by_path.setdefault(rel, []).append((old, new))
+
+    for rel, file_hunks in by_path.items():
+        target = libvgm_root / rel
+        text = target.read_text(encoding="utf-8")
+        for index, (old, new) in enumerate(file_hunks, start=1):
+            count = text.count(old)
+            if count == 1:
+                text = text.replace(old, new, 1)
+                continue
+            if count == 0 and text.count(new) == 1:
+                continue
+            raise RuntimeError(
+                f"{patch.name} hunk {index} for {rel} is not exact: "
+                f"old matches={count}, new matches={text.count(new)}"
+            )
+        target.write_text(text, encoding="utf-8", newline="\n")
+
+
 def apply_numbered_patch(patch: Path, libvgm_root: Path) -> None:
-    # Numbered observer patches are pinned source contracts. Some historical
-    # patch files were edited after generation and therefore carry stale hunk
-    # line counts. --recount repairs only that bookkeeping; exact surrounding
-    # source context must still match, so upstream drift remains fail-closed.
+    # Prefer git's strict checker when the historical patch metadata still
+    # agrees. If its generated hunk metadata has drifted, fall back to exact
+    # old-text replacement. The fallback has no fuzz factor: each complete hunk
+    # must identify exactly one source region (or exactly one already-applied
+    # region), so genuine upstream drift still fails closed.
     check = subprocess.run(
         ["git", "apply", "--recount", "--check", str(patch)],
         cwd=str(libvgm_root),
@@ -53,10 +120,8 @@ def apply_numbered_patch(patch: Path, libvgm_root: Path) -> None:
     if reverse.returncode == 0:
         return
 
-    raise RuntimeError(
-        f"{patch.name} neither applies cleanly nor matches an already-applied tree: "
-        f"{check.stderr.strip()}"
-    )
+    apply_exact_hunks(patch, libvgm_root)
+    print(f"applied {patch.name} through exact hunk identity")
 
 
 def main() -> int:
@@ -67,16 +132,11 @@ def main() -> int:
     here = Path(__file__).resolve().parent
     repo_root = here.parents[1]
 
-    # The first observer patch predates the exact 2026 libvgm pin and its
-    # generated hunk context no longer applies despite the semantic anchors
-    # remaining unchanged. Install that ABI through the exact guarded transform
-    # used by the private builder, then continue the dependent numbered patches.
     run(repo_root / "tools" / "libvgm_apply_realtime_command_observer.py", root)
 
-    # These observational ABIs are also prerequisites for source-native DAC
-    # enhancement. In particular, 0003 exposes original PCM-bank identity and
-    # authored stream frequency instead of forcing inference from resolved $2A
-    # writes. 0004/0005 preserve refreshed-bank and length semantics.
+    # These observational ABIs are prerequisites for source-native DAC
+    # enhancement. 0003 exposes original PCM-bank identity and authored stream
+    # frequency; 0004/0005 preserve refreshed-bank and length semantics.
     for name in (
         "0002-resolved-ym2612-dac-observer.patch",
         "0003-dac-stream-source-observer.patch",
