@@ -65,13 +65,19 @@ def main() -> int:
     args = parser.parse_args()
     root = args.libvgm_root.resolve()
     here = Path(__file__).resolve().parent
+    repo_root = here.parents[1]
+
+    # The first observer patch predates the exact 2026 libvgm pin and its
+    # generated hunk context no longer applies despite the semantic anchors
+    # remaining unchanged. Install that ABI through the exact guarded transform
+    # used by the private builder, then continue the dependent numbered patches.
+    run(repo_root / "tools" / "libvgm_apply_realtime_command_observer.py", root)
 
     # These observational ABIs are also prerequisites for source-native DAC
     # enhancement. In particular, 0003 exposes original PCM-bank identity and
     # authored stream frequency instead of forcing inference from resolved $2A
     # writes. 0004/0005 preserve refreshed-bank and length semantics.
     for name in (
-        "0001-realtime-command-observer.patch",
         "0002-resolved-ym2612-dac-observer.patch",
         "0003-dac-stream-source-observer.patch",
         "0004-refresh-dac-stream-pcm-bank.patch",
