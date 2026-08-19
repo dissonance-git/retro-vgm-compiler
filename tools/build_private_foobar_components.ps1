@@ -20,7 +20,7 @@ $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
 $VgmBootstrapUrl = 'https://uu.getuploader.com/foobar2000/download/248'
 $VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
 $ExpectedSdkProjectBlob = '56b398318d3258da7caf04c8fa0ee405511e9db0'
-$ExpectedPfcProjectBlob = '57cbc91551935cd6f12c13a0e41c4c6bf601ac94'
+$ExpectedPfcProjectBlob = 'a03c81c5e0de11bf6b889d2ac86527c4cd54cefc'
 $ExpectedLibvgmCmakeBlob = '1f8fb7f99ec45e1d2af12231f624498e6e252732'
 $ExpectedWtlAtlappBlob = '4b3fe38d846da65e2f04257dec2bd4c0bb63cf8e'
 
