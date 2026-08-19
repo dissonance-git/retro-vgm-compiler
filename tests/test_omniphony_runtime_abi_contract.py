@@ -28,7 +28,7 @@ class FakeFunction:
 
 
 class FakeApi:
-    def __init__(self, major: int = 0, minor: int = 3) -> None:
+    def __init__(self, major: int = 0, minor: int = 4) -> None:
         self.omniphony_source_abi_major = FakeFunction(major)
         self.omniphony_source_abi_minor = FakeFunction(minor)
         self.omniphony_source_create = object()
@@ -59,11 +59,11 @@ class OmniphonyRuntimeAbiContractTest(unittest.TestCase):
         self.assertEqual(_verifier.verify_api(FakeApi(0, 7)), (0, 7))
 
     def test_rejects_wrong_major(self) -> None:
-        with self.assertRaisesRegex(AssertionError, "ABI mismatch"):
+        with self.assertRaisesRegex(AssertionError, "runtime contract mismatch"):
             _verifier.verify_api(FakeApi(1, 4))
 
     def test_rejects_older_minor(self) -> None:
-        with self.assertRaisesRegex(AssertionError, "ABI mismatch"):
+        with self.assertRaisesRegex(AssertionError, "runtime contract mismatch"):
             _verifier.verify_api(FakeApi(0, 3))
 
     def test_rejects_missing_loader_symbol(self) -> None:

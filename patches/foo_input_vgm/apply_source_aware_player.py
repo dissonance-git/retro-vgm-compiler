@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select SourceAwareVGMPlayer when the guarded libvgm ABI is present.
+"""Select SourceAwareVGMPlayer when the guarded libvgm source ABI is present.
 
 This patch is intentionally tiny. It does not change ordinary VGMPlayer behavior
 when libvgm was built without Retro VGM Compiler's source hooks.
@@ -54,12 +54,17 @@ def main() -> int:
         "source-aware player include",
     )
 
+    # foo_input_vgm 0.31 owns a compact register_player() with no historical
+    # command-observer seam. Keep its exact registration flow and change only
+    # which VGMPlayer implementation is constructed when the guarded source
+    # capture ABI is present.
     replace_once(
         input_cpp,
         """void input_vgm::register_player()
 {
 \tm_vgm_player = new VGMPlayer;
-#ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
+\tm_main_player.RegisterPlayerEngine(m_vgm_player);
+}
 """,
         """void input_vgm::register_player()
 {
@@ -70,7 +75,8 @@ def main() -> int:
 #else
 \tm_vgm_player = new VGMPlayer;
 #endif
-#ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
+\tm_main_player.RegisterPlayerEngine(m_vgm_player);
+}
 """,
         "source-aware player registration",
     )
