@@ -171,7 +171,10 @@ $omniOld = "            Some(extent_retention),`n            absolute_sample,"
 $omniNew = "            Some(extent_retention),`n            None,`n            absolute_sample,"
 if ($omniSourceText.Split($omniOld).Length -ne 2) { throw 'Omniphony source_ffi presentation-ramp compatibility anchor drifted' }
 [IO.File]::WriteAllText($OmniSourceFfi, $omniSourceText.Replace($omniOld, $omniNew))
-Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi') $OmniRenderer
+Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--lib') $OmniRenderer
+Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'abi_layout') $OmniRenderer
+Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'dynamic_source_motion') $OmniRenderer
+Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'source_episode_attack_extent') $OmniRenderer
 Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', 'source_ffi') $OmniRenderer
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
 Require-File $OmniDll 'Omniphony source DLL'
