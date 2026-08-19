@@ -7,7 +7,6 @@ on:
     branches: [ "main" ]
     paths:
       - ".github/workflows/private-foobar-build.yml"
-      - ".delivery/**"
       - ".delivery-safe/**"
       - "CMakeLists.txt"
       - "cmake/**"
@@ -100,8 +99,9 @@ jobs:
         shell: pwsh
         run: |
           $parts = @(
-            '.delivery/foo_input_vgm-0.31.b64.part00',
-            '.delivery/foo_input_vgm-0.31.b64.part01',
+            '.delivery-safe/pre00',
+            '.delivery-safe/pre01',
+            '.delivery-safe/pre02',
             '.delivery-safe/chunk00',
             '.delivery-safe/chunk01',
             '.delivery-safe/chunk02',
@@ -120,6 +120,9 @@ jobs:
           }
           $b64 = (($parts | ForEach-Object { Get-Content -Raw -LiteralPath $_ }) -join '') -replace '\s', ''
           if ($b64.Length -ne 88336) { throw "unexpected VGM bootstrap base64 length: $($b64.Length)" }
+          $b64Sha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::ASCII.GetBytes($b64))).ToLowerInvariant()
+          $expectedB64Sha = 'e0774dbfe7b8c344adef89814846662dd0c810af03f7c4c4d78b4a43e73af304'
+          if ($b64Sha -ne $expectedB64Sha) { throw "VGM bootstrap base64 SHA-256 mismatch: $b64Sha" }
           $bytes = [Convert]::FromBase64String($b64)
           if ($bytes.Length -ne 66250) { throw "unexpected VGM bootstrap byte length: $($bytes.Length)" }
           $target = 'imports/foo_input_vgm-0.31.zip'
