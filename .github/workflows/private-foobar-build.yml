@@ -155,13 +155,16 @@ jobs:
         shell: pwsh
         run: |
           # Pinned external-source provenance is checked against Git blob IDs.
-          # Prevent Windows checkout line-ending conversion from changing those
-          # immutable bytes before the builder performs its blob checks.
           git config --global core.autocrlf false
           # libPPUI includes WTL headers by name. The builder clones the pinned
           # WTL tree into this stable work path before any foobar project builds.
           $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
+          # WTL 9.10 predates standard two-phase template lookup and refers to
+          # CDCHandle from CDCT before the typedef appears later in the header.
+          # MSVC documents /Zc:twoPhase- as the compatibility switch for this
+          # legacy lookup behavior under modern conformance-mode projects.
+          $env:CL = "/Zc:twoPhase- $env:CL"
           ./tools/build_private_foobar_components.ps1
 
       - name: Show build manifest
