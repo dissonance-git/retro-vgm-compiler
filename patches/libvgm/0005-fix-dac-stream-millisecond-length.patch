@@ -1,16 +1,19 @@
 diff --git a/emu/dac_control.c b/emu/dac_control.c
 --- a/emu/dac_control.c
 +++ b/emu/dac_control.c
-@@ -379,7 +379,13 @@ void daccontrol_start(void* info, UINT32 DataPos, UINT8 LenMode, UINT32 Length)
+@@ -506,7 +506,13 @@ void daccontrol_start(void* info, UINT32 DataPos, UINT8 LenMode, UINT32 Length)
+ 	case DCTRL_LMODE_CMDS:		// Length = number of commands
+ 		chip->CmdsToSend = Length;
  		break;
- 	case DCTRL_LMODE_MSEC:
--		dacCtrl->CmdsToSend = 1000 * Length / dacCtrl->Frequency;
+ 	case DCTRL_LMODE_MSEC:		// Length = time in msec
+-		chip->CmdsToSend = 1000 * Length / chip->Frequency;
 +		// Length is milliseconds and Frequency is source commands/second.
 +		// Convert time to command count with Hz * ms / 1000. The previous
 +		// inverse formula had incompatible units and shortened common streams.
-+		if (dacCtrl->Frequency == 0)
-+			dacCtrl->CmdsToSend = 0;
++		if (chip->Frequency == 0)
++			chip->CmdsToSend = 0;
 +		else
-+			dacCtrl->CmdsToSend = (UINT32)(((UINT64)dacCtrl->Frequency * Length) / 1000);
++			chip->CmdsToSend = (UINT32)(((UINT64)chip->Frequency * Length) / 1000);
  		break;
- 	case DCTRL_LMODE_TOEND:
+ 	case DCTRL_LMODE_TOEND:		// play until stop-command is received (or data-end is reached)
+ 		chip->CmdsToSend = (chip->DataLen - (chip->DataStart - CmdStepBase)) / chip->DataStep;
