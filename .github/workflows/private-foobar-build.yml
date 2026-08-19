@@ -121,7 +121,7 @@ jobs:
           $b64 = (($parts | ForEach-Object { Get-Content -Raw -LiteralPath $_ }) -join '') -replace '\s', ''
           if ($b64.Length -ne 88336) { throw "unexpected VGM bootstrap base64 length: $($b64.Length)" }
           $b64Sha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::ASCII.GetBytes($b64))).ToLowerInvariant()
-          $expectedB64Sha = 'e0774db213c3f017d3cc0b096e5e2ae451542445148230080f8582895405914c'
+          $expectedB64Sha = 'e0774db2137a56d3c592b9238be3727ed7521b1da4673f1f2f109c9e2d78b5b1'
           if ($b64Sha -ne $expectedB64Sha) { throw "VGM bootstrap base64 SHA-256 mismatch: $b64Sha" }
           $bytes = [Convert]::FromBase64String($b64)
           if ($bytes.Length -ne 66250) { throw "unexpected VGM bootstrap byte length: $($bytes.Length)" }
