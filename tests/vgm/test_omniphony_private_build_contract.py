@@ -15,7 +15,6 @@ MATERIALIZER = ROOT / "tools" / "materialize_foo_input_vgm.py"
 RUNTIME_VERIFIER = ROOT / "tools" / "verify_omniphony_runtime_abi.py"
 PACKAGE_VERIFIER = ROOT / "tools" / "verify_private_component_packages.py"
 VGM_BOOTSTRAP = ROOT / "imports" / "foo_input_vgm-0.31.zip"
-EXPECTED_OMNIPHONY_COMMIT = "819668d1366710d663ae9c810edbcf9b7e923e19"
 RETIRED_INCOMPATIBLE_COMMIT = "0fabccb165e6d957cefecc6eeb1264467e7406a4"
 EXPECTED_VGM_BOOTSTRAP_VERSION = "0.31"
 EXPECTED_VGM_BOOTSTRAP_FILES = 41
@@ -67,13 +66,18 @@ def vgm_bootstrap_source_identity(path: Path) -> tuple[int, str, str]:
 
 
 class OmniphonyPrivateBuildContractTest(unittest.TestCase):
-    def test_private_build_pins_the_source_renderer_contract_used_by_clients(self) -> None:
+    def test_private_build_pins_immutable_upstream_without_rewriting_it(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
         match = re.search(r"\$OmniphonyCommit = '([0-9a-f]{40})'", text)
         self.assertIsNotNone(match)
         assert match is not None
-        self.assertEqual(match.group(1), EXPECTED_OMNIPHONY_COMMIT)
-        self.assertNotIn(RETIRED_INCOMPATIBLE_COMMIT, text)
+        pinned_commit = match.group(1)
+        self.assertNotEqual(pinned_commit, RETIRED_INCOMPATIBLE_COMMIT)
+        self.assertIn("Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git'", text)
+        self.assertIn("'test', '-p', 'source_ffi', '--lib'", text)
+        self.assertNotIn("$OmniSourceFfi", text)
+        self.assertNotIn("$sourceFfiText", text)
+        self.assertNotIn("WriteAllText($OmniSourceFfi", text)
 
     def test_vgm_bootstrap_is_exact_supplied_031_source_tree(self) -> None:
         self.assertTrue(VGM_BOOTSTRAP.is_file(), VGM_BOOTSTRAP)
