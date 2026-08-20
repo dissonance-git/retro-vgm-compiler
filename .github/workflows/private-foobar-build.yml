@@ -29,7 +29,7 @@ on:
       - "tools/verify_snesapu_package_runtime.ps1"
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 jobs:
@@ -122,20 +122,11 @@ jobs:
       - name: Build and audit installable components
         shell: pwsh
         run: |
-          # Pinned external-source provenance is checked against Git blob IDs.
           git config --global core.autocrlf false
-          # libPPUI includes WTL headers by name. The builder clones the pinned
-          # WTL tree into this stable work path before any foobar project builds.
           $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
-          # The pinned WTL 9.10 headers rely on legacy MSVC dependent-base lookup.
-          # Directory.Build.rsp is an MSBuild autoresponse file, so this becomes a
-          # global command-line property for every nested VS project.
           $rsp = Join-Path $PWD 'Directory.Build.rsp'
           '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
-          # _CL_ is appended after project and /std flags. /permissive must come
-          # after any option that can imply /permissive-, then the two-phase
-          # fallback closes the remaining legacy WTL template lookup seam.
           $env:_CL_ = "$env:_CL_ /permissive /Zc:twoPhase-"
           try {
             ./tools/build_private_foobar_components.ps1
@@ -167,6 +158,49 @@ jobs:
             dist/private-components/README.txt
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish rolling verified delivery
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'private-foobar-delivery'
+          $dist = 'dist/private-components'
+          $assets = @(
+            "$dist/private-foobar-vgm-spc.zip",
+            "$dist/foo_input_vgm.private.fb2k-component",
+            "$dist/foo_snesapu.private.fb2k-component",
+            "$dist/build-manifest.json",
+            "$dist/SHA256SUMS.txt",
+            "$dist/README.txt"
+          )
+          foreach ($asset in $assets) {
+            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) { throw "Missing verified delivery asset: $asset" }
+          }
+
+          $bundleSha = (Get-FileHash "$dist/private-foobar-vgm-spc.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $notes = @"
+          Rolling verified foobar2000 VGM + SPC delivery owned by Retro VGM Compiler.
+
+          Retro VGM Compiler source commit: $env:GITHUB_SHA
+          Workflow run: $env:GITHUB_RUN_ID
+          Bundle SHA-256: $bundleSha
+
+          Assets are published only after the canonical private build, package verification, bundle verification, and packaged SNESAPU runtime smoke succeed.
+          "@
+
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh api --method PATCH "repos/$env:GITHUB_REPOSITORY/git/refs/tags/$tag" -f sha="$env:GITHUB_SHA" -F force=true *> $null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not retarget rolling delivery tag' }
+            gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
+            if ($LASTEXITCODE -ne 0) { throw 'Could not replace rolling delivery assets' }
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --title 'Private foobar VGM + SPC delivery' --notes $notes
+            if ($LASTEXITCODE -ne 0) { throw 'Could not update rolling delivery metadata' }
+          } else {
+            gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'Private foobar VGM + SPC delivery' --notes $notes --prerelease
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create rolling delivery prerelease' }
+          }
 
       - name: Publish final run locator for connected clients
         if: always()
