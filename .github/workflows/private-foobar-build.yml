@@ -26,6 +26,7 @@ on:
       - "tools/verify_omniphony_runtime_abi.py"
       - "tools/verify_private_component_packages.py"
       - "tools/verify_private_component_bundle.py"
+      - "tools/verify_snesapu_package_runtime.ps1"
 
 permissions:
   contents: read
@@ -141,6 +142,11 @@ jobs:
           } finally {
             Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
           }
+
+      - name: Execute packaged SNESAPU runtime contract
+        shell: pwsh
+        run: |
+          ./tools/verify_snesapu_package_runtime.ps1
 
       - name: Show build manifest
         shell: pwsh
