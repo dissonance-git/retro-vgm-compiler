@@ -56,6 +56,11 @@ jobs:
         run: |
           ./tools/build_private_foobar_components.ps1
 
+      - name: Execute packaged SNESAPU runtime contract
+        shell: pwsh
+        run: |
+          ./tools/verify_snesapu_package_runtime.ps1
+
       - name: Re-verify final package bundle
         shell: pwsh
         run: |
