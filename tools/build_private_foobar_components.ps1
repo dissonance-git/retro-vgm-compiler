@@ -13,7 +13,7 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RetroR
 $LibvgmCommit = '64e1de284e9a4305c54dd162ee8c33539a9bc0d1'
 $WtlCommit = 'd1cd80e9ce76c4d79da4cf556401ad7a970ce46f'
 $SpcPlayCommit = 'fc770e268ecacb4523699e2edc5c0efdf80957d6'
-$OmniphonyCommit = '819668d1366710d663ae9c810edbcf9b7e923e19'
+$OmniphonyCommit = 'c5ff2988e2b088dc200f9ca76032f3b452706262'
 $RustToolchain = '1.88.0'
 $FoobarSdkDate = '2025-03-07'
 $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
@@ -171,12 +171,6 @@ Write-Host '== 3. Checkout and validate the Omniphony source renderer =='
 Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git' $Omniphony $OmniphonyCommit
 Run 'rustup' @('toolchain', 'install', $RustToolchain, '--profile', 'minimal')
 $OmniRenderer = Join-Path $Omniphony 'omniphony-renderer'
-$OmniSourceFfi = Join-Path $OmniRenderer 'source_ffi\src\lib.rs'
-$omniSourceText = [IO.File]::ReadAllText($OmniSourceFfi)
-$omniOld = "            Some(extent_retention),`n            absolute_sample,"
-$omniNew = "            Some(extent_retention),`n            None,`n            absolute_sample,"
-if ($omniSourceText.Split($omniOld).Length -ne 2) { throw 'Omniphony source_ffi presentation-ramp compatibility anchor drifted' }
-[IO.File]::WriteAllText($OmniSourceFfi, $omniSourceText.Replace($omniOld, $omniNew))
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--lib') $OmniRenderer
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'abi_layout') $OmniRenderer
 Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'dynamic_source_motion') $OmniRenderer
