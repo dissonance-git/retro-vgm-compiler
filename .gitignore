@@ -17,6 +17,8 @@ ipch/
 x64/
 Win32/
 ARM64/
+.private-component-build/
+dist/
 *.obj
 *.pch
 *.pdb
