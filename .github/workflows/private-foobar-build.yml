@@ -1,4 +1,3 @@
-# build-trigger: exact-031-runtime-delivery
 name: Private foobar binary build
 
 on:
@@ -23,6 +22,7 @@ on:
       - "tools/fetch_foo_input_vgm_bootstrap.ps1"
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
+      - "tools/reconstruct_vgm031_bootstrap.py"
       - "tools/verify_omniphony_runtime_abi.py"
       - "tools/verify_private_component_packages.py"
       - "tools/verify_private_component_bundle.py"
@@ -98,41 +98,8 @@ jobs:
       - name: Reconstruct exact VGM 0.31 bootstrap
         shell: pwsh
         run: |
-          $parts = @(
-            '.delivery-safe/pre00',
-            '.delivery-safe/pre01',
-            '.delivery-safe/pre02',
-            '.delivery-safe/chunk00',
-            '.delivery-safe/chunk01',
-            '.delivery-safe/chunk02',
-            '.delivery-safe/chunk03',
-            '.delivery-safe/chunk04',
-            '.delivery-safe/chunk05a',
-            '.delivery-safe/chunk05b',
-            '.delivery-safe/chunk06',
-            '.delivery-safe/chunk07',
-            '.delivery-safe/chunk08',
-            '.delivery-safe/chunk09',
-            '.delivery-safe/chunk10'
-          )
-          foreach ($part in $parts) {
-            if (-not (Test-Path -LiteralPath $part)) { throw "missing VGM bootstrap transfer part: $part" }
-          }
-          $b64 = (($parts | ForEach-Object { Get-Content -Raw -LiteralPath $_ }) -join '') -replace '\s', ''
-          if ($b64.Length -ne 88336) { throw "unexpected VGM bootstrap base64 length: $($b64.Length)" }
-          $b64Sha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::ASCII.GetBytes($b64))).ToLowerInvariant()
-          $expectedB64Sha = 'e0774db2137a56d3c592b9238be3727ed7521b1da4673f1f2f109c9e2d78b5b1'
-          if ($b64Sha -ne $expectedB64Sha) { throw "VGM bootstrap base64 SHA-256 mismatch: $b64Sha" }
-          $bytes = [Convert]::FromBase64String($b64)
-          if ($bytes.Length -ne 66250) { throw "unexpected VGM bootstrap byte length: $($bytes.Length)" }
-          $target = 'imports/foo_input_vgm-0.31.zip'
-          [IO.File]::WriteAllBytes((Join-Path $PWD $target), $bytes)
-          $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLowerInvariant()
-          $expected = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'
-          if ($sha -ne $expected) { throw "VGM bootstrap SHA-256 mismatch: $sha" }
-          python -B -c "import zipfile; p=r'imports/foo_input_vgm-0.31.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert len(z.infolist()) == 43; assert sum(not i.is_dir() for i in z.infolist()) == 41; print('verified VGM 0.31 ZIP entries:', len(z.infolist()))"
-          if ($LASTEXITCODE -ne 0) { throw 'reconstructed VGM bootstrap failed ZIP validation' }
-          Write-Host "VGM 0.31 bootstrap verified: $sha"
+          python -B tools/reconstruct_vgm031_bootstrap.py
+          if ($LASTEXITCODE -ne 0) { throw 'canonical VGM 0.31 bootstrap reconstruction failed' }
 
       - name: Run source and bridge regression guards
         shell: pwsh
