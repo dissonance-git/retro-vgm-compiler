@@ -119,6 +119,7 @@ def main() -> int:
         # without mutating the historical vcxproj text in the builder.
         assert "input_vgm_shadow.cpp" in targets
         assert "<PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>" in targets
+        assert "<AdditionalDependencies>UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>" in targets
 
         # Materialization is permitted to state that the retired repository was
         # not consulted; it must never request or clone it as an input.

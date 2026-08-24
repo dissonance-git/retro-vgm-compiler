@@ -205,7 +205,7 @@ $vgmBase = $VgmSdkRoot
 $componentBase = Split-Path $vgmBase -Parent
 $zlibCompat = Join-Path $WorkRoot 'foo-input-vgm-zlib-compat'
 $zlibCompatRelease = Join-Path $zlibCompat 'build_x64\Release'
-$builtZlib = Join-Path $Libvgm 'libs\lib\zlib.lib'
+$builtZlib = Join-Path $Libvgm 'libs\lib\zlib64.lib'
 Require-File $builtZlib 'pinned libvgm zlib static library'
 New-Item -ItemType Directory $zlibCompatRelease -Force | Out-Null
 Copy-Item (Join-Path $Libvgm 'libs\include\*') $zlibCompat -Recurse -Force

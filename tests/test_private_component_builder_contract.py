@@ -66,7 +66,7 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
 
     def test_vgm_zlib_compatibility_uses_the_pinned_built_library(self) -> None:
         self.assertIn(
-            "$builtZlib = Join-Path $Libvgm 'libs\\lib\\zlib.lib'",
+            "$builtZlib = Join-Path $Libvgm 'libs\\lib\\zlib64.lib'",
             self.text,
         )
         self.assertIn(
