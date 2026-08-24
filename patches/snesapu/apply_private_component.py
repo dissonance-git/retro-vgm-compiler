@@ -71,6 +71,9 @@ def main() -> int:
     run(here / "apply_prebrr_transport_complete.py", root)
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
     run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)
+    # Output: Omniphony owns the one final headphone render when selected;
+    # other outputs retain the established direct source_ffi fallback.
+    run(here / "apply_foobar_source_session.py", root)
     # Preserve the historical Surround preference, but mask the old SNESAPU
     # surround algorithm and use that saved bit to gate Omniphony instead.
     run(here / "apply_surround_omniphony_private_bridge.py", root)
