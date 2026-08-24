@@ -50,13 +50,15 @@ PUBLIC SetDSPPreBrrProvider, callback:dword, user:dword
 
     replace_once(
         dll / "DSP.h",
-        """void SetDSPVol(u32 vol);
+        """void SetDSPSourceCapture(u32 enable);
+float* GetDSPSourceData(u32 *pFrames);
 
 
 //**************************************************************************************************
 // Set Voice Stereo Separation
 """,
-        """void SetDSPVol(u32 vol);
+        """void SetDSPSourceCapture(u32 enable);
+float* GetDSPSourceData(u32 *pFrames);
 
 
 //**************************************************************************************************
