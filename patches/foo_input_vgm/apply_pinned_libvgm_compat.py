@@ -16,6 +16,8 @@ from pathlib import Path
 
 OLD_HEADER = "emu/cores/gbintf.h"
 PINNED_HEADER = "emu/cores/gb.h"
+CURRENT_VSU_OPTION = "OPT_VSU_WRAM_WRT_WHILE_ON"
+PINNED_VSU_OPTION = "OPT_VST_WRAM_WRT_WHILE_ON"
 
 
 def decode_source(raw: bytes) -> tuple[str, str, bool]:
@@ -42,12 +44,33 @@ def patch_header(path: Path) -> None:
     print(f"patched pinned libvgm Game Boy header compatibility: {path}")
 
 
+def patch_token(path: Path, old: str, new: str, label: str) -> None:
+    raw = path.read_bytes()
+    text, encoding, bom = decode_source(raw)
+    count = text.count(old)
+    if count != 1:
+        raise RuntimeError(
+            f"{label}: expected exactly one {old!r} in {path}, found {count}"
+        )
+    encoded = text.replace(old, new, 1).encode(encoding)
+    if bom:
+        encoded = b"\xef\xbb\xbf" + encoded
+    path.write_bytes(encoded)
+    print(f"patched {label}: {path}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source_dir", type=Path, help="foo_input_vgm/src directory")
     root = parser.parse_args().source_dir.resolve()
     patch_header(root / "my_cfg_var.h")
     patch_header(root / "my_view_core_options.cpp")
+    patch_token(
+        root / "my_view_core_options.cpp",
+        CURRENT_VSU_OPTION,
+        PINNED_VSU_OPTION,
+        "pinned libvgm Virtual Boy option spelling",
+    )
     return 0
 
 

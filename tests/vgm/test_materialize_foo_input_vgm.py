@@ -83,6 +83,8 @@ def main() -> int:
         )
         assert "emu/cores/gb.h" in core_options
         assert "emu/cores/gbintf.h" not in core_options
+        assert "OPT_VST_WRAM_WRT_WHILE_ON" in core_options
+        assert "OPT_VSU_WRAM_WRT_WHILE_ON" not in core_options
 
         rendered_end = shadow.index("const std::uint64_t rendered_end =")
         studio_branch = shadow.index("if (studio_block)", rendered_end)
