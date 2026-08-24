@@ -269,7 +269,9 @@ Assert-PEMachine $SnesapuDll 0x014C 'patched SNESAPU DLL'
 
 Write-Host '== 8. Build source-aware spcplayer and x64 foo_snesapu =='
 $spcPlayerOutArg = '/p:OutDir=' + $SpcPlayerOutDir + '\'
-Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', $spcPlayerOutArg, '/m', '/v:m')
+$spcPlayerIncludeArg = '/p:SNESAPUIncludeDir=' + $SnesapuSource
+$spcPlayerLibArg = '/p:SNESAPULibDir=' + $SnesapuLibDir
+Run $msbuild @((Join-Path $SpcRoot 'spcplayer\spcplayer.vcxproj'), '/p:Configuration=Release', '/p:Platform=Win32', '/p:PlatformToolset=v143', $spcPlayerIncludeArg, $spcPlayerLibArg, $spcPlayerOutArg, '/m', '/v:m')
 $SpcPlayerExe = Join-Path $SpcPlayerOutDir 'spcplayer.exe'
 Require-File $SpcPlayerExe 'source-aware spcplayer child'
 Assert-PEMachine $SpcPlayerExe 0x014C 'source-aware spcplayer child'

@@ -41,6 +41,14 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         ):
             self.assertIn(marker, self.text)
 
+    def test_spcplayer_consumes_the_fresh_patched_snesapu_build(self) -> None:
+        self.assertIn("$spcPlayerIncludeArg = '/p:SNESAPUIncludeDir=' + $SnesapuSource", self.text)
+        self.assertIn("$spcPlayerLibArg = '/p:SNESAPULibDir=' + $SnesapuLibDir", self.text)
+        self.assertIn(
+            "'/p:PlatformToolset=v143', $spcPlayerIncludeArg, $spcPlayerLibArg, $spcPlayerOutArg",
+            self.text,
+        )
+
     def test_runtime_architectures_are_asserted_before_packaging(self) -> None:
         expected = {
             "Assert-PEMachine $OmniDll 0x8664": "Omniphony x64",
