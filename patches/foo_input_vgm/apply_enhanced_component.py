@@ -140,6 +140,9 @@ def main() -> int:
     # channel-inversion surround effect before any audio reaches the user.
     run(here / "apply_surround_omniphony_bridge.py", source)
     run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
+    # If Output: Omniphony is active it owns the one final headphone render.
+    # Otherwise preserve the already-proven direct source_ffi FullSphere path.
+    run(here / "apply_foobar_source_session.py", source)
     diagnose_generated_host(source)
     print("foo_input_vgm Genesis enhanced + Surround/Omniphony component patch set applied")
     return 0
