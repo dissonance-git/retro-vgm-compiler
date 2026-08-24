@@ -118,6 +118,7 @@ def main() -> int:
         # The project overlay must compile the modern runtime translation unit
         # without mutating the historical vcxproj text in the builder.
         assert "input_vgm_shadow.cpp" in targets
+        assert "<PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>" in targets
         assert "<PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>" in targets
         assert "<AdditionalDependencies>UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>" in targets
 

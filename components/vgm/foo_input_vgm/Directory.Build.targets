@@ -6,6 +6,10 @@
     original foo_input_vgm project can stay close to upstream while this repo's
     realtime engine participates in the same DLL build.
   -->
+  <PropertyGroup>
+    <!-- The private builder owns the audited output directory and packaging. -->
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\libvgm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
