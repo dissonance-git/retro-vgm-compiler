@@ -32,6 +32,10 @@ permissions:
   contents: write
   statuses: write
 
+concurrency:
+  group: private-foobar-binary-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-private-components:
     runs-on: windows-2022
