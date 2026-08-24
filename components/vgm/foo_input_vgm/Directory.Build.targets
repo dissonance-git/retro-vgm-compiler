@@ -9,6 +9,13 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\libvgm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!--
+        The upstream Foobar PCH includes Windows headers before project-owned
+        renderer headers. Keep the Win32 min/max macros out of the entire
+        translation unit so std::min, std::max and numeric_limits<T>::max()
+        remain valid C++ in every generated host source.
+      -->
+      <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
