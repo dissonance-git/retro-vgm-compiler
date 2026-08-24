@@ -126,7 +126,7 @@ def main() -> int:
     %%NoSourceCapture:
 
 """,
-        """,
+        "",
         "remove v1 pre-EVOL wet tap",
     )
 
