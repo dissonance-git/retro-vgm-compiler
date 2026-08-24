@@ -16,6 +16,8 @@
 #include "../../enhancement/ym2612_dac_enhanced.h"
 #include "../../enhancement/ym2612_pcm_stream.h"
 
+class SourceAwareVGMPlayer;
+
 class input_vgm : public input_base
 {
 private:
@@ -71,8 +73,8 @@ public:
 	input_vgm();
 	virtual ~input_vgm();
 	static bool g_is_our_path(const char *p_path, const char *p_extension);
-	bool decode_run(audio_chunk &p_chunk, abort_callback &p_abort) override;
-	void decode_seek(double p_seconds, abort_callback &p_abort) override;
+	bool decode_run(audio_chunk &p_chunk, abort_callback &p_abort);
+	void decode_seek(double p_seconds, abort_callback &p_abort);
 
 private:
 #ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER

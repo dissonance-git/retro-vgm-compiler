@@ -52,7 +52,7 @@ class StudioHqFmSessionResetPatchTest(unittest.TestCase):
 
         declaration = (
             "void decode_initialize(unsigned int p_flags, "
-            "abort_callback &p_abort) override;"
+            "abort_callback &p_abort);"
         )
         self.assertEqual(header.count(declaration), 1)
 

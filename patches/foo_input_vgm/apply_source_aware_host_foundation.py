@@ -123,8 +123,8 @@ private:
 \tvoid guess_track_number_tag_from_file_name(file_info& p_info);
 ''',
         '''\tstatic bool g_is_our_path(const char *p_path, const char *p_extension);
-\tbool decode_run(audio_chunk &p_chunk, abort_callback &p_abort) override;
-\tvoid decode_seek(double p_seconds, abort_callback &p_abort) override;
+\tbool decode_run(audio_chunk &p_chunk, abort_callback &p_abort);
+\tvoid decode_seek(double p_seconds, abort_callback &p_abort);
 
 private:
 #ifdef LIBVGM_GAMEAUDIO_COMMAND_OBSERVER
@@ -155,6 +155,13 @@ private:
 \tvoid guess_track_number_tag_from_file_name(file_info& p_info);
 ''',
         "source-aware host declarations",
+    )
+
+    replace_once(
+        header,
+        "class input_vgm : public input_base\n",
+        "class SourceAwareVGMPlayer;\n\nclass input_vgm : public input_base\n",
+        "source-aware player forward declaration",
     )
 
     replace_once(

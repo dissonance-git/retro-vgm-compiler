@@ -74,6 +74,23 @@ def main() -> int:
         ):
             assert marker in shadow, f"materialized input_vgm_shadow.cpp missing {marker}"
 
+        assert '#include "my_cfg_external.h"' in shadow
+        assert "class SourceAwareVGMPlayer;" in header
+        assert "abort_callback &p_abort) override;" not in header
+
+        core_options = (source / "my_view_core_options.cpp").read_text(
+            encoding="utf-8-sig"
+        )
+        assert "emu/cores/gb.h" in core_options
+        assert "emu/cores/gbintf.h" not in core_options
+
+        rendered_end = shadow.index("const std::uint64_t rendered_end =")
+        studio_branch = shadow.index("if (studio_block)", rendered_end)
+        deferred_psg_use = shadow.index(
+            "advance_studio_deferred_psg_to(rendered_end)", studio_branch
+        )
+        assert rendered_end < studio_branch < deferred_psg_use
+
         # Fail closed at the final audible seam. input_base::decode_run is the
         # protected foo_input_vgm 0.31 renderer and must complete before Spatial
         # is attempted. The Spatial helper itself does not touch the chunk until

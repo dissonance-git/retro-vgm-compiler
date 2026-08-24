@@ -45,8 +45,11 @@ def main() -> int:
 
     replace_once(
         shadow,
-        '#include "input_vgm.h"\n',
         '''#include "input_vgm.h"
+#include "my_cfg_external.h"
+''',
+        '''#include "input_vgm.h"
+#include "my_cfg_external.h"
 #ifdef LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI
 #include "source_aware_vgm_player.h"
 #endif

@@ -47,6 +47,7 @@ def main() -> int:
     parser.add_argument("source_dir", type=Path, help="foo_input_vgm/src directory")
     root = parser.parse_args().source_dir.resolve()
     patch_header(root / "my_cfg_var.h")
+    patch_header(root / "my_view_core_options.cpp")
     return 0
 
 

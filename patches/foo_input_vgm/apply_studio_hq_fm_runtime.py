@@ -230,11 +230,11 @@ UINT8 input_vgm::apply_studio_deferred_post_render(
 	{
 		if (rendered_samples == nullptr)
 			return 1;
+		const std::uint64_t rendered_end =
+			static_cast<std::uint64_t>(rendered_base_playback_sample)
+			+ static_cast<std::uint64_t>(rendered_count);
 		if (studio_block)
 		{
-			const std::uint64_t rendered_end =
-				static_cast<std::uint64_t>(rendered_base_playback_sample)
-				+ static_cast<std::uint64_t>(rendered_count);
 			studio_block = source_player != nullptr
 				&& source_player->source_topology_supported()
 				&& source_player->source_block_complete()

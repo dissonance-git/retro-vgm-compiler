@@ -1,4 +1,5 @@
 #include "input_vgm.h"
+#include "my_cfg_external.h"
 
 #include <emu/cores/sn764intf.h>
 #include <limits>
