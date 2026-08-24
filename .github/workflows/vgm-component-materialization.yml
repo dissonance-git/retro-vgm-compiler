@@ -59,7 +59,7 @@ jobs:
           python patches/libvgm/apply_source_capture.py $libvgm
           if ($LASTEXITCODE -ne 0) { throw 'libvgm source-aware patch chain failed' }
 
-          cmake -S tests/integration/libvgm-source -B $libvgmBuild -DLIBVGM_ROOT=$libvgm
+          cmake -S tests/integration/libvgm-source -B $libvgmBuild "-DLIBVGM_ROOT=$libvgm"
           if ($LASTEXITCODE -ne 0) { throw 'libvgm integration configure failed' }
           cmake --build $libvgmBuild --config Release
           if ($LASTEXITCODE -ne 0) { throw 'libvgm integration build failed' }
