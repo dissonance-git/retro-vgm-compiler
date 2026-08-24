@@ -64,6 +64,20 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertIn("-DLIBVGM_ROOT=$Libvgm", self.text)
         self.assertIn("'--test-dir', $LibvgmSourceTestBuild", self.text)
 
+    def test_vgm_zlib_compatibility_uses_the_pinned_built_library(self) -> None:
+        self.assertIn(
+            "$builtZlib = Join-Path $Libvgm 'libs\\lib\\zlib.lib'",
+            self.text,
+        )
+        self.assertIn(
+            "Copy-Item $builtZlib (Join-Path $zlibCompatRelease 'zs.lib') -Force",
+            self.text,
+        )
+        self.assertIn(
+            "Junction (Join-Path $componentBase 'zlib') $zlibCompat",
+            self.text,
+        )
+
     def test_source_commit_is_captured_and_written_to_manifest(self) -> None:
         capture = "$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()"
         manifest = "$manifest = [ordered]@{"

@@ -203,6 +203,17 @@ $vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProjec
 Require-File (Join-Path $VgmComponent 'Directory.Build.targets') 'VGM project-owned MSBuild overlay'
 $vgmBase = $VgmSdkRoot
 $componentBase = Split-Path $vgmBase -Parent
+$zlibCompat = Join-Path $WorkRoot 'foo-input-vgm-zlib-compat'
+$zlibCompatRelease = Join-Path $zlibCompat 'build_x64\Release'
+$builtZlib = Join-Path $Libvgm 'libs\lib\zlib.lib'
+Require-File $builtZlib 'pinned libvgm zlib static library'
+New-Item -ItemType Directory $zlibCompatRelease -Force | Out-Null
+Copy-Item (Join-Path $Libvgm 'libs\include\*') $zlibCompat -Recurse -Force
+# foo_input_vgm 0.31 predates libvgm's CMake install layout and names the
+# same release library zlib/build_x64/Release/zs.lib. Reconstruct that narrow
+# disposable compatibility projection instead of rewriting the preserved
+# project or introducing a second zlib build.
+Copy-Item $builtZlib (Join-Path $zlibCompatRelease 'zs.lib') -Force
 Junction (Join-Path $vgmBase 'SDK') (Join-Path $fb2k 'SDK')
 Junction (Join-Path $vgmBase 'helpers') (Join-Path $fb2k 'helpers')
 Junction (Join-Path $vgmBase 'shared') (Join-Path $fb2k 'shared')
@@ -211,7 +222,7 @@ Junction (Join-Path $componentBase 'pfc') (Join-Path $sdkRoot 'pfc')
 Junction (Join-Path $componentBase 'libPPUI') (Join-Path $sdkRoot 'libPPUI')
 Junction (Join-Path $componentBase 'libvgm') $Libvgm
 Junction (Join-Path $componentBase 'WTL') $Wtl
-Junction (Join-Path $componentBase 'zlib') (Join-Path $Libvgm 'libs\include')
+Junction (Join-Path $componentBase 'zlib') $zlibCompat
 $vgmOutArg = '/p:OutDir=' + $VgmOutDir + '\'
 Run $msbuild @($vgmBuildTarget, '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $vgmOutArg, '/m', '/v:m')
 $FooVgm = Join-Path $VgmOutDir 'foo_input_vgm.dll'
