@@ -226,6 +226,36 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
+      - name: Repair final stale source API test names
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          spc = Path('tests/spc/spc_runtime_snesapu_host_pipeline_test.cpp')
+          text = spc.read_text(encoding='utf-8')
+          old = 'spatial_playback_path::source_full_sphere'
+          new = 'spatial_playback_path::source_spatial'
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('SPC stale spatial-path assertion is not singular')
+              text = text.replace(old, new, 1)
+              spc.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('SPC spatial-path assertion anchor not found')
+
+          psg = Path('tests/vgm/sn76489_enhanced_source_block_test.cpp')
+          text = psg.read_text(encoding='utf-8')
+          old = 'sn76489_write_kind::data'
+          new = 'sn76489_write_kind::register_write'
+          if old in text:
+              if text.count(old) != 5:
+                  raise SystemExit('PSG stale register-write count changed')
+              text = text.replace(old, new)
+              psg.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('PSG register-write anchors not found')
+          PY
+
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
@@ -238,8 +268,11 @@ jobs:
           grep -q -- '-UNDEBUG' CMakeLists.txt
           grep -q 'spatial_playback_path::source_spatial' tests/vgm/genesis_enhanced_recomposition_test.cpp
           grep -q 'spatial_playback_path::source_spatial' tests/model/spatial_source_test.cpp
+          grep -q 'spatial_playback_path::source_spatial' tests/spc/spc_runtime_snesapu_host_pipeline_test.cpp
           ! grep -q 'uses_externalization' tests/model/spatial_source_test.cpp
           ! grep -q 'spatial_depth_mode' tests/model/spatial_source_test.cpp
+          grep -q 'sn76489_write_kind::register_write' tests/vgm/sn76489_enhanced_source_block_test.cpp
+          ! grep -q 'sn76489_write_kind::data' tests/vgm/sn76489_enhanced_source_block_test.cpp
           grep -q 'ym2612_pcm_stream() noexcept' components/vgm/enhancement/ym2612_pcm_stream.h
           grep -q ': ym2612_pcm_stream(48000.0)' components/vgm/enhancement/ym2612_pcm_stream.cpp
           grep -q 'vgmtooling::model::node_id device_transition_id' components/vgm/enhancement/genesis_pitch_control_adapter.h
@@ -251,6 +284,8 @@ jobs:
             CMakeLists.txt \
             tests/vgm/genesis_enhanced_recomposition_test.cpp \
             tests/model/spatial_source_test.cpp \
+            tests/spc/spc_runtime_snesapu_host_pipeline_test.cpp \
+            tests/vgm/sn76489_enhanced_source_block_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp \
             components/vgm/enhancement/genesis_pitch_control_adapter.h \
@@ -264,6 +299,8 @@ jobs:
             CMakeLists.txt \
             tests/vgm/genesis_enhanced_recomposition_test.cpp \
             tests/model/spatial_source_test.cpp \
+            tests/spc/spc_runtime_snesapu_host_pipeline_test.cpp \
+            tests/vgm/sn76489_enhanced_source_block_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp \
             components/vgm/enhancement/genesis_pitch_control_adapter.h \
