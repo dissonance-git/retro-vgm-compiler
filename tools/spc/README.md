@@ -1,6 +1,6 @@
 # SPC tools
 
-This shelf owns executable SPC research operations. For component semantics, see `../../components/spc/README.md`; for repository-wide navigation, see `../../CATALOG.md`.
+This shelf owns executable SPC research operations. For component semantics, see `../../components/spc/README.md`; for repository-wide navigation, see the repository map in `../../README.md`.
 
 ## Creator-blind calibration path
 

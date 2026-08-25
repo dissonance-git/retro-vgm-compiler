@@ -6,9 +6,8 @@ For substantive work, use this bounded entry path:
 
 ```text
 current main HEAD
-→ README.md
+→ README.md repository map
 → AGENTS.md at the same HEAD
-→ CATALOG.md
 → docs/retro-vgm-compiler-roadmap.md
 → task-relevant canonical owner
 → recent commits for that active surface
@@ -16,14 +15,14 @@ current main HEAD
 ```
 
 1. Resolve the Retro VGM Compiler repository and record current `main`.
-2. Read `README.md`, this file, `CATALOG.md`, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
-3. Use `CATALOG.md` to identify the smallest canonical owner before doing a broad repository search. If a generated inventory is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
+2. Read `README.md`, this file, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
+3. Use the repository map in `README.md` to identify the smallest canonical owner before doing a broad repository search. If mechanical enumeration is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
 4. Inspect recent commits for the active surface before choosing the smallest relevant work area.
 5. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
 6. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
 7. Work on `main`; do not create branches or PRs unless explicitly requested.
 8. Never force-push.
-9. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, and listening validation as separate evidence states.
+9. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, package/runtime verification, and listening validation as separate evidence states.
 
 Direct user correction outranks project prose.
 
@@ -32,14 +31,22 @@ Direct user correction outranks project prose.
 Do not repeatedly rediscover known repository contents by broad search.
 
 ```text
-CATALOG.md
+README.md repository map
 → generated inventory when mechanical enumeration is needed
 → canonical owner
 → bounded search inside that owner
 → repository-wide search only when the map is insufficient or demonstrably stale
 ```
 
-The catalog is a projection, not authority. Exact source files, manifests, tests, project records, and current implementation remain canonical. If the map disagrees with reality, correct the map rather than bending reality to match it.
+The README map and generated inventories are projections, not authority. Exact source files, manifests, tests, project records, and current implementation remain canonical. If the map disagrees with reality, correct the map rather than bending reality to match it.
+
+```text
+canonical owner exists? → extend it
+otherwise               → choose the smallest existing shelf
+new peer object          → only when a real new distinction needs an owner
+```
+
+A successful refactor leaves fewer places an agent must search.
 
 ## Project scope
 
@@ -311,6 +318,46 @@ Important mechanisms need more than synthetic unit tests. Use whichever controls
 - counterfactual musical questions that test whether the model learned the soundtrack's own grammar rather than generic genre clichés.
 
 Do not call CI green unless the runner actually executed successfully. A blocked runner is not a pass or a failure of the code.
+
+## Foobar component delivery law
+
+For installable VGM/SPC decoder work, the canonical delivery path is owned by `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1`.
+
+```text
+current main + pinned dependencies
+→ regression/materialization guards
+→ native VGM/SPC builds
+→ exact .fb2k-component packages
+→ package verifier
+→ combined bundle verifier
+→ packaged SNESAPU runtime smoke
+→ Actions artifact upload
+→ rolling verified delivery release
+```
+
+Do not call a decoder test-ready because a DLL compiled or because an archive exists. Publish-ready means the end-to-end Actions job is green through upload and rolling delivery.
+
+Required private packages are:
+
+```text
+foo_input_vgm.private.fb2k-component
+  foo_input_vgm.dll
+  omniphony_source.dll
+
+foo_snesapu.private.fb2k-component
+  foo_snesapu.dll
+  spcplayer.exe
+  SNESAPU.dll
+  omniphony_source.dll
+```
+
+The package verifier must fail closed on unexpected/nested component members, wrong PE machine types, missing required exports, forbidden private imports, mismatched Omniphony runtime bytes/ABI, or packaged child-startup failure. Windows DLLs loaded by verification must be explicitly released before temporary extraction directories are removed.
+
+The combined `private-foobar-vgm-spc.zip` intentionally includes the two installable component archives, metadata/checksums, plus `VGM/` and `SPC/` manual-runtime folders. Those nested runtime folders are valid declared bundle structure. Do not flatten them to satisfy a stale verifier; update the verifier and its contract tests together when the declared bundle format changes.
+
+When Actions output is too opaque to locate a failure, add the smallest focused diagnostic/probe that preserves the real nonzero exit status and exposes the first actionable compiler/linker/verifier error. Do not repeatedly rerun a swallowed-log path or weaken acceptance gates to obtain an artifact.
+
+The Omniphony output component is a peer-repository deliverable. A matched listening test requires both private decoder packages plus `foo_out_omniphony.fb2k-component`. Decoder `enhanced` and `Surround` controls remain independent in every output configuration.
 
 ## Current analytical frontier
 

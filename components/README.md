@@ -2,7 +2,7 @@
 
 `components/` owns **source-family and device-specific semantics**. It is where native representations are respected before information is lifted into shared musical meaning.
 
-For repository-wide navigation, start at [`../CATALOG.md`](../CATALOG.md).
+For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
 
 ## Current families
 
@@ -34,7 +34,7 @@ Do not put a chip-, driver-, container-, or platform-specific mechanism into `mo
 
 Before creating another component:
 
-1. Check `CATALOG.md` and the generated repository inventory.
+1. Check the root `README.md` repository map and the generated repository inventory.
 2. Check whether the family already exists in corpus/audit tooling without yet needing a first-class runtime component.
 3. Add a component only when the source family has durable implementation semantics that need an owner.
 4. Share abstractions only after materially different families force the same contract.

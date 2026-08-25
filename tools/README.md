@@ -2,7 +2,7 @@
 
 `tools/` contains reusable repository-facing commands. Before writing another script, check this shelf and the generated inventory from `repository_catalog.py`.
 
-For repository-wide navigation, start at [`../CATALOG.md`](../CATALOG.md).
+For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
 
 ## Tool families
 

@@ -2,7 +2,7 @@
 
 `model/` owns **source-independent musical and evidential contracts that have earned sharing across materially different source families**.
 
-For repository-wide navigation, start at [`../CATALOG.md`](../CATALOG.md).
+For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
 
 ## Semantic ladder
 

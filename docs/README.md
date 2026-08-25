@@ -2,7 +2,7 @@
 
 `docs/` owns durable project architecture, musical reasoning contracts, current roadmap material, and preserved history.
 
-For repository-wide navigation, start at [`../CATALOG.md`](../CATALOG.md).
+For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
 
 ## Current surface
 

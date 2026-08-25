@@ -464,6 +464,63 @@ The compiler does not manufacture 17 speaker-bed lanes. Omniphony does not decid
 
 See `docs/omniphony-realtime-spatial-path.md`.
 
+## Installable foobar2000 component delivery
+
+Retro VGM Compiler owns the reproducible build and publication path for the private VGM and SPC decoder components. A successful compile is not a delivery. The canonical path is:
+
+```text
+current main + pinned upstream inputs
+→ source/materialization regression guards
+→ VGM x64 decoder build
+→ patched x86 SNESAPU build
+→ source-aware x86 spcplayer build
+→ SPC x64 decoder build
+→ .fb2k-component packaging
+→ package structure / PE / ABI verification
+→ Windows packaged-runtime verification
+→ combined bundle verification
+→ packaged SNESAPU provider/runtime smoke
+→ GitHub Actions artifact upload
+→ rolling verified delivery release
+```
+
+Production owners:
+
+- `.github/workflows/private-foobar-build.yml` owns the end-to-end Windows delivery gate.
+- `tools/build_private_foobar_components.ps1` owns the pinned build and packaging procedure.
+- `tools/run_private_foobar_build_with_diagnostics.ps1` exposes focused failures without weakening the real exit status.
+- `tools/verify_private_component_packages.py` verifies exact component payloads, PE architecture/exports, private import boundaries, Omniphony ABI, and packaged child startup.
+- `tools/verify_private_component_bundle.py` verifies the final combined delivery envelope and byte-for-byte agreement with its embedded/manual runtime copies.
+- `tools/verify_snesapu_package_runtime.ps1` owns the packaged x86 SNESAPU provider/runtime smoke.
+
+Installable decoder outputs:
+
+```text
+foo_input_vgm.private.fb2k-component
+  foo_input_vgm.dll
+  omniphony_source.dll
+
+foo_snesapu.private.fb2k-component
+  foo_snesapu.dll
+  spcplayer.exe
+  SNESAPU.dll
+  omniphony_source.dll
+```
+
+`private-foobar-vgm-spc.zip` intentionally also contains `VGM/` and `SPC/` runtime folders for manual replacement. Those folders are part of the declared bundle format; the two `.fb2k-component` files themselves remain flat sibling packages.
+
+A decoder pair is **publish-ready** only when the GitHub Actions job is green through build, component verification, bundle verification, packaged SNESAPU runtime smoke, artifact upload, and rolling delivery publication. A loose DLL, a successful compiler invocation, or an archive created before those gates is not the published test deliverable.
+
+The Omniphony output component is built and published by the Omniphony repository. The matched listening set is therefore:
+
+```text
+foo_input_vgm.private.fb2k-component
++ foo_snesapu.private.fb2k-component
++ foo_out_omniphony.fb2k-component
+```
+
+Decoder `enhanced` and `Surround` remain independent controls. `enhanced` changes source reconstruction/quality; `Surround` requests Omniphony source-aware spatial presentation. Packaging or output selection must never collapse them.
+
 ## Current Genesis execution frontier
 
 The driver/source research does not replace the current empirical execution program.
@@ -492,18 +549,79 @@ The frozen real control surface is the 58-file Sonic 3 & Knuckles VGZ set alread
 
 Chip-specific machinery stays here unless it becomes genuinely general.
 
-## Repository map
+## Repository map and navigation
+
+Fast orientation belongs here rather than in a separate root catalog. This map is a projection, not source truth.
+
+> **One canonical home per object. Many routes to it.**
+
+Use this entry path before a repository-wide search:
 
 ```text
-model/          shared provenance-aware primitives
-components/     source- and device-specific execution/analysis
-tests/          executable regressions and real-music corpus
-research/       program-organized mechanism and evidence investigations
-docs/           durable architecture and analysis rules
-tools/          corpus and source-specific audit utilities
+current main
+→ README.md                         project identity + repository map
+→ AGENTS.md                         operating law
+→ docs/retro-vgm-compiler-roadmap.md
+→ smallest canonical owner below
+→ recent commits for that surface
+→ exact target code, test, or document
 ```
 
-Research is indexed by program in `research/README.md`; new investigations should extend an existing trunk before creating another peer-level file.
+Repository shelves:
+
+```text
+model/          shared musical/evidence semantics that earned sharing
+components/     source-family and device-specific machinery
+tests/          regressions + immutable real corpus
+research/       bounded investigations and named testbeds
+docs/           current architecture / reasoning contracts
+tools/          reusable executable operations
+imports/        preserved upstream/import provenance
+patches/        maintained patch material
+```
+
+Dense shelves have their own `README.md`. Descend there before searching globally.
+
+Canonical routes:
+
+| Need | Route |
+| --- | --- |
+| project objective | this `README.md` |
+| working rules | `AGENTS.md` |
+| current frontier | `docs/retro-vgm-compiler-roadmap.md` |
+| implemented source family | `components/README.md` → family |
+| shared musical semantics | `model/README.md` → exact model header/test |
+| game-music → Omniphony spatial handoff / 8.1.4.4 authority | `docs/omniphony-realtime-spatial-path.md` |
+| installable private VGM/SPC decoder delivery | this README section + `AGENTS.md` delivery law |
+| existing corpus / soundtrack | `tests/corpus/README.md` → `manifest.json` → set |
+| research program | `research/README.md` → owning trunk/project |
+| existing utility | `tools/README.md` → exact tool |
+| current documentation | `docs/README.md` |
+| historical project prose | `docs/history/` |
+| mechanical repository inventory | `tools/repository_catalog.py` |
+
+For exact mechanical enumeration:
+
+```text
+python tools/repository_catalog.py
+
+→ docs/generated/repository-catalog.md
+→ docs/generated/repository-catalog.json
+```
+
+Generated inventories are rebuildable projections. They do not become authority or another writable repository map.
+
+For the Sonic 3 attribution program, enter through `research/projects/sonic3/README.md`, then the canonical policy/admission file and frozen preregistration for the exact generation. `attribution-control-admissions.jsonl` is grounded role evidence, `cube-calibration-policy.json` owns CUBE calibration/holdout rules, `role-credit-index.jsonl` is Genesis cache-routing control rather than master history, and `research/cache/` is derived creator-blind analysis. Never reconstruct creator labels from corpus tags when a canonical admission/policy already exists.
+
+Addition rule:
+
+```text
+canonical owner exists? → extend it
+otherwise               → choose the smallest existing shelf
+new peer object          → only when a real new distinction needs an owner
+```
+
+A successful refactor leaves fewer places an agent must search.
 
 Start with:
 

@@ -2,7 +2,7 @@
 
 `research/` is organized by **durable research program**, not by date, game count, or latest experiment.
 
-For repository-wide orientation, start at [`../CATALOG.md`](../CATALOG.md).
+For repository-wide orientation, start at the repository map in [`../README.md`](../README.md).
 
 > Few trunks, many chapters. One canonical owner per question.
 
