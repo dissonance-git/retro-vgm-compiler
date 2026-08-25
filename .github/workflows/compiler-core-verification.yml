@@ -7,16 +7,59 @@ on:
       - '.github/workflows/compiler-core-verification.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   dependency-free-compiler-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Keep test assertions active in Release
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('CMakeLists.txt')
+          text = path.read_text(encoding='utf-8')
+          old = '''        if(MSVC)
+              target_compile_options(${test_target} PRIVATE /W4 /permissive-)
+          else()
+              target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+          endif()'''
+          new = '''        if(MSVC)
+              target_compile_options(${test_target} PRIVATE /W4 /permissive- /UNDEBUG)
+          else()
+              target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
+          endif()'''
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('core test compile-option anchor is not singular')
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('core test compile-option anchor not found')
+          PY
+
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
         run: cmake --build build --parallel 2
       - name: Run full compiler core
         run: ctest --test-dir build --output-on-failure
+      - name: Validate assertion policy
+        run: |
+          git diff --check
+          grep -q -- '-UNDEBUG' CMakeLists.txt
+      - name: Commit assertion-safe test policy
+        run: |
+          if git diff --quiet -- CMakeLists.txt; then
+            exit 0
+          fi
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add CMakeLists.txt
+          git commit -m 'test(core): keep assertions active in Release'
+          git push
