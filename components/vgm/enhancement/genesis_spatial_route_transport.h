@@ -83,7 +83,8 @@ public:
     }
 
     // Seek/state replay may seed exact current device state without inventing
-    // old route writes as future audible events.
+    // old route writes as future audible events. The seeded record may include
+    // higher source evidence such as an explicitly established persistent part.
     bool seed(
         std::size_t source_index,
         const vgmtooling::model::spatial_source_evidence& evidence) noexcept
@@ -92,7 +93,8 @@ public:
     }
 
     // Observe one exact VGM command at its already-resolved output ordinal.
-    // Non-route commands remain a no-op.
+    // Non-route commands remain a no-op. Route-only register writes preserve
+    // all other already-proven source evidence for that source generation.
     bool observe(const command_event& event, std::uint64_t absolute_sample) noexcept {
         if (!valid())
             return false;
@@ -105,18 +107,10 @@ public:
                 const auto source = static_cast<genesis_recomposition_source>(
                     static_cast<std::uint8_t>(genesis_recomposition_source::sn76489_tone0)
                     + static_cast<std::uint8_t>(channel));
-                const auto device = channel < 3u
-                    ? genesis_spatial_device::sn76489_tone
-                    : genesis_spatial_device::sn76489_noise;
-                if (!delivery_.publish(
+                if (!delivery_.publish_stereo_route(
                         absolute_sample,
                         static_cast<std::size_t>(source),
-                        make_genesis_spatial_source(
-                            device,
-                            0,
-                            static_cast<std::uint8_t>(channel),
-                            1,
-                            sn76489_authored_route(mask, channel))))
+                        sn76489_authored_route(mask, channel)))
                     return false;
             }
             return true;
@@ -138,29 +132,19 @@ public:
             const std::size_t fm_source = static_cast<std::size_t>(
                 static_cast<std::uint8_t>(genesis_recomposition_source::ym2612_fm1)
                 + static_cast<std::uint8_t>(channel));
-            if (!delivery_.publish(
+            if (!delivery_.publish_stereo_route(
                     absolute_sample,
                     fm_source,
-                    make_genesis_spatial_source(
-                        genesis_spatial_device::ym2612_fm,
-                        0,
-                        static_cast<std::uint8_t>(channel),
-                        1,
-                        route)))
+                    route))
                 return false;
 
             // YM2612 DAC occupies channel 6's authored route but stays a distinct
             // source identity in the selected-source transport.
             if (channel == 5u) {
-                if (!delivery_.publish(
+                if (!delivery_.publish_stereo_route(
                         absolute_sample,
                         static_cast<std::size_t>(genesis_recomposition_source::ym2612_dac),
-                        make_genesis_spatial_source(
-                            genesis_spatial_device::ym2612_dac,
-                            0,
-                            0,
-                            1,
-                            route)))
+                        route))
                     return false;
             }
         }

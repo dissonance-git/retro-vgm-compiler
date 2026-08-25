@@ -1,0 +1,32 @@
+name: Spatial route semantic preservation validation
+
+on:
+  push:
+    branches: [spatial-route-semantic-preservation]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-spatial-route-semantics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused semantic controls
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/spatial_route_transport_test.cpp \
+            -o /tmp/spatial_route_transport_test
+          /tmp/spatial_route_transport_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/genesis_spatial_route_transport_test.cpp \
+            -o /tmp/genesis_spatial_route_transport_test
+          /tmp/genesis_spatial_route_transport_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/genesis_spatial_semantic_preservation_test.cpp \
+            -o /tmp/genesis_spatial_semantic_preservation_test
+          /tmp/genesis_spatial_semantic_preservation_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/part_role_auditory_evidence_adapter_test.cpp \
+            -o /tmp/part_role_auditory_evidence_adapter_test
+          /tmp/part_role_auditory_evidence_adapter_test
