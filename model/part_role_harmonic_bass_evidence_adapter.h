@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <set>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace vgmtooling::model {
@@ -68,6 +70,7 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
     double grounded_weight = 0.0;
     double owned_weight = 0.0;
     double grounded_confidence_sum = 0.0;
+    std::set<std::pair<std::int64_t, std::int64_t>> seen_transition_ticks;
 
     for (const auto& interaction : interactions) {
         validate_bass_harmony_interaction_for_role(interaction);
@@ -78,6 +81,14 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
         if (!harmonic_bass_time_inside_window(interaction.first_time, descriptor.active) ||
             !harmonic_bass_time_inside_window(interaction.second_time, descriptor.active)) {
             continue;
+        }
+
+        const auto transition_ticks = std::make_pair(
+            interaction.first_time.tick,
+            interaction.second_time.tick);
+        if (!seen_transition_ticks.insert(transition_ticks).second) {
+            throw std::invalid_argument(
+                "bass-role evidence contains duplicate harmonic transition spans");
         }
 
         ++summary.eligible_transitions;
