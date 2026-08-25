@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/compiler-core-finalize.yml'
       - 'tools/ci/finalize_core_repairs.py'
+      - 'tools/ci/finalize_core_repairs_v2.py'
 
 permissions:
   contents: write
@@ -19,7 +20,9 @@ jobs:
           fetch-depth: 1
 
       - name: Apply guarded core repairs
-        run: python tools/ci/finalize_core_repairs.py
+        run: |
+          python tools/ci/finalize_core_repairs.py
+          python tools/ci/finalize_core_repairs_v2.py
 
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
@@ -37,6 +40,8 @@ jobs:
           grep -q 'bandlimited_square_error' tests/vgm/sn76489_alias_test.cpp
           grep -q 'startup_reference_frames == 0' tests/vgm/studio_source_resampler_test.cpp
           grep -q 'storage_index >= availability_.size()' model/spatial_source_host_assembler.h
+          grep -q 'tone_period_registers_' components/vgm/enhancement/sn76489_enhanced.h
+          grep -q 'tone_period(0) == 0x010' tests/vgm/sn76489_enhanced_test.cpp
           if git diff --quiet; then
             exit 0
           fi
