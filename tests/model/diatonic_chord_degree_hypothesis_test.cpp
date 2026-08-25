@@ -64,38 +64,26 @@ tertian_triad_hypothesis triad(
 }
 
 cadential_arrival_hypothesis arrival_between(
-    std::int64_t first_root,
-    std::int64_t second_root,
-    std::int64_t first_tick,
-    std::int64_t second_tick,
+    const tertian_triad_hypothesis& first,
+    const tertian_triad_hypothesis& second,
     bool cross_part_phrase_grounded = true,
     bool reliable_root_motion = true,
     bool with_identity_grounded_voice_leading = true) {
     phrase_boundary_consensus boundary;
-    boundary.representative = at(second_tick);
+    boundary.representative = second.projection.source_verticality.observation_time;
     boundary.confidence = 0.90;
     boundary.cross_part_grounded = cross_part_phrase_grounded;
 
-    harmonic_transition_hypothesis transition;
-    transition.first_time = at(first_tick);
-    transition.second_time = at(second_tick);
-    transition.first_root_pitch_class = positive_mod(first_root, 12);
-    transition.second_root_pitch_class = positive_mod(second_root, 12);
-    transition.directed_root_motion_semitones = positive_mod(
-        second_root - first_root,
-        12);
-    transition.root_interval_class = std::min(
-        transition.directed_root_motion_semitones,
-        12 - transition.directed_root_motion_semitones);
-    transition.root_motion_reliable = reliable_root_motion;
+    auto transition = infer_harmonic_transition(first, second);
     transition.confidence = 0.91;
+    transition.root_motion_reliable = reliable_root_motion;
 
     if (!with_identity_grounded_voice_leading)
         return infer_cadential_arrival(boundary, transition);
 
     voice_leading_hypothesis voices;
-    voices.first_time = at(first_tick);
-    voices.second_time = at(second_tick);
+    voices.first_time = first.projection.source_verticality.observation_time;
+    voices.second_time = second.projection.source_verticality.observation_time;
     voices.total_absolute_motion_semitones = 4;
     voices.all_correspondence_identity_grounded = true;
     voices.confidence = 0.88;
@@ -216,16 +204,13 @@ int main() {
     // Key-relative degree motion is useful evidence at a phrase arrival, but it
     // remains one layer below functional Roman-numeral/cadence naming. G -> C
     // in C Ionian is therefore "five_to_one_arrival", not automatically PAC/IAC.
-    const auto five_at_100 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(7, tertian_triad_quality::major, 100));
-    const auto one_at_200 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(0, tertian_triad_quality::major, 200));
-    const auto five_to_one_arrival = arrival_between(7, 0, 100, 200);
+    const auto g_major_100 = triad(7, tertian_triad_quality::major, 100);
+    const auto c_major_200 = triad(0, tertian_triad_quality::major, 200);
+    const auto five_to_one_arrival = arrival_between(g_major_100, c_major_200);
     const auto five_to_one = infer_cadential_degree_relation(
-        five_at_100,
-        one_at_200,
+        key,
+        g_major_100,
+        c_major_200,
         five_to_one_arrival);
     CHECK(five_to_one.kind == cadential_degree_relation_kind::five_to_one_arrival);
     CHECK(five_to_one.first_scale_degree.has_value());
@@ -237,6 +222,14 @@ int main() {
     CHECK(five_to_one.phrase_grounded);
     CHECK(five_to_one.root_motion_grounded);
     CHECK(five_to_one.voice_leading_grounded);
+    CHECK(five_to_one.first_time.tick == 100);
+    CHECK(five_to_one.arrival_time.tick == 200);
+    CHECK(five_to_one_arrival.departure_time.tick == 100);
+    CHECK(five_to_one_arrival.departure_root_pitch_class == 7);
+    CHECK(five_to_one_arrival.arrival_root_pitch_class == 0);
+    CHECK(five_to_one_arrival.departure_quality == tertian_triad_quality::major);
+    CHECK(five_to_one_arrival.arrival_quality == tertian_triad_quality::major);
+    CHECK(!five_to_one_arrival.quality_changed);
     CHECK(close_enough(five_to_one.confidence, 0.82));
     CHECK(!five_to_one.roman_numeral_named);
     CHECK(!five_to_one.tonal_function_named);
@@ -244,41 +237,40 @@ int main() {
 
     // The same degree-5 departure can arrive on degree 6. Record that sequential
     // fact without inventing the label "deceptive cadence" at this layer.
-    const auto five_at_300 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(7, tertian_triad_quality::major, 300));
-    const auto six_at_400 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(9, tertian_triad_quality::minor, 400));
+    const auto g_major_300 = triad(7, tertian_triad_quality::major, 300);
+    const auto a_minor_400 = triad(9, tertian_triad_quality::minor, 400);
+    const auto five_to_six_arrival = arrival_between(g_major_300, a_minor_400);
     const auto five_to_six = infer_cadential_degree_relation(
-        five_at_300,
-        six_at_400,
-        arrival_between(7, 9, 300, 400));
+        key,
+        g_major_300,
+        a_minor_400,
+        five_to_six_arrival);
     CHECK(five_to_six.kind == cadential_degree_relation_kind::five_to_six_arrival);
+    CHECK(five_to_six_arrival.quality_changed);
+    CHECK(five_to_six_arrival.departure_quality == tertian_triad_quality::major);
+    CHECK(five_to_six_arrival.arrival_quality == tertian_triad_quality::minor);
     CHECK(!five_to_six.cadence_class_named);
     CHECK(!five_to_six.tonal_function_named);
 
     // Arrival on degree 5 is separately represented, but does not become a half
     // cadence unless a later layer earns that interpretation from more context.
-    const auto two_at_500 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(2, tertian_triad_quality::minor, 500));
-    const auto five_at_600 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(7, tertian_triad_quality::major, 600));
+    const auto d_minor_500 = triad(2, tertian_triad_quality::minor, 500);
+    const auto g_major_600 = triad(7, tertian_triad_quality::major, 600);
     const auto on_five = infer_cadential_degree_relation(
-        two_at_500,
-        five_at_600,
-        arrival_between(2, 7, 500, 600));
+        key,
+        d_minor_500,
+        g_major_600,
+        arrival_between(d_minor_500, g_major_600));
     CHECK(on_five.kind == cadential_degree_relation_kind::arrival_on_five);
     CHECK(!on_five.cadence_class_named);
 
     // Phrase grounding is independent evidence. A root relation occurring near
     // an uncorroborated boundary is retained only as unresolved bounded evidence.
     const auto ungrounded_boundary = infer_cadential_degree_relation(
-        five_at_100,
-        one_at_200,
-        arrival_between(7, 0, 100, 200, false));
+        key,
+        g_major_100,
+        c_major_200,
+        arrival_between(g_major_100, c_major_200, false));
     CHECK(ungrounded_boundary.kind == cadential_degree_relation_kind::unresolved);
     CHECK(ungrounded_boundary.confidence <= unresolved_cadential_degree_relation_ceiling);
     CHECK(!ungrounded_boundary.phrase_grounded);
@@ -286,56 +278,89 @@ int main() {
     // Root-motion ambiguity also blocks cadence-shaped degree naming, even when
     // the key-relative roots themselves can still be enumerated.
     const auto unreliable_root = infer_cadential_degree_relation(
-        five_at_100,
-        one_at_200,
-        arrival_between(7, 0, 100, 200, true, false));
+        key,
+        g_major_100,
+        c_major_200,
+        arrival_between(g_major_100, c_major_200, true, false));
     CHECK(unreliable_root.kind == cadential_degree_relation_kind::unresolved);
     CHECK(!unreliable_root.root_motion_grounded);
     CHECK(unreliable_root.confidence <= unresolved_cadential_degree_relation_ceiling);
 
     // A chromatic root cannot be squeezed into the diatonic cadence-shaped
     // vocabulary. B-flat -> C remains unresolved here.
-    const auto flat_seven_at_700 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(10, tertian_triad_quality::major, 700));
-    const auto one_at_800 = infer_diatonic_chord_degree_hypothesis(
-        key,
-        triad(0, tertian_triad_quality::major, 800));
+    const auto b_flat_major_700 = triad(10, tertian_triad_quality::major, 700);
+    const auto c_major_800 = triad(0, tertian_triad_quality::major, 800);
     const auto chromatic_arrival = infer_cadential_degree_relation(
-        flat_seven_at_700,
-        one_at_800,
-        arrival_between(10, 0, 700, 800));
+        key,
+        b_flat_major_700,
+        c_major_800,
+        arrival_between(b_flat_major_700, c_major_800));
     CHECK(chromatic_arrival.kind == cadential_degree_relation_kind::unresolved);
     CHECK(chromatic_arrival.confidence <= unresolved_cadential_degree_relation_ceiling);
 
-    // Evidence from a different harmonic transition cannot be loaned into a
-    // degree relation merely because the arrival time looks plausible.
+    // Evidence from a different harmonic transition cannot be loaned into this
+    // relation merely because its root interval and arrival time look plausible.
+    bool transition_time_mismatch_rejected = false;
+    try {
+        const auto stale_g = triad(7, tertian_triad_quality::major, 50);
+        const auto stale_arrival = arrival_between(stale_g, c_major_200);
+        (void)infer_cadential_degree_relation(
+            key,
+            g_major_100,
+            c_major_200,
+            stale_arrival);
+    } catch (const std::invalid_argument&) {
+        transition_time_mismatch_rejected = true;
+    }
+    CHECK(transition_time_mismatch_rejected);
+
+    // Endpoint quality is part of harmonic identity too. A G-minor chord at the
+    // same root/time cannot borrow an arrival licensed by G-major -> C-major.
+    bool transition_quality_mismatch_rejected = false;
+    try {
+        const auto g_minor_100 = triad(7, tertian_triad_quality::minor, 100);
+        (void)infer_cadential_degree_relation(
+            key,
+            g_minor_100,
+            c_major_200,
+            five_to_one_arrival);
+    } catch (const std::invalid_argument&) {
+        transition_quality_mismatch_rejected = true;
+    }
+    CHECK(transition_quality_mismatch_rejected);
+
+    // A mutated root-motion summary is inconsistent with the retained endpoint
+    // identities and must fail closed.
     bool root_motion_mismatch_rejected = false;
     try {
         auto mismatched = five_to_one_arrival;
         mismatched.root_motion_semitones = 7;
         (void)infer_cadential_degree_relation(
-            five_at_100,
-            one_at_200,
+            key,
+            g_major_100,
+            c_major_200,
             mismatched);
     } catch (const std::invalid_argument&) {
         root_motion_mismatch_rejected = true;
     }
     CHECK(root_motion_mismatch_rejected);
 
-    // Both degree hypotheses must live in the same resolved key-class context.
-    bool key_context_mismatch_rejected = false;
+    // The supplied key hypothesis itself remains a live provenance contract.
+    // A same-named key region that does not cover these chord observations is
+    // not interchangeable with the one that actually licensed them.
+    bool key_region_mismatch_rejected = false;
     try {
-        auto foreign_arrival_degree = one_at_200;
-        foreign_arrival_degree.key_center_pitch_class = 7;
+        auto wrong_region = key;
+        wrong_region.region = time_span{at(300), at(1000)};
         (void)infer_cadential_degree_relation(
-            five_at_100,
-            foreign_arrival_degree,
+            wrong_region,
+            g_major_100,
+            c_major_200,
             five_to_one_arrival);
     } catch (const std::invalid_argument&) {
-        key_context_mismatch_rejected = true;
+        key_region_mismatch_rejected = true;
     }
-    CHECK(key_context_mismatch_rejected);
+    CHECK(key_region_mismatch_rejected);
 
     // Materialization requires both support nodes before it mutates the graph.
     musical_execution_graph graph;
