@@ -32,7 +32,7 @@ auditory_salience on the same part-role window
 
 The source implementation ID is never treated as musical-part identity. The binding must come from an already-materialized `node_kind::part` whose `identity_scope` is `persistent_musical_part`, and the attached auditory confidence cannot exceed either the auditory hypothesis or that part-identity confidence.
 
-A third bridge now connects source-backed part-local phrase evidence directly into the same role descriptor:
+A third bridge connects source-backed part-local phrase evidence directly into the same role descriptor:
 
 ```text
 persistent-part gestures
@@ -48,7 +48,27 @@ bounded musical-role inference
 
 Phrase participation is admitted as independent role corroboration only when the phrase hypothesis is cross-domain grounded or exactly authored-grounded. A motif-derived phrase boundary by itself is not allowed to corroborate the same motif a second time under a different field name. Timing-only phrase evidence remains below the role-use threshold and is not promoted into an independently grounded participation signal.
 
-The same bridge is now exercised through both Genesis and SPC source-backed gesture adapters. Their physical clocks and native pitch representations remain distinct, but both can feed persistent-part gesture evidence through motif, phrase, and shared role inference without a source-family role shortcut.
+A fourth bridge now earns stronger auditory salience from a genuinely relational perceptual question rather than by increasing the confidence of the old loudness heuristic:
+
+```text
+stable causal dry source
+        +
+simultaneously active dry competitors
+        ↓
+relative energy + activity + edge structure
+        +
+coarse spectral distinctiveness
+        +
+source continuity + measurement coverage
+        ↓
+relational auditory salience
+        ↓ persistent-part identity cap
+auditory_salience on the matching part window
+```
+
+The original one-source acoustic foreground proposer remains capped at 0.15 confidence. The relational analyzer has its own bounded ceiling of 0.70 because it uses multi-source contrast plus continuity, but it still does not call a source "melody." It can only corroborate independent structural evidence after exact source identity is joined to a persistent musical part.
+
+The phrase bridge is exercised through both Genesis and SPC source-backed gesture adapters. Their physical clocks and native pitch representations remain distinct, but both can feed persistent-part gesture evidence through motif, phrase, and shared role inference without a source-family role shortcut.
 
 Genesis route transport also preserves higher evidence across route-only YM2612 pan and Game Gear PSG stereo writes. A pan-register update changes `stereo_route`; it is not evidence that persistent-part identity, presentation state, effect membership, or other source semantics disappeared.
 
@@ -64,7 +84,9 @@ Genesis route transport also preserves higher evidence across route-only YM2612 
 
 The existing role kernel then applies its own evidence requirements. In particular, melodic foreground requires structural motif evidence plus an independent foreground discriminator such as phrase-boundary participation or auditory salience. Register and activity are corroborative rather than role-creating evidence.
 
-Current realtime acoustic foreground evidence remains deliberately weak: the realtime proposer caps raw-acoustic foreground confidence at 0.15. Binding that evidence to the correct persistent part preserves the cap rather than upgrading it. A high-level foreground role therefore still requires stronger independent perceptual evidence or another independent musical discriminator.
+Current raw realtime acoustic foreground evidence remains deliberately weak: the realtime proposer caps one-source acoustic foreground confidence at 0.15. More samples of that same heuristic do not remove the systematic ambiguity between a loud melody and loud accompaniment.
+
+`realtime_relational_auditory_salience` asks a different question. It requires an exact source/generation observation, at least one simultaneously active dry competitor with a usable coarse spectrum, and stable source continuity. Its score combines scene-relative energy ownership, activity, edge structure, and spectral distinctiveness; its confidence is bounded by source age and measurement coverage. A source that is loud but spectrally blended with its competitor remains below the high-level role-use threshold in the current regression control.
 
 Presentation-prior evidence is rejected by the auditory-to-role adapter. Feeding a role-derived presentation prior back into structural role inference would create a semantic feedback loop rather than a second evidence domain.
 
@@ -79,7 +101,9 @@ performed motion
 
 physical/source id
 != persistent musical-part identity
-!= auditory role evidence
+!= raw acoustic salience
+!= relational auditory salience
+!= musical role
 ```
 
 Each arrow must be earned by evidence.
@@ -96,31 +120,33 @@ Focused validation has established the following behaviors:
 6. Structural motif prominence plus that independently grounded phrase participation can enter the existing melodic-foreground inference path without a manually injected phrase flag.
 7. Genesis source-backed persistent-part gestures recover the same motif + timing phrase relation and feed the shared role inference path.
 8. SPC source-backed persistent-part gestures recover the analogous relation under their native device-time and pitch representation and feed the same role inference path.
-9. Motif discovery thresholds in the cross-architecture control now respect the persistent-part identity confidence that bounds motif identity.
+9. Motif discovery thresholds in the cross-architecture control respect the persistent-part identity confidence that bounds motif identity.
 10. A spatial source can bind to an already-materialized persistent musical part without changing or conflating its implementation source ID.
 11. Auditory foreground evidence attaches only to the matching persistent part and inherits the weaker of auditory and part-identity confidence.
-12. Current raw-acoustic salience remains below the high-level role-use threshold even when the acoustic score itself is large.
+12. Raw one-source acoustic salience remains below the high-level role-use threshold even when its score is large.
 13. Presentation-prior feedback is rejected as non-independent evidence.
 14. Genesis YM2612 and PSG route-only writes preserve an established persistent-part binding instead of reconstructing the source record and erasing it.
+15. A stable, energetic source that is spectrally distinct from an active dry competitor can earn bounded relational auditory salience strong enough to corroborate structural motif evidence.
+16. An equally energetic source with the same broad spectral profile as its competitor remains below the role-use threshold.
+17. A newly appeared source remains weak until source continuity earns measurement confidence.
+18. A solo source cannot claim relational salience because there is no contemporaneous competitor against which to establish contrast.
 
-The known-green role evidence guards are now permanently registered in the root CMake/CTest suite: `tests/model/part_role_gesture_descriptor_test.cpp`, `tests/model/part_role_auditory_evidence_adapter_test.cpp`, `tests/model/cross_architecture_phrase_discovery_test.cpp`, and `tests/vgm/genesis_spatial_semantic_preservation_test.cpp`. A hosted validation configured the normal CMake graph, built all four targets through the repository's strict compiler policy, and ran all four registered CTest entries successfully.
+The known-green role evidence guards are permanently registered in the root CMake/CTest suite: `tests/model/part_role_gesture_descriptor_test.cpp`, `tests/model/part_role_auditory_evidence_adapter_test.cpp`, `tests/model/cross_architecture_phrase_discovery_test.cpp`, and `tests/vgm/genesis_spatial_semantic_preservation_test.cpp`. Hosted validation configured the normal CMake graph, built those targets through the repository's strict compiler policy, and ran their registered CTest entries successfully. The relational-auditory change was then validated through the same registered auditory/role target alongside the phrase-role controls.
 
 A separate existing test, `tests/model/part_role_window_inference_test.cpp`, remains intentionally unregistered because it currently exposes a stale standalone counterline-confidence assertion. That test should not be promoted until its expected confidence is reconciled with the current role-evidence policy for a documented semantic reason.
 
 ## Next evidence target
 
-The phrase bridge is no longer merely a manually supplied role input: source-backed Genesis and SPC persistent-part gestures can now produce the independent phrase evidence consumed by role inference.
-
-The next useful step is to widen independent evidence convergence rather than add another role classifier.
+Source-backed phrase participation and stronger non-circular relational auditory salience can now independently corroborate structural motif evidence. The next useful step is to widen evidence convergence into harmony and orchestration rather than add another role classifier.
 
 Preferred order:
 
-1. stronger auditory salience derived independently from the existing auditory/realtime analysis path without presentation-prior feedback;
-2. harmonic bass ownership where harmonic evidence is already trustworthy;
-3. cross-part register and spacing as corroborative orchestration evidence;
-4. longer role continuity across adjacent phrase/section windows so a part can retain or transfer musical function through time.
+1. harmonic bass ownership where harmonic evidence is already trustworthy;
+2. cross-part register and spacing as corroborative orchestration evidence;
+3. longer role continuity across adjacent phrase/section windows so a part can retain or transfer musical function through time;
+4. real-corpus windows where phrase, relational auditory salience, and harmonic/arrangement evidence can be required to agree or expose disagreement.
 
-Genesis and SPC remain the strongest immediate proving grounds because both already expose source-backed persistent-part gesture evidence. The next proving step should require two or more independent musical evidence families to agree on the same real source-derived part window.
+Genesis and SPC remain strong immediate proving grounds because both already expose source-backed persistent-part gesture evidence. The next proving step should require two or more independent musical evidence families to agree on the same real source-derived part window.
 
 ## Validation rule
 
@@ -133,7 +159,7 @@ persistent part + performed gesture evidence
         ↓
 structural motif prominence
         +
-independent phrase / salience / harmony evidence
+independent phrase / relational salience / harmony evidence
         ↓
 bounded role hypothesis
 ```
