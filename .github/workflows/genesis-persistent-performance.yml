@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'model/persistent_part_performance_trajectory.h'
+      - 'components/vgm/enhancement/genesis_part_evidence.h'
       - 'components/vgm/enhancement/genesis_persistent_performance_adapter.h'
       - 'tests/vgm/genesis_persistent_performance_adapter_test.cpp'
       - 'cmake/semantic_model_tests.cmake'
@@ -21,6 +22,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Repair latent Genesis evidence header
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('components/vgm/enhancement/genesis_part_evidence.h')
+          text = path.read_text(encoding='utf-8')
+          old = '''inline std::optional<double> genesis_relative_pitch_coordinate(
+              const vgmtooling::model::node& onset) noexcept {
+              const attribute* family_item = find_genesis_part_attribute(onset, "device_family");'''
+          new = '''inline std::optional<double> genesis_relative_pitch_coordinate(
+              const vgmtooling::model::node& onset) noexcept {
+              using vgmtooling::model::attribute;
+
+              const attribute* family_item = find_genesis_part_attribute(onset, "device_family");'''
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('Genesis evidence header repair anchor is not singular')
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('Genesis evidence header repair anchor not found')
+          PY
 
       - name: Register compiler regression
         run: |
@@ -72,18 +97,19 @@ jobs:
           ctest --test-dir build --output-on-failure
           -R 'genesis_persistent_performance_adapter|persistent_part_performance_trajectory|pitch_motion_articulation'
 
-      - name: Validate registration
+      - name: Validate focused changes
         run: |
           git diff --check
           grep -q 'genesis_persistent_performance_adapter_test' cmake/semantic_model_tests.cmake
+          grep -q 'using vgmtooling::model::attribute;' components/vgm/enhancement/genesis_part_evidence.h
 
-      - name: Commit permanent registration
+      - name: Commit permanent compiler path
         run: |
-          if git diff --quiet -- cmake/semantic_model_tests.cmake; then
+          if git diff --quiet -- cmake/semantic_model_tests.cmake components/vgm/enhancement/genesis_part_evidence.h; then
             exit 0
           fi
           git config user.name dissonance
           git config user.email ustreamusa@aim.com
-          git add cmake/semantic_model_tests.cmake
-          git commit -m 'test(genesis): register persistent performance adapter'
+          git add cmake/semantic_model_tests.cmake components/vgm/enhancement/genesis_part_evidence.h
+          git commit -m 'fix(genesis): compile persistent performance evidence path'
           git push
