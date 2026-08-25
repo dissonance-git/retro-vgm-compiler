@@ -13,18 +13,22 @@ on:
 jobs:
   build-snesapu-native:
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout exact Retro source
         uses: actions/checkout@v4
 
-      - name: Install pinned NASM and locate MSVC x86 tools
+      - name: Install pinned NASM and locate MSVC tools
         shell: pwsh
         run: |
           $package = '2.16.3'
           $binary = '2.16.03'
           choco install nasm --version=$package --allow-downgrade -y --no-progress
           if ($LASTEXITCODE -ne 0) { throw "NASM $package install failed" }
+          if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
+            choco install 7zip -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw '7-Zip install failed' }
+          }
           $candidate = @(
             'C:\Program Files\NASM\nasm.exe',
             'C:\Program Files (x86)\NASM\nasm.exe',
@@ -72,30 +76,22 @@ jobs:
           if errorlevel 1 exit /b 10
           cd /d "$source"
           if not exist Release mkdir Release
-          echo === NASM APU.asm ===
           nasm -f win32 -dWIN32 -dSTDCALL -O2 APU.asm -o Release\APU.obj
           if errorlevel 1 exit /b 11
-          echo === NASM DSP.asm ===
           nasm -f win32 -dWIN32 -dSTDCALL -O2 DSP.asm -o Release\DSP.obj
           if errorlevel 1 exit /b 12
-          echo === NASM SPC700.asm ===
           nasm -f win32 -dWIN32 -dSTDCALL -O2 SPC700.asm -o Release\SPC700.obj
           if errorlevel 1 exit /b 13
-          echo === RC version.rc ===
           rc /nologo /fo Release\version.res version.rc
           if errorlevel 1 exit /b 21
-          echo === CL SNESAPU.cpp ===
           cl /nologo /Gz /MT /W3 /O2 /Ob0 /D NDEBUG /D _USRDLL /c SNESAPU.cpp /FoRelease\SNESAPU.obj
           if errorlevel 1 exit /b 22
-          echo === LINK SNESAPU.dll ===
           link /nologo /dll /machine:I386 /nodefaultlib /def:SNESAPU.def /out:Release\SNESAPU.dll /implib:Release\snesapu.lib Release\SNESAPU.obj Release\version.res Release\APU.obj Release\DSP.obj Release\SPC700.obj
           if errorlevel 1 exit /b 23
-          echo === EXPORT AUDIT ===
           for %%E in (SetDSPSourceCapture GetDSPSourceData SetDSPPreBrrProvider SetDSPStudioSourceProvider) do (
             dumpbin /exports Release\SNESAPU.dll | findstr /c:"%%E" >nul
             if errorlevel 1 exit /b 24
           )
-          echo Patched SNESAPU native DLL build probe succeeded.
           exit /b 0
           "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
           & cmd.exe /d /c $cmdFile
@@ -116,6 +112,65 @@ jobs:
           & $env:MSBUILD (Join-Path $workspace 'spcplayer\spcplayer.vcxproj') /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 "/p:SNESAPUIncludeDir=$source" "/p:SNESAPULibDir=$lib" "/p:OutDir=$out\" /m /v:m /fl "/flp:logfile=$log;verbosity=diagnostic"
           if ($LASTEXITCODE -ne 0) { throw "spcplayer probe failed with exit code $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $out 'spcplayer.exe') -PathType Leaf)) { throw 'spcplayer.exe missing after successful child build' }
+          "FOO_SNESAPU_WORKSPACE=$workspace" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prepare official foobar SDK for x64 parent
+        shell: pwsh
+        run: |
+          $sdkArchive = Join-Path $env:RUNNER_TEMP 'SDK-2025-03-07.7z'
+          $sdkExtract = Join-Path $env:RUNNER_TEMP 'foobar-sdk'
+          Invoke-WebRequest -Uri 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z' -OutFile $sdkArchive -UseBasicParsing
+          New-Item -ItemType Directory $sdkExtract -Force | Out-Null
+          7z x $sdkArchive "-o$sdkExtract" -y | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'foobar SDK extraction failed' }
+          $sdkProject = Get-ChildItem -Recurse -File -Filter 'foobar2000_SDK.vcxproj' -Path $sdkExtract | Select-Object -First 1
+          if (-not $sdkProject) { throw 'foobar SDK project not found' }
+          $fb2k = Split-Path (Split-Path $sdkProject.FullName -Parent) -Parent
+          $sdkRoot = Split-Path $fb2k -Parent
+
+          $wtl = Join-Path $env:RUNNER_TEMP 'WTL'
+          git clone --quiet https://github.com/Win32-WTL/WTL.git $wtl
+          if ($LASTEXITCODE -ne 0) { throw 'WTL clone failed' }
+          git -C $wtl checkout --quiet d1cd80e9ce76c4d79da4cf556401ad7a970ce46f
+          if ($LASTEXITCODE -ne 0) { throw 'WTL pin checkout failed' }
+
+          function Junction([string]$Link, [string]$Target) {
+            if (Test-Path -LiteralPath $Link) { Remove-Item -LiteralPath $Link -Recurse -Force }
+            $parent = Split-Path $Link -Parent
+            New-Item -ItemType Directory $parent -Force | Out-Null
+            cmd /c "mklink /J `"$Link`" `"$Target`"" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "junction failed: $Link -> $Target" }
+          }
+
+          $workspace = $env:FOO_SNESAPU_WORKSPACE
+          Junction (Join-Path $workspace 'foobar2000\SDK') (Join-Path $fb2k 'SDK')
+          Junction (Join-Path $workspace 'foobar2000\helpers') (Join-Path $fb2k 'helpers')
+          Junction (Join-Path $workspace 'foobar2000\shared') (Join-Path $fb2k 'shared')
+          Junction (Join-Path $workspace 'foobar2000\foobar2000_component_client') (Join-Path $fb2k 'foobar2000_component_client')
+          Junction (Join-Path $workspace 'pfc') (Join-Path $sdkRoot 'pfc')
+          Junction (Join-Path $workspace 'libPPUI') (Join-Path $sdkRoot 'libPPUI')
+          Junction (Join-Path $workspace 'WTL') $wtl
+          "WTL_INCLUDE=$(Join-Path $wtl 'Include')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build x64 foo_snesapu parent
+        shell: pwsh
+        run: |
+          $workspace = $env:FOO_SNESAPU_WORKSPACE
+          $out = Join-Path $env:RUNNER_TEMP 'foo-snesapu-out'
+          $log = Join-Path $env:RUNNER_TEMP 'foo-snesapu-msbuild.log'
+          New-Item -ItemType Directory $out -Force | Out-Null
+          $env:INCLUDE = "$env:WTL_INCLUDE;$env:INCLUDE"
+          $env:CL = if ([string]::IsNullOrWhiteSpace($env:CL)) { "/I`"$env:WTL_INCLUDE`"" } else { "/I`"$env:WTL_INCLUDE`" $env:CL" }
+          $env:_CL_ = "$env:_CL_ /permissive /Zc:twoPhase-"
+          $rsp = Join-Path $PWD 'Directory.Build.rsp'
+          '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
+          try {
+            & $env:MSBUILD (Join-Path $workspace 'foo_snesapu\foo_snesapu.vcxproj') /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 "/p:OutDir=$out\" /m /v:m /fl "/flp:logfile=$log;verbosity=diagnostic"
+            if ($LASTEXITCODE -ne 0) { throw "foo_snesapu parent probe failed with exit code $LASTEXITCODE" }
+          } finally {
+            Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $out 'foo_snesapu.dll') -PathType Leaf)) { throw 'foo_snesapu.dll missing after successful parent build' }
 
       - name: Preprocess failed child source
         if: failure()
@@ -135,14 +190,18 @@ jobs:
           "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
           & cmd.exe /d /c $cmdFile
 
-      - name: Upload child-link diagnostics
+      - name: Upload SPC build diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: spcplayer-link-diagnostics
+          name: spc-build-diagnostics
           path: |
             ${{ runner.temp }}/spcplayer-msbuild.log
             ${{ runner.temp }}/spcplayer-main.i
+            ${{ runner.temp }}/foo-snesapu-msbuild.log
             ${{ runner.temp }}/foo-snesapu-current/spcplayer/main.cpp
             ${{ runner.temp }}/foo-snesapu-current/spcplayer/spcplayer.vcxproj
-          if-no-files-found: error
+            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/input_snesapu.cpp
+            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/input_snesapu.hpp
+            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/foo_snesapu.vcxproj
+          if-no-files-found: warn
