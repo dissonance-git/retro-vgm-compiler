@@ -1,0 +1,29 @@
+name: Temporary SPC root tuning validation
+
+on:
+  push:
+    branches:
+      - spc-sample-root-tuning-bridge
+
+permissions:
+  contents: read
+
+jobs:
+  strict-cxx17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused pitch/harmony controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in \
+            tests/spc/spc_absolute_pitch_adapter_test.cpp \
+            tests/spc/spc_persistent_performance_adapter_test.cpp \
+            tests/vgm/genesis_performed_harmony_adapter_test.cpp \
+            tests/model/part_role_harmonic_bass_evidence_adapter_test.cpp \
+            tests/model/part_role_harmonic_bass_evidence_adapter_research_test.cpp; do
+            exe="/tmp/$(basename "${source%.cpp}")"
+            c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. "$source" -o "$exe"
+            "$exe"
+          done
