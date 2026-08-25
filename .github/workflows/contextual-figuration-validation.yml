@@ -1,0 +1,19 @@
+name: Contextual figuration validation
+
+on:
+  push:
+    branches:
+      - contextual-figuration-harmony
+
+jobs:
+  strict-cxx17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile contextual harmony regression
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG
+          -I. tests/model/tertian_triad_hypothesis_test.cpp
+          -o /tmp/tertian_triad_hypothesis_test
+      - name: Run contextual harmony regression
+        run: /tmp/tertian_triad_hypothesis_test
