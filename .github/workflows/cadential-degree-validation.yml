@@ -16,6 +16,13 @@ jobs:
         run: cmake --build build --target diatonic_chord_degree_hypothesis_test --parallel 2
       - name: Run registered degree regression
         run: ctest --test-dir build --output-on-failure -R '^diatonic_chord_degree_hypothesis$'
+      - name: Compile cadential arrival regression
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG
+          -I. tests/model/cadential_arrival_hypothesis_test.cpp
+          -o /tmp/cadential_arrival_hypothesis_test
+      - name: Run cadential arrival regression
+        run: /tmp/cadential_arrival_hypothesis_test
       - name: Compile contextual figuration regression
         run: >-
           g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG
