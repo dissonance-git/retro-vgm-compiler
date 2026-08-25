@@ -22,15 +22,17 @@ REQUIRED_TEXT = {
     ),
     Path("docs/architecture.md"): (
         "# VGM Compiler architecture\n",
-        "provenance-aware",
+        "This is the canonical contract for VGM Compiler's shared semantics",
+        "## Objective\n",
     ),
     Path("docs/vgm-compiler-roadmap.md"): (
         "# VGM Compiler roadmap\n",
         "## Active frontier: positive phrase-role evidence",
     ),
     Path("docs/musical-understanding.md"): (
-        "VGM Compiler",
-        "holistic musical understanding",
+        "# Holistic musical understanding\n",
+        "canonical north-star contract",
+        "VGM Compiler should understand a cue and a soundtrack as coherent music",
     ),
 }
 
