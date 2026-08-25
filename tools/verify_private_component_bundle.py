@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Audit the outer private VGM/SPC bundle after final ZIP creation.
+"""Audit the final private VGM/SPC bundle.
 
-The component archives are already validated individually. This last-mile gate
-proves that the combined bundle contains those exact bytes, that SHA256SUMS and
-the JSON manifest describe the embedded packages, and that the intentional VGM/
-and SPC/ manual-runtime directories contain byte-identical copies of the files
-inside those component archives. The embedded component verifier is then run
-again on copies extracted from the final bundle, so Windows runtime ABI/startup
-checks apply to the exact artifacts being handed to the user.
+The component archives are validated individually. This gate proves that the
+combined bundle contains those exact bytes, that SHA256SUMS and the JSON
+manifest describe the embedded packages, and that the VGM/ and SPC/ runtime
+directories contain byte-identical copies of the component payloads. The
+component verifier then runs again on archives extracted from the final bundle.
 """
 
 from __future__ import annotations
@@ -29,6 +27,12 @@ SPC_COMPONENT = "foo_snesapu.private.fb2k-component"
 BUNDLE_NAME = "private-foobar-vgm-spc.zip"
 COMPONENTS = (VGM_COMPONENT, SPC_COMPONENT)
 EXPECTED_OUTPUTS = [VGM_COMPONENT, SPC_COMPONENT, BUNDLE_NAME]
+CANONICAL_VGM_BOOTSTRAP_SOURCE = (
+    "repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts"
+)
+CANONICAL_VGM_BOOTSTRAP_SHA256 = (
+    "e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1"
+)
 
 TOP_LEVEL_ENTRIES = {
     VGM_COMPONENT,
@@ -69,10 +73,7 @@ def _safe_bundle_names(archive: zipfile.ZipFile) -> list[str]:
         raw = info.filename
         pure = PurePosixPath(raw)
         parts = pure.parts
-        allowed_shape = (
-            len(parts) == 1
-            or (len(parts) == 2 and parts[0] in {"VGM", "SPC"})
-        )
+        allowed_shape = len(parts) == 1 or (len(parts) == 2 and parts[0] in {"VGM", "SPC"})
         raw_parts = raw.split("/")
         if (
             not raw
@@ -134,10 +135,10 @@ def _verify_manifest(manifest: dict[str, object]) -> None:
     if not isinstance(built_at, str) or not built_at.strip():
         raise AssertionError("manifest built_at_utc must be a non-empty timestamp")
 
-    retro_commit = manifest.get("retro_vgm_compiler_commit")
-    if not isinstance(retro_commit, str) or not HEX40.fullmatch(retro_commit):
+    source_commit = manifest.get("vgm_compiler_commit")
+    if not isinstance(source_commit, str) or not HEX40.fullmatch(source_commit):
         raise AssertionError(
-            "manifest retro_vgm_compiler_commit must be the exact 40-hex source commit"
+            "manifest vgm_compiler_commit must be the exact 40-hex source commit"
         )
 
     outputs = manifest.get("outputs")
@@ -149,11 +150,10 @@ def _verify_manifest(manifest: dict[str, object]) -> None:
     bootstrap = manifest.get("foo_input_vgm_bootstrap")
     if not isinstance(bootstrap, dict):
         raise AssertionError("manifest foo_input_vgm_bootstrap must be an object")
-    if not isinstance(bootstrap.get("source_page"), str) or not bootstrap["source_page"]:
-        raise AssertionError("manifest foo_input_vgm_bootstrap.source_page is missing")
-    bootstrap_sha = bootstrap.get("sha256")
-    if not isinstance(bootstrap_sha, str) or not HEX64.fullmatch(bootstrap_sha):
-        raise AssertionError("manifest foo_input_vgm_bootstrap.sha256 must be 64 hex")
+    if bootstrap.get("source") != CANONICAL_VGM_BOOTSTRAP_SOURCE:
+        raise AssertionError("manifest foo_input_vgm_bootstrap.source is not canonical")
+    if bootstrap.get("sha256") != CANONICAL_VGM_BOOTSTRAP_SHA256:
+        raise AssertionError("manifest foo_input_vgm_bootstrap.sha256 is not canonical")
 
     sdk = manifest.get("foobar_sdk")
     if not isinstance(sdk, dict):
@@ -306,7 +306,7 @@ def main() -> int:
     verify_embedded_components(bundle)
     print(
         "private component bundle verified at source commit "
-        f"{manifest['retro_vgm_compiler_commit']}"
+        f"{manifest['vgm_compiler_commit']}"
     )
     return 0
 
