@@ -4,6 +4,7 @@
 #include "ym2612_performed_pitch_motion.h"
 #include "../../../model/persistent_part_performance_trajectory.h"
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -138,6 +139,141 @@ infer_genesis_ym2612_persistent_performance(
         std::move(identity),
         clocks,
         motion_policy);
+}
+
+inline bool is_strong_genesis_persistent_part_node(
+    const vgmtooling::model::node& value) noexcept {
+    using namespace vgmtooling::model;
+
+    if (value.kind != node_kind::part ||
+        value.layer != semantic_layer::musical_performance)
+        return false;
+    const auto* scope_item = find_genesis_part_attribute(value, "identity_scope");
+    const auto* scope = scope_item == nullptr
+        ? nullptr : std::get_if<std::string>(&scope_item->value);
+    return scope != nullptr && *scope == "persistent_musical_part" &&
+           scope_item->confidence >= persistent_part_trajectory_link_threshold;
+}
+
+inline std::vector<vgmtooling::model::node_id>
+ordered_genesis_persistent_part_episodes(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id) {
+    using namespace vgmtooling::model;
+
+    const node* part = graph.find_node(part_id);
+    if (part == nullptr)
+        throw std::invalid_argument("Genesis persistent performance references an unknown part");
+    if (!is_strong_genesis_persistent_part_node(*part))
+        return {};
+
+    std::vector<const node*> episodes;
+    for (const edge* membership : graph.edges_to(part_id, edge_kind::groups_into)) {
+        const node* episode = graph.find_node(membership->from);
+        if (episode == nullptr || episode->kind != node_kind::voice_instance ||
+            !episode->active.has_value())
+            return {};
+        episodes.push_back(episode);
+    }
+    if (episodes.size() < 2)
+        return {};
+
+    const auto& first_time = episodes.front()->active->start;
+    for (const node* episode : episodes) {
+        const auto& start = episode->active->start;
+        if (start.domain != first_time.domain ||
+            start.tick_rate != first_time.tick_rate ||
+            start.loop_iteration != first_time.loop_iteration)
+            return {};
+        if (episode->active->end.has_value()) {
+            const auto& end = *episode->active->end;
+            if (end.domain != first_time.domain ||
+                end.tick_rate != first_time.tick_rate ||
+                end.loop_iteration != first_time.loop_iteration)
+                return {};
+        }
+    }
+
+    std::sort(episodes.begin(), episodes.end(), [](const node* first, const node* second) {
+        if (first->active->start.tick != second->active->start.tick)
+            return first->active->start.tick < second->active->start.tick;
+        return first->id < second->id;
+    });
+
+    std::vector<node_id> result;
+    result.reserve(episodes.size());
+    for (const node* episode : episodes)
+        result.push_back(episode->id);
+    return result;
+}
+
+inline std::optional<vgmtooling::model::persistent_part_performance_trajectory>
+project_genesis_ym2612_part_performance(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const genesis_pitch_clock_context& clocks,
+    std::string source,
+    genesis_part_continuity_policy continuity_policy,
+    vgmtooling::model::pitch_motion_analysis_policy motion_policy = {}) {
+    using namespace vgmtooling::model;
+
+    const node* part = graph.find_node(part_id);
+    if (part == nullptr)
+        throw std::invalid_argument("Genesis persistent performance references an unknown part");
+    if (!is_strong_genesis_persistent_part_node(*part))
+        return std::nullopt;
+
+    const auto episode_ids = ordered_genesis_persistent_part_episodes(graph, part_id);
+    if (episode_ids.size() < 2)
+        return std::nullopt;
+
+    auto performance = infer_genesis_ym2612_persistent_performance(
+        graph,
+        episode_ids,
+        clocks,
+        std::move(source),
+        continuity_policy,
+        motion_policy);
+    if (!performance.has_value())
+        return std::nullopt;
+
+    const auto* scope_item = find_genesis_part_attribute(*part, "identity_scope");
+    if (scope_item == nullptr)
+        throw std::logic_error("strong Genesis persistent part lost its identity scope");
+    performance->identity.confidence =
+        std::min(performance->identity.confidence, scope_item->confidence);
+    performance->confidence =
+        std::min(performance->confidence, scope_item->confidence);
+    return performance;
+}
+
+inline std::vector<vgmtooling::model::persistent_part_performance_trajectory>
+discover_genesis_ym2612_persistent_performances(
+    const vgmtooling::model::musical_execution_graph& graph,
+    const genesis_pitch_clock_context& clocks,
+    const std::string& source,
+    genesis_part_continuity_policy continuity_policy,
+    vgmtooling::model::pitch_motion_analysis_policy motion_policy = {}) {
+    using namespace vgmtooling::model;
+
+    if (source.empty())
+        throw std::invalid_argument("Genesis persistent performance discovery requires a source label");
+
+    std::vector<persistent_part_performance_trajectory> result;
+    for (const auto& candidate : graph.nodes()) {
+        if (!is_strong_genesis_persistent_part_node(candidate))
+            continue;
+        auto performance = project_genesis_ym2612_part_performance(
+            graph,
+            candidate.id,
+            clocks,
+            source,
+            continuity_policy,
+            motion_policy);
+        if (performance.has_value())
+            result.push_back(std::move(*performance));
+    }
+    return result;
 }
 
 } // namespace gameaudio::vgm
