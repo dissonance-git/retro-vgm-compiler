@@ -5,7 +5,8 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "imports/foo_input_vgm.7z"
+      - "imports/MANIFEST.md"
+      - "imports/bootstrap/**"
       - "imports/foo_snesapu/**"
       - "components/vgm/foo_input_vgm/**"
       - "components/vgm/enhancement/**"
@@ -15,6 +16,7 @@ on:
       - "patches/snesapu/**"
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
+      - "tools/reconstruct_vgm031_bootstrap.py"
       - "tests/integration/libvgm-source/**"
       - "tests/spc/test_materialize_foo_snesapu.py"
       - "tests/test_no_live_vgmspc_dependency.py"
@@ -40,17 +42,17 @@ jobs:
           $sevenZip = Get-Command 7z -ErrorAction Stop
           & $sevenZip.Source | Out-Null
 
-      - name: Reject live vgmspc dependencies
+      - name: Reject retired vgmspc dependencies
         shell: pwsh
         run: |
           python tests/test_no_live_vgmspc_dependency.py
-          if ($LASTEXITCODE -ne 0) { throw 'live vgmspc dependency guard failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'retired vgmspc dependency guard failed' }
 
       - name: Validate pinned libvgm source contracts
         shell: pwsh
         run: |
-          $libvgm = Join-Path $env:RUNNER_TEMP 'retro-vgm-libvgm'
-          $libvgmBuild = Join-Path $env:RUNNER_TEMP 'retro-vgm-libvgm-source-tests'
+          $libvgm = Join-Path $env:RUNNER_TEMP 'vgm-compiler-libvgm'
+          $libvgmBuild = Join-Path $env:RUNNER_TEMP 'vgm-compiler-libvgm-source-tests'
           git clone https://github.com/ValleyBell/libvgm.git $libvgm
           if ($LASTEXITCODE -ne 0) { throw 'libvgm clone failed' }
           git -C $libvgm checkout 64e1de284e9a4305c54dd162ee8c33539a9bc0d1
@@ -92,12 +94,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Reconstruct and patch canonical foo_input_vgm
+      - name: Materialize canonical foo_input_vgm
         shell: pwsh
         run: |
-          $sdkRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-fb2k-sdk'
-          python -B tools/reconstruct_vgm031_bootstrap.py
-          if ($LASTEXITCODE -ne 0) { throw 'canonical VGM bootstrap reconstruction failed' }
+          $sdkRoot = Join-Path $env:RUNNER_TEMP 'vgm-compiler-fb2k-sdk'
           python tools/materialize_foo_input_vgm.py --sdk-root $sdkRoot
           if ($LASTEXITCODE -ne 0) { throw 'foo_input_vgm materialization failed' }
           "VGM_SDK_ROOT=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -145,10 +145,10 @@ jobs:
             if (!(Test-Path $path)) { throw "materialized support file missing: $relative" }
           }
 
-      - name: Reconstruct and patch canonical foo_snesapu
+      - name: Materialize canonical foo_snesapu
         shell: pwsh
         run: |
-          $spcRoot = Join-Path $env:RUNNER_TEMP 'retro-vgm-foo-snesapu'
+          $spcRoot = Join-Path $env:RUNNER_TEMP 'vgm-compiler-foo-snesapu'
           python tools/materialize_foo_snesapu.py $spcRoot
           if ($LASTEXITCODE -ne 0) { throw 'foo_snesapu materialization failed' }
           "SPC_ROOT=$spcRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
