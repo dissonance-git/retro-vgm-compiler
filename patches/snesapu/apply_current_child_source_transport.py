@@ -106,7 +106,7 @@ static RetroSetPreBrrProvider resolve_prebrr_provider()
         GetProcAddress(module, "SetDSPPreBrrProvider")) : nullptr;
 }
 
-using RetroStudioRuntime = gameaudio::spc::snesapu_studio_source_packet_runtime<256>;
+using RetroStudioRuntime = gameaudio::spc::snes_studio_source_packet_runtime<256>;
 using RetroStudioBegin = u32 (__stdcall *)(void*, u32, u32, u32, u32, u32, u32);
 using RetroStudioSample = u32 (__stdcall *)(void*, u32, u32, u32, u32, u32, u32, float*);
 using RetroSetStudioSourceProvider = void (__stdcall *)(RetroStudioBegin, RetroStudioSample, void*);
