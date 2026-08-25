@@ -87,15 +87,28 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         )
 
     def test_source_commit_is_captured_and_written_to_manifest(self) -> None:
-        capture = "$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()"
+        capture = "$sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim().ToLowerInvariant()"
         manifest = "$manifest = [ordered]@{"
-        manifest_commit = "retro_vgm_compiler_commit = $retroCommit"
+        manifest_commit = "vgm_compiler_commit = $sourceCommit"
         self.assertIn(capture, self.text)
         self.assertIn(manifest_commit, self.text)
-        self.assertLess(self.text.index(capture), self.text.index("== 2. Reconstruct external"))
+        self.assertLess(self.text.index(capture), self.text.index("== 2. Materialize external"))
         self.assertLess(self.text.index(capture), self.text.index(manifest))
         self.assertLess(self.text.index(manifest), self.text.index(manifest_commit))
-        self.assertNotIn("$retroCommit = 'unversioned'", self.text)
+        self.assertNotIn("unversioned", self.text)
+
+    def test_bootstrap_manifest_points_at_current_canonical_input(self) -> None:
+        self.assertIn(
+            "$VgmBootstrapSource = 'repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts'",
+            self.text,
+        )
+        self.assertIn(
+            "$VgmBootstrapSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'",
+            self.text,
+        )
+        self.assertIn("source = $VgmBootstrapSource", self.text)
+        self.assertNotIn("RETRO_VGM_BOOTSTRAP_ARCHIVE", self.text)
+        self.assertNotIn("foo_input_vgm_v0.30", self.text)
 
     def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
@@ -113,8 +126,8 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertGreater(self.text.index(verifier), self.text.index(create))
 
     def test_generated_readme_keeps_enhanced_descriptive(self) -> None:
-        self.assertIn("Existing Surround enables Omniphony source-aware Genesis rendering.", self.text)
-        self.assertIn("Existing Surround enables Omniphony source-aware SPC rendering.", self.text)
+        self.assertIn("Surround enables Omniphony source-aware Genesis rendering.", self.text)
+        self.assertIn("Surround enables Omniphony source-aware SPC rendering.", self.text)
         self.assertIn("enhanced is independent.", self.text)
         self.assertNotIn("enhanced/Spatial", self.text)
         self.assertNotIn("Enhanced and Spatial", self.text)
