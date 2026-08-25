@@ -90,9 +90,17 @@ inline void validate_cadential_degree_input(
 }
 
 inline cadential_degree_relation_hypothesis infer_cadential_degree_relation(
-    const diatonic_chord_degree_hypothesis& first,
-    const diatonic_chord_degree_hypothesis& arrival_degree,
+    const tonal_key_class_hypothesis& key,
+    const tertian_triad_hypothesis& first_chord,
+    const tertian_triad_hypothesis& arrival_chord,
     const cadential_arrival_hypothesis& arrival) {
+    // Re-derive both degrees from the actual key + chord hypotheses here rather
+    // than accepting detached degree summaries. This preserves the key region,
+    // tuning, pitch-role, root-ambiguity, and confidence contracts enforced by
+    // the lower layer and prevents provenance-compatible-looking labels from
+    // being loaned across unrelated observations.
+    const auto first = infer_diatonic_chord_degree_hypothesis(key, first_chord);
+    const auto arrival_degree = infer_diatonic_chord_degree_hypothesis(key, arrival_chord);
     validate_cadential_degree_input(first);
     validate_cadential_degree_input(arrival_degree);
     if (!std::isfinite(arrival.confidence) ||
@@ -100,20 +108,18 @@ inline cadential_degree_relation_hypothesis infer_cadential_degree_relation(
         throw std::invalid_argument(
             "cadential degree arrival confidence must be finite in [0, 1]");
     }
-    if (first.key_center_pitch_class != arrival_degree.key_center_pitch_class ||
-        first.key_mode != arrival_degree.key_mode) {
-        throw std::invalid_argument(
-            "cadential degree relation requires one resolved key-class context");
-    }
+
     if (!cadential_degree_same_time_basis(first.observation_time, arrival_degree.observation_time) ||
         arrival_degree.observation_time.tick <= first.observation_time.tick) {
         throw std::invalid_argument(
             "cadential degree relation requires ordered chord degrees in one time basis");
     }
-    if (!cadential_degree_same_time_basis(arrival_degree.observation_time, arrival.arrival_time) ||
+    if (!cadential_degree_same_time_basis(first.observation_time, arrival.departure_time) ||
+        first.observation_time.tick != arrival.departure_time.tick ||
+        !cadential_degree_same_time_basis(arrival_degree.observation_time, arrival.arrival_time) ||
         arrival_degree.observation_time.tick != arrival.arrival_time.tick) {
         throw std::invalid_argument(
-            "cadential degree relation must terminate at the supplied cadential arrival");
+            "cadential degree relation chords must be the exact harmonic transition that licensed the arrival");
     }
 
     const std::int64_t expected_motion = positive_mod(
