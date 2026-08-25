@@ -15,6 +15,25 @@
 
 namespace gameaudio::spc {
 
+inline bool spc_episode_allows_part_successor(
+    const vgmtooling::model::node& episode) noexcept {
+    const auto* complete_item = find_spc_performance_attribute(
+        episode,
+        "termination_boundary_complete");
+    const auto* complete = complete_item == nullptr
+        ? nullptr : std::get_if<bool>(&complete_item->value);
+    if (complete != nullptr && !*complete)
+        return false;
+
+    const auto* reason_item = find_spc_performance_attribute(
+        episode,
+        "termination_reason");
+    const auto* reason = reason_item == nullptr
+        ? nullptr : std::get_if<std::string>(&reason_item->value);
+    return reason == nullptr ||
+        (*reason != "semantic_continuation_lost" && *reason != "execution_reset");
+}
+
 inline std::vector<const vgmtooling::model::node*> spc_episode_runtime_events(
     const vgmtooling::model::musical_execution_graph& graph,
     vgmtooling::model::node_id episode_id) {
