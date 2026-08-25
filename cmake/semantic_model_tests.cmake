@@ -1,14 +1,10 @@
 # Dependency-free semantic-model regressions that sit above the realtime core.
 #
-# The existing semantic suite is kept in one mechanically preserved base file;
-# this entry point owns current composition and appends newer bounded research
-# layers without forcing a rewrite of the older registry.
-include(${CMAKE_CURRENT_LIST_DIR}/semantic_model_tests_base.cmake)
+# The core registry owns established semantic-model tests. This entry point
+# composes it with the cadence-focused semantic regressions below.
+include(${CMAKE_CURRENT_LIST_DIR}/semantic_model_tests_core.cmake)
 
-# Cadence evidence and Ionian cadence-form regressions. These tests existed as
-# source files before this registry caught up; keeping them here ensures the
-# normal CMake/CTest surface actually compiles and executes the current cadence
-# model rather than only its older dependencies.
+# Cadence evidence and Ionian cadence-form regressions.
 list(APPEND GAMEAUDIO_TEST_TARGETS
     cadential_arrival_hypothesis_test
     cadential_formal_closure_evidence_test
