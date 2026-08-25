@@ -17,6 +17,7 @@ list(APPEND GAMEAUDIO_TEST_TARGETS
     ionian_cadence_formal_binding_test
     ionian_deferred_authentic_resolution_test
     ionian_deceptive_cadence_candidate_test
+    ionian_cadence_phrase_arbitration_test
 )
 
 add_executable(
@@ -47,6 +48,10 @@ add_executable(
     ionian_deceptive_cadence_candidate_test
     tests/model/ionian_deceptive_cadence_candidate_test.cpp
 )
+add_executable(
+    ionian_cadence_phrase_arbitration_test
+    tests/model/ionian_cadence_phrase_arbitration_test.cpp
+)
 
 target_include_directories(
     cadential_arrival_hypothesis_test
@@ -74,6 +79,10 @@ target_include_directories(
 )
 target_include_directories(
     ionian_deceptive_cadence_candidate_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    ionian_cadence_phrase_arbitration_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -104,4 +113,8 @@ add_test(
 add_test(
     NAME ionian_deceptive_cadence_candidate
     COMMAND ionian_deceptive_cadence_candidate_test
+)
+add_test(
+    NAME ionian_cadence_phrase_arbitration
+    COMMAND ionian_cadence_phrase_arbitration_test
 )
