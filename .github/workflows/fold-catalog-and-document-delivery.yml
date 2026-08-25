@@ -1,0 +1,347 @@
+name: Fold catalog and document delivery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-root-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fold catalog and document foobar delivery
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str, label: str) -> None:
+              text = path.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one anchor, found {count}')
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          readme = Path('README.md')
+          agents = Path('AGENTS.md')
+
+          delivery = '''## Installable foobar2000 component delivery
+
+Retro VGM Compiler owns the reproducible build and publication path for the private VGM and SPC decoder components. A successful compile is not a delivery. The canonical path is:
+
+```text
+current main + pinned upstream inputs
+→ source/materialization regression guards
+→ VGM x64 decoder build
+→ patched x86 SNESAPU build
+→ source-aware x86 spcplayer build
+→ SPC x64 decoder build
+→ .fb2k-component packaging
+→ package structure / PE / ABI verification
+→ Windows packaged-runtime verification
+→ combined bundle verification
+→ packaged SNESAPU provider/runtime smoke
+→ GitHub Actions artifact upload
+→ rolling verified delivery release
+```
+
+Production owners:
+
+- `.github/workflows/private-foobar-build.yml` owns the end-to-end Windows delivery gate.
+- `tools/build_private_foobar_components.ps1` owns the pinned build and packaging procedure.
+- `tools/run_private_foobar_build_with_diagnostics.ps1` exposes focused failures without weakening the real exit status.
+- `tools/verify_private_component_packages.py` verifies exact component payloads, PE architecture/exports, private import boundaries, Omniphony ABI, and packaged child startup.
+- `tools/verify_private_component_bundle.py` verifies the final combined delivery envelope and byte-for-byte agreement with its embedded/manual runtime copies.
+- `tools/verify_snesapu_package_runtime.ps1` owns the packaged x86 SNESAPU provider/runtime smoke.
+
+Installable decoder outputs:
+
+```text
+foo_input_vgm.private.fb2k-component
+  foo_input_vgm.dll
+  omniphony_source.dll
+
+foo_snesapu.private.fb2k-component
+  foo_snesapu.dll
+  spcplayer.exe
+  SNESAPU.dll
+  omniphony_source.dll
+```
+
+`private-foobar-vgm-spc.zip` intentionally also contains `VGM/` and `SPC/` runtime folders for manual replacement. Those folders are part of the declared bundle format; the two `.fb2k-component` files themselves remain flat sibling packages.
+
+A decoder pair is **publish-ready** only when the GitHub Actions job is green through build, component verification, bundle verification, packaged SNESAPU runtime smoke, artifact upload, and rolling delivery publication. A loose DLL, a successful compiler invocation, or an archive created before those gates is not the published test deliverable.
+
+The Omniphony output component is built and published by the Omniphony repository. The matched listening set is therefore:
+
+```text
+foo_input_vgm.private.fb2k-component
++ foo_snesapu.private.fb2k-component
++ foo_out_omniphony.fb2k-component
+```
+
+Decoder `enhanced` and `Surround` remain independent controls. `enhanced` changes source reconstruction/quality; `Surround` requests Omniphony source-aware spatial presentation. Packaging or output selection must never collapse them.
+
+'''
+          replace_once(
+              readme,
+              '## Current Genesis execution frontier\n',
+              delivery + '## Current Genesis execution frontier\n',
+              'README delivery section',
+          )
+
+          old_map = '''## Repository map
+
+```text
+model/          shared provenance-aware primitives
+components/     source- and device-specific execution/analysis
+tests/          executable regressions and real-music corpus
+research/       program-organized mechanism and evidence investigations
+docs/           durable architecture and analysis rules
+tools/          corpus and source-specific audit utilities
+```
+
+Research is indexed by program in `research/README.md`; new investigations should extend an existing trunk before creating another peer-level file.
+
+'''
+          new_map = '''## Repository map and navigation
+
+Fast orientation belongs here rather than in a separate root catalog. This map is a projection, not source truth.
+
+> **One canonical home per object. Many routes to it.**
+
+Use this entry path before a repository-wide search:
+
+```text
+current main
+→ README.md                         project identity + repository map
+→ AGENTS.md                         operating law
+→ docs/retro-vgm-compiler-roadmap.md
+→ smallest canonical owner below
+→ recent commits for that surface
+→ exact target code, test, or document
+```
+
+Repository shelves:
+
+```text
+model/          shared musical/evidence semantics that earned sharing
+components/     source-family and device-specific machinery
+tests/          regressions + immutable real corpus
+research/       bounded investigations and named testbeds
+docs/           current architecture / reasoning contracts
+tools/          reusable executable operations
+imports/        preserved upstream/import provenance
+patches/        maintained patch material
+```
+
+Dense shelves have their own `README.md`. Descend there before searching globally.
+
+Canonical routes:
+
+| Need | Route |
+| --- | --- |
+| project objective | this `README.md` |
+| working rules | `AGENTS.md` |
+| current frontier | `docs/retro-vgm-compiler-roadmap.md` |
+| implemented source family | `components/README.md` → family |
+| shared musical semantics | `model/README.md` → exact model header/test |
+| game-music → Omniphony spatial handoff / 8.1.4.4 authority | `docs/omniphony-realtime-spatial-path.md` |
+| installable private VGM/SPC decoder delivery | this README section + `AGENTS.md` delivery law |
+| existing corpus / soundtrack | `tests/corpus/README.md` → `manifest.json` → set |
+| research program | `research/README.md` → owning trunk/project |
+| existing utility | `tools/README.md` → exact tool |
+| current documentation | `docs/README.md` |
+| historical project prose | `docs/history/` |
+| mechanical repository inventory | `tools/repository_catalog.py` |
+
+For exact mechanical enumeration:
+
+```text
+python tools/repository_catalog.py
+
+→ docs/generated/repository-catalog.md
+→ docs/generated/repository-catalog.json
+```
+
+Generated inventories are rebuildable projections. They do not become authority or another writable repository map.
+
+For the Sonic 3 attribution program, enter through `research/projects/sonic3/README.md`, then the canonical policy/admission file and frozen preregistration for the exact generation. `attribution-control-admissions.jsonl` is grounded role evidence, `cube-calibration-policy.json` owns CUBE calibration/holdout rules, `role-credit-index.jsonl` is Genesis cache-routing control rather than master history, and `research/cache/` is derived creator-blind analysis. Never reconstruct creator labels from corpus tags when a canonical admission/policy already exists.
+
+Addition rule:
+
+```text
+canonical owner exists? → extend it
+otherwise               → choose the smallest existing shelf
+new peer object          → only when a real new distinction needs an owner
+```
+
+A successful refactor leaves fewer places an agent must search.
+
+'''
+          replace_once(readme, old_map, new_map, 'README repository map')
+
+          old_entry = '''For substantive work, use this bounded entry path:
+
+```text
+current main HEAD
+→ README.md
+→ AGENTS.md at the same HEAD
+→ CATALOG.md
+→ docs/retro-vgm-compiler-roadmap.md
+→ task-relevant canonical owner
+→ recent commits for that active surface
+→ exact target code, test, or document
+```
+
+1. Resolve the Retro VGM Compiler repository and record current `main`.
+2. Read `README.md`, this file, `CATALOG.md`, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
+3. Use `CATALOG.md` to identify the smallest canonical owner before doing a broad repository search. If a generated inventory is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
+4. Inspect recent commits for the active surface before choosing the smallest relevant work area.
+5. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
+6. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
+7. Work on `main`; do not create branches or PRs unless explicitly requested.
+8. Never force-push.
+9. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, and listening validation as separate evidence states.
+'''
+          new_entry = '''For substantive work, use this bounded entry path:
+
+```text
+current main HEAD
+→ README.md repository map
+→ AGENTS.md at the same HEAD
+→ docs/retro-vgm-compiler-roadmap.md
+→ task-relevant canonical owner
+→ recent commits for that active surface
+→ exact target code, test, or document
+```
+
+1. Resolve the Retro VGM Compiler repository and record current `main`.
+2. Read `README.md`, this file, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
+3. Use the repository map in `README.md` to identify the smallest canonical owner before doing a broad repository search. If mechanical enumeration is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
+4. Inspect recent commits for the active surface before choosing the smallest relevant work area.
+5. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
+6. Preserve unrelated concurrent work. Never replace a file from a cached older copy.
+7. Work on `main`; do not create branches or PRs unless explicitly requested.
+8. Never force-push.
+9. After publication, verify the resulting commit and report code/tests, CI, reference parity, research evidence, package/runtime verification, and listening validation as separate evidence states.
+'''
+          replace_once(agents, old_entry, new_entry, 'AGENTS entrance sequence')
+
+          old_nav = '''### Navigation law
+
+Do not repeatedly rediscover known repository contents by broad search.
+
+```text
+CATALOG.md
+→ generated inventory when mechanical enumeration is needed
+→ canonical owner
+→ bounded search inside that owner
+→ repository-wide search only when the map is insufficient or demonstrably stale
+```
+
+The catalog is a projection, not authority. Exact source files, manifests, tests, project records, and current implementation remain canonical. If the map disagrees with reality, correct the map rather than bending reality to match it.
+'''
+          new_nav = '''### Navigation law
+
+Do not repeatedly rediscover known repository contents by broad search.
+
+```text
+README.md repository map
+→ generated inventory when mechanical enumeration is needed
+→ canonical owner
+→ bounded search inside that owner
+→ repository-wide search only when the map is insufficient or demonstrably stale
+```
+
+The README map and generated inventories are projections, not authority. Exact source files, manifests, tests, project records, and current implementation remain canonical. If the map disagrees with reality, correct the map rather than bending reality to match it.
+
+```text
+canonical owner exists? → extend it
+otherwise               → choose the smallest existing shelf
+new peer object          → only when a real new distinction needs an owner
+```
+
+A successful refactor leaves fewer places an agent must search.
+'''
+          replace_once(agents, old_nav, new_nav, 'AGENTS navigation law')
+
+          delivery_law = '''## Foobar component delivery law
+
+For installable VGM/SPC decoder work, the canonical delivery path is owned by `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1`.
+
+```text
+current main + pinned dependencies
+→ regression/materialization guards
+→ native VGM/SPC builds
+→ exact .fb2k-component packages
+→ package verifier
+→ combined bundle verifier
+→ packaged SNESAPU runtime smoke
+→ Actions artifact upload
+→ rolling verified delivery release
+```
+
+Do not call a decoder test-ready because a DLL compiled or because an archive exists. Publish-ready means the end-to-end Actions job is green through upload and rolling delivery.
+
+Required private packages are:
+
+```text
+foo_input_vgm.private.fb2k-component
+  foo_input_vgm.dll
+  omniphony_source.dll
+
+foo_snesapu.private.fb2k-component
+  foo_snesapu.dll
+  spcplayer.exe
+  SNESAPU.dll
+  omniphony_source.dll
+```
+
+The package verifier must fail closed on unexpected/nested component members, wrong PE machine types, missing required exports, forbidden private imports, mismatched Omniphony runtime bytes/ABI, or packaged child-startup failure. Windows DLLs loaded by verification must be explicitly released before temporary extraction directories are removed.
+
+The combined `private-foobar-vgm-spc.zip` intentionally includes the two installable component archives, metadata/checksums, plus `VGM/` and `SPC/` manual-runtime folders. Those nested runtime folders are valid declared bundle structure. Do not flatten them to satisfy a stale verifier; update the verifier and its contract tests together when the declared bundle format changes.
+
+When Actions output is too opaque to locate a failure, add the smallest focused diagnostic/probe that preserves the real nonzero exit status and exposes the first actionable compiler/linker/verifier error. Do not repeatedly rerun a swallowed-log path or weaken acceptance gates to obtain an artifact.
+
+The Omniphony output component is a peer-repository deliverable. A matched listening test requires both private decoder packages plus `foo_out_omniphony.fb2k-component`. Decoder `enhanced` and `Surround` controls remain independent in every output configuration.
+
+'''
+          replace_once(
+              agents,
+              '## Current analytical frontier\n',
+              delivery_law + '## Current analytical frontier\n',
+              'AGENTS foobar delivery law',
+          )
+          PY
+
+          git rm CATALOG.md
+
+          if git grep -n 'CATALOG.md' -- ':!docs/history/**' ':!docs/generated/**'; then
+            echo 'Unexpected live CATALOG.md reference remains' >&2
+            exit 1
+          fi
+
+          test -f tools/repository_catalog.py
+          test -f docs/retro-vgm-compiler-roadmap.md
+          test -f components/README.md
+          test -f model/README.md
+          test -f research/README.md
+          test -f tools/README.md
+          test -f docs/README.md
+          test -f docs/omniphony-realtime-spatial-path.md
+          git diff --check
+
+      - name: Commit root documentation migration
+        shell: bash
+        run: |
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add README.md AGENTS.md CATALOG.md
+          git commit -m "docs: fold catalog and preserve component delivery workflow"
+          git push origin HEAD:main
