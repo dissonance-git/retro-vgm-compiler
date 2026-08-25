@@ -18,7 +18,7 @@ many useful projections and realizations
 
 See `architecture.md` for the semantic/evidence contract and `musical-understanding.md` for the north star.
 
-## Structurally implemented now
+## Implemented semantic surface
 
 The repository contains working machinery for:
 
@@ -41,17 +41,13 @@ The repository contains working machinery for:
 - source-native enhanced rendering and Omniphony handoff contracts;
 - semantic projection/round-trip experiments and a broad immutable real corpus.
 
-Every arrow between these layers is an inference boundary. Missing evidence must remain visible.
+Every arrow between these layers is an inference boundary. Missing evidence remains visible.
 
 ## Active frontier: positive phrase-role evidence
 
-The previous gap was representational: the compiler could generate a deceptive-close candidate or a deferred-resolution candidate but had no place to keep both when the music supported both views at different scales.
+The compiler preserves multiple cadence-scale interpretations when local closure and larger-scale continuation are both grounded. The active problem is **positive syntax**: accumulating independent longer-range evidence that explains what the phrase does after an arrival.
 
-That gap is now closed. The arbitration layer and regression preserve conflict.
-
-The next gap is **positive syntax**. Preserving ambiguity is necessary but not sufficient. The compiler must now accumulate longer-range evidence that explains what the phrase does after an arrival.
-
-Target phrase-role vocabulary should be earned by evidence such as:
+Target phrase-role vocabulary must be earned by evidence such as:
 
 ```text
 ending
@@ -64,7 +60,7 @@ delayed authentic resolution
 nested local close inside global continuation
 ```
 
-For Ionian `V → VI`, the next question is:
+For Ionian `V → VI`, the discriminating question is:
 
 > What happens after the VI arrival, and what independent evidence makes it function as an ending, continuation, reroute, or nested event at different scales?
 
@@ -73,34 +69,34 @@ For Ionian `V → VI`, the next question is:
 1. **Phrase-role evidence objects**
    - represent role hypotheses independently of cadence class;
    - retain temporal scope and formal scale;
-   - keep support provenance and incompatible alternatives.
+   - retain support provenance and incompatible alternatives.
 
 2. **Continuation evidence**
-   - grounded continuation of persistent parts through/after an arrival;
-   - motivic continuation or sequence;
-   - sustained harmonic process;
-   - phrase-boundary disagreement that is not circularly derived from cadence labels.
+   - ground continuation of persistent parts through or after an arrival;
+   - model motivic continuation and sequence;
+   - model sustained harmonic process;
+   - use phrase-boundary evidence that is independent of cadence labels.
 
 3. **New-phrase and return evidence**
-   - re-onset after a boundary;
-   - recurrence/return of previously grounded material;
-   - orchestration/register reset or transformation when independently supported;
-   - distinguish `continuation of the same phrase` from `new phrase after local close`.
+   - model re-onset after a boundary;
+   - connect recurrence/return to previously grounded material;
+   - admit orchestration/register reset or transformation only when independently supported;
+   - distinguish continuation of one phrase from a new phrase after local closure.
 
 4. **Prolongation and delayed-resolution relations**
-   - connect local harmonic events across intervening material without flattening the intervening phrase syntax;
-   - represent whether a later authentic arrival belongs to the same larger process or a new one.
+   - connect local harmonic events across intervening material without flattening phrase syntax;
+   - determine whether a later authentic arrival belongs to the same larger process or a new one.
 
 5. **Multi-scale arbitration**
    - allow one event to be locally closing and globally continuational;
-   - require explicit scale/scope rather than forcing one global Boolean.
+   - require explicit scale/scope rather than one global Boolean.
 
 6. **Real-corpus pressure**
    - add matched synthetic controls first;
-   - then freeze source-backed real passages before final labels are admitted;
+   - freeze source-backed real passages before final labels are admitted;
    - treat disagreement as information about missing evidence.
 
-Final cadence-class establishment should remain downstream of this phrase-role layer rather than chord morphology alone.
+Final cadence-class establishment remains downstream of phrase-role evidence rather than chord morphology alone.
 
 ## Near-term musical priorities
 
@@ -139,7 +135,7 @@ Move the strongest shared relations through materially different source families
 
 ## Creator grammar and attribution
 
-Attribution remains a downstream stress test of genuine understanding.
+Attribution is a downstream stress test of genuine understanding.
 
 The strongest controls compare:
 
@@ -153,15 +149,15 @@ same work / different representation
 
 Keep composition, arrangement/programming, patch/sample design, driver/toolchain, and final realization separate. Technical resemblance may strengthen a role-scoped hypothesis without silently becoming composer proof.
 
-Sonic 3 / Sonic & Knuckles remains a useful adversarial integration testbed because it combines version divergence, mixed credits, ROM/SMPS evidence, VGM execution, cross-soundtrack controls, and unresolved role boundaries.
+Sonic 3 / Sonic & Knuckles is an adversarial integration testbed because it combines version divergence, mixed credits, ROM/SMPS evidence, VGM execution, cross-soundtrack controls, and unresolved role boundaries.
 
 ## Rendering and transformation
 
-The reference renderer remains the scientific control. Enhanced rendering should improve the same source-native instrument or realization only when the preservation contract supports the change.
+The reference renderer remains the scientific control. Enhanced rendering improves the same source-native instrument or realization only when the preservation contract supports the change.
 
 Spatial presentation is orthogonal to source-native enhancement.
 
-Future backend validation should increasingly use semantic round trips:
+Backend validation should increasingly use semantic round trips:
 
 ```text
 source A → model → target B
@@ -171,7 +167,7 @@ source A → model → target B
               model'
 ```
 
-A successful port or re-realization need not preserve bytes or timbre unless that contract requires them. It should preserve the named musical obligations and expose intentional losses.
+A successful port or re-realization need not preserve bytes or timbre unless that contract requires them. It preserves named musical obligations and exposes intentional losses.
 
 ## Future applications
 
@@ -228,6 +224,6 @@ Unless a discriminating test requires otherwise:
 9. use synth realization, porting, and semantic round trips as verification surfaces;
 10. build integrated end-user tooling after the compiler core is trustworthy.
 
-The default research question remains:
+The default research question is:
 
 > **What uncertainty most limits musical understanding now, and what experiment would discriminate among the remaining explanations?**
