@@ -1,0 +1,42 @@
+name: Compiler core repair landing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compiler-core-repair-landing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Stage verified repairs
+        run: python tools/repair_core_verification.py
+      - name: Configure full compiler core
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
+      - name: Build full compiler core
+        run: cmake --build build --parallel 2 -- -k
+      - name: Run all core tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Validate diff
+        run: |
+          git diff --check
+          grep -q -- '-UNDEBUG' CMakeLists.txt
+          grep -q 'schema_version.*4' tests/model/test_cube_evidence_worlds.py
+          grep -q 'schema_version.*4' tests/spc/test_cube_panel_repository_contract.py
+          grep -q 'bandlimited_square_shape_error' tests/vgm/sn76489_alias_test.cpp
+          grep -q 'startup_reference_frames == 0' tests/vgm/studio_source_resampler_test.cpp
+      - name: Commit green repair set
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add -u
+          git commit -m 'test(core): restore full semantic verification'
+          git push
