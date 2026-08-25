@@ -13,19 +13,19 @@ class CMakeRegistrationUniquenessTest(unittest.TestCase):
         self.root = Path(__file__).resolve().parents[1]
         self.host_path = self.root / "cmake/host_transport_tests.cmake"
         self.semantic_entry_path = self.root / "cmake/semantic_model_tests.cmake"
-        self.semantic_base_path = self.root / "cmake/semantic_model_tests_base.cmake"
+        self.semantic_core_path = self.root / "cmake/semantic_model_tests_core.cmake"
         self.host = self.host_path.read_text(encoding="utf-8")
         self.semantic_entry = self.semantic_entry_path.read_text(encoding="utf-8")
-        self.semantic_base = self.semantic_base_path.read_text(encoding="utf-8")
-        self.semantic = self.semantic_base + "\n" + self.semantic_entry
+        self.semantic_core = self.semantic_core_path.read_text(encoding="utf-8")
+        self.semantic = self.semantic_core + "\n" + self.semantic_entry
 
     def assert_unique_names(self, text: str, regex: re.Pattern[str], label: str) -> None:
         names = regex.findall(text)
         duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
         self.assertEqual(duplicates, [], label)
 
-    def test_semantic_entry_includes_base_exactly_once(self) -> None:
-        self.assertEqual(self.semantic_entry.count("semantic_model_tests_base.cmake"), 1)
+    def test_semantic_entry_includes_core_exactly_once(self) -> None:
+        self.assertEqual(self.semantic_entry.count("semantic_model_tests_core.cmake"), 1)
 
     def test_each_owner_has_unique_executable_and_ctest_names(self) -> None:
         for owner, text in (("host", self.host), ("semantic", self.semantic)):
