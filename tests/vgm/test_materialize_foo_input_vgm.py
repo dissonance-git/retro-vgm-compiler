@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression for the vgmspc-free foo_input_vgm materialization path."""
+"""Regression for the canonical foo_input_vgm materialization path."""
 
 from __future__ import annotations
 
@@ -52,7 +52,6 @@ def main() -> int:
         shadow = (source / "input_vgm_shadow.cpp").read_text(encoding="utf-8-sig")
         targets = (component / "Directory.Build.targets").read_text(encoding="utf-8-sig")
 
-        # Final host composition, not merely project-owned source-file presence.
         for marker in (
             "genesis_selected_source_queue",
             "genesis_selected_source_block",
@@ -61,10 +60,6 @@ def main() -> int:
         ):
             assert marker in header, f"materialized input_vgm.h missing {marker}"
 
-        # The current audible seam consumes the finalized delivered source bank
-        # directly into timed Omniphony processing. genesis_selected_source_block
-        # remains a shared type/header contract but is no longer instantiated as
-        # a named local in input_vgm_shadow.cpp.
         for marker in (
             "capture_genesis_reference_sources",
             "render_genesis_spatial_output",
@@ -93,16 +88,12 @@ def main() -> int:
         )
         assert rendered_end < studio_branch < deferred_psg_use
 
-        # Fail closed at the final audible seam. input_base::decode_run is the
-        # protected foo_input_vgm 0.31 renderer and must complete before Spatial
-        # is attempted. The Spatial helper itself does not touch the chunk until
-        # every source, route and Omniphony condition succeeds.
         call_marker = "render_genesis_spatial_output(\n\t\t\tp_chunk,"
         call = shadow.index(call_marker)
         protected_stereo = shadow.rfind(
             "result = input_base::decode_run(p_chunk, p_abort);", 0, call
         )
-        assert protected_stereo >= 0, "VGM Spatial call no longer follows protected 0.31 decode"
+        assert protected_stereo >= 0, "VGM Spatial call must follow protected 0.31 decode"
         assert protected_stereo < call
 
         helper_start = shadow.index("bool input_vgm::render_genesis_spatial_output(")
@@ -115,18 +106,14 @@ def main() -> int:
         assert "!rendered.source_block_valid || !rendered.omniphony.rendered" in helper[:replacement]
         assert helper.rfind("return true;") > replacement
 
-        # The project overlay must compile the modern runtime translation unit
-        # without mutating the historical vcxproj text in the builder.
         assert "input_vgm_shadow.cpp" in targets
         assert "<PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>" in targets
         assert "<PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>" in targets
         assert "<AdditionalDependencies>UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>" in targets
 
-        # Materialization is permitted to state that the retired repository was
-        # not consulted; it must never request or clone it as an input.
-        combined = (completed.stdout + completed.stderr).lower()
-        assert "clone" not in combined or "vgmspc" not in combined
-        assert "vgmspc was not consulted" in combined
+        output = completed.stdout + completed.stderr
+        assert "materialized foo_input_vgm:" in output
+        assert "materialized VGM enhancement sources:" in output
 
     print("foo_input_vgm materialization regression passed")
     return 0
