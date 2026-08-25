@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Build and run every dependency-free core test without foobar/libvgm.
+"""Build and run every dependency-free VGM Compiler core test directly.
 
-This is the fallback validation loop while GitHub-hosted Actions runners are
-unavailable. It intentionally compiles each test against the complete local
-source-native core so newly added translation units cannot quietly sit outside
-the test build.
+This focused runner compiles each test against the complete local source-native
+core so newly added translation units cannot quietly sit outside the test build.
+Use the CMake/CTest suite when registry behavior itself is part of the obligation.
 """
 
 from __future__ import annotations
@@ -119,7 +118,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    build_root = Path(tempfile.mkdtemp(prefix="gameaudio-core-tests-"))
+    build_root = Path(tempfile.mkdtemp(prefix="vgm-compiler-core-tests-"))
     print(f"compiler: {compiler}")
     print(f"tests: {len(tests)}")
     print(f"build: {build_root}")
