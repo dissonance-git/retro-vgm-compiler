@@ -19,21 +19,25 @@ if ($failure) {
     Write-Host '::group::Focused private Foobar build failure diagnostics'
     if (Test-Path -LiteralPath $logPath -PathType Leaf) {
         $lines = @(Get-Content -LiteralPath $logPath)
-        # Prefer actual compiler/linker/build failures. Legacy NASM emits many
-        # benign macro warnings containing source filenames; letting those win
-        # the first-match budget can hide the actionable MSVC error entirely.
-        $hardPattern = '(?i)(fatal error|error C\d{4}|error LNK\d{4}|error MSB\d{4}|LNK\d{4}|MSB\d{4}|unresolved external|undefined reference|\berror:)'
-        $hardHits = @($lines | Select-String -Pattern $hardPattern -Context 3,3)
+        # Prefer actual compiler/linker/build/verifier failures. Legacy NASM
+        # emits many benign macro warnings containing source filenames; letting
+        # those win the first-match budget can hide the actionable failure.
+        $hardPattern = '(?i)(Traceback|AssertionError|fatal error|error C\d{4}|error LNK\d{4}|error MSB\d{4}|LNK\d{4}|MSB\d{4}|unresolved external|undefined reference|\berror:|payload mismatch|package members differ|missing required exports|forbidden private imports|machine mismatch|spcplayer expected|did not reach its own usage path|packaged Omniphony)'
+        $hardHits = @($lines | Select-String -Pattern $hardPattern -Context 4,6)
         if ($hardHits.Count -gt 0) {
-            $hardHits | Select-Object -First 200 | ForEach-Object { Write-Host $_.ToString() }
+            $hardHits | Select-Object -First 240 | ForEach-Object { Write-Host $_.ToString() }
+            Write-Host '--- final captured lines ---'
+            $lines | Select-Object -Last 100 | ForEach-Object { Write-Host $_ }
         } else {
             $fallbackPattern = '(?i)(DSP\.asm|APU\.asm|SPC700\.asm|nasm|fatal|undefined|unresolved|syntax)'
             $fallbackHits = @($lines | Select-String -Pattern $fallbackPattern -Context 2,2)
             if ($fallbackHits.Count -gt 0) {
                 $fallbackHits | Select-Object -First 120 | ForEach-Object { Write-Host $_.ToString() }
+                Write-Host '--- final captured lines ---'
+                $lines | Select-Object -Last 100 | ForEach-Object { Write-Host $_ }
             } else {
-                Write-Host 'No focused diagnostic pattern matched; showing final 160 captured lines.'
-                $lines | Select-Object -Last 160 | ForEach-Object { Write-Host $_ }
+                Write-Host 'No focused diagnostic pattern matched; showing final 200 captured lines.'
+                $lines | Select-Object -Last 200 | ForEach-Object { Write-Host $_ }
             }
         }
     } else {
