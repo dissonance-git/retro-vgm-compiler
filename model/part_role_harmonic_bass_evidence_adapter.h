@@ -35,7 +35,7 @@ inline bool harmonic_bass_time_inside_window(
     return window.end.has_value() &&
         part_role_same_time_basis(coordinate, window.start) &&
         coordinate.tick >= window.start.tick &&
-        coordinate.tick <= window.end->tick;
+        coordinate.tick < window.end->tick;
 }
 
 inline void validate_bass_harmony_interaction_for_role(
