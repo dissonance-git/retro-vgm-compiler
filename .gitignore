@@ -33,6 +33,7 @@ dist/
 .cache/
 research/cache/
 docs/generated/
+imports/foo_input_vgm-0.31.zip
 
 # foobar2000 component packages
 *.fb2k-component
