@@ -28,15 +28,20 @@ def add_algorithm_include(stdafx: Path) -> None:
     raw = stdafx.read_bytes()
     newline = b"\r\n" if b"\r\n" in raw else b"\n"
     marker = b"#include <pfc/pfc.h>"
-    if b"#include <algorithm>" in raw:
-        return
     if raw.count(marker) != 1:
         raise RuntimeError(f"expected one pfc include in {stdafx}")
-    stdafx.write_bytes(raw.replace(
-        marker,
-        b"#include <algorithm>" + newline + marker,
-        1,
-    ))
+
+    prefix = b""
+    if b"#define NOMINMAX" not in raw:
+        prefix += (
+            b"#ifndef NOMINMAX" + newline
+            + b"#define NOMINMAX" + newline
+            + b"#endif" + newline
+        )
+    if b"#include <algorithm>" not in raw:
+        prefix += b"#include <algorithm>" + newline
+    if prefix:
+        stdafx.write_bytes(raw.replace(marker, prefix + marker, 1))
 
 
 def remove_obsolete_enhancer_seek_reset(source: Path) -> None:
@@ -70,6 +75,10 @@ def main() -> int:
     run(here / "apply_enhanced_component.py", parent)
     run(here / "apply_prebrr_transport_complete.py", root)
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
+    # The staged model is a presentation overlay, not a second owner of the
+    # child/parent process ABI. Replace its copied wire header with a fail-closed
+    # forwarding header before any later patch consumes the overlay.
+    run(here / "fix_overlay_source_wire_alias.py", root)
     run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)
     # Output: Omniphony owns the one final headphone render when selected;
     # other outputs retain the established direct source_ffi fallback.
@@ -79,6 +88,8 @@ def main() -> int:
     run(here / "apply_surround_omniphony_private_bridge.py", root)
     run(here / "apply_private_child_launch_path.py", root)
     remove_obsolete_enhancer_seek_reset(parent / "input_snesapu.cpp")
+    # The foobar/ATL precompiled header pulls Windows headers. Define NOMINMAX
+    # before that boundary so model code can use std::min/std::max literally.
     add_algorithm_include(parent / "stdafx.h")
 
     print("private foo_snesapu enhanced + Surround/Omniphony patch stack applied")
