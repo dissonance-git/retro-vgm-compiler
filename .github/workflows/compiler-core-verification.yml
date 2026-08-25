@@ -47,7 +47,7 @@ jobs:
               path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Repair stale spatial path assertion
+      - name: Repair stale Genesis spatial path assertion
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -63,6 +63,59 @@ jobs:
               path.write_text(text, encoding='utf-8')
           elif new not in text:
               raise SystemExit('Genesis spatial-path assertion anchor not found')
+          PY
+
+      - name: Repair stale spatial playback contract test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/model/spatial_source_test.cpp')
+          text = path.read_text(encoding='utf-8')
+          start_marker = '    // Both foobar components expose enhancement and spatialization as separate\n'
+          end_marker = '    auto genesis = gameaudio::vgm::make_genesis_spatial_source('
+          start = text.find(start_marker)
+          end = text.find(end_marker, start if start >= 0 else 0)
+          if start < 0 or end < 0 or end <= start:
+              if 'spatial_playback_path::source_spatial' in text and 'uses_externalization' not in text:
+                  raise SystemExit(0)
+              raise SystemExit('spatial playback regression markers not found')
+          replacement = '\n'.join([
+              '    // Both foobar components expose enhancement and spatialization as separate',
+              '    // user choices. Renderer topology stays internal to Omniphony.',
+              '    vgmtooling::model::spatial_playback_options playback{};',
+              '    assert(!playback.surround);',
+              '    assert(!playback.enhanced);',
+              '    assert(vgmtooling::model::resolve_spatial_playback(playback)',
+              '        == vgmtooling::model::spatial_playback_path::reference_stereo);',
+              '    assert(!vgmtooling::model::uses_source_renderer(playback));',
+              '    assert(!vgmtooling::model::uses_enhanced_renderer(playback));',
+              '',
+              '    playback.enhanced = true;',
+              '    assert(vgmtooling::model::uses_enhanced_renderer(playback));',
+              '    assert(vgmtooling::model::resolve_spatial_playback(playback)',
+              '        == vgmtooling::model::spatial_playback_path::reference_stereo);',
+              '    assert(!vgmtooling::model::uses_source_renderer(playback));',
+              '',
+              '    playback.surround = true;',
+              '    assert(vgmtooling::model::resolve_spatial_playback(playback)',
+              '        == vgmtooling::model::spatial_playback_path::source_spatial);',
+              '    assert(vgmtooling::model::uses_source_renderer(playback));',
+              '    assert(vgmtooling::model::uses_enhanced_renderer(playback));',
+              '',
+              '    playback.enhanced = false;',
+              '    assert(!vgmtooling::model::uses_enhanced_renderer(playback));',
+              '    assert(vgmtooling::model::uses_source_renderer(playback));',
+              '',
+              '    playback.surround = false;',
+              '    assert(vgmtooling::model::resolve_spatial_playback(playback)',
+              '        == vgmtooling::model::spatial_playback_path::reference_stereo);',
+              '    assert(!vgmtooling::model::uses_source_renderer(playback));',
+              '',
+              '',
+          ])
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Repair YM2612 PCM stream default construction
@@ -106,7 +159,9 @@ jobs:
           git diff --check
           grep -q -- '-UNDEBUG' CMakeLists.txt
           grep -q 'spatial_playback_path::source_spatial' tests/vgm/genesis_enhanced_recomposition_test.cpp
-          ! grep -q 'spatial_playback_path::source_full_sphere' tests/vgm/genesis_enhanced_recomposition_test.cpp
+          grep -q 'spatial_playback_path::source_spatial' tests/model/spatial_source_test.cpp
+          ! grep -q 'uses_externalization' tests/model/spatial_source_test.cpp
+          ! grep -q 'spatial_depth_mode' tests/model/spatial_source_test.cpp
           grep -q 'ym2612_pcm_stream() noexcept' components/vgm/enhancement/ym2612_pcm_stream.h
           grep -q ': ym2612_pcm_stream(48000.0)' components/vgm/enhancement/ym2612_pcm_stream.cpp
       - name: Commit verified core repairs
@@ -114,6 +169,7 @@ jobs:
           if git diff --quiet -- \
             CMakeLists.txt \
             tests/vgm/genesis_enhanced_recomposition_test.cpp \
+            tests/model/spatial_source_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp; then
             exit 0
@@ -123,6 +179,7 @@ jobs:
           git add \
             CMakeLists.txt \
             tests/vgm/genesis_enhanced_recomposition_test.cpp \
+            tests/model/spatial_source_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp
           git commit -m 'test(core): restore live Release verification'
