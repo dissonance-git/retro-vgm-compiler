@@ -28,6 +28,7 @@ on:
       - "tools/verify_private_component_packages.py"
       - "tools/verify_private_component_bundle.py"
       - "tools/verify_snesapu_package_runtime.ps1"
+      - "tools/check_project_identity.py"
 
 permissions:
   contents: write
@@ -125,6 +126,25 @@ jobs:
           python -B -m unittest tests.vgm.test_omniphony_private_build_contract
           if ($LASTEXITCODE -ne 0) { throw 'private Omniphony dependency contract failed' }
 
+      - name: Run project identity and cadence semantic guards
+        shell: pwsh
+        run: |
+          python -B tools/check_project_identity.py
+          if ($LASTEXITCODE -ne 0) { throw 'VGM Compiler project identity guard failed' }
+          cmake -S . -B .semantic-guard -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { throw 'semantic guard CMake configure failed' }
+          cmake --build .semantic-guard --config Release --parallel 2 --target `
+            cadential_arrival_hypothesis_test `
+            cadential_formal_closure_evidence_test `
+            ionian_functional_tendency_hypothesis_test `
+            ionian_cadence_class_hypothesis_test `
+            ionian_cadence_formal_binding_test `
+            ionian_deferred_authentic_resolution_test `
+            ionian_deceptive_cadence_candidate_test
+          if ($LASTEXITCODE -ne 0) { throw 'cadence semantic guard build failed' }
+          ctest --test-dir .semantic-guard -C Release --output-on-failure -R '^(cadential_arrival_hypothesis|cadential_formal_closure_evidence|ionian_functional_tendency_hypothesis|ionian_cadence_class_hypothesis|ionian_cadence_formal_binding|ionian_deferred_authentic_resolution|ionian_deceptive_cadence_candidate)$'
+          if ($LASTEXITCODE -ne 0) { throw 'cadence semantic guard tests failed' }
+
       - name: Restore tracked transport placeholder
         shell: pwsh
         run: |
@@ -193,9 +213,9 @@ jobs:
 
           $bundleSha = (Get-FileHash "$dist/private-foobar-vgm-spc.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
           $notes = @"
-          Rolling verified foobar2000 VGM + SPC delivery owned by Retro VGM Compiler.
+          Rolling verified foobar2000 VGM + SPC delivery owned by VGM Compiler.
 
-          Retro VGM Compiler source commit: $env:GITHUB_SHA
+          VGM Compiler source commit: $env:GITHUB_SHA
           Workflow run: $env:GITHUB_RUN_ID
           Bundle SHA-256: $bundleSha
 
