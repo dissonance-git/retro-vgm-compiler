@@ -1,0 +1,29 @@
+name: Temporary harmonic bass role validation
+
+on:
+  push:
+    branches:
+      - harmonic-bass-role-bridge
+
+permissions:
+  contents: read
+
+jobs:
+  strict-cxx17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run harmonic role controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in \
+            tests/model/part_role_harmonic_bass_evidence_adapter_test.cpp \
+            tests/model/bass_harmony_interaction_test.cpp \
+            tests/model/part_role_gesture_descriptor_test.cpp \
+            tests/model/part_role_auditory_evidence_adapter_test.cpp \
+            tests/model/cross_architecture_phrase_discovery_test.cpp; do
+            exe="/tmp/$(basename "${source%.cpp}")"
+            c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. "$source" -o "$exe"
+            "$exe"
+          done
