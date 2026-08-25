@@ -100,12 +100,12 @@ inline role_window_repetition_summary summarize_role_window_repetition(
         };
     }
 
-    // Value describes how rhythmically similar the repeated cells are.
-    // Confidence describes how much of the observed part-window the best
-    // recurrence actually covers. A perfect two-cell coincidence in a long,
-    // otherwise unrelated passage therefore stays weak.
+    // Rhythmic role evidence inherits the motif layer's identity confidence,
+    // including its rhythm-only ceiling, rather than upgrading a perfect
+    // rhythmic match into stronger identity evidence. Window coverage remains
+    // a separate measurement-confidence term.
     result.rhythmic_repetition = bounded_role_signal{
-        result.best_rhythm_similarity,
+        result.best_identity_confidence,
         result.event_coverage,
     };
     return result;
