@@ -8,14 +8,14 @@ For substantive work, use this bounded entry path:
 current main HEAD
 → README.md repository map
 → AGENTS.md at the same HEAD
-→ docs/retro-vgm-compiler-roadmap.md
+→ docs/vgm-compiler-roadmap.md
 → task-relevant canonical owner
 → recent commits for that active surface
 → exact target code, test, or document
 ```
 
-1. Resolve the Retro VGM Compiler repository and record current `main`.
-2. Read `README.md`, this file, and `docs/retro-vgm-compiler-roadmap.md` from the same commit.
+1. Resolve the VGM Compiler repository and record current `main`.
+2. Read `README.md`, this file, and `docs/vgm-compiler-roadmap.md` from the same commit.
 3. Use the repository map in `README.md` to identify the smallest canonical owner before doing a broad repository search. If mechanical enumeration is needed, use `tools/repository_catalog.py` / `docs/generated/repository-catalog.*`.
 4. Inspect recent commits for the active surface before choosing the smallest relevant work area.
 5. Before a replacement write, re-fetch current `main` and the exact target file. Use its current blob SHA.
@@ -50,11 +50,11 @@ A successful refactor leaves fewer places an agent must search.
 
 ## Project scope
 
-Retro VGM Compiler exists primarily to build holistic musical understanding of digital game soundtracks. Executable understanding, source recovery, device/chip modeling, perceptual organization, provenance, and source-native rendering are supporting capabilities that make that musical understanding deeper, more accurate, more specific, and more defensible.
+VGM Compiler exists primarily to build holistic musical understanding of digital game soundtracks. Executable understanding, source recovery, device/chip modeling, perceptual organization, provenance, and source-native rendering are supporting capabilities that make that musical understanding deeper, more accurate, more specific, and more defensible.
 
 The ideal system should be able to discuss a game's soundtrack with the integrated understanding of a strong critic, composer/musician, producer, and musicologist: composition, arrangement, harmony, rhythm, melody, form, timbre, sound design, dramatic/game function, thematic relations, soundtrack-scale identity, stylistic lineage, and meaningful exceptions. It should seem to have internalized the musical logic of the soundtrack from the inside without inventing undocumented creator intent.
 
-See `docs/holistic-soundtrack-understanding.md` and `docs/retro-vgm-compiler-roadmap.md`.
+See `docs/holistic-soundtrack-understanding.md` and `docs/vgm-compiler-roadmap.md`.
 
 It may own:
 
@@ -102,7 +102,7 @@ A technically exact result that does not improve the musical model may still be 
 Helix
   shared research execution, evidence discipline, project continuity
 
-Retro VGM Compiler
+VGM Compiler
   game-music source, driver, device, performance, analysis, rendering
 
 libaural
@@ -363,7 +363,7 @@ The Omniphony output component is a peer-repository deliverable. A matched liste
 
 The project already has substantial lower infrastructure: device-specific nominal-pitch mechanics, source/driver boundaries, provenance-aware analysis features, persistent-part hypotheses, musical-dependency regressions, harmonic/formal evidence rules, discourse projections, source-native rendering experiments, and a broad cross-architecture corpus.
 
-The current implementation roadmap is maintained in `docs/retro-vgm-compiler-roadmap.md`. The next high-information frontier is to make those capabilities converge upward into holistic soundtrack models rather than continuing to expand the lower stack indefinitely.
+The current implementation roadmap is maintained in `docs/vgm-compiler-roadmap.md`. The next high-information frontier is to make those capabilities converge upward into holistic soundtrack models rather than continuing to expand the lower stack indefinitely.
 
 Priority order:
 

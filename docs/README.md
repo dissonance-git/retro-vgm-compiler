@@ -11,7 +11,7 @@ Keep the top level of `docs/` biased toward **current contracts and active orien
 High-value entry points include:
 
 ```text
-retro-vgm-compiler-roadmap.md
+vgm-compiler-roadmap.md
 holistic-soundtrack-understanding.md
 holistic-musical-understanding.md
 composer-level-understanding.md
@@ -37,8 +37,7 @@ docs/history/      superseded bootstrap instructions and technical lineage
 docs/generated/    rebuildable navigation/inventory projections
 ```
 
-Historical material stays reachable without competing with current contracts.
-Generated material is a projection and must not become writable source truth.
+Historical material stays reachable without competing with current contracts. Generated material is a projection and must not become writable source truth.
 
 ## Placement rule
 

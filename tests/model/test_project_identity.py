@@ -19,11 +19,23 @@ def test_current_repository_has_no_deprecated_project_name():
     assert module.scan_repository(ROOT) == []
 
 
-def test_scanner_finds_deprecated_name_without_embedding_it_in_this_test(tmp_path):
+def test_scanner_finds_each_deprecated_name_without_embedding_it_in_this_test(tmp_path):
     module = _load_tool()
-    deprecated = "Game" + " Music" + " Interpreter"
-    (tmp_path / "README.md").write_text(f"# {deprecated}\n", encoding="utf-8")
+    deprecated = (
+        "Game" + " Music" + " Interpreter",
+        "Retro" + " VGM" + " Compiler",
+    )
+    for index, name in enumerate(deprecated):
+        (tmp_path / f"old-{index}.md").write_text(f"# {name}\n", encoding="utf-8")
     findings = module.scan_repository(tmp_path)
-    assert len(findings) == 1
-    assert findings[0][0] == Path("README.md")
-    assert findings[0][1] == 1
+    assert len(findings) == 2
+    assert {finding[0] for finding in findings} == {Path("old-0.md"), Path("old-1.md")}
+
+
+def test_scanner_allows_historical_lineage(tmp_path):
+    module = _load_tool()
+    deprecated = "Retro" + " VGM" + " Compiler"
+    history = tmp_path / "docs" / "history"
+    history.mkdir(parents=True)
+    (history / "identity.md").write_text(f"# {deprecated}\n", encoding="utf-8")
+    assert module.scan_repository(tmp_path) == []
