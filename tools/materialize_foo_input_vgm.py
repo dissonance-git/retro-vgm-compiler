@@ -86,6 +86,13 @@ def require_files(root: Path, relative_paths: tuple[str, ...], label: str) -> No
         raise RuntimeError(f"{label} missing required files: {joined}")
 
 
+def canonical_archive(repo: Path) -> Path:
+    archive = repo / "imports" / "foo_input_vgm-0.31.zip"
+    reconstructor = repo / "tools" / "reconstruct_vgm031_bootstrap.py"
+    run([sys.executable, str(reconstructor)], cwd=repo)
+    return archive
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -113,11 +120,16 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
-    env_archive = os.environ.get("RETRO_VGM_BOOTSTRAP_ARCHIVE")
+    env_archive = (
+        os.environ.get("VGM_COMPILER_BOOTSTRAP_ARCHIVE")
+        or os.environ.get("RETRO_VGM_BOOTSTRAP_ARCHIVE")
+    )
     selected_archive = args.archive or (Path(env_archive) if env_archive else None)
     archive = (
-        selected_archive or (repo / "imports" / "foo_input_vgm-0.31.zip")
-    ).resolve()
+        selected_archive.resolve()
+        if selected_archive is not None
+        else canonical_archive(repo).resolve()
+    )
     sdk_root = args.sdk_root.resolve()
     component = sdk_root / "foo_input_vgm"
     enhancement = sdk_root / "enhancement"
@@ -139,7 +151,7 @@ def main() -> int:
     if enhancement.exists():
         shutil.rmtree(enhancement)
 
-    with tempfile.TemporaryDirectory(prefix="retro-vgm-bootstrap-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="vgm-compiler-bootstrap-") as temporary:
         extracted = Path(temporary)
         run([args.seven_zip, "x", str(archive), f"-o{extracted}", "-y"])
         bootstrap = find_bootstrap_root(extracted)
