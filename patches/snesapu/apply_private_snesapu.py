@@ -29,6 +29,7 @@ def main() -> int:
     run(here / "upgrade_source_capture_v2.py", root)
     run(here / "apply_prebrr_provider.py", root)
     run(here / "apply_studio_source_provider.py", root)
+    run(here / "fix_legacy_proc_parameter_alias.py", root)
     print("private source-aware SNESAPU patch stack applied")
     return 0
 
