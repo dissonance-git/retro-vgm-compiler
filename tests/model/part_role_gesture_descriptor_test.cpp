@@ -33,6 +33,16 @@ part_gesture_observation gesture(
     };
 }
 
+bool contains_role(
+    const part_role_window_result& result,
+    musical_part_role role) {
+    for (const auto& candidate : result.candidates) {
+        if (candidate.role == role)
+            return true;
+    }
+    return false;
+}
+
 } // namespace
 
 int main() {
@@ -97,7 +107,7 @@ int main() {
 
     // Performed trajectory shape can ground structural motif identity even when
     // onset pitch is unavailable. This is the bridge from performed motion into
-    // role inference; it does not turn motion alone into a role label.
+    // role inference; it does not turn motion alone into a foreground role.
     auto performed_only = rhythm_only;
     for (auto& observation : performed_only) {
         observation.performance_shape = part_gesture_performance_shape{
@@ -119,6 +129,22 @@ int main() {
         rhythm_only_motif_identity_ceiling);
     assert(std::fabs(performed_descriptor.structural_motif_prominence->confidence - 1.0) < 1e-12);
     assert(performed_descriptor.rhythmic_repetition.has_value());
+
+    const auto performed_roles = infer_part_roles_for_window(
+        {performed_descriptor},
+        "performed-shape-role-bridge-test");
+    assert(!contains_role(performed_roles, musical_part_role::melodic_foreground));
+
+    // Structural motif evidence becomes usable by the existing role inference
+    // only when an independent foreground discriminator is present. The new
+    // bridge therefore adds evidence without inventing a role from motion alone.
+    auto phrased_performed_descriptor = performed_descriptor;
+    phrased_performed_descriptor.phrase_boundary_participation =
+        bounded_role_signal{0.9, 1.0};
+    const auto phrased_roles = infer_part_roles_for_window(
+        {phrased_performed_descriptor},
+        "performed-shape-role-bridge-test");
+    assert(contains_role(phrased_roles, musical_part_role::melodic_foreground));
 
     // A short passage with no two non-overlapping motif windows does not get a
     // repetition signal merely because it has several onsets.
