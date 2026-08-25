@@ -1,0 +1,28 @@
+name: Temporary permanent role registration validation
+
+on:
+  push:
+    branches:
+      - validate-permanent-role-tests
+
+permissions:
+  contents: read
+
+jobs:
+  cmake-role-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build registered role evidence targets
+        run: |
+          cmake --build build --parallel 2 --target \
+            part_role_gesture_descriptor_test \
+            part_role_auditory_evidence_adapter_test \
+            cross_architecture_phrase_discovery_test \
+            genesis_spatial_semantic_preservation_test
+      - name: Run registered CTest entries
+        run: |
+          ctest --test-dir build --output-on-failure \
+            -R '^(part_role_gesture_descriptor|part_role_auditory_evidence_adapter|cross_architecture_phrase_discovery|genesis_spatial_semantic_preservation)$'
