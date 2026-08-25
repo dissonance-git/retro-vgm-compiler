@@ -110,6 +110,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
         spc_runtime_sample_adapter_test
         spc_runtime_capture_test
         spc_runtime_capture_adapter_test
+        part_role_gesture_descriptor_test
+        part_role_auditory_evidence_adapter_test
+        cross_architecture_phrase_discovery_test
+        genesis_spatial_semantic_preservation_test
     )
 
     add_executable(genesis_state_test tests/vgm/genesis_state_test.cpp)
@@ -189,6 +193,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_executable(spc_runtime_sample_adapter_test tests/spc/spc_runtime_sample_adapter_test.cpp)
     add_executable(spc_runtime_capture_test tests/spc/spc_runtime_capture_test.cpp)
     add_executable(spc_runtime_capture_adapter_test tests/spc/spc_runtime_capture_adapter_test.cpp)
+    add_executable(part_role_gesture_descriptor_test tests/model/part_role_gesture_descriptor_test.cpp)
+    add_executable(part_role_auditory_evidence_adapter_test tests/model/part_role_auditory_evidence_adapter_test.cpp)
+    add_executable(cross_architecture_phrase_discovery_test tests/model/cross_architecture_phrase_discovery_test.cpp)
+    add_executable(genesis_spatial_semantic_preservation_test tests/vgm/genesis_spatial_semantic_preservation_test.cpp)
     target_include_directories(genesis_enhanced_recomposition_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(genesis_nominal_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(smps_programmed_pitch_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -216,6 +224,10 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     target_include_directories(diatonic_key_hypothesis_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(pitch_class_collection_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(tonal_region_relation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(part_role_gesture_descriptor_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(part_role_auditory_evidence_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(cross_architecture_phrase_discovery_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(genesis_spatial_semantic_preservation_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
     include(cmake/semantic_model_tests.cmake)
 
@@ -306,4 +318,8 @@ if(GAMEAUDIO_BUILD_CORE_TESTS)
     add_test(NAME spc_runtime_sample_adapter COMMAND spc_runtime_sample_adapter_test)
     add_test(NAME spc_runtime_capture COMMAND spc_runtime_capture_test)
     add_test(NAME spc_runtime_capture_adapter COMMAND spc_runtime_capture_adapter_test)
+    add_test(NAME part_role_gesture_descriptor COMMAND part_role_gesture_descriptor_test)
+    add_test(NAME part_role_auditory_evidence_adapter COMMAND part_role_auditory_evidence_adapter_test)
+    add_test(NAME cross_architecture_phrase_discovery COMMAND cross_architecture_phrase_discovery_test)
+    add_test(NAME genesis_spatial_semantic_preservation COMMAND genesis_spatial_semantic_preservation_test)
 endif()
