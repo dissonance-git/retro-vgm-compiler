@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """Materialize a buildable foo_input_vgm source tree from canonical inputs.
 
-The exact user-supplied foo_input_vgm 0.31 source archive is the private
-component bootstrap. Current VGM Compiler additions live under
-components/vgm/ and guarded transformations live under patches/foo_input_vgm/.
-This tool combines those sources into a disposable build tree without consulting
-the retired vgmspc repository or copying its stale patched host tree.
+The exact foo_input_vgm 0.31 source archive is the private component bootstrap.
+VGM Compiler additions live under components/vgm/ and guarded transformations
+live under patches/foo_input_vgm/. This tool combines those inputs into a
+disposable build tree.
 
-The materialized layout intentionally mirrors the historical foobar SDK layout:
+The materialized layout is:
 
     <sdk-root>/foo_input_vgm/
     <sdk-root>/enhancement/
 
-External dependencies such as libvgm, WTL and the foobar SDK itself remain the
+External dependencies such as libvgm, WTL and the foobar SDK remain the
 responsibility of the caller/build workflow. The current patch chain is applied
-exactly once to the pristine bootstrap source.
+exactly once to the canonical bootstrap source.
 """
 
 from __future__ import annotations
@@ -28,11 +27,6 @@ import sys
 import tempfile
 
 
-# These files are project-owned additions. The similarly named base plugin
-# files (input_vgm.cpp, input_base.cpp, stdafx.*, etc.) deliberately do not
-# appear here: they must come from the immutable bootstrap and be transformed by
-# the current guarded patch chain rather than copied from a previously patched
-# snapshot.
 PROJECT_OWNED_VGM_SOURCE_FILES = (
     "genesis_source_plane.h",
     "ym2151_source_plane.h",
@@ -120,10 +114,7 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
-    env_archive = (
-        os.environ.get("VGM_COMPILER_BOOTSTRAP_ARCHIVE")
-        or os.environ.get("RETRO_VGM_BOOTSTRAP_ARCHIVE")
-    )
+    env_archive = os.environ.get("VGM_COMPILER_BOOTSTRAP_ARCHIVE")
     selected_archive = args.archive or (Path(env_archive) if env_archive else None)
     archive = (
         selected_archive.resolve()
@@ -158,9 +149,6 @@ def main() -> int:
         require_files(bootstrap, REQUIRED_BOOTSTRAP_FILES, "foo_input_vgm bootstrap")
         shutil.copytree(bootstrap, component)
 
-    # Keep the historical base pristine until after extraction. Only files
-    # which do not belong to that base are overlaid before the guarded patchers
-    # run, so each base-file transformation has exactly one authoritative path.
     for filename in PROJECT_OWNED_VGM_SOURCE_FILES:
         shutil.copy2(owned_source / filename, component / "src" / filename)
     shutil.copy2(
@@ -178,7 +166,6 @@ def main() -> int:
 
     print(f"materialized foo_input_vgm: {component}")
     print(f"materialized VGM enhancement sources: {enhancement}")
-    print("vgmspc was not consulted")
     return 0
 
 
