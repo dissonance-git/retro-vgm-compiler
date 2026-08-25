@@ -13,6 +13,11 @@
 namespace vgmtooling::model {
 
 struct cadential_arrival_hypothesis {
+    // Keep both ends of the harmonic transition. Downstream key-relative
+    // interpretation must be able to prove that its two chord observations are
+    // the same transition that licensed this arrival, rather than merely sharing
+    // an arrival timestamp and a compatible-looking root interval.
+    time_coordinate departure_time{};
     time_coordinate arrival_time{};
     double phrase_boundary_confidence = 0.0;
     double harmonic_transition_confidence = 0.0;
@@ -46,6 +51,7 @@ inline cadential_arrival_hypothesis infer_cadential_arrival(
     }
 
     cadential_arrival_hypothesis result;
+    result.departure_time = transition.first_time;
     result.arrival_time = boundary.representative;
     result.phrase_boundary_confidence = boundary.confidence;
     result.harmonic_transition_confidence = transition.confidence;
