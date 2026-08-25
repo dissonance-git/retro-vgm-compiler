@@ -68,13 +68,13 @@ jobs:
           cd /d "$source"
           if not exist Release mkdir Release
           echo === NASM APU.asm ===
-          nasm -f win32 -O2 APU.asm -o Release\APU.obj
+          nasm -f win32 -dWIN32 -dSTDCALL -O2 APU.asm -o Release\APU.obj
           if errorlevel 1 exit /b 11
           echo === NASM DSP.asm ===
-          nasm -f win32 -O2 DSP.asm -o Release\DSP.obj
+          nasm -f win32 -dWIN32 -dSTDCALL -O2 DSP.asm -o Release\DSP.obj
           if errorlevel 1 exit /b 12
           echo === NASM SPC700.asm ===
-          nasm -f win32 -O2 SPC700.asm -o Release\SPC700.obj
+          nasm -f win32 -dWIN32 -dSTDCALL -O2 SPC700.asm -o Release\SPC700.obj
           if errorlevel 1 exit /b 13
           echo === RC version.rc ===
           rc /nologo /fo Release\version.res version.rc
