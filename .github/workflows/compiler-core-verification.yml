@@ -190,7 +190,7 @@ jobs:
               path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Make host assembler lane bound local
+      - name: Make host assembler storage bound explicit
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -214,13 +214,22 @@ jobs:
               text = text.replace(old_loop, new_loop, 1)
           elif new_loop not in text:
               raise SystemExit('host assembler storage loop anchor not found')
+
+          old_write = '                pcm_[lane * CapacityFrames + destination] =\n                    available ? source_lane.mono_pcm[frame] : 0.0f;\n                availability_[lane * CapacityFrames + destination] = available ? 1u : 0u;'
+          new_write = '                const std::size_t storage_index = lane * CapacityFrames + destination;\n                if (storage_index >= pcm_.size() || storage_index >= availability_.size())\n                    return fail(spatial_source_host_assembler_error::invalid_block);\n                pcm_[storage_index] = available ? source_lane.mono_pcm[frame] : 0.0f;\n                availability_[storage_index] = available ? 1u : 0u;'
+          if old_write in text:
+              if text.count(old_write) != 1:
+                  raise SystemExit('host assembler storage-write anchor is not singular')
+              text = text.replace(old_write, new_write, 1)
+          elif new_write not in text:
+              raise SystemExit('host assembler storage-write anchor not found')
           path.write_text(text, encoding='utf-8')
           PY
 
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
-        run: cmake --build build --parallel 2
+        run: cmake --build build --parallel 2 -- -k
       - name: Run full compiler core
         run: ctest --test-dir build --output-on-failure
       - name: Validate core repairs
@@ -235,7 +244,7 @@ jobs:
           grep -q ': ym2612_pcm_stream(48000.0)' components/vgm/enhancement/ym2612_pcm_stream.cpp
           grep -q 'vgmtooling::model::node_id device_transition_id' components/vgm/enhancement/genesis_pitch_control_adapter.h
           grep -q 'blind_structural_grammar_observation realization_role_deployment_as_grammar_observation' model/realization_role_grammar_bridge.h
-          grep -q 'lane < block.lane_count' model/spatial_source_host_assembler.h
+          grep -q 'storage_index >= availability_.size()' model/spatial_source_host_assembler.h
       - name: Commit verified core repairs
         run: |
           if git diff --quiet -- \
