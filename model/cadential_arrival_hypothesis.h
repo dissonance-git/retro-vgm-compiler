@@ -13,12 +13,17 @@
 namespace vgmtooling::model {
 
 struct cadential_arrival_hypothesis {
-    // Keep both ends of the harmonic transition. Downstream key-relative
-    // interpretation must be able to prove that its two chord observations are
-    // the same transition that licensed this arrival, rather than merely sharing
-    // an arrival timestamp and a compatible-looking root interval.
+    // Retain both transition endpoints and their harmonic identities. Downstream
+    // key-relative interpretation must be able to prove that its chord pair is
+    // the same event that licensed this arrival, not merely a compatible-looking
+    // root interval at the same arrival timestamp.
     time_coordinate departure_time{};
     time_coordinate arrival_time{};
+    std::int64_t departure_root_pitch_class = 0;
+    std::int64_t arrival_root_pitch_class = 0;
+    tertian_triad_quality departure_quality = tertian_triad_quality::major;
+    tertian_triad_quality arrival_quality = tertian_triad_quality::major;
+    bool quality_changed = false;
     double phrase_boundary_confidence = 0.0;
     double harmonic_transition_confidence = 0.0;
     double voice_leading_confidence = 0.0;
@@ -53,6 +58,11 @@ inline cadential_arrival_hypothesis infer_cadential_arrival(
     cadential_arrival_hypothesis result;
     result.departure_time = transition.first_time;
     result.arrival_time = boundary.representative;
+    result.departure_root_pitch_class = positive_mod(transition.first_root_pitch_class, 12);
+    result.arrival_root_pitch_class = positive_mod(transition.second_root_pitch_class, 12);
+    result.departure_quality = transition.first_quality;
+    result.arrival_quality = transition.second_quality;
+    result.quality_changed = transition.quality_changed;
     result.phrase_boundary_confidence = boundary.confidence;
     result.harmonic_transition_confidence = transition.confidence;
     result.root_motion_semitones = transition.directed_root_motion_semitones;
