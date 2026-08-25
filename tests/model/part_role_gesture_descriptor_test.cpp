@@ -64,6 +64,9 @@ int main() {
     assert(descriptor.onset_count == 8);
     assert(descriptor.register_coordinate.has_value());
     assert(descriptor.register_basis == "shared-relative-pitch");
+    assert(descriptor.structural_motif_prominence.has_value());
+    assert(std::fabs(descriptor.structural_motif_prominence->value - 1.0) < 1e-12);
+    assert(std::fabs(descriptor.structural_motif_prominence->confidence - 1.0) < 1e-12);
     assert(descriptor.rhythmic_repetition.has_value());
     assert(std::fabs(descriptor.rhythmic_repetition->value - 1.0) < 1e-12);
     assert(std::fabs(descriptor.rhythmic_repetition->confidence - 1.0) < 1e-12);
@@ -73,7 +76,7 @@ int main() {
     assert(std::fabs(*descriptor.register_coordinate - expected_register) < 1e-12);
 
     // A rhythm-only recurrence remains useful but inherits the motif layer's
-    // 0.55 identity ceiling. The role layer cannot magically strengthen it.
+    // 0.55 identity ceiling. It must not impersonate structural motif evidence.
     std::vector<part_gesture_observation> rhythm_only = repeated;
     for (auto& observation : rhythm_only) {
         observation.log2_pitch_coordinate.reset();
@@ -87,9 +90,35 @@ int main() {
         policy);
     assert(!rhythm_descriptor.register_coordinate.has_value());
     assert(rhythm_descriptor.register_basis.empty());
+    assert(!rhythm_descriptor.structural_motif_prominence.has_value());
     assert(rhythm_descriptor.rhythmic_repetition.has_value());
     assert(rhythm_descriptor.rhythmic_repetition->value <=
         rhythm_only_motif_identity_ceiling + 1e-12);
+
+    // Performed trajectory shape can ground structural motif identity even when
+    // onset pitch is unavailable. This is the bridge from performed motion into
+    // role inference; it does not turn motion alone into a role label.
+    auto performed_only = rhythm_only;
+    for (auto& observation : performed_only) {
+        observation.performance_shape = part_gesture_performance_shape{
+            pitch_motion_articulation_kind::glide_candidate,
+            3.0,
+            3.0,
+            0,
+            0.95,
+        };
+    }
+    const auto performed_descriptor = make_part_role_window_descriptor_from_gestures(
+        performed_only,
+        10,
+        window(0, 2000),
+        policy);
+    assert(!performed_descriptor.register_coordinate.has_value());
+    assert(performed_descriptor.structural_motif_prominence.has_value());
+    assert(performed_descriptor.structural_motif_prominence->value >
+        rhythm_only_motif_identity_ceiling);
+    assert(std::fabs(performed_descriptor.structural_motif_prominence->confidence - 1.0) < 1e-12);
+    assert(performed_descriptor.rhythmic_repetition.has_value());
 
     // A short passage with no two non-overlapping motif windows does not get a
     // repetition signal merely because it has several onsets.
@@ -107,6 +136,7 @@ int main() {
         window(0, 600),
         policy);
     assert(short_descriptor.onset_count == 4);
+    assert(!short_descriptor.structural_motif_prominence.has_value());
     assert(!short_descriptor.rhythmic_repetition.has_value());
 
     // Mixed native pitch bases may still contribute onsets, but they do not

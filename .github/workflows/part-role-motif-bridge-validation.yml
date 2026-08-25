@@ -1,0 +1,28 @@
+name: Part-role motif bridge validation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-part-role-motif-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused semantic controls
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/part_role_gesture_descriptor_test.cpp \
+            -o /tmp/part_role_gesture_descriptor_test
+          /tmp/part_role_gesture_descriptor_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/part_role_window_inference_test.cpp \
+            -o /tmp/part_role_window_inference_test
+          /tmp/part_role_window_inference_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/performed_part_motif_shape_test.cpp \
+            -o /tmp/performed_part_motif_shape_test
+          /tmp/performed_part_motif_shape_test

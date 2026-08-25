@@ -48,6 +48,8 @@ struct role_window_repetition_summary {
     double best_rhythm_similarity = 0.0;
     double event_coverage = 0.0;
     bool pitch_comparable = false;
+    bool performance_shape_comparable = false;
+    std::optional<bounded_role_signal> structural_motif_prominence{};
     std::optional<bounded_role_signal> rhythmic_repetition{};
 };
 
@@ -62,6 +64,8 @@ inline role_window_repetition_summary summarize_role_window_repetition(
     // Role inference is allowed to notice a rhythm-only recurrence, but the
     // motif layer already caps rhythm-only identity at 0.55. That ceiling is
     // intentionally preserved here rather than promoted by role bookkeeping.
+    // Stronger structural prominence is emitted only when motif identity was
+    // actually compared through pitch or resolved performed-trajectory shape.
     policy.require_pitch_comparison = false;
     policy.min_identity_confidence = std::min(
         policy.min_identity_confidence,
@@ -76,6 +80,7 @@ inline role_window_repetition_summary summarize_role_window_repetition(
     result.best_identity_confidence = best.similarity.identity_confidence;
     result.best_rhythm_similarity = best.similarity.rhythm_similarity;
     result.pitch_comparable = best.similarity.pitch_comparable;
+    result.performance_shape_comparable = best.similarity.performance_shape_comparable;
 
     const std::size_t covered_events = std::min(
         observations.size(),
@@ -84,6 +89,16 @@ inline role_window_repetition_summary summarize_role_window_repetition(
         ? 0.0
         : static_cast<double>(covered_events) /
             static_cast<double>(observations.size());
+
+    // Motif identity becomes structural role evidence only when something
+    // beyond rhythm grounded the recurrence. Value is the motif-layer identity
+    // confidence; confidence is coverage of this synchronized part window.
+    if (result.pitch_comparable || result.performance_shape_comparable) {
+        result.structural_motif_prominence = bounded_role_signal{
+            result.best_identity_confidence,
+            result.event_coverage,
+        };
+    }
 
     // Value describes how rhythmically similar the repeated cells are.
     // Confidence describes how much of the observed part-window the best
@@ -151,6 +166,8 @@ inline part_role_window_descriptor make_part_role_window_descriptor_from_gesture
     }
 
     const auto repetition = summarize_role_window_repetition(window, motif_policy);
+    if (repetition.structural_motif_prominence.has_value())
+        result.structural_motif_prominence = repetition.structural_motif_prominence;
     if (repetition.rhythmic_repetition.has_value())
         result.rhythmic_repetition = repetition.rhythmic_repetition;
 
