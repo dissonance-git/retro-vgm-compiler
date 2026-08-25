@@ -1,0 +1,91 @@
+name: SPC persistent performance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'model/persistent_part_performance_trajectory.h'
+      - 'components/spc/spc_part_evidence.h'
+      - 'components/spc/spc_label_blind_corpus_features.h'
+      - 'components/spc/spc_persistent_performance_adapter.h'
+      - 'tests/spc/spc_persistent_performance_adapter_test.cpp'
+      - 'cmake/semantic_model_tests.cmake'
+      - '.github/workflows/spc-persistent-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Register compiler regression
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('cmake/semantic_model_tests.cmake')
+          text = path.read_text(encoding='utf-8')
+          marker = 'spc_persistent_performance_adapter_test'
+          if marker not in text:
+              text += r'''
+
+          # Source-backed SPC persistent-part performed trajectory regression.
+          list(APPEND GAMEAUDIO_TEST_TARGETS
+              spc_persistent_performance_adapter_test
+          )
+
+          add_executable(
+              spc_persistent_performance_adapter_test
+              tests/spc/spc_persistent_performance_adapter_test.cpp
+          )
+
+          target_include_directories(
+              spc_persistent_performance_adapter_test
+              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+          )
+
+          add_test(
+              NAME spc_persistent_performance_adapter
+              COMMAND spc_persistent_performance_adapter_test
+          )
+          '''
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Configure compiler core
+        run: cmake -S . -B build -DGAMEAUDIO_BUILD_CORE_TESTS=ON
+
+      - name: Build focused compiler regressions
+        run: >-
+          cmake --build build --parallel
+          --target
+          spc_persistent_performance_adapter_test
+          spc_label_blind_corpus_features_test
+          persistent_part_performance_trajectory_test
+
+      - name: Run focused compiler regressions
+        run: >-
+          ctest --test-dir build --output-on-failure
+          -R 'spc_persistent_performance_adapter|spc_label_blind_corpus_features|persistent_part_performance_trajectory'
+
+      - name: Validate focused changes
+        run: |
+          git diff --check
+          grep -q 'spc_persistent_performance_adapter_test' cmake/semantic_model_tests.cmake
+
+      - name: Commit permanent regression registration
+        run: |
+          if git diff --quiet -- cmake/semantic_model_tests.cmake; then
+            exit 0
+          fi
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add cmake/semantic_model_tests.cmake
+          git commit -m 'test(spc): register persistent performance adapter'
+          git push
