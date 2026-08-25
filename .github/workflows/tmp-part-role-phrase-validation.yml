@@ -1,0 +1,26 @@
+name: Temporary part-role phrase validation
+
+on:
+  push:
+    branches:
+      - part-role-phrase-participation
+
+jobs:
+  strict-cxx17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused semantic controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in \
+            tests/model/part_role_gesture_descriptor_test.cpp \
+            tests/model/part_phrase_boundary_evidence_test.cpp \
+            tests/model/phrase_boundary_hypothesis_test.cpp \
+            tests/model/part_role_auditory_evidence_adapter_test.cpp \
+            tests/model/cross_architecture_phrase_discovery_test.cpp; do
+            exe="/tmp/$(basename "${source%.cpp}")"
+            c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. "$source" -o "$exe"
+            "$exe"
+          done
