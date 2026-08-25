@@ -1,6 +1,7 @@
 #pragma once
 
 #include "musical_execution_graph.h"
+#include "pitch_motion_articulation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,6 +15,20 @@
 
 namespace vgmtooling::model {
 
+struct part_gesture_performance_shape {
+    pitch_motion_articulation_kind kind = pitch_motion_articulation_kind::steady_pitch;
+    double pitch_range_semitones = 0.0;
+    double net_motion_semitones = 0.0;
+    std::size_t direction_changes = 0;
+    double confidence = 1.0;
+};
+
+inline bool is_resolved_part_gesture_performance_shape(
+    const part_gesture_performance_shape& shape) noexcept {
+    return shape.kind != pitch_motion_articulation_kind::in_episode_pitch_change_unresolved &&
+           shape.kind != pitch_motion_articulation_kind::rearticulation_boundary;
+}
+
 struct part_gesture_observation {
     node_id source_node = 0;
     node_id part_id = 0;
@@ -23,6 +38,7 @@ struct part_gesture_observation {
     std::string interval_semantics;
     evidence_status status = evidence_status::derived;
     double confidence = 1.0;
+    std::optional<part_gesture_performance_shape> performance_shape{};
 };
 
 struct part_motif_profile {
@@ -34,6 +50,7 @@ struct part_motif_profile {
     std::string pitch_basis;
     std::string interval_semantics;
     std::optional<double> pitch_range_octaves{};
+    std::optional<std::vector<part_gesture_performance_shape>> performance_shapes{};
     evidence_status status = evidence_status::derived;
     double evidence_confidence = 1.0;
 };
@@ -42,9 +59,11 @@ struct part_motif_similarity {
     std::optional<double> interval_similarity{};
     double rhythm_similarity = 0.0;
     std::optional<double> contour_similarity{};
+    std::optional<double> performance_shape_similarity{};
     double combined_similarity = 0.0;
     double identity_confidence = 0.0;
     bool pitch_comparable = false;
+    bool performance_shape_comparable = false;
     bool transposition_invariant = true;
     bool tempo_scale_invariant = true;
     double evidence_confidence = 1.0;
@@ -138,6 +157,17 @@ inline part_motif_profile make_part_motif_profile(
         }
         if (observation.confidence < 0.0 || observation.confidence > 1.0)
             throw std::invalid_argument("motif observation confidence must be in [0, 1]");
+        if (observation.performance_shape.has_value()) {
+            const auto& shape = *observation.performance_shape;
+            if (!is_resolved_part_gesture_performance_shape(shape))
+                throw std::invalid_argument("motif observation performance shape must be resolved");
+            if (!std::isfinite(shape.pitch_range_semitones) || shape.pitch_range_semitones < 0.0 ||
+                !std::isfinite(shape.net_motion_semitones) ||
+                !std::isfinite(shape.confidence) || shape.confidence < 0.0 || shape.confidence > 1.0) {
+                throw std::invalid_argument("motif observation performance-shape confidence and motion must be finite");
+            }
+            evidence_confidence = std::min(evidence_confidence, shape.confidence);
+        }
         weakest_status = static_cast<evidence_status>(std::max(
             static_cast<std::uint8_t>(weakest_status),
             static_cast<std::uint8_t>(observation.status)));
@@ -205,6 +235,17 @@ inline part_motif_profile make_part_motif_profile(
         result.pitch_range_octaves = high - low;
     }
 
+    bool all_have_performance_shape = true;
+    for (const auto& observation : observations)
+        all_have_performance_shape = all_have_performance_shape && observation.performance_shape.has_value();
+    if (all_have_performance_shape) {
+        std::vector<part_gesture_performance_shape> shapes;
+        shapes.reserve(observations.size());
+        for (const auto& observation : observations)
+            shapes.push_back(*observation.performance_shape);
+        result.performance_shapes = std::move(shapes);
+    }
+
     return result;
 }
 
@@ -230,6 +271,38 @@ inline double contour_match_similarity(
     for (std::size_t index = 0; index < first.size(); ++index)
         matches += first[index] == second[index] ? 1u : 0u;
     return static_cast<double>(matches) / static_cast<double>(first.size());
+}
+
+inline double compare_part_gesture_performance_shapes(
+    const std::vector<part_gesture_performance_shape>& first,
+    const std::vector<part_gesture_performance_shape>& second) {
+    if (first.size() != second.size() || first.empty())
+        return 0.0;
+
+    std::size_t kind_matches = 0;
+    double range_difference = 0.0;
+    double net_difference = 0.0;
+    double direction_difference = 0.0;
+    for (std::size_t index = 0; index < first.size(); ++index) {
+        kind_matches += first[index].kind == second[index].kind ? 1u : 0u;
+        range_difference += std::fabs(
+            first[index].pitch_range_semitones - second[index].pitch_range_semitones);
+        net_difference += std::fabs(
+            first[index].net_motion_semitones - second[index].net_motion_semitones);
+        const auto first_changes = static_cast<double>(first[index].direction_changes);
+        const auto second_changes = static_cast<double>(second[index].direction_changes);
+        direction_difference += std::fabs(first_changes - second_changes);
+    }
+
+    const double count = static_cast<double>(first.size());
+    const double kind_similarity = static_cast<double>(kind_matches) / count;
+    const double range_similarity = 1.0 / (1.0 + 0.25 * (range_difference / count));
+    const double net_similarity = 1.0 / (1.0 + 0.25 * (net_difference / count));
+    const double direction_similarity = 1.0 / (1.0 + direction_difference / count);
+    return 0.40 * kind_similarity +
+           0.25 * range_similarity +
+           0.25 * net_similarity +
+           0.10 * direction_similarity;
 }
 
 inline part_motif_similarity compare_part_motif_profiles(
@@ -266,8 +339,20 @@ inline part_motif_similarity compare_part_motif_profiles(
         total_weight += 0.65;
     }
 
+    result.performance_shape_comparable =
+        first.performance_shapes.has_value() && second.performance_shapes.has_value() &&
+        first.performance_shapes->size() == second.performance_shapes->size() &&
+        !first.performance_shapes->empty();
+    if (result.performance_shape_comparable) {
+        result.performance_shape_similarity = compare_part_gesture_performance_shapes(
+            *first.performance_shapes,
+            *second.performance_shapes);
+        weighted_sum += 0.20 * *result.performance_shape_similarity;
+        total_weight += 0.20;
+    }
+
     result.combined_similarity = total_weight > 0.0 ? weighted_sum / total_weight : 0.0;
-    const double structural_identity = result.pitch_comparable
+    const double structural_identity = result.pitch_comparable || result.performance_shape_comparable
         ? result.combined_similarity
         : std::min(result.combined_similarity, rhythm_only_motif_identity_ceiling);
     result.identity_confidence = std::min(structural_identity, result.evidence_confidence);

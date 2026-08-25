@@ -1,4 +1,4 @@
-#include "../../components/vgm/enhancement/genesis_persistent_performance_adapter.h"
+#include "../../components/vgm/enhancement/genesis_part_motif_adapter.h"
 
 #include <cassert>
 #include <cstdint>
@@ -236,6 +236,18 @@ int main() {
         assert(from_part.has_value());
         assert(from_part->identity.subject_nodes == episodes);
         assert(from_part->segments.size() == 3);
+
+        const auto trajectory_motif = make_genesis_performance_trajectory_motif_profile(
+            graph,
+            part_id,
+            clocks,
+            "part-motif-test",
+            continuity);
+        assert(trajectory_motif.has_value());
+        assert(trajectory_motif->interval_octaves.has_value());
+        // The first episode has only one trustworthy pitch state. Its motion is
+        // unresolved, so the whole motif window withholds shape comparison.
+        assert(!trajectory_motif->performance_shapes.has_value());
 
         const auto discovered = discover_genesis_ym2612_persistent_performances(
             graph,

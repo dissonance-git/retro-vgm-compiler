@@ -618,3 +618,24 @@ add_test(
     NAME spc_persistent_performance_adapter
     COMMAND spc_persistent_performance_adapter_test
 )
+
+
+# Performed-trajectory shape evidence feeds the existing motif engine.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    performed_part_motif_shape_test
+)
+
+add_executable(
+    performed_part_motif_shape_test
+    tests/model/performed_part_motif_shape_test.cpp
+)
+
+target_include_directories(
+    performed_part_motif_shape_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME performed_part_motif_shape
+    COMMAND performed_part_motif_shape_test
+)

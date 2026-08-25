@@ -1,5 +1,6 @@
 #include "components/spc/spc_label_blind_corpus_features.h"
 #include "components/spc/spc_persistent_performance_adapter.h"
+#include "components/spc/spc_part_motif_adapter.h"
 
 #include <cassert>
 #include <cmath>
@@ -186,6 +187,19 @@ int main() {
         assert(performance.rearticulation_boundaries[0].next_physical_episode_id == value.second);
         assert(performance.rearticulation_boundaries[1].physical_episode_id == value.second);
         assert(performance.rearticulation_boundaries[1].next_physical_episode_id == value.third);
+
+        const auto parts = value.graph.nodes_of_kind(node_kind::part);
+        assert(parts.size() == 1);
+        const auto trajectory_motif = make_spc_performance_trajectory_motif_profile(
+            value.graph,
+            parts.front()->id,
+            "spc-trajectory-motif-test",
+            policy());
+        assert(trajectory_motif.has_value());
+        assert(trajectory_motif->interval_octaves.has_value());
+        // Current SPC capture supplies one trustworthy pitch state per episode.
+        // Unresolved motion is absence of evidence, never a matching shape.
+        assert(!trajectory_motif->performance_shapes.has_value());
     }
 
     {

@@ -1,9 +1,11 @@
 #pragma once
 
 #include "spc_part_evidence.h"
+#include "spc_persistent_performance_adapter.h"
 #include "../../model/part_motif_discovery.h"
 #include "../../model/part_motif_profile.h"
 #include "../../model/part_phrase_boundary_discovery.h"
+#include "../../model/performed_part_motif_bridge.h"
 
 #include <algorithm>
 #include <cmath>
@@ -131,6 +133,72 @@ discover_spc_part_phrase_boundaries(
         minimum_gap_ratio,
         0.95,
         "spc-part-phrase-discovery");
+}
+
+
+inline std::optional<std::vector<vgmtooling::model::part_gesture_observation>>
+collect_spc_performance_trajectory_gestures(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const std::string& source,
+    spc_part_continuity_policy continuity_policy = {},
+    vgmtooling::model::pitch_motion_analysis_policy motion_policy = {}) {
+    using namespace vgmtooling::model;
+
+    const node* part = graph.find_node(part_id);
+    if (part == nullptr || part->kind != node_kind::part)
+        throw std::invalid_argument("SPC performed-trajectory motif collection requires a persistent part");
+    const auto part_evidence = read_persistent_part_motif_evidence(*part);
+    auto performance = project_spc_part_performance(
+        graph,
+        part_id,
+        source,
+        continuity_policy,
+        motion_policy);
+    if (!performance.has_value())
+        return std::nullopt;
+    return make_performed_part_gesture_observations(
+        *performance,
+        part_id,
+        part_evidence.status,
+        part_evidence.confidence);
+}
+
+inline std::optional<vgmtooling::model::part_motif_profile>
+make_spc_performance_trajectory_motif_profile(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const std::string& source,
+    spc_part_continuity_policy continuity_policy = {},
+    vgmtooling::model::pitch_motion_analysis_policy motion_policy = {}) {
+    auto observations = collect_spc_performance_trajectory_gestures(
+        graph,
+        part_id,
+        source,
+        continuity_policy,
+        motion_policy);
+    if (!observations.has_value() || observations->size() < 3)
+        return std::nullopt;
+    return vgmtooling::model::make_part_motif_profile(*observations);
+}
+
+inline std::vector<vgmtooling::model::repeated_part_motif_hypothesis>
+discover_spc_performance_trajectory_motifs(
+    const vgmtooling::model::musical_execution_graph& graph,
+    vgmtooling::model::node_id part_id,
+    const std::string& source,
+    spc_part_continuity_policy continuity_policy = {},
+    const vgmtooling::model::part_motif_discovery_policy& motif_policy = {},
+    vgmtooling::model::pitch_motion_analysis_policy motion_policy = {}) {
+    auto observations = collect_spc_performance_trajectory_gestures(
+        graph,
+        part_id,
+        source,
+        continuity_policy,
+        motion_policy);
+    if (!observations.has_value())
+        return {};
+    return vgmtooling::model::discover_repeated_part_motifs(*observations, motif_policy);
 }
 
 } // namespace gameaudio::spc
