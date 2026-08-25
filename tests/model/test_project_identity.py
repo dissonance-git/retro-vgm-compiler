@@ -19,17 +19,22 @@ def test_current_repository_has_no_deprecated_project_name():
     assert module.scan_repository(ROOT) == []
 
 
-def test_scanner_finds_each_deprecated_name_without_embedding_it_in_this_test(tmp_path):
+def test_scanner_finds_each_deprecated_identity_without_embedding_it_in_this_test(tmp_path):
     module = _load_tool()
     deprecated = (
         "Game" + " Music" + " Interpreter",
         "Retro" + " VGM" + " Compiler",
+        "retro-vgm" + "-compiler-roadmap.md",
     )
     for index, name in enumerate(deprecated):
         (tmp_path / f"old-{index}.md").write_text(f"# {name}\n", encoding="utf-8")
     findings = module.scan_repository(tmp_path)
-    assert len(findings) == 2
-    assert {finding[0] for finding in findings} == {Path("old-0.md"), Path("old-1.md")}
+    assert len(findings) == 3
+    assert {finding[0] for finding in findings} == {
+        Path("old-0.md"),
+        Path("old-1.md"),
+        Path("old-2.md"),
+    }
 
 
 def test_scanner_allows_historical_lineage(tmp_path):
