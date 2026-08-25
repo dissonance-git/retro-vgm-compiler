@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Repair the generated studio-provider setter for SNESAPU's legacy PROC macros.
+"""Give injected SNESAPU PROC arguments collision-proof names.
 
 The pinned macro.inc implements procedure arguments with ordinary `%define`
-aliases rather than context-local aliases. Those aliases survive ENDP. The
-pre-BRR setter therefore leaves `user` defined as a stack expression; reusing
-`user` as the fourth argument of the immediately following studio setter can
-cause PROC to expand that argument before defining it and poison the EBP token.
-
-Keep the generated assembly faithful to the historical macro system by giving
-the studio user argument a unique identifier. This is an exact, singular,
-fail-closed post-patch delta and runs immediately after the studio provider is
-materialized.
+aliases, and ENDP does not remove them. Those aliases therefore remain active
+for later source text. Only the project-injected procedures are changed here:
+each formal receives a globally unique Omniphony-prefixed identifier while the
+historical SNESAPU procedures remain untouched. Every replacement is exact,
+singular, and fail-closed.
 """
 
 from __future__ import annotations
@@ -40,28 +36,30 @@ def main() -> int:
 
     replace_once(
         asm,
-        """PROC SetDSPStudioSourceProvider, beginCallback, sampleCallback, user
-
-    Mov     EAX,[beginCallback]
-    Mov     [studioSourceBegin],EAX
-    Mov     EAX,[sampleCallback]
-    Mov     [studioSourceSample],EAX
-    Mov     EAX,[user]
-    Mov     [studioSourceUser],EAX
-""",
-        """PROC SetDSPStudioSourceProvider, beginCallback, sampleCallback, studioUserArg
-
-    Mov     EAX,[beginCallback]
-    Mov     [studioSourceBegin],EAX
-    Mov     EAX,[sampleCallback]
-    Mov     [studioSourceSample],EAX
-    Mov     EAX,[studioUserArg]
-    Mov     [studioSourceUser],EAX
-""",
-        "legacy PROC studio user parameter alias",
+        "PROC SetDSPSourceCapture, enable\n\n    Mov     EAX,[enable]\n",
+        "PROC SetDSPSourceCapture, omnSourceCaptureEnableArg\n\n    Mov     EAX,[omnSourceCaptureEnableArg]\n",
+        "legacy PROC source-capture argument",
+    )
+    replace_once(
+        asm,
+        "PROC GetDSPSourceData, pFrames\n\n    Mov     EDX,[pFrames]\n",
+        "PROC GetDSPSourceData, omnSourceDataFramesArg\n\n    Mov     EDX,[omnSourceDataFramesArg]\n",
+        "legacy PROC source-data argument",
+    )
+    replace_once(
+        asm,
+        "PROC SetDSPPreBrrProvider, callback, user\n\n    Mov     EAX,[callback]\n    Mov     [preBrrProvider],EAX\n    Mov     EAX,[user]\n",
+        "PROC SetDSPPreBrrProvider, omnPreBrrCallbackArg, omnPreBrrUserArg\n\n    Mov     EAX,[omnPreBrrCallbackArg]\n    Mov     [preBrrProvider],EAX\n    Mov     EAX,[omnPreBrrUserArg]\n",
+        "legacy PROC pre-BRR arguments",
+    )
+    replace_once(
+        asm,
+        "PROC SetDSPStudioSourceProvider, beginCallback, sampleCallback, user\n\n    Mov     EAX,[beginCallback]\n    Mov     [studioSourceBegin],EAX\n    Mov     EAX,[sampleCallback]\n    Mov     [studioSourceSample],EAX\n    Mov     EAX,[user]\n",
+        "PROC SetDSPStudioSourceProvider, omnStudioBeginCallbackArg, omnStudioSampleCallbackArg, omnStudioUserArg\n\n    Mov     EAX,[omnStudioBeginCallbackArg]\n    Mov     [studioSourceBegin],EAX\n    Mov     EAX,[omnStudioSampleCallbackArg]\n    Mov     [studioSourceSample],EAX\n    Mov     EAX,[omnStudioUserArg]\n",
+        "legacy PROC studio arguments",
     )
 
-    print("SNESAPU legacy PROC parameter alias repaired")
+    print("SNESAPU injected legacy PROC parameter names isolated")
     return 0
 
 
