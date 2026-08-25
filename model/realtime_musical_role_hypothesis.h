@@ -21,6 +21,7 @@ enum class realtime_musical_role_cue : std::uint32_t {
     source_continuity = 1u << 5,
     shared_effect_identity = 1u << 6,
     persistent_part_identity = 1u << 7,
+    spectral_contrast = 1u << 8,
 };
 
 constexpr std::uint32_t role_cue_mask(realtime_musical_role_cue cue) noexcept {

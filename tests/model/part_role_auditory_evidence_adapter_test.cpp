@@ -1,6 +1,8 @@
 #include "model/part_role_auditory_evidence_adapter.h"
+#include "model/realtime_relational_auditory_salience.h"
 #include "model/spatial_source_part_binding.h"
 
+#include <array>
 #include <cassert>
 #include <cmath>
 
@@ -28,6 +30,8 @@ bool contains_role(
 realtime_source_spatial_observation salient_observation() {
     realtime_source_spatial_observation observation{};
     observation.audio_observed = true;
+    observation.source_id = 9001;
+    observation.generation = 3;
     observation.availability_fraction = 1.0f;
     observation.low_band_energy_ratio = 0.10f;
     observation.relative_energy = 1.0f;
@@ -36,6 +40,39 @@ realtime_source_spatial_observation salient_observation() {
     observation.lane_kind = spatial_audio_lane_kind::dry_source;
     observation.source_age_seconds = 0.5f;
     return observation;
+}
+
+std::array<realtime_source_spatial_observation, 2>
+relational_scene(bool spectrally_distinct, float target_age_seconds = 0.5f) {
+    std::array<realtime_source_spatial_observation, 2> observations{};
+
+    auto& target = observations[0];
+    target.audio_observed = true;
+    target.source_id = 9001;
+    target.generation = 3;
+    target.lane_kind = spatial_audio_lane_kind::dry_source;
+    target.availability_fraction = 1.0f;
+    target.activity = 1.0f;
+    target.relative_energy = 0.90f;
+    target.edge_ratio = 0.60f;
+    target.source_age_seconds = target_age_seconds;
+    target.coarse_band_energy_share = {0.05f, 0.15f, 0.80f};
+
+    auto& competitor = observations[1];
+    competitor.audio_observed = true;
+    competitor.source_id = 9002;
+    competitor.generation = 1;
+    competitor.lane_kind = spatial_audio_lane_kind::dry_source;
+    competitor.availability_fraction = 1.0f;
+    competitor.activity = 1.0f;
+    competitor.relative_energy = 0.10f;
+    competitor.edge_ratio = 0.20f;
+    competitor.source_age_seconds = 0.5f;
+    competitor.coarse_band_energy_share = spectrally_distinct
+        ? std::array<float, 3>{0.80f, 0.15f, 0.05f}
+        : target.coarse_band_energy_share;
+
+    return observations;
 }
 
 } // namespace
@@ -113,45 +150,110 @@ int main() {
         feedback_roles));
     assert(!feedback_descriptor.auditory_salience.has_value());
 
-    // A genuinely stronger independent auditory analyzer can use the same
-    // bridge in the future. Its confidence is still capped by persistent-part
-    // identity confidence before entering role inference.
-    realtime_musical_role_hypotheses independent_roles{};
-    independent_roles.foreground = {
-        0.90f,
-        0.85f,
-        role_cue_mask(realtime_musical_role_cue::relative_energy)
-            | role_cue_mask(realtime_musical_role_cue::activity),
-    };
-    auto independent_descriptor = descriptor;
-    assert(attach_realtime_auditory_salience(
-        independent_descriptor,
+    // Stronger auditory confidence is earned by a different question, not by
+    // raising the raw-acoustic cap: this stable source owns most scene energy
+    // and is spectrally distinct from an active dry competitor. The analyzer
+    // never reads the role-derived presentation prior.
+    const auto distinct_scene = relational_scene(true);
+    const auto relational = propose_relational_auditory_salience(
         source,
-        independent_roles));
-    assert(independent_descriptor.auditory_salience.has_value());
-    assert(std::fabs(independent_descriptor.auditory_salience->value - 0.90) < 1.0e-6);
-    assert(std::fabs(independent_descriptor.auditory_salience->confidence - 0.80) < 1.0e-6);
-    const auto independent_inference = infer_part_roles_for_window(
-        {independent_descriptor},
-        "auditory-part-binding-test");
-    assert(contains_role(independent_inference, musical_part_role::melodic_foreground));
+        distinct_scene.data(),
+        distinct_scene.size());
+    assert(relational.competitor_count == 1);
+    assert(relational.spectral_distinctiveness > 0.80f);
+    assert(relational.hypotheses.foreground.score > 0.85f);
+    assert(std::fabs(relational.hypotheses.foreground.confidence - 0.70f) < 1.0e-6f);
+    assert(realtime_role_hypothesis_uses_cue(
+        relational.hypotheses.foreground,
+        realtime_musical_role_cue::spectral_contrast));
+    assert(realtime_role_hypothesis_uses_cue(
+        relational.hypotheses.foreground,
+        realtime_musical_role_cue::source_continuity));
+    assert(!realtime_role_hypothesis_uses_cue(
+        relational.hypotheses.foreground,
+        realtime_musical_role_cue::presentation_prior));
 
-    // Missing or contradictory identity stays missing rather than being joined
-    // by source id, physical slot, or coincidental numeric equality.
+    auto relational_descriptor = descriptor;
+    assert(attach_realtime_auditory_salience(
+        relational_descriptor,
+        source,
+        relational.hypotheses));
+    assert(relational_descriptor.auditory_salience.has_value());
+    assert(std::fabs(relational_descriptor.auditory_salience->confidence - 0.70) < 1.0e-6);
+    assert(role_signal_strength_if_usable(relational_descriptor.auditory_salience).has_value());
+    const auto relational_inference = infer_part_roles_for_window(
+        {relational_descriptor},
+        "relational-auditory-salience-test");
+    assert(contains_role(relational_inference, musical_part_role::melodic_foreground));
+
+    // Equal loudness is not enough. With the same broad spectral profile as the
+    // active competitor, the target remains audible and energetic but its
+    // relational salience stays below the role-use threshold.
+    const auto blended_scene = relational_scene(false);
+    const auto blended = propose_relational_auditory_salience(
+        source,
+        blended_scene.data(),
+        blended_scene.size());
+    assert(blended.competitor_count == 1);
+    assert(blended.spectral_distinctiveness < 1.0e-6f);
+    assert(blended.hypotheses.foreground.confidence > 0.0f);
+    auto blended_descriptor = descriptor;
+    assert(attach_realtime_auditory_salience(
+        blended_descriptor,
+        source,
+        blended.hypotheses));
+    assert(blended_descriptor.auditory_salience.has_value());
+    assert(!role_signal_strength_if_usable(blended_descriptor.auditory_salience).has_value());
+    const auto blended_inference = infer_part_roles_for_window(
+        {blended_descriptor},
+        "blended-auditory-control");
+    assert(!contains_role(blended_inference, musical_part_role::melodic_foreground));
+
+    // A newly appeared source has not earned enough temporal reliability yet,
+    // even when its instantaneous spectral contrast is strong.
+    const auto young_scene = relational_scene(true, 0.10f);
+    const auto young = propose_relational_auditory_salience(
+        source,
+        young_scene.data(),
+        young_scene.size());
+    assert(young.hypotheses.foreground.score > 0.85f);
+    assert(young.hypotheses.foreground.confidence < 0.20f);
+    auto young_descriptor = descriptor;
+    assert(attach_realtime_auditory_salience(
+        young_descriptor,
+        source,
+        young.hypotheses));
+    assert(!role_signal_strength_if_usable(young_descriptor.auditory_salience).has_value());
+
+    // With no active dry competitor, there is no relational contrast claim to
+    // make. The analyzer must not smuggle the old single-source loudness cue in
+    // under the stronger confidence ceiling.
+    const std::array<realtime_source_spatial_observation, 1> solo{
+        distinct_scene[0],
+    };
+    const auto solo_result = propose_relational_auditory_salience(
+        source,
+        solo.data(),
+        solo.size());
+    assert(solo_result.competitor_count == 0);
+    assert(solo_result.hypotheses.foreground.confidence == 0.0f);
+
+    // Missing or contradictory persistent-part identity stays missing rather
+    // than being joined by source id, physical slot, or coincidental equality.
     spatial_source_evidence unbound{};
     unbound.source_id = part.id;
     auto unbound_descriptor = descriptor;
     assert(!attach_realtime_auditory_salience(
         unbound_descriptor,
         unbound,
-        independent_roles));
+        relational.hypotheses));
 
     auto wrong_descriptor = descriptor;
     wrong_descriptor.part_id = part.id + 1;
     assert(!attach_realtime_auditory_salience(
         wrong_descriptor,
         source,
-        independent_roles));
+        relational.hypotheses));
 
     return 0;
 }
