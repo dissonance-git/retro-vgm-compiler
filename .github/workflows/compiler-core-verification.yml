@@ -65,6 +65,39 @@ jobs:
               raise SystemExit('Genesis spatial-path assertion anchor not found')
           PY
 
+      - name: Repair YM2612 PCM stream default construction
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          header = Path('components/vgm/enhancement/ym2612_pcm_stream.h')
+          text = header.read_text(encoding='utf-8')
+          old = '    explicit ym2612_pcm_stream(double output_sample_rate = 48000.0) noexcept;'
+          new = '    ym2612_pcm_stream() noexcept;\n    explicit ym2612_pcm_stream(double output_sample_rate) noexcept;'
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('YM2612 PCM stream constructor anchor is not singular')
+              text = text.replace(old, new, 1)
+              header.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('YM2612 PCM stream constructor anchor not found')
+
+          implementation = Path('components/vgm/enhancement/ym2612_pcm_stream.cpp')
+          text = implementation.read_text(encoding='utf-8')
+          old = 'ym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {'
+          new = '''ym2612_pcm_stream::ym2612_pcm_stream() noexcept
+    : ym2612_pcm_stream(48000.0) {}
+
+ym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {'''
+          if 'ym2612_pcm_stream::ym2612_pcm_stream() noexcept' not in text:
+              if text.count(old) != 1:
+                  raise SystemExit('YM2612 PCM stream implementation anchor is not singular')
+              text = text.replace(old, new, 1)
+              implementation.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('YM2612 PCM stream default constructor is inconsistent')
+          PY
+
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
@@ -77,13 +110,23 @@ jobs:
           grep -q -- '-UNDEBUG' CMakeLists.txt
           grep -q 'spatial_playback_path::source_spatial' tests/vgm/genesis_enhanced_recomposition_test.cpp
           ! grep -q 'spatial_playback_path::source_full_sphere' tests/vgm/genesis_enhanced_recomposition_test.cpp
+          grep -q 'ym2612_pcm_stream() noexcept' components/vgm/enhancement/ym2612_pcm_stream.h
+          grep -q ': ym2612_pcm_stream(48000.0)' components/vgm/enhancement/ym2612_pcm_stream.cpp
       - name: Commit verified core repairs
         run: |
-          if git diff --quiet -- CMakeLists.txt tests/vgm/genesis_enhanced_recomposition_test.cpp; then
+          if git diff --quiet -- \
+            CMakeLists.txt \
+            tests/vgm/genesis_enhanced_recomposition_test.cpp \
+            components/vgm/enhancement/ym2612_pcm_stream.h \
+            components/vgm/enhancement/ym2612_pcm_stream.cpp; then
             exit 0
           fi
           git config user.name dissonance
           git config user.email ustreamusa@aim.com
-          git add CMakeLists.txt tests/vgm/genesis_enhanced_recomposition_test.cpp
-          git commit -m 'test(core): keep Release assertions semantically live'
+          git add \
+            CMakeLists.txt \
+            tests/vgm/genesis_enhanced_recomposition_test.cpp \
+            components/vgm/enhancement/ym2612_pcm_stream.h \
+            components/vgm/enhancement/ym2612_pcm_stream.cpp
+          git commit -m 'test(core): restore live Release verification'
           git push
