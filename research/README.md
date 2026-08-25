@@ -1,8 +1,6 @@
 # Research
 
-`research/` is organized by **durable research program**, not by date, game count, or latest experiment.
-
-For repository-wide orientation, start at the repository map in [`../README.md`](../README.md).
+`research/` is organized by **durable research program**, not date, game count, or latest experiment. Research can be dense; duplication and ambiguous ownership are the enemies.
 
 > Few trunks, many chapters. One canonical owner per question.
 
@@ -15,37 +13,27 @@ research/
 ├── runtime/      execution / synthesis / control / state
 ├── formats/      source / driver / chip / platform investigations
 ├── validation/   observatories / controls / pressure tests
-├── rendering/    fidelity / equivalence / reconstruction
-├── enhancement/  bounded enhanced-rendering experiments
-└── cache/        reusable derived analysis, never source truth
+└── rendering/    fidelity / equivalence / reconstruction / enhancement
 ```
 
-A game gets a project folder only when it is itself an integrative testbed. Otherwise it remains a corpus/control under the general program that owns the question.
+A named game gets a project folder only when the game itself is an integrative testbed. Otherwise it remains a corpus/control under the general program that owns the question.
+
+Derived analysis caches are runtime state, not research documents. Tools may materialize them under ignored `research/cache/` or another caller-selected path; they are never source truth and are never committed.
 
 ## Fast routing
 
 | Question | Owner |
 | --- | --- |
-| whole-track / soundtrack understanding | `music/` + current semantic docs |
+| whole-track / soundtrack understanding | `music/` + `docs/musical-understanding.md` |
 | composer grammar / attribution method | `music/` |
 | Sonic 3 integrative attribution case | `projects/sonic3/` |
 | Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
-| source/driver/chip mechanism | `formats/` |
+| source / driver / chip mechanism | `formats/` |
 | runtime/state relation | `runtime/` |
 | external pressure test | `validation/` |
-| rendering equivalence/reconstruction | `rendering/` / `enhancement/` |
-| reusable parsed-song analysis | `cache/` |
+| rendering equivalence / reconstruction / enhancement | `rendering/` |
 
-For Genesis source semantics, use the ledger only as the provenance/re-entry surface. The conceptual and experimental owners remain:
-
-```text
-formats/genesis-driver-dialect-census.md
-formats/genesis-open-driver-anatomy.md
-formats/genesis/genesis-authoring-driver-toolchain-quarry.md
-formats/genesis/genesis-driver-source-vgm-boundary.md
-```
-
-This keeps source inventory, generic model conclusions, comparative driver anatomy, and forward/inverse validation distinct.
+For Genesis source semantics, the ledger is provenance/re-entry, while conceptual and experimental owners remain the format-specific documents around it. Inventory, generic model conclusions, comparative driver anatomy, and forward/inverse validation are separate concerns even when they share evidence.
 
 ## Sonic 3
 
@@ -55,10 +43,10 @@ Use:
 
 ```text
 projects/sonic3/README.md
-→ canonical policy / admission file for the question
+→ canonical policy / admission file
 → exact frozen preregistration
-→ cache only if reusable parsed analysis is needed
-→ execution/ result for that generation
+→ creator-blind derived cache if required
+→ execution / result for that generation
 ```
 
 Do not merge these ownership layers:
@@ -67,12 +55,10 @@ Do not merge these ownership layers:
 attribution-control-admissions.jsonl   grounded role evidence
 cube-calibration-policy.json           CUBE rules, holdouts, transfer boundary
 role-credit-index.jsonl                Genesis cache-routing controls
-cache/                                 derived creator-blind song objects
+derived cache                          disposable creator-blind song objects
 ```
 
-`tools/build_admitted_composer_caches.py` joins canonical admissions with the Genesis routing controls **at runtime**. Cross-format controls therefore remain visible without copying CUBE admissions into a second credit table.
-
-Corpus artist tags are locator evidence only. They do not override canonical admissions or historical role evidence.
+`tools/build_admitted_composer_caches.py` joins canonical admissions with routing controls at runtime. Cross-format controls remain visible without copying attribution state into a second source of truth.
 
 ```text
 composition
@@ -85,19 +71,6 @@ composition
 
 Similarity can support a calibrated candidate. It cannot establish historical authorship by itself.
 
-## Cache law
-
-`research/cache/` contains reusable **derived projections**, never source evidence.
-
-```text
-immutable source
-→ parse once
-→ creator-blind song capsule
-→ many cheap feature / experiment projections
-```
-
-Creator labels stay outside capsules. Experiment-specific similarity matrices, rankings, and reports stay with the bounded experiment rather than becoming the reusable cache.
-
 ## Placement law
 
 Before adding research material:
@@ -106,6 +79,7 @@ Before adding research material:
 2. Distinguish evidence, method contract, reusable derived object, and bounded result.
 3. Treat named games as controls unless the game itself is the integrative research problem.
 4. Extend an owner before creating a peer narrative.
+5. Move a result into a durable contract only after the experiment has earned that generalization.
 
 Navigation compression must never erase evidence boundaries:
 

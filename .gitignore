@@ -18,6 +18,7 @@ x64/
 Win32/
 ARM64/
 .private-component-build/
+.semantic-guard/
 dist/
 *.obj
 *.pch
@@ -27,6 +28,11 @@ dist/
 *.lib
 *.dll
 *.exe
+
+# Disposable derived state
+.cache/
+research/cache/
+docs/generated/
 
 # foobar2000 component packages
 *.fb2k-component

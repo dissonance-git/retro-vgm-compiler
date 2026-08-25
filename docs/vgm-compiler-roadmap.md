@@ -1,109 +1,22 @@
 # VGM Compiler roadmap
 
-## Purpose
+## Mission
 
-VGM Compiler is a provenance-aware compiler and musical reasoning system for video game music.
-
-Its job is not merely to decode old formats, render sound chips, or export MIDI. It should recover enough of the musical object that conversion, reconstruction, attribution, porting, explanation, re-realization, and search become different projections of the same internal understanding.
+VGM Compiler is a provenance-aware compiler and musical reasoning system for digital game music. Its job is not merely to decode formats, render sound chips, or export MIDI. It should recover enough of the musical object that analysis, reconstruction, attribution, porting, explanation, re-realization, and search become projections of the same evidence-carrying understanding.
 
 ```text
-SOURCE REPRESENTATIONS
-VGM / VGZ • SPC • PSF-family • USF • 2SF • GSF • NSF • KSS • HES
-SMPS • GEMS • SSEQ • MML • MIDI • trackers • source/disassembly • audio
-                         ↓
-               source-specific frontends
-                         ↓
-            exact execution / native semantics
-                         ↓
-                 musical semantic IR
-                         ↓
-parts • gestures • articulation • motifs • phrases • harmony • form
-arrangement • orchestration • counterpoint • soundtrack relationships
-                         ↓
-             reasoning / verification passes
-                         ↓
-                    backends
-MIDI • notation • synths • trackers • driver ports • analysis • annotations
+many native musical representations
+            ↓
+source-specific execution / semantics
+            ↓
+provenance-preserving musical model
+            ↓
+understanding / verification passes
+            ↓
+many useful projections and realizations
 ```
 
-The difficult problem is the middle, not the exporter.
-
-> **Understand the music deeply enough that downstream transformations become compiler operations over an evidence-carrying musical model.**
-
-## Architectural law
-
-The compiler must never collapse source-native truth into a convenient output representation.
-
-```text
-physical channel != bounded voice episode != persistent musical part
-register frequency != nominal frequency != performed pitch != heard pitch
-FM patch != instrument name
-sample identity != musical role
-pitch movement != note rearticulation
-simultaneous pitches != chord spelling != harmonic function
-MIDI export != canonical score
-```
-
-A backend may deliberately lose information, but the loss must be visible.
-
-```text
-IMPORT KNOWLEDGE, NOT ASSUMPTIONS.
-EXPORT INTERPRETATION, WITH LOSSES DECLARED.
-```
-
-## Current semantic ladder
-
-The active implementation is already well above raw decoding:
-
-```text
-encoded/native source truth
-        ↓
-format / memory / sequence semantics
-        ↓
-driver and program execution
-        ↓
-device / synthesis / sample state
-        ↓
-physical voice episodes and control trajectories
-        ↓
-persistent musical parts
-        ↓
-performed pitch / articulation / role evidence
-        ↓
-motifs and motif transformations
-        ↓
-part-level phrase boundaries
-        ↓
-cross-part phrase consensus
-        ↓
-phrase regions and phrase relationships
-        ↓
-tonal-center / key-class / chord-degree hypotheses
-        ↓
-harmonic verticalities / transitions / harmonic rhythm
-        ↓
-voice leading / bass-harmony interaction / counterpoint
-        ↓
-cadential-arrival evidence
-        ↓
-cadence morphology + independent formal-closure evidence
-        ↓
-deceptive-close vs deferred-resolution candidates
-        ↓
-phrase syntax / longer-range harmonic-formal planning
-        ↓
-sections / arrangement / orchestration / texture
-        ↓
-whole-work and soundtrack models
-        ↓
-creator-blind recurring structural grammar
-        ↓
-cross-soundtrack creator grammar
-        ↓
-role-aware attribution and explanation
-```
-
-Every arrow is an inference boundary. Failure to establish one layer must remain visible rather than being patched over with a convenient guess.
+See `architecture.md` for the semantic/evidence contract and `musical-understanding.md` for the north star.
 
 ## Structurally implemented now
 
@@ -111,8 +24,8 @@ The repository contains working machinery for:
 
 - exact VGM/VGZ command and Genesis device-state reconstruction;
 - SPC snapshot/runtime/sample/voice evidence;
-- PSF-family effective-object reconstruction and platform-specific probes;
-- source/driver/toolchain provenance and dialect/revision boundaries;
+- PSF-family and xSF effective-object reconstruction with platform-specific boundaries;
+- source/driver/toolchain provenance and dialect/revision distinctions;
 - persistent-part hypotheses that do not equate physical channels with musical identity;
 - performed pitch motion, articulation, motif shape, and source-backed role evidence;
 - motif recurrence and transformation classification;
@@ -120,112 +33,145 @@ The repository contains working machinery for:
 - tonal-center, key-class, pitch-class-collection, and diatonic chord-degree hypotheses;
 - harmonic verticalities, transitions, harmonic rhythm, voice leading, and bass/harmony interaction;
 - cadential arrivals with provenance-bound degree evidence;
-- Ionian authentic, PAC/IAC, half, and leading-tone resolution morphology candidates;
+- Ionian authentic, PAC/IAC, half, and leading-tone-resolution morphology candidates;
 - independent non-cadence-derived formal-closure evidence;
-- morphology/formal-closure integration;
-- V→VI continuation and deferred-authentic-resolution candidates;
-- V→VI deceptive-close candidates requiring independent phrase completion;
+- `V → VI` deferred-authentic-resolution and deceptive-close candidates;
+- phrase-scale cadence arbitration that preserves local-close/global-continuation conflicts rather than forcing one label;
 - section, counterpoint, imitation, orchestration, and creator-grammar models;
 - source-native enhanced rendering and Omniphony handoff contracts;
-- semantic projection/round-trip experiments and a broad real corpus.
+- semantic projection/round-trip experiments and a broad immutable real corpus.
 
-## Active frontier: cadence arbitration and phrase syntax
+Every arrow between these layers is an inference boundary. Missing evidence must remain visible.
 
-The compiler now has two bounded interpretations for an Ionian V→VI arrival.
+## Active frontier: positive phrase-role evidence
+
+The previous gap was representational: the compiler could generate a deceptive-close candidate or a deferred-resolution candidate but had no place to keep both when the music supported both views at different scales.
+
+That gap is now closed. The arbitration layer and regression preserve conflict.
+
+The next gap is **positive syntax**. Preserving ambiguity is necessary but not sufficient. The compiler must now accumulate longer-range evidence that explains what the phrase does after an arrival.
+
+Target phrase-role vocabulary should be earned by evidence such as:
 
 ```text
-V → VI
-+ cross-part continuation through VI
-+ later independently grounded V → I closure
-→ deferred authentic resolution candidate
+ending
+continuation
+new-phrase onset
+reroute
+return
+prolongation
+delayed authentic resolution
+nested local close inside global continuation
 ```
 
-```text
-V → VI
-+ independently grounded phrase completion at VI
-+ no circular cadence-derived closure witness
-→ deceptive cadence candidate
-```
+For Ionian `V → VI`, the next question is:
 
-This closes the previous representational gap but deliberately leaves the final classification unresolved. Local morphology and local grouping can disagree, and real music can make the VI arrival sound both locally closing and globally continuational.
+> What happens after the VI arrival, and what independent evidence makes it function as an ending, continuation, reroute, or nested event at different scales?
 
-The next implementation sequence is:
+## Next implementation sequence
 
-1. introduce a phrase-role / cadence-arbitration layer that can consume both candidate families without allowing either one to erase the other;
-2. add longer-range evidence for continuation, return, prolongation, new-phrase onset, and delayed authentic closure;
-3. define explicit conflict states for cases where local closure and subsequent continuation are both grounded;
-4. make final cadence-class establishment conditional on the arbitration layer rather than on chord morphology alone;
-5. pressure-test the distinction on real and matched synthetic passages before adding richer cadence vocabulary.
+1. **Phrase-role evidence objects**
+   - represent role hypotheses independently of cadence class;
+   - retain temporal scope and formal scale;
+   - keep support provenance and incompatible alternatives.
 
-The next question is therefore not `is V→VI deceptive?` It is:
+2. **Continuation evidence**
+   - grounded continuation of persistent parts through/after an arrival;
+   - motivic continuation or sequence;
+   - sustained harmonic process;
+   - phrase-boundary disagreement that is not circularly derived from cadence labels.
 
-> **What happens after the arrival, and does the surrounding phrase syntax treat VI as an ending, a reroute, or both at different scales?**
+3. **New-phrase and return evidence**
+   - re-onset after a boundary;
+   - recurrence/return of previously grounded material;
+   - orchestration/register reset or transformation when independently supported;
+   - distinguish `continuation of the same phrase` from `new phrase after local close`.
 
-## Near-term priorities after cadence arbitration
+4. **Prolongation and delayed-resolution relations**
+   - connect local harmonic events across intervening material without flattening the intervening phrase syntax;
+   - represent whether a later authentic arrival belongs to the same larger process or a new one.
 
-### 1. Phrase syntax and longer-range harmony
+5. **Multi-scale arbitration**
+   - allow one event to be locally closing and globally continuational;
+   - require explicit scale/scope rather than forcing one global Boolean.
 
-Use grounded local events to model phrase roles, returns, continuation, prolongation, deferred resolution, and longer-range harmonic planning. Do not turn Roman numerals or chord sequences into a lookup table for form.
+6. **Real-corpus pressure**
+   - add matched synthetic controls first;
+   - then freeze source-backed real passages before final labels are admitted;
+   - treat disagreement as information about missing evidence.
 
-### 2. Instrumentation role and orchestration grammar
+Final cadence-class establishment should remain downstream of this phrase-role layer rather than chord morphology alone.
+
+## Near-term musical priorities
+
+### Orchestration and role grammar
 
 Strengthen foreground/accompaniment, bass, inner voice, counterline, pad, ostinato, percussion, doubling, role transfer, register, density, texture, and timbral-form relations.
 
-### 3. Time-varying performance and dynamics
-
-Continue moving beyond onset-only descriptions. Preserve glides, vibrato, bends, ornaments, modulation, dynamics, articulation, and sustained movement as trajectories where the source supports them.
-
-### 4. Whole-work and soundtrack integration
-
-Make local analysis cooperate at cue and soundtrack scale: thematic families, returns, contrasts, transformed reprises, cue function, pacing, exceptions, and soundtrack-scale grammar.
-
-### 5. Real-corpus execution
-
-Move the strongest shared relations through heterogeneous permanent corpus controls. Freeze creator-blind structural observations before attribution labels are admitted.
-
-## Sonic 3 as integration laboratory
-
-Sonic 3 / Sonic & Knuckles remains a strong adversarial testbed because it forces many layers to cooperate:
+The target is relational:
 
 ```text
-SMPS source / disassembly
-        ↕
-prototype and final versions
-        ↕
-YM2612 / PSG / DAC execution
-        ↕
-VGM captures
-        ↕
-persistent parts / motifs / phrases / harmony / form
-        ↕
-cross-soundtrack creator controls
-        ↕
-composer / arranger / programmer attribution
-        ↕
-ROM and historical provenance as independent forensic evidence
+retained motif
++ changed bass
++ widened register
++ different role assignment
++ thicker texture
+→ transformed return
 ```
 
-Attribution labels are evaluation hypotheses, not feature inputs. ROM forensics is quarantined from musical-blind extraction. Driver/toolchain similarity must not become composer evidence automatically.
+not a bag of independent feature counts.
 
-## Porting as a test of understanding
+### Time-varying performance
 
-Cross-system porting is a future backend and a verification surface.
+Continue moving beyond onset-only descriptions. Preserve glides, vibrato, bends, ornaments, modulation, dynamics, articulation, release, and sustained movement as trajectories where the source supports them.
+
+### Whole-work integration
+
+Make local phrase, harmonic, motif, timbral, and orchestration analyses cooperate at cue scale: hierarchy among returns, contrasts, transitions, loops, transformations, and closure.
+
+### Soundtrack-scale integration
+
+Model thematic families, recurring formal/orchestration strategies, cue-function relations, exceptions, version/port relations, and collaborator/toolchain boundaries across a soundtrack.
+
+### Heterogeneous corpus execution
+
+Move the strongest shared relations through materially different source families. Freeze creator-blind structural observations before attribution labels are admitted.
+
+## Creator grammar and attribution
+
+Attribution remains a downstream stress test of genuine understanding.
+
+The strongest controls compare:
 
 ```text
-source representation A
-        ↓
-semantic IR
-        ↓
-target realization B
-        ↓
-re-analyze B
-        ↓
-semantic IR'
-        ↓
-compare declared musical obligations
+same creator / different soundtrack
+same soundtrack / different creator
+same driver / different creator
+same creator / different platform
+same work / different representation
 ```
 
-A successful port need not preserve bytes or timbre. It should preserve whichever musical properties the target contract declares important, while exposing intentional losses.
+Keep composition, arrangement/programming, patch/sample design, driver/toolchain, and final realization separate. Technical resemblance may strengthen a role-scoped hypothesis without silently becoming composer proof.
+
+Sonic 3 / Sonic & Knuckles remains a useful adversarial integration testbed because it combines version divergence, mixed credits, ROM/SMPS evidence, VGM execution, cross-soundtrack controls, and unresolved role boundaries.
+
+## Rendering and transformation
+
+The reference renderer remains the scientific control. Enhanced rendering should improve the same source-native instrument or realization only when the preservation contract supports the change.
+
+Spatial presentation is orthogonal to source-native enhancement.
+
+Future backend validation should increasingly use semantic round trips:
+
+```text
+source A → model → target B
+                 ↓
+            re-analyze B
+                 ↓
+              model'
+```
+
+A successful port or re-realization need not preserve bytes or timbre unless that contract requires them. It should preserve the named musical obligations and expose intentional losses.
 
 ## Future applications
 
@@ -245,32 +191,24 @@ Downstream goals include:
 - semantic deduplication;
 - arrangement reduction and expansion;
 - hardware counterfactuals;
-- an integrated VGM setmaking environment once the semantic core is mature enough.
+- integrated end-user tooling once the semantic core is trustworthy.
 
 ## Validation pattern
 
-A compiler this interpretive needs adversarial tests, not demonstrations alone.
+A compiler this interpretive needs adversarial evidence.
 
 ```text
-native source → execution → hide native source → recover upward → compare
+native source → execution → hide native semantics → recover upward → compare
 ```
 
 ```text
-representation A → IR
-representation B → IR
+representation A → model
+representation B → model
 compare without assuming equivalence
 ```
 
 ```text
-IR → backend B → re-analyze B → IR'
-measure semantic preservation
-```
-
-```text
-same creator / different soundtrack
-same soundtrack / different creator
-same driver / different creator
-same creator / different platform
+model → backend → re-analyze → compare declared obligations
 ```
 
 A disagreement is an experiment. Correction outranks a convenient narrative.
@@ -279,32 +217,17 @@ A disagreement is an experiment. Correction outranks a convenient narrative.
 
 Unless a discriminating test requires otherwise:
 
-1. arbitrate cadence and phrase syntax without circular evidence;
-2. strengthen phrase role, orchestration, texture, dynamics, and longer-range harmony;
-3. integrate cue-level analysis into whole-work and soundtrack models;
-4. execute those relations over heterogeneous real corpora;
-5. pressure-test representation invariance and creator invariance;
-6. improve human musical explanation and attribution from the same evidence;
-7. promote mature projections into reusable backends;
-8. use synth realization, porting, and semantic round trips as validation surfaces;
-9. build integrated end-user tooling after the compiler core is trustworthy.
+1. establish positive phrase-role and longer-range syntax evidence;
+2. strengthen orchestration, texture, dynamics, counterpoint, and longer-range harmony;
+3. integrate local analyses into whole-work models;
+4. integrate whole works into soundtrack-scale models;
+5. execute those relations over heterogeneous real corpora;
+6. pressure-test representation invariance and creator invariance;
+7. improve human musical explanation and role-aware attribution from the same evidence;
+8. promote mature projections into reusable backends;
+9. use synth realization, porting, and semantic round trips as verification surfaces;
+10. build integrated end-user tooling after the compiler core is trustworthy.
 
-The default question remains:
+The default research question remains:
 
-> **What prevents VGM Compiler from understanding this music more completely, and what experiment would remove that uncertainty?**
-
-## Long-term shape
-
-VGM Compiler should function less like a collection of format converters and more like compiler infrastructure for game music itself:
-
-```text
-many native musical languages
-            ↓
-     provenance-preserving IR
-            ↓
- understanding / verification passes
-            ↓
-      many useful realizations
-```
-
-The output is not the project. **The recovered musical meaning is the project.**
+> **What uncertainty most limits musical understanding now, and what experiment would discriminate among the remaining explanations?**

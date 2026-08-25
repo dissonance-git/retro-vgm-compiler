@@ -2,11 +2,9 @@
 
 `model/` owns **source-independent musical and evidential contracts that have earned sharing across materially different source families**.
 
-For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
+Start with [`../docs/architecture.md`](../docs/architecture.md) for the common semantic/evidence laws and [`../docs/vgm-compiler-roadmap.md`](../docs/vgm-compiler-roadmap.md) for the current frontier. Use `python tools/repository_catalog.py` from the repository root when exact mechanical inventory is useful.
 
 ## Semantic ladder
-
-The shared model is organized conceptually upward:
 
 ```text
 provenance-aware observations
@@ -23,9 +21,9 @@ provenance-aware observations
 → human-facing musical explanation
 ```
 
-Individual headers implement bounded pieces of this ladder. The generated repository catalog enumerates exact filenames.
+Individual headers implement bounded relations on this ladder. Higher layers may summarize lower evidence but may not erase uncertainty or provenance.
 
-## Important distinction
+## Ownership boundary
 
 `model/` is not a dumping ground for code used by two callers.
 
@@ -55,4 +53,4 @@ Common filename families are descriptive:
 *discourse*           human-readable projections over evidence
 ```
 
-Search within `model/` after choosing the semantic layer. Avoid repository-wide search unless the catalog route fails.
+Choose the semantic layer first, then search within `model/`. Repository-wide search is the fallback, not the entry point.

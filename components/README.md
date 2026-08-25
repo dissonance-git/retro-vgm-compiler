@@ -1,8 +1,8 @@
 # Components
 
-`components/` owns **source-family and device-specific semantics**. It is where native representations are respected before information is lifted into shared musical meaning.
+`components/` owns **source-family, device, decoder, execution, and source-native rendering semantics**. Native representations are respected here before information is lifted into the shared musical model.
 
-For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
+For repository-wide orientation see [`../README.md`](../README.md). For semantic boundaries see [`../docs/architecture.md`](../docs/architecture.md). Use `python tools/repository_catalog.py` when exact mechanical inventory is useful.
 
 ## Current families
 
@@ -17,26 +17,26 @@ For repository-wide navigation, start at the repository map in [`../README.md`](
 | `ncsf/` | NCSF / selected-SDAT Nintendo DS semantics |
 | `xsf/` | common xSF envelope, dependency, overlay, and provenance behavior only |
 
-A shared xSF container mechanism does **not** make the platform execution models equivalent.
+A shared xSF container mechanism does **not** make platform execution models equivalent.
 
 ## Routing rule
 
 ```text
-native bytes / object
+native bytes / executable object
 → matching component family
-→ source-specific semantics
-→ shared model only where the evidence supports the same musical relation
+→ source-specific semantics and gaps
+→ shared model only where evidence supports the same musical relation
 ```
 
-Do not put a chip-, driver-, container-, or platform-specific mechanism into `model/` merely because more than one experiment wants to inspect it.
+Do not put a chip-, driver-, container-, or platform-specific mechanism into `model/` merely because multiple experiments inspect it.
 
 ## New family rule
 
-Before creating another component:
+Before adding another component:
 
-1. Check the root `README.md` repository map and the generated repository inventory.
-2. Check whether the family already exists in corpus/audit tooling without yet needing a first-class runtime component.
-3. Add a component only when the source family has durable implementation semantics that need an owner.
-4. Share abstractions only after materially different families force the same contract.
+1. Check whether the source family already has an owner here or in source-family audit tooling.
+2. Add a first-class component only when durable implementation semantics need a stable owner.
+3. Keep format/container commonality separate from platform/runtime equivalence.
+4. Promote a shared abstraction only after materially different families force the same contract.
 
 > Shared abstractions should be discovered by agreement and disagreement.

@@ -1,8 +1,15 @@
 # Tools
 
-`tools/` contains reusable repository-facing commands. Before writing another script, check this shelf and the generated inventory from `repository_catalog.py`.
+`tools/` contains reusable repository-facing commands. A tool should expose an operation, not become a second database or a status diary.
 
-For repository-wide navigation, start at the repository map in [`../README.md`](../README.md).
+For repository-wide navigation start at [`../README.md`](../README.md). For exact mechanical inventory run:
+
+```bash
+python tools/repository_catalog.py
+python tools/repository_catalog.py --json
+```
+
+The catalog is generated on demand and printed to stdout. It is not committed documentation.
 
 ## Tool families
 
@@ -41,15 +48,7 @@ xsf_*
 z80_*
 ```
 
-The exact current filenames are enumerated by:
-
-```text
-python tools/repository_catalog.py
-```
-
 ## Ownership rule
-
-A tool should be a **thin executable route to an existing owner**, not a second home for project state.
 
 ```text
 canonical source / manifest / research contract
@@ -61,13 +60,4 @@ derived result / validation / projection
 
 Do not hide durable attribution labels, corpus provenance, research decisions, or semantic contracts inside a utility when a canonical data/document owner exists.
 
-## Addition rule
-
-Add a new tool only when at least one is true:
-
-- a repeatable operation has no existing command;
-- a validation should be executable rather than prose-only;
-- expensive parsing can be converted into reusable cached work;
-- several research cases need the same bounded operation.
-
-Prefer extending an existing tool when the new behavior shares the same input/output contract and owner.
+Add a tool when a repeatable operation lacks a route, a validation should be executable, expensive work can be cached safely, or several research cases need the same bounded operation. Prefer extending an existing tool when input/output semantics and ownership are the same.
