@@ -85,10 +85,7 @@ jobs:
           implementation = Path('components/vgm/enhancement/ym2612_pcm_stream.cpp')
           text = implementation.read_text(encoding='utf-8')
           old = 'ym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {'
-          new = '''ym2612_pcm_stream::ym2612_pcm_stream() noexcept
-    : ym2612_pcm_stream(48000.0) {}
-
-ym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {'''
+          new = 'ym2612_pcm_stream::ym2612_pcm_stream() noexcept\n    : ym2612_pcm_stream(48000.0) {}\n\nym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {'
           if 'ym2612_pcm_stream::ym2612_pcm_stream() noexcept' not in text:
               if text.count(old) != 1:
                   raise SystemExit('YM2612 PCM stream implementation anchor is not singular')
