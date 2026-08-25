@@ -71,6 +71,8 @@ int main() {
     const auto rearticulation = make_rearticulation_boundary(3, 4, 0.96);
     CHECK(rearticulation.kind == pitch_motion_articulation_kind::rearticulation_boundary);
     CHECK(rearticulation.rearticulation_supported);
+    CHECK(rearticulation.physical_episode_id == 3);
+    CHECK(rearticulation.next_physical_episode_id == 4);
     CHECK(close_enough(rearticulation.confidence, 0.96));
 
     return 0;

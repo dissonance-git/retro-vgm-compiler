@@ -32,6 +32,7 @@ struct pitch_motion_articulation_hypothesis {
     pitch_motion_articulation_kind kind =
         pitch_motion_articulation_kind::in_episode_pitch_change_unresolved;
     node_id physical_episode_id = 0;
+    node_id next_physical_episode_id = 0;
     std::vector<node_id> source_nodes;
     std::vector<double> step_semitones;
     double pitch_range_semitones = 0.0;
@@ -178,6 +179,8 @@ inline pitch_motion_articulation_hypothesis make_rearticulation_boundary(
 
     pitch_motion_articulation_hypothesis result;
     result.kind = pitch_motion_articulation_kind::rearticulation_boundary;
+    result.physical_episode_id = ending_episode;
+    result.next_physical_episode_id = starting_episode;
     result.rearticulation_supported = true;
     result.confidence = confidence;
     return result;

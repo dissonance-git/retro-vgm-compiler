@@ -542,3 +542,37 @@ set_tests_properties(
     playera_deferred_postrender_patch_py
     PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+
+# Persistent identity + performed pitch/articulation compiler bridge.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    pitch_motion_articulation_test
+    persistent_part_performance_trajectory_test
+)
+
+add_executable(
+    pitch_motion_articulation_test
+    tests/model/pitch_motion_articulation_test.cpp
+)
+add_executable(
+    persistent_part_performance_trajectory_test
+    tests/model/persistent_part_performance_trajectory_test.cpp
+)
+
+target_include_directories(
+    pitch_motion_articulation_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_include_directories(
+    persistent_part_performance_trajectory_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME pitch_motion_articulation
+    COMMAND pitch_motion_articulation_test
+)
+add_test(
+    NAME persistent_part_performance_trajectory
+    COMMAND persistent_part_performance_trajectory_test
+)
