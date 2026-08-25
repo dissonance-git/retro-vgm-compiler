@@ -1,3 +1,4 @@
+#include "model/contextual_tertian_figuration_hypothesis.h"
 #include "model/tertian_triad_hypothesis.h"
 
 #include <algorithm>
@@ -69,6 +70,28 @@ const attribute* find_attribute(const node& value, const char* name) {
 
 bool close_enough(double first, double second) {
     return std::fabs(first - second) < 1e-9;
+}
+
+equal_temperament_pitch_projection contextual_projection(
+    std::int64_t tick,
+    std::vector<std::int64_t> steps,
+    std::vector<node_id> parts,
+    const equal_temperament_model& tuning,
+    double confidence = 0.91) {
+    equal_temperament_pitch_projection result;
+    result.tuning = tuning;
+    result.nearest_steps = std::move(steps);
+    result.confidence = confidence;
+    result.source_verticality.observation_time = {
+        time_domain::musical,
+        tick,
+        960,
+        0,
+    };
+    result.source_verticality.role = musical_pitch_role::performed;
+    result.source_verticality.part_ids = std::move(parts);
+    result.source_verticality.confidence = confidence;
+    return result;
 }
 
 } // namespace
@@ -196,6 +219,167 @@ int main() {
         rejected_detuned = true;
     }
     assert(rejected_detuned);
+
+    // Contextual figuration is a deliberately weaker layer above exact triad
+    // inference. A persistent upper part moves C-D-E while C/E/G remains the
+    // surrounding exact harmony. The four-class surface has no exact triad, but
+    // the linear part motion and matching context can support a bounded C-major
+    // continuation hypothesis without deleting the observed D.
+    constexpr node_id context_bass = 101;
+    constexpr node_id context_inner = 102;
+    constexpr node_id moving_part = 103;
+    constexpr node_id context_upper = 104;
+    const std::vector<node_id> context_parts{
+        context_bass,
+        context_inner,
+        context_upper,
+        moving_part,
+    };
+    const auto c_before = contextual_projection(
+        1000,
+        {48, 52, 55, 60},
+        context_parts,
+        tuning,
+        0.93);
+    const auto c_with_passing_d = contextual_projection(
+        1100,
+        {48, 52, 55, 62},
+        context_parts,
+        tuning,
+        0.91);
+    const auto c_after = contextual_projection(
+        1200,
+        {48, 52, 55, 64},
+        context_parts,
+        tuning,
+        0.92);
+    assert(infer_tertian_triad_hypotheses(c_before).size() == 1);
+    assert(infer_tertian_triad_hypotheses(c_with_passing_d).empty());
+    assert(infer_tertian_triad_hypotheses(c_after).size() == 1);
+    const auto passing = infer_contextual_tertian_figuration_hypothesis(
+        c_before,
+        c_with_passing_d,
+        c_after);
+    assert(passing.has_value());
+    assert(passing->root_pitch_class == 0);
+    assert(passing->quality == tertian_triad_quality::major);
+    assert(passing->inversion == triad_inversion::root_position);
+    assert(passing->figuration_kind == contextual_figuration_kind::passing_tone);
+    assert(passing->figuration_part_id == moving_part);
+    assert(passing->previous_step == 60);
+    assert(passing->figuration_step == 62);
+    assert(passing->next_step == 64);
+    assert(passing->figuration_pitch_class == 2);
+    assert(!passing->displaced_structural_pitch_class.has_value());
+    assert(passing->retained_structural_pitch_classes == 3);
+    assert(passing->surrounding_exact_triad_grounded);
+    assert(passing->bass_remains_structural);
+    assert(close_enough(
+        passing->confidence,
+        contextual_tertian_figuration_confidence_ceiling));
+
+    // A true neighbor can temporarily displace one structural chord class. The
+    // same persistent part moves E-F-E while C and G remain. This is weaker than
+    // an exact triad but still traceable to a specific performed line.
+    const auto neighbor_before = contextual_projection(
+        2000,
+        {48, 55, 60, 64},
+        context_parts,
+        tuning,
+        0.92);
+    const auto neighbor_surface = contextual_projection(
+        2100,
+        {48, 55, 60, 65},
+        context_parts,
+        tuning,
+        0.90);
+    const auto neighbor_after = contextual_projection(
+        2200,
+        {48, 55, 60, 64},
+        context_parts,
+        tuning,
+        0.92);
+    const auto neighbor = infer_contextual_tertian_figuration_hypothesis(
+        neighbor_before,
+        neighbor_surface,
+        neighbor_after);
+    assert(neighbor.has_value());
+    assert(neighbor->figuration_kind == contextual_figuration_kind::neighbor_tone);
+    assert(neighbor->figuration_pitch_class == 5);
+    assert(neighbor->displaced_structural_pitch_class.has_value());
+    assert(*neighbor->displaced_structural_pitch_class == 4);
+    assert(neighbor->retained_structural_pitch_classes == 2);
+
+    // Context is not allowed to erase a competing exact chord. C major around an
+    // exact A-minor first-inversion sonority remains a real harmonic alternative,
+    // even if one persistent part happens to trace G-A-G.
+    const auto competing_exact = contextual_projection(
+        2300,
+        {48, 52, 60, 69},
+        context_parts,
+        tuning,
+        0.90);
+    const auto exact_candidates = infer_tertian_triad_hypotheses(competing_exact);
+    assert(exact_candidates.size() == 1);
+    assert(exact_candidates.front().root_pitch_class == 9);
+    assert(exact_candidates.front().quality == tertian_triad_quality::minor);
+    assert(!infer_contextual_tertian_figuration_hypothesis(
+        neighbor_before,
+        competing_exact,
+        neighbor_after).has_value());
+
+    // Bass motion carries disproportionate harmonic information. Even a clean
+    // C-D-E passing line is not reduced away when the extra pitch is the bass.
+    const auto bass_before = contextual_projection(
+        3000,
+        {36, 48, 52, 55},
+        {moving_part, context_bass, context_inner, context_upper},
+        tuning,
+        0.92);
+    const auto passing_bass = contextual_projection(
+        3100,
+        {38, 48, 52, 55},
+        {moving_part, context_bass, context_inner, context_upper},
+        tuning,
+        0.90);
+    const auto bass_after = contextual_projection(
+        3200,
+        {40, 48, 52, 55},
+        {moving_part, context_bass, context_inner, context_upper},
+        tuning,
+        0.92);
+    assert(!infer_contextual_tertian_figuration_hypothesis(
+        bass_before,
+        passing_bass,
+        bass_after).has_value());
+
+    // Pitch-class resemblance without persistent-line continuity is insufficient.
+    // A transient D introduced by a new part cannot borrow C-major context from
+    // unrelated surrounding voices.
+    const auto unbound_surface = contextual_projection(
+        4100,
+        {48, 52, 55, 62},
+        {context_bass, context_inner, context_upper, 999},
+        tuning,
+        0.90);
+    assert(!infer_contextual_tertian_figuration_hypothesis(
+        c_before,
+        unbound_surface,
+        c_after).has_value());
+
+    // Surrounding harmony must actually agree. Similar local pitch material
+    // across a harmonic change is not enough to manufacture a stable triad.
+    const auto f_after = contextual_projection(
+        4200,
+        {41, 48, 53, 57},
+        context_parts,
+        tuning,
+        0.92);
+    assert(infer_tertian_triad_hypotheses(f_after).size() == 1);
+    assert(!infer_contextual_tertian_figuration_hypothesis(
+        c_before,
+        c_with_passing_d,
+        f_after).has_value());
 
     return 0;
 }
