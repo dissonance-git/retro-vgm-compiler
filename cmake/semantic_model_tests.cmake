@@ -576,3 +576,24 @@ add_test(
     NAME persistent_part_performance_trajectory
     COMMAND persistent_part_performance_trajectory_test
 )
+
+
+# Source-backed Genesis persistent-part performed trajectory regression.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    genesis_persistent_performance_adapter_test
+)
+
+add_executable(
+    genesis_persistent_performance_adapter_test
+    tests/vgm/genesis_persistent_performance_adapter_test.cpp
+)
+
+target_include_directories(
+    genesis_persistent_performance_adapter_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME genesis_persistent_performance_adapter
+    COMMAND genesis_persistent_performance_adapter_test
+)

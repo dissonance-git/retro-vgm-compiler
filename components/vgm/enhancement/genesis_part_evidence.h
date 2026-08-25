@@ -159,6 +159,8 @@ inline const vgmtooling::model::node* genesis_episode_onset_event(
 
 inline std::optional<double> genesis_relative_pitch_coordinate(
     const vgmtooling::model::node& onset) noexcept {
+    using vgmtooling::model::attribute;
+
     const attribute* family_item = find_genesis_part_attribute(onset, "device_family");
     const attribute* pitch_item = find_genesis_part_attribute(onset, "device_pitch_code");
     if (family_item == nullptr || pitch_item == nullptr)
