@@ -1,22 +1,14 @@
 # Audio programming languages
 
-## Purpose
+Audio and music programming languages are research observatories for VGM Compiler. They are not runtime dependencies and their syntax is not a template for a project-specific language. Their value is architectural: mature systems expose distinctions that remain useful when musical structure becomes timed synthesis and audio.
 
-Audio and music programming languages are research inputs for VGM Tooling's common musical execution model.
+The governing question is:
 
-They are not runtime dependencies and their syntax should not be copied into a new project-specific language merely for novelty. The value is architectural: mature systems reveal which distinctions remain useful when a symbolic or algorithmic musical idea becomes a timed synthesis process and finally audio.
+> What concepts preserve causality from musical instruction through scheduling, synthesis, control, routing, and signal generation while also supporting inverse recovery from executable game-music sources?
 
-The central question is:
-
-> What concepts are needed to preserve causality from musical instruction through scheduling, synthesis, control and signal flow to acoustic output?
-
-VGM Tooling needs the same concepts in the opposite direction when recovering musical meaning from VGM traces, machine snapshots, driver data and device execution.
-
-## Main lesson
+## Execution strata
 
 Do not model a music program as one undifferentiated event stream.
-
-A useful common decomposition is:
 
 ```text
 authored score / pattern / program
@@ -25,391 +17,159 @@ scheduler / temporal process
         ↓
 instrument definition
         ↓
-instrument or voice instance
+voice / instrument instance
         ↓
-control graph / trajectories
+control trajectories
         ↓
-DSP / synthesis graph
+synthesis / DSP graph
         ↓
 routing / buses / effects
         ↓
 audio stream
 ```
 
-Any source may omit or collapse some layers. Provenance must record which layers are explicit, recovered, derived or unknown.
+A source may expose, collapse, or omit any layer. Provenance records which layers are exact, decoded, reconstructed, inferred, or unknown.
 
-## Three especially useful pressure tests
-
-The current research gives three systems particularly clear roles in VGM Tooling. They are not proposed dependencies.
-
-### OpenMusic: upper musical structure
-
-OpenMusic belongs primarily in `docs/music-representation-systems.md`, but it completes the comparison here by pressure-testing the layer above raw execution.
-
-It asks whether VGM Tooling can preserve explicit musical objects, relations and transformations such as voice, rhythm, phrase and higher structure while retaining the route back to executable evidence.
+The inverse path is equally important:
 
 ```text
-musical object / structure
+machine execution
+        ↓
+state + events + timing
+        ↓
+performed voices / parts
+        ↓
+musical structure
+        ↓
+whole-track interpretation
+```
+
+Forward and inverse representations share vocabulary without sharing evidence status.
+
+## Pressure-test systems
+
+### OpenMusic: musical organization
+
+OpenMusic pressure-tests explicit musical objects, relations, constraints, and transformations above execution. It asks whether VGM Compiler can represent voice, rhythm, phrase, motif, and larger organization without disconnecting those hypotheses from executable evidence.
+
+```text
+musical object / relation
         ↓
 transformation / organization
         ↓
 performance or synthesis control
 ```
 
-The lesson is not to copy a visual composition environment. It is to ensure the common graph has somewhere honest to put musical structure that is neither a device register nor a perceptual guess.
+The transferable lesson is explicit upper-layer structure, not visual patching syntax.
 
-### SuperCollider: synthesis and running execution
+### SuperCollider: synthesis execution
 
-SuperCollider pressure-tests the middle of the graph:
+SuperCollider pressure-tests the distinction between an instrument definition, a running synth/voice instance, control state, synthesis graph, execution order, and buses.
 
 ```text
 instrument definition
         ↓
-running synth / voice instance
+running voice instance
         ↓
 control state
         ↓
-unit-generator / synthesis graph
+unit-generator graph
         ↓
-buses and execution order
+routing / execution order
 ```
 
-This is useful for distinguishing an instrument definition from one instantiated voice, and both from the physical or software slot currently executing them.
+For VGM Compiler this helps prevent a patch definition, one note episode, a hardware channel, and a persistent musical part from collapsing into one identity.
 
-### Max/MSP: mutable realtime signal and control topology
+### Max/MSP: mutable realtime topology
 
-Max/MSP pressure-tests realtime graph semantics:
+Max/MSP pressure-tests explicit graph topology and the separation of event/message flow, control state, and signal-rate flow.
 
 ```text
 message / event flow
-≠ control state
-≠ signal-rate flow
+!= control state
+!= signal-rate flow
 ```
 
-It is useful for asking whether the common model can represent explicit topology, stateful processing, feedback, routing and graph mutation without reducing the result to a fixed list of notes or a final PCM bus.
+That distinction matters for dynamic routing, feedback, stateful processing, and source graphs whose topology changes while audio is running.
 
-Together, these systems cover three different strata:
+### Structured Audio: synthesis-independent execution contracts
+
+MPEG-4 Structured Audio demonstrates a useful separation between orchestra/synthesis definition, score/control, sample resources, MIDI-style control, and scheduling. The transferable principle is that a common execution contract can describe multiple synthesis families without pretending those synthesis families are identical.
+
+VGM Compiler needs the same abstraction boundary across FM, wavetable, PSG, sample playback, custom DSP, and software synthesis, while retaining source-family-specific state beneath it.
+
+## Common model requirements
+
+The shared execution model should preserve at least these distinctions when the source supports them:
 
 ```text
-OpenMusic      → musical organization
-SuperCollider → synthesis execution
-Max/MSP       → realtime control / signal topology
+TIME
+source clock
+scheduler time
+voice-local time
+audio/sample time
+cross-source alignment
+
+IDENTITY
+source object
+instrument definition
+voice instance
+hardware/software execution slot
+persistent musical part
+auditory stream
+
+CONTROL
+discrete event
+continuous trajectory
+automation/state transition
+modulation relationship
+
+SYNTHESIS
+oscillator / generator
+sample region
+operator / partial topology
+envelope / modulation
+stateful DSP
+
+ROUTING
+source route
+bus / mix relationship
+effect graph
+output channel / spatial route
+
+PROVENANCE
+exact
+parsed
+derived
+inferred
+candidate
+unknown
 ```
 
-They are research observatories over the same larger process, not a three-part VGM Tooling runtime stack.
+These are linked representations, not one universal flattened schema.
 
-## Structured Audio precedent
+## Design rules
 
-MPEG-4 Structured Audio is a particularly close historical precedent.
+1. Keep source clocks and machine timing exact. Musical time is a derived projection when it is not explicit.
+2. Keep definitions separate from instances. A patch or instrument definition is not the same object as a sounding voice.
+3. Keep execution slots separate from musical identity. Channel reuse must not erase persistent-part hypotheses.
+4. Keep control-rate and audio-rate behavior distinct when the distinction affects causality.
+5. Preserve topology. A route, graph edge, or feedback relation can matter even when two renders sound similar locally.
+6. Treat scheduler semantics as evidence. Ordering, quantization, latency, and deferred execution can change musical behavior.
+7. Keep synthesis-family details below shared musical abstractions. Common vocabulary must not erase device semantics.
+8. Make inverse uncertainty explicit. Recovered musical organization remains a hypothesis unless encoded by the source.
+9. Keep rendering replaceable. The evidence model must survive alternate faithful or enhanced renderers.
+10. Prefer a graph of typed relationships over a single event list whenever causality crosses layers.
 
-Its toolset separates:
+## What VGM Compiler should not become
 
-- SAOL, an orchestra language for synthesis and DSP algorithms;
-- SASL, a score/control language for instrument instantiation and control;
-- a sample-bank format;
-- MIDI control semantics;
-- a scheduler that maps structural control into real-time sound generation.
+It should not become a new general-purpose music language merely because music languages are useful research inputs. It should not normalize all sources into MIDI, notation, or one synth graph. It should not let a convenient playback API become the semantic model.
 
-This is important because it standardizes not one synthesis method but a way to describe synthesis methods. FM, sampling, physical modelling and other synthesis systems can live under the same execution framework.
-
-VGM Tooling extends this idea in a different direction. It must support both forward execution and inverse recovery:
+The target is a provenance-preserving execution and understanding system that can move both directions:
 
 ```text
-symbolic / structured source
-        ↓
-execution model
-        ↓
-reference audio
-
-legacy trace / snapshot / executable state
-        ↓
-recovered execution model
-        ↓
-musical reasoning
+source-native execution → heard result → musical understanding
+musical hypothesis → supporting execution evidence
 ```
 
-The internal model should therefore describe synthesis and scheduling without assuming one chip family or one source syntax.
-
-## Time and scheduling
-
-### ChucK
-
-ChucK makes logical time a language-level concept. Time and duration are native values and concurrent programs advance explicit logical time.
-
-Useful lesson:
-
-- time is part of semantics, not incidental metadata;
-- simultaneous processes can share one deterministic temporal world;
-- event identity and execution order must survive concurrency;
-- a musical reasoning model needs exact temporal coordinates plus causal ordering.
-
-VGM Tooling should be able to distinguish source time, logical performance time, device time, sample time and loop-local time when those differ.
-
-### TidalCycles
-
-Tidal models a pattern approximately as a query from a timespan to events active during that span. It uses rational cyclical time and supports transformations that alter temporal structure while retaining a compositional relationship to the original pattern.
-
-Useful lesson:
-
-- a pattern need not be stored as a flat list of notes;
-- repeated and transformed structures can remain symbolic;
-- event intervals matter, not only point onsets;
-- continuous and discrete control patterns can share temporal structure;
-- musical repetition, rotation, stretching and subdivision are transformations over time rather than duplicated event data.
-
-This is relevant to driver loops, tracker patterns, MML loops, SMPS sequences and repeated VGM structures.
-
-## Multiple execution rates
-
-### Csound
-
-Csound distinguishes initialization-time, control-rate and audio-rate computation and separates instrument definitions from score events.
-
-Useful lesson:
-
-```text
-configuration / initialization
-≠ musical/control trajectory
-≠ audio-rate signal
-```
-
-VGM Tooling already encounters the same distinction in another form:
-
-- one-time chip or driver initialization;
-- note/envelope/modulation/control updates;
-- continuously evolving oscillator/sample/DSP state.
-
-The common model should preserve an update-rate or temporal-domain concept rather than pretending every value is the same kind of event.
-
-## Synthesis and routing graphs
-
-### SuperCollider
-
-SuperCollider separates the client language from the synthesis server. Synth definitions describe connected unit generators, running synths exist as nodes, node trees define execution order, and audio/control buses connect running objects.
-
-Useful lesson:
-
-- instrument definition and running instance are different identities;
-- a synthesis object can itself be a graph;
-- graph topology and execution order are part of the acoustic result;
-- buses and effects are first-class routing objects rather than properties attached to notes;
-- buffers are reusable source/state objects independent of any one note instance.
-
-This maps cleanly onto FM patches/operators, sample objects, QSound/effect paths, module partials and device mixers.
-
-### Faust
-
-Faust treats DSP programs as mathematical signal processors expressed through block-diagram composition. Its compiler has a semantic stage that produces signal expressions before target-specific code generation.
-
-Useful lesson:
-
-- DSP meaning can have an intermediate representation independent of implementation language or target platform;
-- graph composition can be reasoned about before rendering samples;
-- a signal-producing mechanism is not identical to its generated machine code;
-- deterministic DSP graphs are suitable for provenance and equivalence testing.
-
-VGM Tooling should similarly distinguish a recovered synthesis graph from the emulator implementation used to execute it.
-
-### Cmajor
-
-Cmajor explicitly distinguishes endpoint kinds such as streams, events and values between processors and graphs.
-
-Useful lesson:
-
-```text
-stream
-≠ event
-≠ persistent value/state
-```
-
-This distinction is highly useful for game-music execution:
-
-- PCM/audio and continuous modulation are streams;
-- note-on, key-on and register writes can be events;
-- patch parameters, routing state and configuration may be persistent values.
-
-The project should avoid forcing these into one event representation.
-
-### Max/MSP / Pure Data
-
-Visual dataflow languages distinguish message/control flow from signal-rate connections and make processing topology explicit.
-
-Useful lesson:
-
-- graph topology can be a primary representation;
-- control edges and signal edges are semantically different;
-- stateful processing objects and feedback paths need explicit identity;
-- routing, spatial and effect processing can be represented before final summation;
-- realtime graph changes may alter execution without changing the identity of the underlying musical source.
-
-The project does not need their visual UI model to benefit from their graph semantics.
-
-## Symbolic and notation languages
-
-MML, Alda, ABC, LilyPond and related score languages represent musical intention at a substantially higher level than device traces.
-
-They help identify concepts such as:
-
-- notes, rests and ties;
-- duration and meter;
-- parts/voices;
-- articulation;
-- tempo;
-- repeats and hierarchy;
-- instrument selection;
-- notation-specific structure.
-
-MML is especially important because many dialects also contain device-specific synthesis and driver instructions. It can therefore span both common musical semantics and chip realization semantics in one authored representation.
-
-Do not assume notation truth is performance truth. A written note, a driver event, a synthesis voice and a heard auditory stream remain separate identities.
-
-## Live coding and dynamic execution
-
-ChucK, SuperCollider, TidalCycles, Sonic Pi, Extempore and related systems demonstrate that a musical program can change while its temporal world continues running.
-
-Useful lesson:
-
-- program identity can persist through live mutation;
-- the state before and after a mutation needs a causal boundary;
-- scheduled future behavior and currently sounding state are distinct;
-- reasoning about music may require both program structure and execution history.
-
-This is relevant to game drivers that rewrite state dynamically, adaptive music and any future interactive formats.
-
-## Proposed common execution primitives
-
-The language comparison supports the following source-independent primitives.
-
-### Time
-
-- exact timestamp or qualified time coordinate;
-- duration / interval;
-- causal ordering;
-- loop/cycle identity;
-- update rate or temporal domain.
-
-### Program structure
-
-- part / logical process;
-- sequence or pattern;
-- loop / branch / transformation;
-- scheduler event;
-- program mutation where applicable.
-
-### Synthesis
-
-- instrument definition;
-- synthesis object;
-- running voice/instance;
-- operator/partial/oscillator/sample subobject;
-- parameter state;
-- continuous control trajectory.
-
-### Graph
-
-- node;
-- typed edge;
-- event edge;
-- control/value edge;
-- signal/audio edge;
-- bus;
-- effect/routing node;
-- buffer/sample object.
-
-### Acoustic output
-
-- isolated source contribution where obtainable;
-- mixed bus contribution;
-- reference output;
-- enhanced output;
-- exact render provenance.
-
-These primitives do not replace source-specific extensions. A YM2612 operator, S-DSP BRR voice and MT-32 partial remain different source objects even when they implement analogous roles in the common graph.
-
-## Reasoning consequence
-
-The LLM-facing representation should be graph-like and hierarchical rather than a giant chronological register dump.
-
-For example:
-
-```text
-musical part
-├ event/pattern history
-├ instrument definition
-│  └ synthesis graph
-├ running voice instances
-│  ├ control trajectories
-│  └ physical device allocation
-├ routing/effects graph
-├ acoustic contributions
-└ provenance
-   └ exact source commands / bytes / addresses
-```
-
-A query can descend only as far as needed.
-
-This supports questions such as:
-
-- Which program event caused this heard note?
-- Is this control change part of the instrument definition or the performance?
-- Did an instrument remain the same while its physical channel changed?
-- Which effect node created this energy?
-- Are two files different performances of the same program structure?
-- Does a repeated VGM command region correspond to a true musical loop or only repeated device behavior?
-
-## Validation opportunities
-
-Audio programming languages create useful forward-reference tests.
-
-### Symbolic-to-execution round trip
-
-```text
-MML / score / pattern
-→ known compiler or scheduler
-→ known synth/device
-→ execution trace
-→ VGM Tooling recovery
-```
-
-Compare the recovered model with the authored source.
-
-### Same program, different synthesis
-
-Hold score/pattern structure fixed while changing the synthesis engine.
-
-Test what remains one musical identity through FM, sample, wavetable, module or software-synth realizations.
-
-### Same synthesis graph, different implementation
-
-Run an equivalent synthesis graph through two independent implementations and compare the recovered graph and acoustic result.
-
-This can separate semantic identity from emulator/library implementation details.
-
-### Perceptual bridge
-
-Use exact structured state to generate controlled audio, then ask libaural to recover the perceptual organization from audio alone.
-
-The forward program becomes an answer key without requiring libaural to know the source language.
-
-## Research sources
-
-Important comparison systems include:
-
-- MPEG-4 Structured Audio: SAOL, SASL, sample banks and scheduler;
-- ChucK;
-- SuperCollider;
-- Csound / MUSIC-N lineage;
-- Faust;
-- Cmajor;
-- Max/MSP and Pure Data;
-- TidalCycles and related pattern languages;
-- Sonic Pi;
-- Extempore / Impromptu;
-- MML dialects and compilers;
-- Alda;
-- ABC notation;
-- LilyPond;
-- OpenMusic as the adjacent upper-level musical-object comparison;
-- future language families that expose materially different semantics.
-
-Use primary documentation and implementation sources where possible. Literature and other repositories are conceptual/reference inputs only. VGM Tooling's common implementation remains project-owned code.
+The language research is successful when it improves those crossings while keeping source truth, execution state, musical inference, and rendering distinct.
