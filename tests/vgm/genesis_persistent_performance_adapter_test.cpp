@@ -176,10 +176,15 @@ int main() {
         const auto first = add_ym2612_episode(graph, 10, 40, {1000});
         const auto second = add_ym2612_episode(graph, 45, 95, {1000, 1050, 1100, 1150});
         const auto third = add_ym2612_episode(graph, 100, 170, {1000, 1050, 950, 1050, 1000});
+        const std::vector<node_id> episodes = {
+            first.episode_id,
+            second.episode_id,
+            third.episode_id,
+        };
 
         const auto performance = infer_genesis_ym2612_persistent_performance(
             graph,
-            {first.episode_id, second.episode_id, third.episode_id},
+            episodes,
             clocks,
             "persistent-performance-test",
             continuity);
@@ -202,6 +207,45 @@ int main() {
         assert(performance->rearticulation_boundaries[1].physical_episode_id == second.episode_id);
         assert(performance->rearticulation_boundaries[1].next_physical_episode_id == third.episode_id);
         assert(performance->confidence >= persistent_part_trajectory_link_threshold);
+
+        // Once ordinary part discovery has admitted the persistent part into
+        // the graph, the performed trajectory is discoverable without callers
+        // handing the adapter the episode list again.
+        std::vector<persistent_part_hypothesis> transitions;
+        transitions.push_back(infer_genesis_persistent_part(
+            graph,
+            first.episode_id,
+            second.episode_id,
+            "part-graph-test",
+            continuity));
+        transitions.push_back(infer_genesis_persistent_part(
+            graph,
+            second.episode_id,
+            third.episode_id,
+            "part-graph-test",
+            continuity));
+        const auto identity = make_persistent_part_trajectory(std::move(transitions));
+        const node_id part_id = add_persistent_part_trajectory(graph, identity);
+
+        const auto from_part = project_genesis_ym2612_part_performance(
+            graph,
+            part_id,
+            clocks,
+            "part-graph-test",
+            continuity);
+        assert(from_part.has_value());
+        assert(from_part->identity.subject_nodes == episodes);
+        assert(from_part->segments.size() == 3);
+
+        const auto discovered = discover_genesis_ym2612_persistent_performances(
+            graph,
+            clocks,
+            "part-discovery-test",
+            continuity);
+        assert(discovered.size() == 1);
+        assert(discovered.front().identity.subject_nodes == episodes);
+        assert(discovered.front().segments[1].articulation.kind ==
+               pitch_motion_articulation_kind::glide_candidate);
     }
 
     {
