@@ -24,6 +24,10 @@ jobs:
           text = path.read_text(encoding='utf-8')
           for start_marker, end_marker in (
               (
+                  '# True default construction without permitting numeric implicit conversion.',
+                  'replace_once(\n    "components/vgm/enhancement/genesis_pitch_control_adapter.h",',
+              ),
+              (
                   '# The patch script contains both predecessor and successor strings.',
                   '# Initial device attachment has a proven zero-valued negative-time FM prefix,',
               ),
