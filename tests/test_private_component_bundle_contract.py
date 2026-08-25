@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -18,24 +19,59 @@ _verifier = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_verifier)
 
 
+def component_bytes(members: dict[str, bytes]) -> bytes:
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in members.items():
+            archive.writestr(name, payload)
+    return stream.getvalue()
+
+
 class PrivateComponentBundleContractTest(unittest.TestCase):
     def make_bundle(
         self,
         path: Path,
         *,
-        vgm: bytes = b"vgm-component",
-        spc: bytes = b"spc-component",
         commit: str = "1" * 40,
         readme: str = "enhanced and Surround remain independent controls.\n",
         mutate_manifest=None,
         mutate_sums=None,
         extra_entries: dict[str, bytes] | None = None,
     ) -> None:
+        vgm_members = {
+            "foo_input_vgm.dll": b"vgm-dll",
+            "omniphony_source.dll": b"vgm-omniphony",
+        }
+        spc_members = {
+            "foo_snesapu.dll": b"spc-dll",
+            "spcplayer.exe": b"spcplayer-exe",
+            "SNESAPU.dll": b"snesapu-dll",
+            "omniphony_source.dll": b"spc-omniphony",
+        }
+        vgm = component_bytes(vgm_members)
+        spc = component_bytes(spc_members)
+
         manifest = {
-            "retro_vgm_compiler": commit,
-            "final_playback_contract_hz": 48000,
-            "binary_architecture": dict(_verifier.EXPECTED_ARCHITECTURE),
-            "packages": list(_verifier.COMPONENTS),
+            "built_at_utc": "2026-08-25T00:00:00.0000000Z",
+            "retro_vgm_compiler_commit": commit,
+            "foo_input_vgm_bootstrap": {
+                "source_page": "https://example.invalid/vgm-bootstrap",
+                "sha256": "2" * 64,
+            },
+            "foobar_sdk": {
+                "release_date": "2025-03-07",
+                "source": "https://example.invalid/foobar-sdk.7z",
+                "sdk_project_git_blob": "3" * 40,
+                "pfc_project_git_blob": "4" * 40,
+            },
+            "libvgm": {"commit": "5" * 40},
+            "wtl": {"commit": "6" * 40},
+            "spcplay": {"commit": "7" * 40},
+            "omniphony": {
+                "commit": "8" * 40,
+                "rust_toolchain": "1.88.0",
+            },
+            "outputs": list(_verifier.EXPECTED_OUTPUTS),
         }
         if mutate_manifest is not None:
             mutate_manifest(manifest)
@@ -54,6 +90,12 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             "build-manifest.json": json.dumps(manifest).encode("utf-8"),
             "SHA256SUMS.txt": sums_text.encode("ascii"),
             "README.txt": readme.encode("utf-8"),
+            "VGM/foo_input_vgm.dll": vgm_members["foo_input_vgm.dll"],
+            "VGM/omniphony_source.dll": vgm_members["omniphony_source.dll"],
+            "SPC/foo_snesapu.dll": spc_members["foo_snesapu.dll"],
+            "SPC/spcplayer.exe": spc_members["spcplayer.exe"],
+            "SPC/SNESAPU.dll": spc_members["SNESAPU.dll"],
+            "SPC/omniphony_source.dll": spc_members["omniphony_source.dll"],
         }
         if extra_entries:
             entries.update(extra_entries)
@@ -67,7 +109,7 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             bundle = Path(tmp) / "bundle.zip"
             self.make_bundle(bundle)
             manifest = _verifier.verify_bundle_metadata(bundle)
-            self.assertEqual(manifest["retro_vgm_compiler"], "1" * 40)
+            self.assertEqual(manifest["retro_vgm_compiler_commit"], "1" * 40)
 
     def test_rejects_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -88,28 +130,26 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "40-hex source commit"):
                 _verifier.verify_bundle_metadata(bundle)
 
-    def test_rejects_wrong_architecture_manifest(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            bundle = Path(tmp) / "bundle.zip"
-            self.make_bundle(
-                bundle,
-                mutate_manifest=lambda manifest: manifest["binary_architecture"].__setitem__(
-                    "spcplayer", "x64"
-                ),
-            )
-            with self.assertRaisesRegex(AssertionError, "binary_architecture mismatch"):
-                _verifier.verify_bundle_metadata(bundle)
-
-    def test_rejects_wrong_package_list(self) -> None:
+    def test_rejects_wrong_output_list(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bundle = Path(tmp) / "bundle.zip"
             self.make_bundle(
                 bundle,
                 mutate_manifest=lambda manifest: manifest.__setitem__(
-                    "packages", [_verifier.VGM_COMPONENT]
+                    "outputs", [_verifier.VGM_COMPONENT]
                 ),
             )
-            with self.assertRaisesRegex(AssertionError, "manifest packages"):
+            with self.assertRaisesRegex(AssertionError, "manifest outputs mismatch"):
+                _verifier.verify_bundle_metadata(bundle)
+
+    def test_rejects_runtime_copy_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.zip"
+            self.make_bundle(
+                bundle,
+                extra_entries={"VGM/foo_input_vgm.dll": b"different-vgm-dll"},
+            )
+            with self.assertRaisesRegex(AssertionError, "runtime copy differs"):
                 _verifier.verify_bundle_metadata(bundle)
 
     def test_rejects_proper_name_enhanced_in_readme(self) -> None:
@@ -123,7 +163,12 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
                 _verifier.verify_bundle_metadata(bundle)
 
     def test_rejects_extra_or_nested_bundle_file(self) -> None:
-        for name in ("unexpected.bin", "nested/extra.bin"):
+        for name in (
+            "unexpected.bin",
+            "nested/extra.bin",
+            "VGM/extra.bin",
+            "VGM/nested/extra.bin",
+        ):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
                 bundle = Path(tmp) / "bundle.zip"
                 self.make_bundle(bundle, extra_entries={name: b"x"})
