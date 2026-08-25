@@ -2,14 +2,21 @@
 
 `tools/` contains reusable repository-facing commands. A tool should expose an operation, not become a second database or a status diary.
 
-For repository-wide navigation start at [`../README.md`](../README.md). For exact mechanical inventory run:
+For repository-wide navigation start at [`../README.md`](../README.md). For a concept-scoped, context-efficient projection run:
+
+```bash
+python tools/repository_catalog.py --focus cadence
+python tools/repository_catalog.py --focus cadence --limit 8 --json
+```
+
+Use the full mechanical inventory only when repository shape itself is the question:
 
 ```bash
 python tools/repository_catalog.py
 python tools/repository_catalog.py --json
 ```
 
-The catalog is generated on demand and printed to stdout. It is not committed documentation.
+The catalog is generated on demand and printed to stdout. It is not committed documentation. Focus mode ranks path and content matches across owners, then caps the result so a human or LLM can locate canonical evidence without ingesting the whole tree.
 
 ## Tool families
 
