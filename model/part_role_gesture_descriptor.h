@@ -1,6 +1,7 @@
 #pragma once
 
 #include "part_motif_discovery.h"
+#include "part_phrase_boundary_discovery.h"
 #include "part_role_window_inference.h"
 
 #include <algorithm>
@@ -111,6 +112,44 @@ inline role_window_repetition_summary summarize_role_window_repetition(
     return result;
 }
 
+inline bool role_phrase_boundary_is_independently_grounded(
+    const phrase_boundary_hypothesis& hypothesis) noexcept {
+    // A motif-derived boundary may not corroborate the same motif a second
+    // time under a phrase label. Cross-domain grounding proves that at least
+    // one other evidence origin participates; an exact authored boundary is
+    // independently authoritative by construction.
+    return hypothesis.cross_domain_grounded || hypothesis.authored_grounded;
+}
+
+inline std::optional<bounded_role_signal> summarize_role_window_phrase_participation(
+    const std::vector<part_gesture_observation>& observations,
+    const part_motif_discovery_policy& motif_policy = {}) {
+    if (observations.size() < 3)
+        return std::nullopt;
+    for (std::size_t index = 1; index < observations.size(); ++index) {
+        if (observations[index].onset.tick <= observations[index - 1].onset.tick)
+            return std::nullopt;
+    }
+
+    const auto boundaries = discover_part_phrase_boundaries(
+        observations,
+        motif_policy);
+
+    double best_confidence = 0.0;
+    for (const auto& boundary : boundaries) {
+        if (!role_phrase_boundary_is_independently_grounded(boundary))
+            continue;
+        best_confidence = std::max(best_confidence, boundary.confidence);
+    }
+    if (best_confidence <= 0.0)
+        return std::nullopt;
+
+    // Participation is present when this specific persistent part supplied an
+    // independently grounded boundary inside the analyzed gesture window.
+    // The phrase layer's bounded confidence remains the measurement confidence.
+    return bounded_role_signal{1.0, best_confidence};
+}
+
 inline std::optional<std::pair<double, std::string>>
     coherent_role_window_register_center(
         const std::vector<part_gesture_observation>& observations) {
@@ -170,6 +209,9 @@ inline part_role_window_descriptor make_part_role_window_descriptor_from_gesture
         result.structural_motif_prominence = repetition.structural_motif_prominence;
     if (repetition.rhythmic_repetition.has_value())
         result.rhythmic_repetition = repetition.rhythmic_repetition;
+
+    result.phrase_boundary_participation =
+        summarize_role_window_phrase_participation(window, motif_policy);
 
     return result;
 }

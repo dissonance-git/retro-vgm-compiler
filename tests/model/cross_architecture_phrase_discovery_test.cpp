@@ -1,5 +1,6 @@
 #include "components/spc/spc_part_motif_adapter.h"
 #include "components/vgm/enhancement/genesis_part_motif_adapter.h"
+#include "model/part_role_gesture_descriptor.h"
 #include "model/persistent_part_hypothesis.h"
 
 #include <algorithm>
@@ -151,13 +152,26 @@ const phrase_boundary_hypothesis* strongest_boundary(
         });
 }
 
+bool contains_role(
+    const part_role_window_result& result,
+    musical_part_role role) {
+    for (const auto& candidate : result.candidates) {
+        if (candidate.role == role)
+            return true;
+    }
+    return false;
+}
+
 } // namespace
 
 int main() {
     part_motif_discovery_policy motif_policy;
     motif_policy.min_events = 4;
     motif_policy.max_events = 4;
-    motif_policy.min_identity_confidence = 0.99;
+    // Motif identity inherits the persistent-part evidence ceiling. This fixture
+    // licenses its part at 0.92, so requiring 0.99 would make structural phrase
+    // discovery impossible by construction rather than make the test stricter.
+    motif_policy.min_identity_confidence = 0.90;
 
     musical_execution_graph genesis;
     const std::vector<node_id> genesis_episodes = {
@@ -182,6 +196,22 @@ int main() {
     assert(genesis_strong->structural_support);
     assert(genesis_strong->cross_domain_grounded);
     assert(genesis_strong->confidence >= 0.80);
+
+    const auto genesis_descriptor = make_part_role_window_descriptor_from_gestures(
+        gameaudio::vgm::collect_genesis_part_gestures(genesis, genesis_part),
+        genesis_part,
+        time_span{
+            {time_domain::source, 0, 0, 0},
+            time_coordinate{time_domain::source, 2000, 0, 0},
+        },
+        motif_policy);
+    assert(genesis_descriptor.structural_motif_prominence.has_value());
+    assert(genesis_descriptor.phrase_boundary_participation.has_value());
+    assert(genesis_descriptor.phrase_boundary_participation->confidence >= 0.80);
+    const auto genesis_roles = infer_part_roles_for_window(
+        {genesis_descriptor},
+        "genesis-source-backed-phrase-role-bridge");
+    assert(contains_role(genesis_roles, musical_part_role::melodic_foreground));
 
     musical_execution_graph spc;
     const node_id sample = add_spc_sample(spc);
@@ -208,9 +238,26 @@ int main() {
     assert(spc_strong->cross_domain_grounded);
     assert(spc_strong->confidence >= 0.80);
 
+    const auto spc_descriptor = make_part_role_window_descriptor_from_gestures(
+        gameaudio::spc::collect_spc_part_gestures(spc, spc_part),
+        spc_part,
+        time_span{
+            {time_domain::device, 0, 32000, 0},
+            time_coordinate{time_domain::device, 4000, 32000, 0},
+        },
+        motif_policy);
+    assert(spc_descriptor.structural_motif_prominence.has_value());
+    assert(spc_descriptor.phrase_boundary_participation.has_value());
+    assert(spc_descriptor.phrase_boundary_participation->confidence >= 0.80);
+    const auto spc_roles = infer_part_roles_for_window(
+        {spc_descriptor},
+        "spc-source-backed-phrase-role-bridge");
+    assert(contains_role(spc_roles, musical_part_role::melodic_foreground));
+
     // The physical clocks differ by 2x, but both systems recover the same
     // normalized phrase location: after four events and before the repeated,
-    // transposed motif occurrence.
+    // transposed motif occurrence. The same source-backed gesture collections
+    // now also drive the shared part-role inference path.
     assert(std::fabs(genesis_strong->confidence - spc_strong->confidence) < 1e-12);
 
     return 0;
