@@ -597,3 +597,24 @@ add_test(
     NAME genesis_persistent_performance_adapter
     COMMAND genesis_persistent_performance_adapter_test
 )
+
+
+# Source-backed SPC persistent-part performed trajectory regression.
+list(APPEND GAMEAUDIO_TEST_TARGETS
+    spc_persistent_performance_adapter_test
+)
+
+add_executable(
+    spc_persistent_performance_adapter_test
+    tests/spc/spc_persistent_performance_adapter_test.cpp
+)
+
+target_include_directories(
+    spc_persistent_performance_adapter_test
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
+    NAME spc_persistent_performance_adapter
+    COMMAND spc_persistent_performance_adapter_test
+)
