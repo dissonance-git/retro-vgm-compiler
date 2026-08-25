@@ -8,6 +8,7 @@ on:
       - ".github/workflows/spc-native-probe.yml"
       - "patches/snesapu/**"
       - "components/spc/spcplayer/**"
+      - "components/spc/*.h"
 
 jobs:
   build-snesapu-native:
@@ -116,6 +117,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "spcplayer probe failed with exit code $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $out 'spcplayer.exe') -PathType Leaf)) { throw 'spcplayer.exe missing after successful child build' }
 
+      - name: Preprocess failed child source
+        if: failure()
+        shell: pwsh
+        run: |
+          $workspace = Join-Path $env:RUNNER_TEMP 'foo-snesapu-current'
+          $source = Join-Path $env:SPCPLAY_ROOT 'snesapu.dll'
+          $preprocessed = Join-Path $env:RUNNER_TEMP 'spcplayer-main.i'
+          $cmdFile = Join-Path $env:RUNNER_TEMP 'preprocess-spcplayer.cmd'
+          @"
+          @echo off
+          call "$env:VCVARS32"
+          if errorlevel 1 exit /b 10
+          cd /d "$workspace\spcplayer"
+          cl /nologo /P /C /TP /std:c++17 /permissive- /D_WIN32_WINNT=0x0601 /DWIN32 /DNDEBUG /D_CONSOLE /D_UNICODE /DUNICODE /I"$source" main.cpp /Fi"$preprocessed"
+          exit /b 0
+          "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
+          & cmd.exe /d /c $cmdFile
+
       - name: Upload child-link diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -123,5 +142,7 @@ jobs:
           name: spcplayer-link-diagnostics
           path: |
             ${{ runner.temp }}/spcplayer-msbuild.log
+            ${{ runner.temp }}/spcplayer-main.i
+            ${{ runner.temp }}/foo-snesapu-current/spcplayer/main.cpp
             ${{ runner.temp }}/foo-snesapu-current/spcplayer/spcplayer.vcxproj
           if-no-files-found: error
