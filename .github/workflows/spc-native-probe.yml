@@ -165,7 +165,7 @@ jobs:
           $rsp = Join-Path $PWD 'Directory.Build.rsp'
           '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
           try {
-            & $env:MSBUILD (Join-Path $workspace 'foo_snesapu\foo_snesapu.vcxproj') /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 "/p:OutDir=$out\" /m /v:m /fl "/flp:logfile=$log;verbosity=diagnostic"
+            & $env:MSBUILD (Join-Path $workspace 'foobar2000\foo_snesapu\foo_snesapu.vcxproj') /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 "/p:OutDir=$out\" /m /v:m /fl "/flp:logfile=$log;verbosity=diagnostic"
             if ($LASTEXITCODE -ne 0) { throw "foo_snesapu parent probe failed with exit code $LASTEXITCODE" }
           } finally {
             Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
@@ -201,7 +201,7 @@ jobs:
             ${{ runner.temp }}/foo-snesapu-msbuild.log
             ${{ runner.temp }}/foo-snesapu-current/spcplayer/main.cpp
             ${{ runner.temp }}/foo-snesapu-current/spcplayer/spcplayer.vcxproj
-            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/input_snesapu.cpp
-            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/input_snesapu.hpp
-            ${{ runner.temp }}/foo-snesapu-current/foo_snesapu/foo_snesapu.vcxproj
+            ${{ runner.temp }}/foo-snesapu-current/foobar2000/foo_snesapu/input_snesapu.cpp
+            ${{ runner.temp }}/foo-snesapu-current/foobar2000/foo_snesapu/input_snesapu.hpp
+            ${{ runner.temp }}/foo-snesapu-current/foobar2000/foo_snesapu/foo_snesapu.vcxproj
           if-no-files-found: warn
