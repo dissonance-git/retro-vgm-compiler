@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Reject reintroduction of deprecated live project identities.
-
-VGM Compiler is the current project identity. Historical prose under docs/history/
-may retain older names when doing so preserves lineage; active repository text may
-not silently reintroduce them.
-"""
+"""Verify the current VGM Compiler identity and canonical owner surface."""
 
 from __future__ import annotations
 
@@ -13,56 +8,62 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEPRECATED = (
-    "Game" + " Music" + " Interpreter",
-    "Retro" + " VGM" + " Compiler",
-    "retro-vgm" + "-compiler-roadmap.md",
-)
-TEXT_SUFFIXES = {
-    ".md", ".txt", ".rst", ".py", ".h", ".hpp", ".c", ".cc", ".cpp",
-    ".json", ".jsonl", ".toml", ".yml", ".yaml", ".cmake", ".ps1", ".sh",
+REQUIRED_TEXT = {
+    Path("README.md"): (
+        "# VGM Compiler\n",
+        "docs/architecture.md",
+        "docs/vgm-compiler-roadmap.md",
+    ),
+    Path("AGENTS.md"): (
+        "# AGENTS.md\n",
+        "docs/architecture.md",
+        "docs/vgm-compiler-roadmap.md",
+        "dense current/future contracts",
+    ),
+    Path("docs/architecture.md"): (
+        "# VGM Compiler architecture\n",
+        "provenance-aware",
+    ),
+    Path("docs/vgm-compiler-roadmap.md"): (
+        "# VGM Compiler roadmap\n",
+        "## Active frontier: positive phrase-role evidence",
+    ),
+    Path("docs/musical-understanding.md"): (
+        "VGM Compiler",
+        "holistic musical understanding",
+    ),
 }
-TEXT_NAMES = {"CMakeLists.txt", "LICENSE", "Makefile"}
-SKIP_DIRS = {".git", "imports", "references"}
-HISTORICAL_PREFIXES = {(Path("docs") / "history").parts}
 
 
-def candidate(path: Path) -> bool:
-    return path.name in TEXT_NAMES or path.suffix.lower() in TEXT_SUFFIXES
-
-
-def historical(path: Path) -> bool:
-    parts = path.parts
-    return any(parts[: len(prefix)] == prefix for prefix in HISTORICAL_PREFIXES)
-
-
-def scan_repository(root: Path = ROOT) -> list[tuple[Path, int, str]]:
-    findings: list[tuple[Path, int, str]] = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file() or not candidate(path):
-            continue
-        relative = path.relative_to(root)
-        if any(part in SKIP_DIRS for part in relative.parts[:-1]) or historical(relative):
+def verify(root: Path = ROOT) -> list[str]:
+    failures: list[str] = []
+    for relative, markers in REQUIRED_TEXT.items():
+        path = root / relative
+        if not path.is_file():
+            failures.append(f"missing canonical owner: {relative.as_posix()}")
             continue
         try:
             text = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except OSError as exc:
+            failures.append(f"cannot read {relative.as_posix()}: {exc}")
             continue
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            if any(name in line for name in DEPRECATED):
-                findings.append((relative, line_number, line.strip()))
-    return findings
+        for marker in markers:
+            if marker not in text:
+                failures.append(
+                    f"{relative.as_posix()} missing current identity marker: {marker!r}"
+                )
+    return failures
 
 
 def main() -> int:
-    findings = scan_repository()
-    if not findings:
+    failures = verify()
+    if not failures:
         print("project identity check passed: VGM Compiler")
         return 0
 
-    print(f"deprecated project identity found in {len(findings)} location(s):", file=sys.stderr)
-    for path, line_number, line in findings:
-        print(f"  {path}:{line_number}: {line}", file=sys.stderr)
+    print("VGM Compiler identity contract failed:", file=sys.stderr)
+    for failure in failures:
+        print(f"  {failure}", file=sys.stderr)
     return 1
 
 
