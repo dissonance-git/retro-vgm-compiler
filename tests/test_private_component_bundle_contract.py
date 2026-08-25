@@ -53,10 +53,10 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
 
         manifest = {
             "built_at_utc": "2026-08-25T00:00:00.0000000Z",
-            "retro_vgm_compiler_commit": commit,
+            "vgm_compiler_commit": commit,
             "foo_input_vgm_bootstrap": {
-                "source_page": "https://example.invalid/vgm-bootstrap",
-                "sha256": "2" * 64,
+                "source": _verifier.CANONICAL_VGM_BOOTSTRAP_SOURCE,
+                "sha256": _verifier.CANONICAL_VGM_BOOTSTRAP_SHA256,
             },
             "foobar_sdk": {
                 "release_date": "2025-03-07",
@@ -109,7 +109,7 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             bundle = Path(tmp) / "bundle.zip"
             self.make_bundle(bundle)
             manifest = _verifier.verify_bundle_metadata(bundle)
-            self.assertEqual(manifest["retro_vgm_compiler_commit"], "1" * 40)
+            self.assertEqual(manifest["vgm_compiler_commit"], "1" * 40)
 
     def test_rejects_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -128,6 +128,18 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             bundle = Path(tmp) / "bundle.zip"
             self.make_bundle(bundle, commit="unversioned")
             with self.assertRaisesRegex(AssertionError, "40-hex source commit"):
+                _verifier.verify_bundle_metadata(bundle)
+
+    def test_rejects_wrong_bootstrap_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.zip"
+            self.make_bundle(
+                bundle,
+                mutate_manifest=lambda manifest: manifest["foo_input_vgm_bootstrap"].__setitem__(
+                    "source", "repository:wrong"
+                ),
+            )
+            with self.assertRaisesRegex(AssertionError, "source is not canonical"):
                 _verifier.verify_bundle_metadata(bundle)
 
     def test_rejects_wrong_output_list(self) -> None:
