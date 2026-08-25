@@ -19,7 +19,6 @@ on:
       - "tests/**"
       - "tools/build_private_foobar_components.ps1"
       - "tools/run_private_foobar_build_with_diagnostics.ps1"
-      - "tools/fetch_foo_input_vgm_bootstrap.ps1"
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
       - "tools/reconstruct_vgm031_bootstrap.py"
@@ -75,9 +74,7 @@ jobs:
       - name: Ensure native build tools
         shell: pwsh
         run: |
-          # The pinned SNESAPU assembly was authored for NASM 0.98.34. Keep CI
-          # on the final NASM 2.x generation rather than accepting NASM 3 parser
-          # drift from the ambient Chocolatey latest package.
+          # The pinned SNESAPU source is validated against NASM 2.16.03.
           $nasmPackageVersion = '2.16.3'
           $nasmBinaryVersion = '2.16.03'
           choco install nasm --version=$nasmPackageVersion --allow-downgrade -y --no-progress
@@ -105,15 +102,9 @@ jobs:
           $nasmVersion = (& $nasmExePath -v | Out-String).Trim()
           Write-Host $nasmVersion
           if ($nasmVersion -notmatch "NASM version $([regex]::Escape($nasmBinaryVersion))\b") {
-            throw "Unexpected NASM version after compatibility pin: $nasmVersion"
+            throw "Unexpected NASM version: $nasmVersion"
           }
           7z | Select-Object -First 2
-
-      - name: Reconstruct exact VGM 0.31 bootstrap
-        shell: pwsh
-        run: |
-          python -B tools/reconstruct_vgm031_bootstrap.py
-          if ($LASTEXITCODE -ne 0) { throw 'canonical VGM 0.31 bootstrap reconstruction failed' }
 
       - name: Run source and bridge regression guards
         shell: pwsh
