@@ -1,0 +1,62 @@
+name: SPC native DSP probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/spc-native-probe.yml"
+      - "patches/snesapu/**"
+
+jobs:
+  assemble-dsp:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact Retro source
+        uses: actions/checkout@v4
+
+      - name: Install pinned NASM
+        shell: pwsh
+        run: |
+          $package = '2.16.3'
+          $binary = '2.16.03'
+          choco install nasm --version=$package --allow-downgrade -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "NASM $package install failed" }
+          $candidate = @(
+            'C:\Program Files\NASM\nasm.exe',
+            'C:\Program Files (x86)\NASM\nasm.exe',
+            'C:\ProgramData\chocolatey\bin\nasm.exe'
+          ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $candidate) { throw 'Pinned nasm.exe not found' }
+          $dir = Split-Path $candidate -Parent
+          $dir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:Path = "$dir;$env:Path"
+          $version = (& $candidate -v | Out-String).Trim()
+          Write-Host $version
+          if ($version -notmatch "NASM version $([regex]::Escape($binary))\b") { throw "Unexpected NASM: $version" }
+
+      - name: Materialize exact patched SNESAPU
+        shell: pwsh
+        run: |
+          $spc = Join-Path $env:RUNNER_TEMP 'spcplay'
+          git clone --quiet https://github.com/dgrfactory/spcplay.git $spc
+          if ($LASTEXITCODE -ne 0) { throw 'spcplay clone failed' }
+          git -C $spc checkout --quiet fc770e268ecacb4523699e2edc5c0efdf80957d6
+          if ($LASTEXITCODE -ne 0) { throw 'spcplay pin checkout failed' }
+          python -B patches/snesapu/apply_private_snesapu.py $spc
+          if ($LASTEXITCODE -ne 0) { throw 'private SNESAPU patch stack failed' }
+          "SPCPLAY_ROOT=$spc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Assemble patched DSP.asm
+        shell: pwsh
+        run: |
+          Push-Location (Join-Path $env:SPCPLAY_ROOT 'snesapu.dll')
+          try {
+            & nasm -f win32 -O2 DSP.asm -o DSP.probe.obj
+            if ($LASTEXITCODE -ne 0) { throw "DSP.asm failed with NASM exit code $LASTEXITCODE" }
+            if (-not (Test-Path -LiteralPath 'DSP.probe.obj' -PathType Leaf)) { throw 'DSP object missing after successful NASM exit' }
+            Write-Host 'Patched DSP.asm assembled successfully.'
+          } finally {
+            Pop-Location
+          }
