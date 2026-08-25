@@ -51,25 +51,6 @@ inline const std::uint64_t* spc_episode_physical_voice(
     return item == nullptr ? nullptr : std::get_if<std::uint64_t>(&item->value);
 }
 
-inline bool spc_episode_allows_part_successor(
-    const vgmtooling::model::node& episode) noexcept {
-    const auto* complete_item = find_spc_performance_attribute(
-        episode,
-        "termination_boundary_complete");
-    const auto* complete = complete_item == nullptr
-        ? nullptr : std::get_if<bool>(&complete_item->value);
-    if (complete != nullptr && !*complete)
-        return false;
-
-    const auto* reason_item = find_spc_performance_attribute(
-        episode,
-        "termination_reason");
-    const auto* reason = reason_item == nullptr
-        ? nullptr : std::get_if<std::string>(&reason_item->value);
-    return reason == nullptr ||
-        (*reason != "semantic_continuation_lost" && *reason != "execution_reset");
-}
-
 inline void emit_spc_label_blind_trajectory(
     vgmtooling::model::musical_execution_graph& graph,
     std::vector<vgmtooling::model::persistent_part_hypothesis>& transitions,
@@ -161,7 +142,7 @@ inline spc_label_blind_corpus_features extract_spc_label_blind_corpus_features(
         std::vector<persistent_part_hypothesis> trajectory_links;
         for (std::size_t index = 1; index < ids.size(); ++index) {
             const node* previous = graph.find_node(ids[index - 1]);
-            if (previous != nullptr && !detail::spc_episode_allows_part_successor(*previous)) {
+            if (previous != nullptr && !spc_episode_allows_part_successor(*previous)) {
                 ++result.continuity_barrier_count;
                 detail::emit_spc_label_blind_trajectory(graph, trajectory_links, result);
                 continue;
