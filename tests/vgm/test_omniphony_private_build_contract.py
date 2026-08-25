@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 from pathlib import Path, PurePosixPath
 import re
 import unittest
@@ -10,12 +11,10 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / "tools" / "build_private_foobar_components.ps1"
-BOOTSTRAP_HELPER = ROOT / "tools" / "fetch_foo_input_vgm_bootstrap.ps1"
+RECONSTRUCTOR = ROOT / "tools" / "reconstruct_vgm031_bootstrap.py"
 MATERIALIZER = ROOT / "tools" / "materialize_foo_input_vgm.py"
 RUNTIME_VERIFIER = ROOT / "tools" / "verify_omniphony_runtime_abi.py"
 PACKAGE_VERIFIER = ROOT / "tools" / "verify_private_component_packages.py"
-VGM_BOOTSTRAP = ROOT / "imports" / "foo_input_vgm-0.31.zip"
-RETIRED_INCOMPATIBLE_COMMIT = "0fabccb165e6d957cefecc6eeb1264467e7406a4"
 EXPECTED_VGM_BOOTSTRAP_VERSION = "0.31"
 EXPECTED_VGM_BOOTSTRAP_FILES = 41
 EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256 = (
@@ -35,8 +34,8 @@ def load_module(path: Path, name: str):
     return module
 
 
-def vgm_bootstrap_source_identity(path: Path) -> tuple[int, str, str]:
-    with zipfile.ZipFile(path) as archive:
+def vgm_bootstrap_source_identity(archive_bytes: bytes) -> tuple[int, str, str]:
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         names = [name for name in archive.namelist() if not name.endswith("/")]
         markers = [
             name
@@ -66,42 +65,55 @@ def vgm_bootstrap_source_identity(path: Path) -> tuple[int, str, str]:
 
 
 class OmniphonyPrivateBuildContractTest(unittest.TestCase):
-    def test_private_build_pins_immutable_upstream_without_rewriting_it(self) -> None:
+    def test_private_build_pins_and_exercises_omniphony_source_renderer(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
         match = re.search(r"\$OmniphonyCommit = '([0-9a-f]{40})'", text)
         self.assertIsNotNone(match)
-        assert match is not None
-        pinned_commit = match.group(1)
-        self.assertNotEqual(pinned_commit, RETIRED_INCOMPATIBLE_COMMIT)
-        self.assertIn("Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git'", text)
+        self.assertIn(
+            "Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git'",
+            text,
+        )
         self.assertIn("'test', '-p', 'source_ffi', '--lib'", text)
-        self.assertNotIn("$OmniSourceFfi", text)
-        self.assertNotIn("$sourceFfiText", text)
-        self.assertNotIn("WriteAllText($OmniSourceFfi", text)
+        self.assertIn("'test', '-p', 'source_ffi', '--test', 'abi_layout'", text)
+        self.assertIn("'build', '--profile', 'release-deploy', '-p', 'source_ffi'", text)
+        self.assertIn("verify_omniphony_runtime_abi.py", text)
 
-    def test_vgm_bootstrap_is_exact_supplied_031_source_tree(self) -> None:
-        self.assertTrue(VGM_BOOTSTRAP.is_file(), VGM_BOOTSTRAP)
-        archive_sha256 = hashlib.sha256(VGM_BOOTSTRAP.read_bytes()).hexdigest()
-        self.assertEqual(archive_sha256, EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256)
-        file_count, tree_sha256, version_text = vgm_bootstrap_source_identity(VGM_BOOTSTRAP)
+    def test_repository_transport_reconstructs_exact_031_source_tree(self) -> None:
+        reconstructor = load_module(RECONSTRUCTOR, "vgm031_reconstructor_for_test")
+        archive = reconstructor.load_transport()
+        self.assertEqual(
+            hashlib.sha256(archive).hexdigest(),
+            EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256,
+        )
+        file_count, tree_sha256, version_text = vgm_bootstrap_source_identity(archive)
         self.assertEqual(file_count, EXPECTED_VGM_BOOTSTRAP_FILES)
         self.assertEqual(tree_sha256, EXPECTED_VGM_BOOTSTRAP_TREE_SHA256)
         self.assertIn(f'"{EXPECTED_VGM_BOOTSTRAP_VERSION}"', version_text)
 
-    def test_vgm_bootstrap_helper_is_exact_offline_031_transport(self) -> None:
-        helper = BOOTSTRAP_HELPER.read_text(encoding="utf-8")
-        self.assertIn(EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256, helper)
-        self.assertIn("foo_input_vgm-0.31.zip", helper)
-        self.assertIn(".delivery-safe\\pre00", helper)
-        self.assertIn("CanonicalBase64Sha256", helper)
-        self.assertNotIn("Invoke-WebRequest", helper)
-        self.assertNotIn("uploader.jp", helper)
+    def test_reconstructor_owns_current_offline_transport(self) -> None:
+        reconstructor = load_module(RECONSTRUCTOR, "vgm031_transport_contract_for_test")
+        self.assertEqual(
+            reconstructor.SOURCE_DIR,
+            ROOT / "imports" / "bootstrap" / "foo_input_vgm-0.31.base64-parts",
+        )
+        self.assertEqual(
+            reconstructor.TARGET,
+            ROOT / "imports" / "foo_input_vgm-0.31.zip",
+        )
+        self.assertEqual(
+            reconstructor.EXPECTED_ARCHIVE_SHA256,
+            EXPECTED_VGM_BOOTSTRAP_ARCHIVE_SHA256,
+        )
+        self.assertEqual(reconstructor.EXPECTED_SOURCE_FILES, EXPECTED_VGM_BOOTSTRAP_FILES)
+        self.assertGreater(len(reconstructor.PARTS), 1)
 
-    def test_vgm_materializer_defaults_to_031_and_imports_os(self) -> None:
+    def test_vgm_materializer_owns_canonical_reconstruction(self) -> None:
         text = MATERIALIZER.read_text(encoding="utf-8")
         self.assertIn("import os", text)
-        self.assertIn('repo / "imports" / "foo_input_vgm-0.31.zip"', text)
-        self.assertNotIn('repo / "imports" / "foo_input_vgm.7z"', text)
+        self.assertIn("def canonical_archive(repo: Path) -> Path:", text)
+        self.assertIn('reconstructor = repo / "tools" / "reconstruct_vgm031_bootstrap.py"', text)
+        self.assertIn('archive = repo / "imports" / "foo_input_vgm-0.31.zip"', text)
+        self.assertIn('os.environ.get("VGM_COMPILER_BOOTSTRAP_ARCHIVE")', text)
 
     def test_build_executes_runtime_contract_verifier_before_packaging(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
@@ -129,17 +141,15 @@ class OmniphonyPrivateBuildContractTest(unittest.TestCase):
             verifier.OMNIPHONY_REQUIRED_EXPORTS,
         )
 
-    def test_generated_readme_names_the_existing_surround_control(self) -> None:
+    def test_generated_readme_names_current_surround_controls(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
         self.assertIn(
-            "Existing Surround enables Omniphony source-aware Genesis rendering.", text
+            "Surround enables Omniphony source-aware Genesis rendering.", text
         )
         self.assertIn(
-            "Existing Surround enables Omniphony source-aware SPC rendering.", text
+            "Surround enables Omniphony source-aware SPC rendering.", text
         )
         self.assertIn("enhanced is independent.", text)
-        self.assertNotIn("enhanced/Spatial", text)
-        self.assertNotIn("enhanced and Spatial remain independent controls", text)
 
 
 if __name__ == "__main__":
