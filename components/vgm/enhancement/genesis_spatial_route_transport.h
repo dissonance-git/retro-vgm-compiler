@@ -110,7 +110,8 @@ public:
                 if (!delivery_.publish_stereo_route(
                         absolute_sample,
                         static_cast<std::size_t>(source),
-                        sn76489_authored_route(mask, channel)))
+                        genesis_stereo_route_evidence(
+                            sn76489_authored_route(mask, channel))))
                     return false;
             }
             return true;
@@ -128,7 +129,8 @@ public:
                 + static_cast<std::size_t>(event.payload[0] - 0xB4u);
             const bool left = (event.payload[1] & 0x80u) != 0u;
             const bool right = (event.payload[1] & 0x40u) != 0u;
-            const auto route = ym2612_authored_route(left, right);
+            const auto route = genesis_stereo_route_evidence(
+                ym2612_authored_route(left, right));
             const std::size_t fm_source = static_cast<std::size_t>(
                 static_cast<std::uint8_t>(genesis_recomposition_source::ym2612_fm1)
                 + static_cast<std::uint8_t>(channel));

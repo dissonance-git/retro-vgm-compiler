@@ -27,6 +27,16 @@ constexpr std::uint64_t genesis_spatial_source_id(
         | static_cast<std::uint64_t>(episode_generation);
 }
 
+constexpr vgmtooling::model::stereo_route_evidence genesis_stereo_route_evidence(
+    authored_stereo_route route) noexcept {
+    vgmtooling::model::stereo_route_evidence evidence;
+    evidence.present = true;
+    evidence.left_gain = vgmtooling::model::clamp_unit_gain(route.left);
+    evidence.right_gain = vgmtooling::model::clamp_unit_gain(route.right);
+    evidence.authority = vgmtooling::model::spatial_evidence_authority::device_authored;
+    return evidence;
+}
+
 constexpr vgmtooling::model::spatial_source_evidence make_genesis_spatial_source(
     genesis_spatial_device device,
     std::uint8_t instance,
@@ -39,10 +49,7 @@ constexpr vgmtooling::model::spatial_source_evidence make_genesis_spatial_source
     source.family = vgmtooling::model::spatial_source_family::vgm;
     source.physical_slot_present = true;
     source.physical_slot = slot;
-    source.stereo_route.present = true;
-    source.stereo_route.left_gain = vgmtooling::model::clamp_unit_gain(route.left);
-    source.stereo_route.right_gain = vgmtooling::model::clamp_unit_gain(route.right);
-    source.stereo_route.authority = vgmtooling::model::spatial_evidence_authority::device_authored;
+    source.stereo_route = genesis_stereo_route_evidence(route);
     return source;
 }
 
