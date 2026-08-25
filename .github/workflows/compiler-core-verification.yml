@@ -166,6 +166,30 @@ jobs:
               raise SystemExit('Genesis pitch transition-id anchor not found')
           PY
 
+      - name: Refresh realization grammar observation type
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('model/realization_role_grammar_bridge.h')
+          text = path.read_text(encoding='utf-8')
+          old_return = 'inline structural_grammar_observation realization_role_deployment_as_grammar_observation('
+          new_return = 'inline blind_structural_grammar_observation realization_role_deployment_as_grammar_observation('
+          old_local = '    structural_grammar_observation result;'
+          new_local = '    blind_structural_grammar_observation result;'
+          changed = False
+          for old, new in ((old_return, new_return), (old_local, new_local)):
+              if old in text:
+                  if text.count(old) != 1:
+                      raise SystemExit(f'realization grammar anchor is not singular: {old}')
+                  text = text.replace(old, new, 1)
+                  changed = True
+              elif new not in text:
+                  raise SystemExit(f'realization grammar anchor not found: {old}')
+          if changed:
+              path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
@@ -183,6 +207,7 @@ jobs:
           grep -q 'ym2612_pcm_stream() noexcept' components/vgm/enhancement/ym2612_pcm_stream.h
           grep -q ': ym2612_pcm_stream(48000.0)' components/vgm/enhancement/ym2612_pcm_stream.cpp
           grep -q 'vgmtooling::model::node_id device_transition_id' components/vgm/enhancement/genesis_pitch_control_adapter.h
+          grep -q 'blind_structural_grammar_observation realization_role_deployment_as_grammar_observation' model/realization_role_grammar_bridge.h
       - name: Commit verified core repairs
         run: |
           if git diff --quiet -- \
@@ -191,7 +216,8 @@ jobs:
             tests/model/spatial_source_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp \
-            components/vgm/enhancement/genesis_pitch_control_adapter.h; then
+            components/vgm/enhancement/genesis_pitch_control_adapter.h \
+            model/realization_role_grammar_bridge.h; then
             exit 0
           fi
           git config user.name dissonance
@@ -202,6 +228,7 @@ jobs:
             tests/model/spatial_source_test.cpp \
             components/vgm/enhancement/ym2612_pcm_stream.h \
             components/vgm/enhancement/ym2612_pcm_stream.cpp \
-            components/vgm/enhancement/genesis_pitch_control_adapter.h
+            components/vgm/enhancement/genesis_pitch_control_adapter.h \
+            model/realization_role_grammar_bridge.h
           git commit -m 'test(core): restore live Release verification'
           git push
