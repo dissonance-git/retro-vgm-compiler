@@ -3,7 +3,8 @@
 
 This is the broad local/CI route for the repository-owned core before external
 source checkout begins. It runs the root CMake/CTest registry, the SNESAPU causal
-source-provider contracts, and portable package/import + YM2151 patch guards.
+source-provider contracts, repository representation contracts, and portable
+package/import + YM2151 patch guards.
 """
 from __future__ import annotations
 
@@ -16,8 +17,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SPC_PROVIDER_CONTRACTS = ROOT / "tests" / "spc_provider_contracts"
-PYTHON_CONTRACT_PATTERNS = (
+ROOT_PYTHON_CONTRACT_PATTERNS = (
     "test_private_component_import_contract.py",
+    "test_repository_catalog_projection.py",
+)
+VGM_PYTHON_CONTRACT_PATTERNS = (
     "test_ym2151_source_tap_patch.py",
     "test_ym2151_reference_capture_patch.py",
 )
@@ -97,8 +101,9 @@ def main() -> int:
             config=args.config,
         )
 
-    run_python_contract(PYTHON_CONTRACT_PATTERNS[0], ROOT / "tests")
-    for pattern in PYTHON_CONTRACT_PATTERNS[1:]:
+    for pattern in ROOT_PYTHON_CONTRACT_PATTERNS:
+        run_python_contract(pattern, ROOT / "tests")
+    for pattern in VGM_PYTHON_CONTRACT_PATTERNS:
         run_python_contract(pattern, ROOT / "tests" / "vgm")
 
     print("VGM Compiler dependency-free core/provider/package contracts passed")
