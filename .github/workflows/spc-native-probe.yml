@@ -109,7 +109,18 @@ jobs:
           $source = Join-Path $env:SPCPLAY_ROOT 'snesapu.dll'
           $lib = Join-Path $source 'Release'
           $out = Join-Path $env:RUNNER_TEMP 'spcplayer-out'
+          $log = Join-Path $env:RUNNER_TEMP 'spcplayer-msbuild.log'
           New-Item -ItemType Directory $out -Force | Out-Null
-          & $env:MSBUILD (Join-Path $workspace 'spcplayer\spcplayer.vcxproj') /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 "/p:SNESAPUIncludeDir=$source" "/p:SNESAPULibDir=$lib" "/p:OutDir=$out\" /m /v:m
+          & $env:MSBUILD (Join-Path $workspace 'spcplayer\spcplayer.vcxproj') /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 "/p:SNESAPUIncludeDir=$source" "/p:SNESAPULibDir=$lib" "/p:OutDir=$out\" /m /v:m /fl "/flp:logfile=$log;verbosity=diagnostic"
           if ($LASTEXITCODE -ne 0) { throw "spcplayer probe failed with exit code $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $out 'spcplayer.exe') -PathType Leaf)) { throw 'spcplayer.exe missing after successful child build' }
+
+      - name: Upload child-link diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spcplayer-link-diagnostics
+          path: |
+            ${{ runner.temp }}/spcplayer-msbuild.log
+            ${{ runner.temp }}/foo-snesapu-current/spcplayer/spcplayer.vcxproj
+          if-no-files-found: error
