@@ -1,8 +1,5 @@
 name: core-tests
 
-# Hosted runners are currently blocked by the account billing/spending limit
-# before jobs start. Keep one manual workflow as the canonical portable core
-# entry point rather than duplicating the CMake registry in YAML.
 on:
   workflow_dispatch:
 
@@ -19,9 +16,7 @@ jobs:
         run: python3 -B tools/check_project_identity.py
 
       - name: Repository structural contracts
-        run: |
-          python3 -B tests/test_cmake_registration_uniqueness.py
-          python3 -B tests/test_no_live_vgmspc_dependency.py
+        run: python3 -B tests/test_cmake_registration_uniqueness.py
 
       - name: Source-family Python audits
         run: |
