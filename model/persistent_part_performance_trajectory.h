@@ -29,10 +29,26 @@ inline persistent_part_performance_segment make_persistent_part_performance_segm
     pitch_motion_analysis_policy policy = {}) {
     if (samples.empty())
         throw std::invalid_argument("persistent-part performance segment requires pitch samples");
+    if (confidence < 0.0 || confidence > 1.0)
+        throw std::invalid_argument("persistent-part performance confidence must be in [0, 1]");
 
     persistent_part_performance_segment result;
     result.physical_episode_id = samples.front().physical_episode_id;
-    result.articulation = analyze_in_episode_pitch_motion(samples, confidence, policy);
+    if (samples.size() == 1) {
+        const auto& sample = samples.front();
+        if (sample.source_node == 0 || sample.physical_episode_id == 0)
+            throw std::invalid_argument("single-state performance segment requires source-backed physical identity");
+        if (sample.pitch_basis.empty() || sample.interval_semantics.empty())
+            throw std::invalid_argument("single-state performance segment requires explicit pitch semantics");
+
+        result.articulation.kind =
+            pitch_motion_articulation_kind::in_episode_pitch_change_unresolved;
+        result.articulation.physical_episode_id = sample.physical_episode_id;
+        result.articulation.source_nodes = {sample.source_node};
+        result.articulation.confidence = confidence;
+    } else {
+        result.articulation = analyze_in_episode_pitch_motion(samples, confidence, policy);
+    }
     result.samples = std::move(samples);
     return result;
 }
