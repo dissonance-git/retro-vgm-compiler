@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
-"""Configure, build and run the dependency-free deletion-gate core suites.
+"""Configure, build, and run the dependency-free VGM Compiler core suites.
 
-The private component deletion gate is intentionally a superset of ordinary core
-validation. This runner reuses the generator/platform that configured the private
-frontier, builds the root CMake project in an isolated temporary directory, runs
-every registered GAMEAUDIO_BUILD_CORE_TESTS test, then runs the nine existing
-SNESAPU causal-source contracts that historically lived outside the root registry.
-It also executes portable package/import and YM2151 guarded-patch falsifiers.
-All of this finishes before external dependency checkout begins.
+This is the broad local/CI route for the repository-owned core before external
+source checkout begins. It runs the root CMake/CTest registry, the SNESAPU causal
+source-provider contracts, and portable package/import + YM2151 patch guards.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -32,8 +27,7 @@ def run(command: list[str]) -> None:
     completed = subprocess.run(command, cwd=str(ROOT), check=False)
     if completed.returncode != 0:
         raise RuntimeError(
-            f"command failed with exit code {completed.returncode}: "
-            + " ".join(command)
+            f"command failed with exit code {completed.returncode}: " + " ".join(command)
         )
 
 
@@ -46,14 +40,7 @@ def configure_build_test(
     config: str,
     extra_configure: tuple[str, ...] = (),
 ) -> None:
-    configure = [
-        "cmake",
-        "-S",
-        str(source),
-        "-B",
-        str(build),
-        *extra_configure,
-    ]
+    configure = ["cmake", "-S", str(source), "-B", str(build), *extra_configure]
     if generator:
         configure += ["-G", generator]
     if platform:
@@ -72,19 +59,17 @@ def configure_build_test(
 
 
 def run_python_contract(pattern: str, start_dir: Path) -> None:
-    run(
-        [
-            sys.executable,
-            "-B",
-            "-m",
-            "unittest",
-            "discover",
-            "-s",
-            str(start_dir),
-            "-p",
-            pattern,
-        ]
-    )
+    run([
+        sys.executable,
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        str(start_dir),
+        "-p",
+        pattern,
+    ])
 
 
 def main() -> int:
@@ -94,7 +79,7 @@ def main() -> int:
     parser.add_argument("--config", default="Release")
     args = parser.parse_args()
 
-    with tempfile.TemporaryDirectory(prefix="retro-vgm-full-core-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="vgm-compiler-full-core-") as temporary:
         root = Path(temporary)
         configure_build_test(
             ROOT,
@@ -116,9 +101,7 @@ def main() -> int:
     for pattern in PYTHON_CONTRACT_PATTERNS[1:]:
         run_python_contract(pattern, ROOT / "tests" / "vgm")
 
-    print(
-        "full dependency-free core, SPC provider, package/import, and YM2151 patch contracts passed"
-    )
+    print("VGM Compiler dependency-free core/provider/package contracts passed")
     return 0
 
 
@@ -126,5 +109,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print(f"full core/provider suite failed: {exc}", file=sys.stderr)
+        print(f"VGM Compiler core/provider suite failed: {exc}", file=sys.stderr)
         raise

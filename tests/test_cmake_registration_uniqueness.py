@@ -11,42 +11,40 @@ TEST_RE = re.compile(r"add_test\s*\(\s*NAME\s+([A-Za-z0-9_.+-]+)", re.MULTILINE)
 class CMakeRegistrationUniquenessTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(__file__).resolve().parents[1]
-        self.fragments = {
-            "host": self.root / "cmake/host_transport_tests.cmake",
-            "semantic": self.root / "cmake/semantic_model_tests.cmake",
-        }
-        self.text = {
-            name: path.read_text(encoding="utf-8")
-            for name, path in self.fragments.items()
-        }
+        self.host_path = self.root / "cmake/host_transport_tests.cmake"
+        self.semantic_entry_path = self.root / "cmake/semantic_model_tests.cmake"
+        self.semantic_base_path = self.root / "cmake/semantic_model_tests_base.cmake"
+        self.host = self.host_path.read_text(encoding="utf-8")
+        self.semantic_entry = self.semantic_entry_path.read_text(encoding="utf-8")
+        self.semantic_base = self.semantic_base_path.read_text(encoding="utf-8")
+        self.semantic = self.semantic_base + "\n" + self.semantic_entry
 
-    def test_each_fragment_has_unique_executable_and_ctest_names(self) -> None:
-        for fragment, text in self.text.items():
-            with self.subTest(fragment=fragment, kind="executable"):
-                names = EXECUTABLE_RE.findall(text)
-                duplicates = sorted(
-                    name for name, count in Counter(names).items() if count > 1
-                )
-                self.assertEqual(duplicates, [])
+    def assert_unique_names(self, text: str, regex: re.Pattern[str], label: str) -> None:
+        names = regex.findall(text)
+        duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
+        self.assertEqual(duplicates, [], label)
 
-            with self.subTest(fragment=fragment, kind="ctest"):
-                names = TEST_RE.findall(text)
-                duplicates = sorted(
-                    name for name, count in Counter(names).items() if count > 1
-                )
-                self.assertEqual(duplicates, [])
+    def test_semantic_entry_includes_base_exactly_once(self) -> None:
+        self.assertEqual(self.semantic_entry.count("semantic_model_tests_base.cmake"), 1)
 
-    def test_host_and_semantic_fragments_do_not_compete_for_names(self) -> None:
-        host_executables = set(EXECUTABLE_RE.findall(self.text["host"]))
-        semantic_executables = set(EXECUTABLE_RE.findall(self.text["semantic"]))
+    def test_each_owner_has_unique_executable_and_ctest_names(self) -> None:
+        for owner, text in (("host", self.host), ("semantic", self.semantic)):
+            with self.subTest(owner=owner, kind="executable"):
+                self.assert_unique_names(text, EXECUTABLE_RE, f"duplicate executable in {owner}")
+            with self.subTest(owner=owner, kind="ctest"):
+                self.assert_unique_names(text, TEST_RE, f"duplicate CTest name in {owner}")
+
+    def test_host_and_semantic_owners_do_not_compete_for_names(self) -> None:
+        host_executables = set(EXECUTABLE_RE.findall(self.host))
+        semantic_executables = set(EXECUTABLE_RE.findall(self.semantic))
         self.assertEqual(
             sorted(host_executables & semantic_executables),
             [],
             "a CMake target can have only one registration owner",
         )
 
-        host_tests = set(TEST_RE.findall(self.text["host"]))
-        semantic_tests = set(TEST_RE.findall(self.text["semantic"]))
+        host_tests = set(TEST_RE.findall(self.host))
+        semantic_tests = set(TEST_RE.findall(self.semantic))
         self.assertEqual(
             sorted(host_tests & semantic_tests),
             [],
@@ -54,13 +52,17 @@ class CMakeRegistrationUniquenessTest(unittest.TestCase):
         )
 
     def test_studio_vgm_registry_is_semantic_owned(self) -> None:
-        self.assertNotIn("studio_frame_transport_test", self.text["host"])
-        self.assertIn("studio_frame_transport_test", self.text["semantic"])
+        self.assertNotIn("studio_frame_transport_test", self.host)
+        self.assertIn("studio_frame_transport_test", self.semantic)
 
         runtime_script = "tests/vgm/test_studio_hq_fm_runtime_patch.py"
-        occurrences = sum(text.count(runtime_script) for text in self.text.values())
+        occurrences = self.host.count(runtime_script) + self.semantic.count(runtime_script)
         self.assertEqual(occurrences, 1)
-        self.assertIn(runtime_script, self.text["semantic"])
+        self.assertIn(runtime_script, self.semantic)
+
+    def test_phrase_arbitration_is_registered_in_semantic_owner(self) -> None:
+        self.assertIn("ionian_cadence_phrase_arbitration_test", self.semantic)
+        self.assertIn("NAME ionian_cadence_phrase_arbitration", self.semantic)
 
 
 if __name__ == "__main__":
