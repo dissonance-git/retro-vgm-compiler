@@ -114,7 +114,7 @@ RETRO_VGM_SPC_FORENSIC_ORDERING=1
 
 This is an observation-order constraint, not a new musical assumption: callback order must preserve the hardware causal order already represented by the emulator.
 
-The default Retro VGM Compiler build does not enable or fetch this dependency. The instrumented core lives behind the standalone `tools/spc/forensic/` CMake entrypoint.
+The default VGM Compiler build does not enable or fetch this dependency. The instrumented core lives behind the standalone `tools/spc/forensic/` CMake entrypoint.
 
 ## APURAM mutation coverage
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Game Music Interpreter must be able to feed Omniphony while music is playing.
+VGM Compiler must be able to feed Omniphony while music is playing.
 
 The spatial path is therefore a streaming DSP path, not a soundtrack-rendering pipeline and not a cache of precomputed positions. Offline analysis may be used to develop, test, or validate models, but normal playback must not depend on whole-track reverse compilation or a previously analyzed soundtrack.
 
@@ -28,7 +28,7 @@ identity-aware musical-role memory
 state available to the next block
 ```
 
-The project boundary remains important: Game Music Interpreter should understand the musical object and expose trustworthy source/evidence/role state. Omniphony owns the general headphone spatial realization.
+The project boundary remains important: VGM Compiler should understand the musical object and expose trustworthy source/evidence/role state. Omniphony owns the general headphone spatial realization.
 
 ## Realtime does not mean memoryless
 

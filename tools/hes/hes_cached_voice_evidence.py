@@ -85,7 +85,7 @@ def project(sidecar: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("HES sidecar instrumentation differs from decoder contract")
     retro_commit = provenance.get("retro_vgm_compiler_commit")
     if not isinstance(retro_commit, str) or not schema.HEX40.fullmatch(retro_commit):
-        raise ValueError("HES sidecar requires exact Retro VGM Compiler provenance")
+        raise ValueError("HES sidecar requires exact VGM Compiler provenance")
     if capture.get("capture_complete") is not True or capture.get("warning_count") != 0:
         raise ValueError("incomplete HES capture cannot produce physical voice evidence")
     captured_clocks = capture.get("captured_clocks")

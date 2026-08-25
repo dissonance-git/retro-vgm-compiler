@@ -191,7 +191,7 @@ versus
 Which past sources causally contribute to the current realized output?
 ```
 
-Game Music Interpreter should not silently answer the second with the first.
+VGM Compiler should not silently answer the second with the first.
 
 ## 6. Why naive solo/mute stems can be wrong
 

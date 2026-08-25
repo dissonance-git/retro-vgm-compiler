@@ -5,7 +5,7 @@ The hooks are inert in libvgm itself. A derived foobar player can install an
 exact device source tap after Resmpl_DevConnect but before Resmpl_Init, then
 mirror every exact Resmpl_Execute segment without copying VGMPlayer::Render.
 
-Pass the libvgm checkout root itself, not the Retro VGM Compiler repository.
+Pass the libvgm checkout root itself, not the VGM Compiler repository.
 Every edit is an exact singular replacement and therefore fails closed on
 upstream drift.
 """
@@ -36,7 +36,7 @@ def main() -> int:
     hooks = (
         "\tUINT32 Render(UINT32 smplCnt, WAVE_32BS* data);\n\t\n"
         "protected:\n"
-        "\t// Retro VGM Compiler source-render extension points. Base libvgm behavior is\n"
+        "\t// VGM Compiler source-render extension points. Base libvgm behavior is\n"
         "\t// unchanged; derived players may observe/replace a device StreamUpdate\n"
         "\t// before Resmpl_Init and mirror the exact per-command render segments.\n"
         "\tvirtual void SourceTapOnResamplerConnected(CHIP_DEVICE&, VGM_BASEDEV&, UINT8) {}\n"

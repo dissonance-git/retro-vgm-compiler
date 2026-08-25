@@ -1,6 +1,6 @@
 # source-aware spcplayer
 
-This directory is the canonical Retro VGM Compiler home for the 32-bit `spcplayer.exe` child used by the foobar SPC component.
+This directory is the canonical VGM Compiler home for the 32-bit `spcplayer.exe` child used by the foobar SPC component.
 
 It was mined from `dissonance-git/vgmspc` at the SRCE-v2 transport cut `2b7ec8bbd7326eabee3ba39bb91130b9b128e74b` (`spc: splice framed source packets across foobar requests`). The executable behavior preserved here is the useful process seam, not the old repository layout:
 

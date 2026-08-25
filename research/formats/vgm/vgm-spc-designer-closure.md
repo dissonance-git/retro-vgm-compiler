@@ -217,7 +217,7 @@ Do not copy QSound's final two-channel geometry as the ceiling. Omniphony can re
 
 ## GMI → Omniphony authority boundary
 
-Game Music Interpreter owns source truth:
+VGM Compiler owns source truth:
 
 ```text
 stable source identity / generation

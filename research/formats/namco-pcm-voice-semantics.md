@@ -2,7 +2,7 @@
 
 ## Question
 
-What device-level structure can Game Music Interpreter recover from Namco C140 and C352 execution before making any claim about persistent musical parts, instruments, notes, or source-driver semantics?
+What device-level structure can VGM Compiler recover from Namco C140 and C352 execution before making any claim about persistent musical parts, instruments, notes, or source-driver semantics?
 
 This pass uses the existing real corpus controls:
 

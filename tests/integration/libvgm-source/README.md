@@ -1,6 +1,6 @@
 # libvgm source-capture integration tests
 
-These tests exercise Retro VGM Compiler mechanisms against the exact external libvgm semantics they mirror. They are intentionally separate from the dependency-free root core suite.
+These tests exercise VGM Compiler mechanisms against the exact external libvgm semantics they mirror. They are intentionally separate from the dependency-free root core suite.
 
 ## Linear source-resampler continuity
 

@@ -1,6 +1,6 @@
 # SNESAPU dependency patches
 
-These guarded patches consolidate the mature causal-source work that previously lived in `dissonance-git/vgmspc` into Retro VGM Compiler's dependency boundary.
+These guarded patches consolidate the mature causal-source work that previously lived in `dissonance-git/vgmspc` into VGM Compiler's dependency boundary.
 
 They target the editable SPCPlay / SNESAPU source tree. They are intentionally not part of the dependency-free model build.
 
@@ -105,7 +105,7 @@ BRR encoder
 SPC RAM
 ```
 
-When that upstream identity and preparation chain are proven, Retro VGM Compiler can use the highest-supported source representation while leaving the live game trajectory and downstream S-DSP performance machinery authoritative.
+When that upstream identity and preparation chain are proven, VGM Compiler can use the highest-supported source representation while leaving the live game trajectory and downstream S-DSP performance machinery authoritative.
 
 There are two verified-source rungs:
 
@@ -314,7 +314,7 @@ So normal Enhanced uses an upstream/pre-BRR source only when identity and prepar
 
 ## Deeper reconstruction fallback
 
-When no upstream original can be established, Retro VGM Compiler still has the earlier source-domain reconstruction machinery:
+When no upstream original can be established, VGM Compiler still has the earlier source-domain reconstruction machinery:
 
 ```text
 components/spc/spc_enhanced_reconstruction.h

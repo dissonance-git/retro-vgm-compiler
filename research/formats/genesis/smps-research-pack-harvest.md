@@ -2,7 +2,7 @@
 
 Status: inspected transport-pack harvest. The original `.7z` containers were temporary transfer media and were deleted after inspection. No archive is part of the project contract.
 
-Purpose: preserve only the information that materially improves Genesis driver/source understanding, while identifying what was redundant with public source observatories already used by Retro VGM Compiler.
+Purpose: preserve only the information that materially improves Genesis driver/source understanding, while identifying what was redundant with public source observatories already used by VGM Compiler.
 
 ## What was inspected
 

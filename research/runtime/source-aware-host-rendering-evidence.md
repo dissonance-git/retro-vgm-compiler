@@ -232,7 +232,7 @@ Sylvain Marchand and related informed-source-separation work additionally show t
 
 These works support the general usefulness of source-aware and informed realtime processing, but they infer or reconstruct sources under uncertainty.
 
-Game Music Interpreter often has a more informative boundary:
+VGM Compiler often has a more informative boundary:
 
 ```text
 instrumented emulator internal source state

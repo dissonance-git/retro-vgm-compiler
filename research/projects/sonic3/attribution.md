@@ -184,7 +184,7 @@ They can reveal:
 - which note, bass, PSG, voice, modulation, and channel-layout decisions survived;
 - whether later versions descend from an earlier symbolic source rather than the final Mega Drive realization.
 
-Retro VGM Compiler must support:
+VGM Compiler must support:
 
 ```text
 same work identity
@@ -225,7 +225,7 @@ The saved Development/Music page presents Sonic 3's `Continue` and `Stage Clear 
 
 Music Ramble post #339 (2026-08-08) explicitly revisits that interpretation and argues that the Sonic 3D Blast credit gap may have been interpreted incorrectly, while pointing to implementation details considered more Nagao-like.
 
-For Retro VGM Compiler this is not yet a historical verdict. It is a regression shape:
+For VGM Compiler this is not yet a historical verdict. It is a regression shape:
 
 ```text
 inherited metadata / old interpretation

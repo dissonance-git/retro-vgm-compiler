@@ -424,7 +424,7 @@ The current research pass uses:
 - `DDMAL/jSymbolic2` as a modular feature-taxonomy and encoding-bias observatory;
 - `DIDONEproject/musif` and `music_symbolic_features` as independent symbolic-feature and benchmarking observatories.
 
-These are pressure tests and methodological references, not canonical representations for Game Music Interpreter.
+These are pressure tests and methodological references, not canonical representations for VGM Compiler.
 
 ## Evaluation ladder
 

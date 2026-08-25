@@ -2,7 +2,7 @@
 
 ## North star
 
-Retro VGM Compiler is trying to understand game music deeply enough to reason about it the way a strong composer can reason about another composer's work.
+VGM Compiler is trying to understand game music deeply enough to reason about it the way a strong composer can reason about another composer's work.
 
 The strongest practical benchmark for that depth is **blind composer attribution among historically plausible candidates**. But attribution must emerge from understanding music along two independent axes:
 

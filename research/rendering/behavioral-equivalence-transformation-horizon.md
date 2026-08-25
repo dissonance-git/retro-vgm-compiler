@@ -136,7 +136,7 @@ for the present output and every one-step continuation,
 yet become distinguishable only at a longer transformation horizon
 ```
 
-This gives Game Music Interpreter a precise criterion for deciding whether an internal distinction may be compressed in a derived view:
+This gives VGM Compiler a precise criterion for deciding whether an internal distinction may be compressed in a derived view:
 
 > Two execution states may be merged only relative to a declared observation obligation and admitted transformation family.
 

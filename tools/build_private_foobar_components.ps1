@@ -139,7 +139,7 @@ Run 'cmake' @('--build', $FrontierBuild, '--config', 'Release', '--parallel')
 Run 'ctest' @('--test-dir', $FrontierBuild, '-C', 'Release', '--output-on-failure')
 $retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()
 if ($LASTEXITCODE -ne 0 -or $retroCommit -notmatch '^[0-9a-f]{40}$') {
-    throw "Could not capture exact Retro VGM Compiler source commit after preflight: $retroCommit"
+    throw "Could not capture exact VGM Compiler source commit after preflight: $retroCommit"
 }
 
 Write-Host '== 2. Reconstruct external build dependencies from immutable public sources =='
@@ -348,7 +348,7 @@ $manifest | ConvertTo-Json -Depth 6 | Set-Content $manifestPath -Encoding UTF8
 
 $readmePath = Join-Path $OutputRoot 'README.txt'
 @"
-Private foobar2000 builds generated from Retro VGM Compiler.
+Private foobar2000 builds generated from VGM Compiler.
 
 VGM package:
   foo_input_vgm.private.fb2k-component

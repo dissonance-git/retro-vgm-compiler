@@ -2,7 +2,7 @@
 
 ## Question
 
-How should Game Music Interpreter preserve the human and technical transformation chain behind *Chrono Cross* without collapsing composer, synthesizer programmer, sound programmer, sequence format, driver, and PlayStation SPU into one vague idea of “the soundtrack”?
+How should VGM Compiler preserve the human and technical transformation chain behind *Chrono Cross* without collapsing composer, synthesizer programmer, sound programmer, sequence format, driver, and PlayStation SPU into one vague idea of “the soundtrack”?
 
 This note records a human-provenance boundary that became technically actionable once PSF1, VGMTrans AKAO parsing, and PlayStation SPU execution were all available as independent observatories.
 

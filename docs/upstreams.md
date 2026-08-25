@@ -2,7 +2,7 @@
 
 This file records the starting sources, reference builds, and major research/reference systems used by this repository.
 
-The list is deliberately broader than the runtime dependency set. Game Music Interpreter treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
+The list is deliberately broader than the runtime dependency set. VGM Compiler treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
 
 ## VGM foobar2000 component
 
@@ -167,7 +167,7 @@ These converters are not the target architecture. MIDI is too small to preserve 
 - Hoot: broad PC-88/PC-98/X68000/FM Towns/MSX/arcade/home-system driver execution, including external MIDI-module routes
 - `yoyofr/modizer`: practical integration of a very large set of replay engines, including libvgm, Game Music Emu, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX, XSF-family players, vgmstream and others
 
-Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for Game Music Interpreter:
+Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for VGM Compiler:
 
 ```text
 shared frontend
@@ -178,7 +178,7 @@ Game Music Emu shows the complementary pattern: a compact common playback API ca
 
 OpenMPT shows that richer source families should not be forced down to that least-common-denominator boundary when pattern/structure state is actually available.
 
-Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent Game Music Interpreter capability schema is deferred until concrete adapters require one.
+Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent VGM Compiler capability schema is deferred until concrete adapters require one.
 
 ## Music representation and production research
 
@@ -191,7 +191,7 @@ These systems pressure-test the layers above device execution.
 - MEI / Music Encoding Initiative: structured music notation and metadata/provenance representation
 - MusicXML and Humdrum: additional notation/analysis interchange references to inspect where materially useful
 
-The purpose is not to make Game Music Interpreter a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
+The purpose is not to make VGM Compiler a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
 
 ### Computer-assisted composition
 
@@ -212,7 +212,7 @@ These systems reinforce that a final mix is a projection of a larger graph and t
 - `spotify/basic-pitch`: useful inverse case where frame/onset/pitch-contour evidence is richer than the eventual MIDI projection
 - chord/progression corpora such as `ldrolez/free-midi-chords`: potential fixtures for harmony and transposition tests rather than architecture
 
-The key lesson is that an output format may be smaller than the internal evidence used to derive it. Game Music Interpreter should preserve the richer evidence when source execution provides it.
+The key lesson is that an output format may be smaller than the internal evidence used to derive it. VGM Compiler should preserve the richer evidence when source execution provides it.
 
 ### Algorithmic sequencing
 
@@ -326,7 +326,7 @@ libaural may use executable game-music internal state as ground truth for artifi
 The intended relationship is:
 
 ```text
-Game Music Interpreter
+VGM Compiler
 exact source / driver / synthesis state
         ↓
 reference acoustic render

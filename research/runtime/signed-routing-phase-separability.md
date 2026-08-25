@@ -10,7 +10,7 @@ Yes, in the smallest nontrivial stereo routing graph.
 
 ## Device motivation
 
-Game Music Interpreter already has exact device evidence that routing state is not merely a scalar pan coordinate:
+VGM Compiler already has exact device evidence that routing state is not merely a scalar pan coordinate:
 
 - SNES S-DSP voice routes use signed left/right gains;
 - Namco C352 exposes four gain routes together with phase-inversion flags;
@@ -160,7 +160,7 @@ This is standard signed-graph / signed-matrix structure, not a new theorem.
 
 ## Audio consequence
 
-The new Game Music Interpreter result is the device interpretation:
+The new VGM Compiler result is the device interpretation:
 
 ```text
 routing support

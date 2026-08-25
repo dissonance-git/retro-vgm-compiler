@@ -47,7 +47,7 @@ endif()
 
 # This is a research-only backend. Keep every unrelated emulator and optional
 # dependency out so libgme remains a narrow HES execution dependency rather than
-# entering the normal dependency-free Retro VGM Compiler build.
+# entering the normal dependency-free VGM Compiler build.
 set(USE_GME_AY OFF CACHE BOOL "" FORCE)
 set(USE_GME_GBS OFF CACHE BOOL "" FORCE)
 set(USE_GME_GYM OFF CACHE BOOL "" FORCE)

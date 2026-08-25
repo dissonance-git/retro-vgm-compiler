@@ -2,7 +2,7 @@
 
 ## Question
 
-What can Game Music Interpreter establish about *Chrono Cross* AKAO data from reconstructed PSF1 memory, independent parsers, and the same-game decompilation without collapsing structure, driver execution, and SPU state into one layer?
+What can VGM Compiler establish about *Chrono Cross* AKAO data from reconstructed PSF1 memory, independent parsers, and the same-game decompilation without collapsing structure, driver execution, and SPU state into one layer?
 
 This pass began from VGMTrans-only structural evidence. A later same-game decompilation materially resolved several previously unknown semantics, so this document has been corrected in place rather than preserving stale uncertainty.
 
@@ -34,7 +34,7 @@ For later AKAO sequences the structural surface includes:
 +0x40 track-pointer table
 ```
 
-VGMTrans's tagless `guessVersion()` is weaker than exact version attribution: a zero word at `+0x2C` is sufficient for its `VERSION_3_2` guess. Because later structural validation already expects that field to be zero, Game Music Interpreter must not turn this heuristic into exact version proof.
+VGMTrans's tagless `guessVersion()` is weaker than exact version attribution: a zero word at `+0x2C` is sufficient for its `VERSION_3_2` guess. Because later structural validation already expects that field to be zero, VGM Compiler must not turn this heuristic into exact version proof.
 
 The bounded probe therefore reports:
 

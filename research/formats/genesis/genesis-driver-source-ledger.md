@@ -230,7 +230,7 @@ Use SMPS, GEMS, Cube, Echo/MDSDRV-like controls, and transformed runtimes to sep
 
 ### D. Reverse-lowering competition
 
-Compare Retro VGM Compiler with independent reverse-lowering tools on hidden-source fixtures. Plausible rendering similarity does not earn exact source-evidence status.
+Compare VGM Compiler with independent reverse-lowering tools on hidden-source fixtures. Plausible rendering similarity does not earn exact source-evidence status.
 
 ## Current implementation checkpoint
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Retro VGM Compiler supplies Omniphony with causal source-native game-music objects before historical stereo collapse.
+VGM Compiler supplies Omniphony with causal source-native game-music objects before historical stereo collapse.
 
 The audible target is intentionally creative:
 
@@ -40,7 +40,7 @@ A render failure does not advance observer, role or budget memory.
 ## Ownership boundary
 
 ```text
-Retro VGM Compiler
+VGM Compiler
   source truth
   source-quality admission
   source / generation identity
@@ -160,7 +160,7 @@ The protected historical/reference stereo remains the untouched control beneath 
 
 ## Source extent
 
-Retro VGM Compiler supplies width/diffuse/musical evidence. Omniphony converts the final source presentation to 3-D size.
+VGM Compiler supplies width/diffuse/musical evidence. Omniphony converts the final source presentation to 3-D size.
 
 In FullSphere:
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Retro VGM Compiler now has a bounded evidence path from performed pitch motion into musical-role reasoning:
+VGM Compiler now has a bounded evidence path from performed pitch motion into musical-role reasoning:
 
 ```text
 source-backed performed pitch trajectory

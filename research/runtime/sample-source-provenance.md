@@ -4,7 +4,7 @@
 
 Research input for sample attribution, instrument-source claims, library provenance, and source-native reconstruction.
 
-This pass uses the HCS64 VGM/Others Instrument Source Thread as a community discovery surface, then pressure-tests what kinds of claims can actually be promoted into Game Music Interpreter.
+This pass uses the HCS64 VGM/Others Instrument Source Thread as a community discovery surface, then pressure-tests what kinds of claims can actually be promoted into VGM Compiler.
 
 The central law is:
 
@@ -368,7 +368,7 @@ These methods are designed to answer roughly:
 
 > Are these audio signals substantially related despite transformations?
 
-Game Music Interpreter additionally needs:
+VGM Compiler additionally needs:
 
 > Which exact transformation path is supported, and what historical/source claim does that path justify?
 

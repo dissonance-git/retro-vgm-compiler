@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Require an exact committed source state for private binary construction.
 
-The final bundle records one Retro VGM Compiler commit as provenance. Building
+The final bundle records one VGM Compiler commit as provenance. Building
 from modified tracked files would make that statement false even if every binary
 compiled successfully. The verifier therefore requires a real 40-hex HEAD and
 no staged or unstaged tracked changes. An optional expected commit lets the

@@ -4,7 +4,7 @@ Date: 2026-08-15
 
 This pass asks a narrow engineering question:
 
-> What external evidence should change the realtime Game Music Interpreter → Omniphony path, without turning playback into offline pre-analysis or replacing source-authoritative game-music evidence with generic audio inference?
+> What external evidence should change the realtime VGM Compiler → Omniphony path, without turning playback into offline pre-analysis or replacing source-authoritative game-music evidence with generic audio inference?
 
 The answer is not a new monolithic model. The evidence supports the architecture already emerging in GMI: exact source truth where available, small causal observations, persistent uncertainty-aware state, and a renderer-facing perceptual control layer. The main additions are clearer fallback rules for opaque audio, stronger temporal-hypothesis discipline, and an implementation pattern for source/object continuity.
 

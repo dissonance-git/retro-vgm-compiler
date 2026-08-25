@@ -6,7 +6,7 @@ Cross-platform research input for sequence/driver execution, track identity, ada
 
 ## Question
 
-Can Game Music Interpreter assume that a sequence file contains a fixed list of tracks which merely emit events over time?
+Can VGM Compiler assume that a sequence file contains a fixed list of tracks which merely emit events over time?
 
 No.
 

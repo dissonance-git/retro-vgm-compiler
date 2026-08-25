@@ -2,7 +2,7 @@
 
 ## Question
 
-What physical voice-state semantics can Game Music Interpreter safely claim for the original PlayStation SPU before any AKAO/driver event is mapped to hardware?
+What physical voice-state semantics can VGM Compiler safely claim for the original PlayStation SPU before any AKAO/driver event is mapped to hardware?
 
 This pass triangulates independent emulator, FPGA, hardware-oriented documentation, and game-specific reverse-engineering evidence. It deliberately keeps driver-level AKAO semantics separate from physical SPU semantics.
 
@@ -184,7 +184,7 @@ PSX-SPX instead documents an over-range step as becoming `0x4000`.
 
 This one-LSB disagreement is small as a normal pitch difference but scientifically useful because it is a precise hardware discriminator.
 
-Game Music Interpreter therefore preserves both candidates:
+VGM Compiler therefore preserves both candidates:
 
 ```text
 implementation candidate: 0x3FFF
@@ -287,7 +287,7 @@ AKAO source tuning coordinate
 != SPU VxPitch
 ```
 
-Reference playback and extracted/exported representation can disagree even inside one mature tool. Game Music Interpreter must test parity at each transformation boundary rather than only checking that one final renderer sounds plausible.
+Reference playback and extracted/exported representation can disagree even inside one mature tool. VGM Compiler must test parity at each transformation boundary rather than only checking that one final renderer sounds plausible.
 
 ## Literature boundary
 

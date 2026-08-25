@@ -2,7 +2,7 @@
 
 ## Question
 
-How should Game Music Interpreter distinguish hardware semantics from software-driver semantics when many games share one sound platform but use unrelated or only partially related music engines?
+How should VGM Compiler distinguish hardware semantics from software-driver semantics when many games share one sound platform but use unrelated or only partially related music engines?
 
 The answer is to treat **driver lineage as an explicit control surface**, not as a hidden synonym for platform or file format.
 
@@ -147,7 +147,7 @@ Do not create one generic `GBA sequence` ontology.
 
 The recent AGBinator history contains an instructive correction: a Krawall signature was removed because of false positives and later replaced/refined with stronger evidence.
 
-This is exactly the behavior Game Music Interpreter should preserve.
+This is exactly the behavior VGM Compiler should preserve.
 
 ```text
 detector matched

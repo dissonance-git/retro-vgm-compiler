@@ -2,7 +2,7 @@
 
 ## Question
 
-What exact execution state must Game Music Interpreter preserve for Yamaha-style FM synthesis before it can make claims about a persistent musical part, a performed pitch, an instrument/patch identity, or a heard timbre?
+What exact execution state must VGM Compiler preserve for Yamaha-style FM synthesis before it can make claims about a persistent musical part, a performed pitch, an instrument/patch identity, or a heard timbre?
 
 This pass pressure-tests the OPN-family surface against OPM and OPL3 rather than assuming that all Yamaha FM chips share one register ontology.
 

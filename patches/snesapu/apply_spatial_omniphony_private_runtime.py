@@ -6,7 +6,7 @@ Private-build prerequisite:
 
 That pin deliberately stops after the proven x86 spcplayer -> x64 foo_snesapu
 [PCM][TLEM][SRCE-v2] transport and before the old Omniphony object/runtime work.
-This patch keeps that process transport, stages the current Retro VGM Compiler
+This patch keeps that process transport, stages the current VGM Compiler
 model/SPC headers beside the pinned source tree, and replaces only the obsolete
 Semantic Stereo Enhancer presentation path.
 

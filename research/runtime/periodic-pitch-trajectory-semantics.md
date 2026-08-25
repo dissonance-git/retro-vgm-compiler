@@ -2,7 +2,7 @@
 
 ## Question
 
-When does a timed register-write log contain enough information to describe a periodic chip's performed pitch trajectory directly, and when must Game Music Interpreter advance autonomous device state between writes before the pitch evidence is even defined?
+When does a timed register-write log contain enough information to describe a periodic chip's performed pitch trajectory directly, and when must VGM Compiler advance autonomous device state between writes before the pitch evidence is even defined?
 
 This pass pressure-tests the existing nominal-frequency helpers against materially different periodic sound generators:
 
@@ -232,7 +232,7 @@ whenever sweep is active.
 
 NES-MDB is especially relevant to the interpreter's architecture. The paper starts from VGM-like timed APU register writes and then **emulates APU behavior to derive an expressive score**. That published pipeline independently supports the need for a transformation between write-log evidence and performed musical state.
 
-However, NES-MDB then projects the emulated state into note/velocity/timbre categories for MIR purposes. Game Music Interpreter should preserve the lower device trajectory first and make that symbolic projection reversible and explicitly downstream.
+However, NES-MDB then projects the emulated state into note/velocity/timbre categories for MIR purposes. VGM Compiler should preserve the lower device trajectory first and make that symbolic projection reversible and explicitly downstream.
 
 ### Earned boundary
 
@@ -444,7 +444,7 @@ register log necessarily destroyed the performed trajectory
 
 Often the trajectory is latent and recoverable by execution.
 
-This is exactly the kind of representation boundary Game Music Interpreter should preserve.
+This is exactly the kind of representation boundary VGM Compiler should preserve.
 
 ## Consequences for corpus analysis
 
@@ -497,7 +497,7 @@ The most useful literature result is not a chip formula but a methodological ali
 
 NES-MDB distinguishes composition from expressive performance and derives the latter by executing/emulating timed APU control data. Cycle-accurate reverse-engineering literature likewise emphasizes constructing and validating transition/timing models rather than assuming internal behavior from external snapshots.
 
-Game Music Interpreter extends those ideas vertically:
+VGM Compiler extends those ideas vertically:
 
 ```text
 encoded control evidence

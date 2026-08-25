@@ -101,7 +101,7 @@ def validate(
         raise ValueError("unexpected HES instrumentation contract")
     retro_commit = provenance.get("retro_vgm_compiler_commit")
     if not isinstance(retro_commit, str) or not HEX40.fullmatch(retro_commit):
-        raise ValueError("exact Retro VGM Compiler commit provenance is required")
+        raise ValueError("exact VGM Compiler commit provenance is required")
     clock_rate = _integer(provenance, "clock_rate_hz")
     if clock_rate <= 0:
         raise ValueError("clock_rate_hz must be positive")

@@ -13,7 +13,7 @@ constexpr std::uint32_t omniphony_foobar_source_session_abi_minor_required = 1u;
 
 // Non-owning client for the process-local source-session exports published by
 // foo_out_omniphony.dll. The output component owns final headphone rendering;
-// Retro VGM Compiler keeps source truth, causal evidence, and the past-derived
+// VGM Compiler keeps source truth, causal evidence, and the past-derived
 // presentation budget. No chip-specific semantics live at this boundary.
 class omniphony_foobar_source_session_client {
 public:

@@ -2,7 +2,7 @@
 
 ## Question
 
-Why is Game Boy Advance MusicPlayer2000 / m4a / MP2K unusually useful to Game Music Interpreter?
+Why is Game Boy Advance MusicPlayer2000 / m4a / MP2K unusually useful to VGM Compiler?
 
 Because it exposes, in one open research surface:
 
@@ -141,7 +141,7 @@ A downstream capture of the two PCM hardware channels therefore loses the separa
 
 This is the inverse of simple PSG/chip cases where hardware voice slots remain separately observable.
 
-For Game Music Interpreter, the best evidence route is consequently:
+For VGM Compiler, the best evidence route is consequently:
 
 ```text
 sequence/player state
@@ -197,7 +197,7 @@ but
 different internal mixer precision/implementation
 ```
 
-This gives Game Music Interpreter a practical identity-preservation experiment:
+This gives VGM Compiler a practical identity-preservation experiment:
 
 ```text
 reference MP2K realization

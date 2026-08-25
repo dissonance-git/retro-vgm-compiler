@@ -216,7 +216,7 @@ Relevant controls include:
 - Martins et al., *Polyphonic Instrument Recognition Using Spectral Clustering*, ISMIR 2007. The source-separation problem is explicitly formulated as grouping simultaneous components into source objects.
 - Della Ventura, *Voice Separation in Polyphonic Music: Information Theory Approach*, 2018, DOI `10.1007/978-3-319-92007-8_54`. Symbolic voice separation remains a distinct inference problem even when note events are already available.
 
-For Retro VGM Compiler, native chip execution gives unusually strong source labels compared with audio-only MIR, but the conceptual lesson remains useful:
+For VGM Compiler, native chip execution gives unusually strong source labels compared with audio-only MIR, but the conceptual lesson remains useful:
 
 ```text
 active hardware sources

@@ -389,7 +389,7 @@ For every executable-rip family admitted in the future, distinguish at least the
 - Can the mute alter runtime behavior?
 - Is dynamic allocation preserved?
 
-## 11. Immediate consequences for Game Music Interpreter
+## 11. Immediate consequences for VGM Compiler
 
 ### xSF
 

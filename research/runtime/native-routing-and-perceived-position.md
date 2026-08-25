@@ -303,7 +303,7 @@ native pan register
 
 An enhanced renderer may deliberately widen, externalize, or reconstruct a multi-bus scene, but the intervention must remain downstream and reversible relative to the reference evidence.
 
-This keeps Game Music Interpreter's source-native rendering role distinct from a later Omniphony/headphone-spatialization layer.
+This keeps VGM Compiler's source-native rendering role distinct from a later Omniphony/headphone-spatialization layer.
 
 ## 11. Highest-information regressions
 

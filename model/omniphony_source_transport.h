@@ -11,7 +11,7 @@
 namespace vgmtooling::model {
 
 // Binary transport mirror for Omniphony source_ffi ABI 0.4. These records are
-// intentionally dumb C-layout values: Retro VGM Compiler owns musical/source
+// intentionally dumb C-layout values: VGM Compiler owns musical/source
 // semantics and the causal intervention budget; Omniphony owns presentation and
 // binaural DSP. Keeping the mirror here avoids a Rust-header dependency.
 constexpr std::uint32_t omniphony_source_abi_major_required = 0;
@@ -109,7 +109,7 @@ constexpr std::uint32_t omniphony_transport_lane_kind(
     }
 }
 
-// Omniphony ABI carries one u64 runtime source token while Retro VGM Compiler
+// Omniphony ABI carries one u64 runtime source token while VGM Compiler
 // keeps source_id and generation separately. This mixed token is presentation-
 // only: it must never be used as a provenance identity or mapped back into the
 // compiler. A generation change deliberately changes the renderer token.

@@ -2,7 +2,7 @@
 
 ## Question
 
-What can source-available trackers, music engines and reconstructed game drivers teach Game Music Interpreter that a device register trace cannot?
+What can source-available trackers, music engines and reconstructed game drivers teach VGM Compiler that a device register trace cannot?
 
 The central distinction is:
 

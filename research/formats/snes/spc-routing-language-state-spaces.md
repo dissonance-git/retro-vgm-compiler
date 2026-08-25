@@ -210,7 +210,7 @@ runtime-decodable
 != authoring-language legal
 ```
 
-This distinction should be preserved anywhere Game Music Interpreter attempts
+This distinction should be preserved anywhere VGM Compiler attempts
 to infer intent or offer source-native editing controls.
 
 ## Wolf Team: a separate phase command

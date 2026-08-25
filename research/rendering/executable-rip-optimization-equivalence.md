@@ -334,7 +334,7 @@ Do not collapse these into one `optimized = correct` bit.
 
 ## 10. Differential optimizer test contract
 
-For any future optimizer or slice builder owned by Game Music Interpreter, require at least:
+For any future optimizer or slice builder owned by VGM Compiler, require at least:
 
 ### A. Monotonic liveness
 

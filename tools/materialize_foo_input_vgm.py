@@ -2,7 +2,7 @@
 """Materialize a buildable foo_input_vgm source tree from canonical inputs.
 
 The exact user-supplied foo_input_vgm 0.31 source archive is the private
-component bootstrap. Current Retro VGM Compiler additions live under
+component bootstrap. Current VGM Compiler additions live under
 components/vgm/ and guarded transformations live under patches/foo_input_vgm/.
 This tool combines those sources into a disposable build tree without consulting
 the retired vgmspc repository or copying its stale patched host tree.

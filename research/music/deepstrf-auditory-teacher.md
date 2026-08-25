@@ -1,4 +1,4 @@
-# deepSTRF as an auditory teacher for Game Music Interpreter
+# deepSTRF as an auditory teacher for VGM Compiler
 
 ## Boundary
 
@@ -14,7 +14,7 @@ This fork already absorbed the durable libaural research line. It should therefo
 The repositories should not collapse into one product:
 
 ```text
-Game Music Interpreter
+VGM Compiler
 source truth + driver/device execution + isolated musical sources
 + online musical interpretation
 + source-authoritative causal fixtures
@@ -28,7 +28,7 @@ rich auditory teachers + neural datasets + recurrent challengers
 
         ↓ only mechanisms that survive independent obligations
 
-Game Music Interpreter realtime path / Omniphony-facing state
+VGM Compiler realtime path / Omniphony-facing state
 small causal mechanisms suitable for continuous playback
 ```
 
@@ -47,7 +47,7 @@ source / execution identity
 != persistent musical part
 ```
 
-Game Music Interpreter often has source identity unavailable to ordinary waveform hearing. Use that source truth when present, but do not train the auditory layer to pretend it could have inferred an acoustically invisible source swap.
+VGM Compiler often has source identity unavailable to ordinary waveform hearing. Use that source truth when present, but do not train the auditory layer to pretend it could have inferred an acoustically invisible source swap.
 
 The runtime contract in `model/realtime_auditory_state_evidence.h` therefore keeps source-semantic support separate from phase, level-trajectory, dropout, spectral and onset continuity evidence.
 
@@ -94,11 +94,11 @@ onset / attack relation
 
 The important finding is complementarity, not one magic scalar. A violation of one coordinate means that continuity evidence changed; it does not by itself prove that the hidden source changed.
 
-These specialists are attractive for the Game Music Interpreter/Omniphony path because they can potentially be compressed into small causal state while the heavier deepSTRF models remain external teachers.
+These specialists are attractive for the VGM Compiler/Omniphony path because they can potentially be compressed into small causal state while the heavier deepSTRF models remain external teachers.
 
 ## Teacher use
 
-Game Music Interpreter should continue supplying exact counterfactual fixtures to deepSTRF:
+VGM Compiler should continue supplying exact counterfactual fixtures to deepSTRF:
 
 ```text
 known pitch change
@@ -112,7 +112,7 @@ known hidden source swap when acoustically distinguishable
 known hidden source swap when acoustically indistinguishable
 ```
 
-The hearing system is then scored on what it preserves, not on whether it reproduces Game Music Interpreter's internal machine state.
+The hearing system is then scored on what it preserves, not on whether it reproduces VGM Compiler's internal machine state.
 
 Useful obligations include:
 
@@ -144,7 +144,7 @@ PyTorch, StateNet, torch_amt, ICNet or another rich teacher are not runtime requ
 
 ## Relation to Omniphony
 
-This research helps Omniphony indirectly by making Game Music Interpreter's semantic sidecar less naive.
+This research helps Omniphony indirectly by making VGM Compiler's semantic sidecar less naive.
 
 The useful progression is:
 

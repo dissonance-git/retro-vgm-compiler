@@ -35,7 +35,7 @@ foreach(target IN LISTS PRIVATE_COMPONENT_TESTS)
     add_test(NAME ${target} COMMAND ${target})
 endforeach()
 
-# The final bundle names one exact Retro VGM Compiler commit as provenance.
+# The final bundle names one exact VGM Compiler commit as provenance.
 # Refuse a non-Git or modified tracked source state before any external
 # dependency checkout so that manifest commit always describes compiled input.
 add_test(

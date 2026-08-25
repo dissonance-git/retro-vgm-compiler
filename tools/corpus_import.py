@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Index, import, and verify immutable Game Music Interpreter corpus files."""
+"""Index, import, and verify immutable VGM Compiler corpus files."""
 
 from __future__ import annotations
 
@@ -273,7 +273,7 @@ def verify_manifest(repo_root: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Game Music Interpreter repository root")
+    parser.add_argument("--repo", type=Path, default=Path.cwd(), help="VGM Compiler repository root")
     parser.add_argument("--verify", action="store_true", help="verify committed corpus bytes and inventories")
     parser.add_argument("--record-existing", action="store_true", help="record files already under tests/corpus/<id>")
     parser.add_argument("--archive", type=Path, help="optional source ZIP to preserve and extract")

@@ -2,7 +2,7 @@
 
 ## Question
 
-After PSF1, USF, and 2SF containers have been admitted and their effective platform objects reconstructed, what additional execution layers are required before Game Music Interpreter can claim notes, instruments, physical voices, performed pitch, or heard musical gestures?
+After PSF1, USF, and 2SF containers have been admitted and their effective platform objects reconstructed, what additional execution layers are required before VGM Compiler can claim notes, instruments, physical voices, performed pitch, or heard musical gestures?
 
 This pass uses the newly added xSF corpus as a pressure test rather than forcing PlayStation, Nintendo 64, and Nintendo DS audio into the VGM/chip-register model.
 
@@ -341,7 +341,7 @@ That suggests a powerful bounded test for the existing Mario Kart DS 2SF corpus:
 -> physical sample/PSG/noise trajectory
 ```
 
-This could produce a source-native vertical slice without first needing a complete general NDS emulator inside Game Music Interpreter.
+This could produce a source-native vertical slice without first needing a complete general NDS emulator inside VGM Compiler.
 
 VGMTrans remains a mechanism/parser observatory. Its MIDI-like projections must not become canonical truth, and unknown/partially handled opcodes must remain explicit evidence gaps.
 

@@ -1,6 +1,6 @@
-# Game Music Interpreter test corpus
+# VGM Compiler test corpus
 
-This document governs user-supplied real-music fixtures used to pressure-test Game Music Interpreter beyond synthetic unit cases.
+This document governs user-supplied real-music fixtures used to pressure-test VGM Compiler beyond synthetic unit cases.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ can exact source/device state be captured?
 can persistent musical behavior be recovered conservatively?
 can parts / gestures / sections / repetition be analyzed?
 can the reference and enhanced renderers be compared?
-can Game Music Interpreter describe what a listener hears naturally?
+can VGM Compiler describe what a listener hears naturally?
 can every material description descend into evidence?
 can metadata remain separate from attribution evidence?
 ```
@@ -76,7 +76,7 @@ Library/Sources/Music/FoobarLibraryMetadata.jsonl
 optional compact query/index projections
 ```
 
-The historical capitalization above is retained because it is the source path recorded by the Helix ingestion report. Game Music Interpreter does not own or duplicate that database.
+The historical capitalization above is retained because it is the source path recorded by the Helix ingestion report. VGM Compiler does not own or duplicate that database.
 
 Therefore:
 
@@ -96,7 +96,7 @@ This rule is intentionally narrow. Other embedded fields may be inspected accord
 
 ## Cross-project ownership
 
-Game Music Interpreter owns:
+VGM Compiler owns:
 
 - the immutable VGM/VGZ/SPC/NSF/NSFe/KSS/SGC/PSF1/GSF/USF/2SF/NCSF fixture bytes and required playlist sidecars;
 - hashes and source-family inventory;
@@ -185,7 +185,7 @@ track / exact version
 
 The project has explicit prototype/final/replacement distinctions and unresolved composer/arranger conflicts. It also contains technical fingerprint hypotheses involving voice-bank use, MOD settings, FM/PSG initialization, patch reuse, SFX-heavy construction, and version divergence.
 
-This gives Game Music Interpreter a strong negative control:
+This gives VGM Compiler a strong negative control:
 
 ```text
 external artist tag
