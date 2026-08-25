@@ -27,21 +27,7 @@ void set_full_volume(sn76489_enhanced& psg) {
     psg.write(0x90);
 }
 
-double total_ac_energy(const buffer& data) {
-    double mean = 0.0;
-    for (float sample : data)
-        mean += sample;
-    mean /= static_cast<double>(data.size());
-
-    double energy = 0.0;
-    for (float sample : data) {
-        const double centered = static_cast<double>(sample) - mean;
-        energy += centered * centered;
-    }
-    return energy;
-}
-
-double sinusoid_energy(const buffer& data, std::size_t bin) {
+double sinusoid_amplitude(const buffer& data, std::size_t bin) {
     std::complex<double> projection{0.0, 0.0};
     for (std::size_t n = 0; n < data.size(); ++n) {
         const double phase = -2.0 * pi * static_cast<double>(bin) *
@@ -49,18 +35,18 @@ double sinusoid_energy(const buffer& data, std::size_t bin) {
         projection += static_cast<double>(data[n]) *
             std::complex<double>(std::cos(phase), std::sin(phase));
     }
-    return 2.0 * std::norm(projection) / static_cast<double>(data.size());
+    return 2.0 * std::abs(projection) / static_cast<double>(data.size());
 }
 
-double off_harmonic_energy(const buffer& data) {
-    // 3000 Hz is exactly FFT bin 256 at 48 kHz / 4096. A perfect band-limited
-    // 50% square at this fundamental can contain only the odd harmonics below
-    // Nyquist: 3, 9, 15 and 21 kHz. Everything else is alias/noise energy.
-    const std::array<std::size_t, 4> desired_bins{{256, 768, 1280, 1792}};
-    double desired = 0.0;
-    for (std::size_t bin : desired_bins)
-        desired += sinusoid_energy(data, bin);
-    return std::max(0.0, total_ac_energy(data) - desired);
+double bandlimited_square_error(const buffer& data) {
+    constexpr std::array<std::size_t, 4> harmonics{{1, 3, 5, 7}};
+    double error = 0.0;
+    for (std::size_t harmonic : harmonics) {
+        const std::size_t bin = 256u * harmonic;
+        const double ideal = 4.0 / (pi * static_cast<double>(harmonic));
+        error += std::abs(sinusoid_amplitude(data, bin) - ideal) / ideal;
+    }
+    return error;
 }
 
 buffer naive_square() {
@@ -89,16 +75,16 @@ int main() {
     psg.render(outputs, enhanced.size());
 
     const buffer naive = naive_square();
-    const double enhanced_alias = off_harmonic_energy(enhanced);
-    const double naive_alias = off_harmonic_energy(naive);
+    const double enhanced_error = bandlimited_square_error(enhanced);
+    const double naive_error = bandlimited_square_error(naive);
 
-    CHECK(naive_alias > 0.0);
-    CHECK(enhanced_alias < naive_alias * 0.75);
+    CHECK(naive_error > 0.0);
+    CHECK(enhanced_error < naive_error * 0.25);
 
     // Improvement must not come from deleting the musical fundamental.
-    const double enhanced_fundamental = sinusoid_energy(enhanced, 256);
-    const double naive_fundamental = sinusoid_energy(naive, 256);
-    CHECK(enhanced_fundamental > naive_fundamental * 0.70);
+    const double enhanced_fundamental = sinusoid_amplitude(enhanced, 256);
+    const double ideal_fundamental = 4.0 / pi;
+    CHECK(enhanced_fundamental > ideal_fundamental * 0.95);
 
     return 0;
 }

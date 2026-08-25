@@ -89,6 +89,11 @@ private:
 
     config cfg_{};
     bool supported_ = true;
+    // Preserve the raw 10-bit register across latch/data writes. Playback
+    // normalization is a separate view: an encoded zero is Sega period 1 or
+    // non-Sega period 0x400, but that normalized value must never leak back
+    // into the second half of an in-flight register write.
+    std::array<std::uint16_t, 3> tone_period_registers_{{0, 0, 0}};
     std::array<std::uint16_t, 3> tone_periods_{{1, 1, 1}};
     std::array<std::uint8_t, 4> attenuation_{{15, 15, 15, 15}};
     std::array<double, 3> tone_phase_{};

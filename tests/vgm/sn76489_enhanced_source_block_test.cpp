@@ -19,9 +19,9 @@ int main() {
     // Tone 0 period 0x100, attenuation 0. Halfway through the block the exact
     // Game Gear stereo mask moves that source from both sides to right only.
     const sn76489_timed_write writes[] = {
-        {0, sn76489_write_kind::data, 0x80},
-        {0, sn76489_write_kind::data, 0x10},
-        {0, sn76489_write_kind::data, 0x90},
+        {0, sn76489_write_kind::register_write, 0x80},
+        {0, sn76489_write_kind::register_write, 0x10},
+        {0, sn76489_write_kind::register_write, 0x90},
         {8, sn76489_write_kind::stereo_mask, 0x01},
     };
 
@@ -72,8 +72,8 @@ int main() {
     // Timed writes are causal. An out-of-order capture is rejected rather than
     // silently sorted into a different execution history.
     const sn76489_timed_write unsorted[] = {
-        {4, sn76489_write_kind::data, 0x90},
-        {3, sn76489_write_kind::data, 0x9F},
+        {4, sn76489_write_kind::register_write, 0x90},
+        {3, sn76489_write_kind::register_write, 0x9F},
     };
     sn76489_enhanced bad_order(cfg);
     assert(!block.render(bad_order, unsorted, 2, false, 16, 256, 256));

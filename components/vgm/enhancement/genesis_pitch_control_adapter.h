@@ -267,7 +267,7 @@ inline genesis_pitch_control_append_result append_genesis_pitch_control_record(
         return result;
     }
 
-    const node_id device_transition_id = *result.performance.execution.device_transition_id;
+    const vgmtooling::model::node_id device_transition_id = *result.performance.execution.device_transition_id;
 
     // Record which decoded transition most recently changed each device-native
     // pitch state. This remains a transition history, not a continuous curve.

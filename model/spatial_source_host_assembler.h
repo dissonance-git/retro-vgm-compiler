@@ -103,6 +103,8 @@ public:
 
         if (!valid_block_shape(block))
             return fail(spatial_source_host_assembler_error::invalid_block);
+        if (block.lane_count > MaxLanes)
+            return fail(spatial_source_host_assembler_error::invalid_block);
         if (block.frame_count > CapacityFrames - buffered_frames_)
             return fail(spatial_source_host_assembler_error::capacity_exceeded);
 
@@ -179,13 +181,15 @@ public:
         for (std::size_t frame = 0; frame < block.frame_count; ++frame) {
             const std::size_t destination =
                 (buffer_head_index_ + buffered_frames_ + frame) % CapacityFrames;
-            for (std::size_t lane = 0; lane < lane_count_; ++lane) {
+            for (std::size_t lane = 0; lane < block.lane_count; ++lane) {
                 const auto& source_lane = block.lanes[lane];
                 const bool available = source_lane.mono_pcm != nullptr &&
                     (source_lane.availability == nullptr || source_lane.availability[frame] != 0);
-                pcm_[lane * CapacityFrames + destination] =
-                    available ? source_lane.mono_pcm[frame] : 0.0f;
-                availability_[lane * CapacityFrames + destination] = available ? 1u : 0u;
+                const std::size_t storage_index = lane * CapacityFrames + destination;
+                if (storage_index >= pcm_.size() || storage_index >= availability_.size())
+                    return fail(spatial_source_host_assembler_error::invalid_block);
+                pcm_[storage_index] = available ? source_lane.mono_pcm[frame] : 0.0f;
+                availability_[storage_index] = available ? 1u : 0u;
             }
         }
 

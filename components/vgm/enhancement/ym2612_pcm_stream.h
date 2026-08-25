@@ -13,7 +13,8 @@ namespace gameaudio::vgm {
 // bytes, stepping, start/length, reverse and loop semantics.
 class ym2612_pcm_stream {
 public:
-    explicit ym2612_pcm_stream(double output_sample_rate = 48000.0) noexcept;
+    ym2612_pcm_stream() noexcept;
+    explicit ym2612_pcm_stream(double output_sample_rate) noexcept;
 
     void configure_output_rate(double sample_rate) noexcept;
     void reset() noexcept;

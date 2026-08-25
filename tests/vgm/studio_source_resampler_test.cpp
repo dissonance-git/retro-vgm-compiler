@@ -180,15 +180,15 @@ int main() {
     assert(observed_first.valid);
     assert(observed_first.native_base == 0);
     assert(observed_first.destination_base == 0);
-    assert(observed_first.startup_reference_frames
-        == studio_source_resampler_kernel::pre_roll);
-    assert(observed_first.newly_ready_studio_frames == 17);
+    assert(observed_first.startup_reference_frames == 0);
+    assert(observed_first.newly_ready_studio_frames == 48);
     assert(observed_first.pending_future_frames
         == studio_source_resampler_kernel::post_roll);
-    assert(observer.ready_frames() == 17);
+    assert(observer.first_studio_destination_ordinal() == 0);
+    assert(observer.ready_frames() == 48);
 
     studio_hq_fm_observer<2, 512, 256>::ready_frame ready{};
-    for (std::uint64_t ordinal = 31; ordinal <= 47; ++ordinal) {
+    for (std::uint64_t ordinal = 0; ordinal <= 47; ++ordinal) {
         assert(observer.pop_ready_frame(ready));
         assert(ready.valid);
         assert(ready.destination_ordinal == ordinal);

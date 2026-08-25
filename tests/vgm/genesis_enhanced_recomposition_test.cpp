@@ -199,7 +199,7 @@ int main() {
         assert(std::abs(block.lanes[1].mono_pcm[0] - expected_psg0) < 1.0e-6f);
 
         if (surround)
-            assert(resolve_spatial_playback(options) == spatial_playback_path::source_full_sphere);
+            assert(resolve_spatial_playback(options) == spatial_playback_path::source_spatial);
         else
             assert(resolve_spatial_playback(options) == spatial_playback_path::reference_stereo);
     };

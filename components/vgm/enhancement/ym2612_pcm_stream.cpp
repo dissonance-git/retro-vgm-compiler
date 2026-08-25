@@ -19,6 +19,9 @@ constexpr std::uint8_t reverse_flag = 0x10;
 constexpr std::uint8_t loop_flag = 0x80;
 }
 
+ym2612_pcm_stream::ym2612_pcm_stream() noexcept
+    : ym2612_pcm_stream(48000.0) {}
+
 ym2612_pcm_stream::ym2612_pcm_stream(double output_sample_rate) noexcept {
     configure_output_rate(output_sample_rate);
     reset();

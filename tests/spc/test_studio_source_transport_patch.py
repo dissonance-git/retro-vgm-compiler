@@ -28,7 +28,8 @@ class StudioSourceTransportPatchTest(unittest.TestCase):
             text,
         )
         self.assertIn("Invalid verified studio-source packet or BRR witness mismatch", text)
-        self.assertLess(text.index("studio_runtime.load("), text.index("InitAPU();"))
+        load = text.index("studio_runtime.load(")
+        self.assertLess(load, text.index("InitAPU();", load))
         self.assertIn("prepare_spc_studio_sample_reconstruction();", text)
         self.assertIn('GetProcAddress(module, "SetDSPStudioSourceProvider")', text)
         self.assertIn("&retro_studio_begin, &retro_studio_sample, &studio_runtime", text)

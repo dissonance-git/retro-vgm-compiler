@@ -142,7 +142,7 @@ int main() {
 
             if (surround != 0) {
                 CHECK(resolve_spatial_playback(options) ==
-                    spatial_playback_path::source_full_sphere);
+                    spatial_playback_path::source_spatial);
                 CHECK(uses_source_renderer(options));
 
                 // The SPC Omniphony wrapper consumes exactly the chunk selected

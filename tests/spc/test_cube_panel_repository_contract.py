@@ -28,7 +28,7 @@ class CubePanelRepositoryContractTest(unittest.TestCase):
         cls.panel_fixtures = set(cls.fixture_by_cue.values())
 
     def test_policy_pins_blind_pipeline_and_strict_transfer_rule(self):
-        self.assertEqual(self.policy["schema_version"], 3)
+        self.assertEqual(self.policy["schema_version"], 4)
         self.assertEqual(
             self.policy["blind_panel_path"],
             "research/projects/sonic3/spc-cube-blind-panel.json",

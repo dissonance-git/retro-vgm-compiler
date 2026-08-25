@@ -64,6 +64,12 @@ int main() {
     CHECK(psg.attenuation(0) == 15);
     CHECK(psg.noise_lfsr() == 0x8000);
 
+    // A two-byte period write must preserve a zero low nibble between the
+    // latch byte and following data byte. Normalizing the transient zero to 1
+    // would silently turn encoded period 0x010 into 0x011.
+    set_tone_period(psg, 0, 0x010);
+    CHECK(psg.tone_period(0) == 0x010);
+
     // One audible tone must remain isolated from the other three source stems.
     set_tone_period(psg, 0, 0x100);
     set_volume(psg, 0, 0);

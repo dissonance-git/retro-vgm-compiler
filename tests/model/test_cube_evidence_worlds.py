@@ -42,12 +42,13 @@ class CubeEvidenceWorldsTest(unittest.TestCase):
         cls.worlds = cls.policy["evidence_worlds"]
 
     def test_policy_uses_typed_evidence_worlds(self) -> None:
-        self.assertEqual(self.policy["schema_version"], 2)
+        self.assertEqual(self.policy["schema_version"], 4)
         self.assertNotIn("outside_validation_corpora", self.policy)
         self.assertEqual(
             set(self.worlds),
             {
                 "work_level_single_composer_validation",
+                "prospective_exact_control_worlds",
                 "derivative_inheritance_candidates",
                 "team_or_partial_participation",
                 "arrangement_or_implementation_only",
@@ -120,12 +121,25 @@ class CubeEvidenceWorldsTest(unittest.TestCase):
         self.assertIn("Wizardry I・II", by_candidate["Miyoko Takaoka"])
         self.assertTrue(
             {
-                "Gleylancer",
-                "Galaxy Force II (Mega Drive)",
                 "Human Sports Festival",
                 "Power of the Hired",
             }.issubset(by_candidate["Masanori Hikichi"])
         )
+        self.assertNotIn("Gleylancer", by_candidate["Masanori Hikichi"])
+        self.assertNotIn("Galaxy Force II (Mega Drive)", by_candidate["Masanori Hikichi"])
+
+        prospective = self.worlds["prospective_exact_control_worlds"]
+        self.assertTrue(any(
+            item.get("work") == "Gleylancer"
+            and item.get("candidate") == "Masanori Hikichi"
+            for item in prospective
+        ))
+        implementation = self.worlds["arrangement_or_implementation_only"]
+        self.assertTrue(any(
+            item.get("work") == "Galaxy Force II (Mega Drive)"
+            and item.get("candidate") == "Masanori Hikichi"
+            for item in implementation
+        ))
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ inline std::string realization_role_density_bucket(double density) {
     return "unknown";
 }
 
-inline structural_grammar_observation realization_role_deployment_as_grammar_observation(
+inline blind_structural_grammar_observation realization_role_deployment_as_grammar_observation(
     const structural_grammar_context& context,
     const realization_role_deployment_hypothesis& deployment,
     creative_attribution_role role_scope) {
@@ -40,7 +40,7 @@ inline structural_grammar_observation realization_role_deployment_as_grammar_obs
             "realization-role deployment must be grounded in a persistent musical part and role before entering creator grammar");
     }
 
-    structural_grammar_observation result;
+    blind_structural_grammar_observation result;
     result.rule_key =
         "realization_role:" + deployment.realization_family +
         ";role=" + std::string{to_string(deployment.role)} +

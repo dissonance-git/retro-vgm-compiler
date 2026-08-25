@@ -409,7 +409,9 @@ add_test(
 
 add_test(
     NAME spc_original_sample_candidates_python
-    COMMAND ${Python3_EXECUTABLE} tests/spc/test_original_sample_candidates.py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_original_sample_candidates.py
 )
 set_tests_properties(
     spc_original_sample_candidates_python
@@ -417,7 +419,9 @@ set_tests_properties(
 )
 add_test(
     NAME spc_prebrr_sidecar_python
-    COMMAND ${Python3_EXECUTABLE} tests/spc/test_prebrr_sidecar.py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_prebrr_sidecar.py
 )
 set_tests_properties(
     spc_prebrr_sidecar_python
@@ -425,7 +429,9 @@ set_tests_properties(
 )
 add_test(
     NAME spc_studio_source_sidecar_python
-    COMMAND ${Python3_EXECUTABLE} tests/spc/test_studio_source_sidecar.py
+    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
+        -s tests/spc
+        -p test_studio_source_sidecar.py
 )
 set_tests_properties(
     spc_studio_source_sidecar_python

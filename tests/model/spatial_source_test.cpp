@@ -58,17 +58,14 @@ int main() {
         vgmtooling::model::spatial_audio_lane_kind::reference_mix));
 
     // Both foobar components expose enhancement and spatialization as separate
-    // user choices. Toggling one must not silently toggle the other.
+    // user choices. Renderer topology stays internal to Omniphony.
     vgmtooling::model::spatial_playback_options playback{};
     assert(!playback.surround);
     assert(!playback.enhanced);
-    assert(playback.externalization);
-    assert(playback.depth == vgmtooling::model::spatial_depth_mode::full);
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::reference_stereo);
     assert(!vgmtooling::model::uses_source_renderer(playback));
     assert(!vgmtooling::model::uses_enhanced_renderer(playback));
-    assert(!vgmtooling::model::uses_externalization(playback));
 
     playback.enhanced = true;
     assert(vgmtooling::model::uses_enhanced_renderer(playback));
@@ -78,20 +75,18 @@ int main() {
 
     playback.surround = true;
     assert(vgmtooling::model::resolve_spatial_playback(playback)
-        == vgmtooling::model::spatial_playback_path::source_full_sphere);
+        == vgmtooling::model::spatial_playback_path::source_spatial);
     assert(vgmtooling::model::uses_source_renderer(playback));
     assert(vgmtooling::model::uses_enhanced_renderer(playback));
-    assert(vgmtooling::model::uses_externalization(playback));
 
     playback.enhanced = false;
     assert(!vgmtooling::model::uses_enhanced_renderer(playback));
     assert(vgmtooling::model::uses_source_renderer(playback));
 
-    playback.depth = vgmtooling::model::spatial_depth_mode::native;
+    playback.surround = false;
     assert(vgmtooling::model::resolve_spatial_playback(playback)
-        == vgmtooling::model::spatial_playback_path::source_native_routing);
-    playback.externalization = false;
-    assert(!vgmtooling::model::uses_externalization(playback));
+        == vgmtooling::model::spatial_playback_path::reference_stereo);
+    assert(!vgmtooling::model::uses_source_renderer(playback));
 
     auto genesis = gameaudio::vgm::make_genesis_spatial_source(
         gameaudio::vgm::genesis_spatial_device::ym2612_fm,

@@ -57,6 +57,7 @@ std::uint16_t sn76489_enhanced::normalized_period(std::uint16_t period) const no
 
 void sn76489_enhanced::reset() noexcept {
     const std::uint16_t initial_period = normalized_period(0);
+    tone_period_registers_ = {{0, 0, 0}};
     tone_periods_ = {{initial_period, initial_period, initial_period}};
     attenuation_ = {{15, 15, 15, 15}};
     tone_phase_ = {{0.0, 0.0, 0.0}};
@@ -76,9 +77,10 @@ void sn76489_enhanced::write(std::uint8_t data) noexcept {
         if (latched_volume_) {
             attenuation_[latched_channel_] = static_cast<std::uint8_t>(data & 0x0Fu);
         } else if (latched_channel_ < 3) {
-            auto& period = tone_periods_[latched_channel_];
-            const std::uint16_t raw = static_cast<std::uint16_t>((period & 0x03F0u) | (data & 0x0Fu));
-            period = normalized_period(static_cast<std::uint16_t>(raw & maximum_written_period));
+            auto& raw_period = tone_period_registers_[latched_channel_];
+            raw_period = static_cast<std::uint16_t>(
+                ((raw_period & 0x03F0u) | (data & 0x0Fu)) & maximum_written_period);
+            tone_periods_[latched_channel_] = normalized_period(raw_period);
         } else {
             noise_control_ = static_cast<std::uint8_t>(data & 0x07u);
             noise_lfsr_ = noise_initial_state(cfg_.shift_register_width);
@@ -89,10 +91,11 @@ void sn76489_enhanced::write(std::uint8_t data) noexcept {
     if (latched_volume_) {
         attenuation_[latched_channel_] = static_cast<std::uint8_t>(data & 0x0Fu);
     } else if (latched_channel_ < 3) {
-        auto& period = tone_periods_[latched_channel_];
-        const std::uint16_t low = static_cast<std::uint16_t>(period & 0x000Fu);
-        const std::uint16_t raw = static_cast<std::uint16_t>(low | ((data & 0x3Fu) << 4));
-        period = normalized_period(static_cast<std::uint16_t>(raw & maximum_written_period));
+        auto& raw_period = tone_period_registers_[latched_channel_];
+        const std::uint16_t low = static_cast<std::uint16_t>(raw_period & 0x000Fu);
+        raw_period = static_cast<std::uint16_t>(
+            (low | ((data & 0x3Fu) << 4)) & maximum_written_period);
+        tone_periods_[latched_channel_] = normalized_period(raw_period);
     } else {
         noise_control_ = static_cast<std::uint8_t>(data & 0x07u);
         noise_lfsr_ = noise_initial_state(cfg_.shift_register_width);
