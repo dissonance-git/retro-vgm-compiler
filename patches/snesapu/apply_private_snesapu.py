@@ -25,6 +25,7 @@ def main() -> int:
     root = parser.parse_args().spcplay_root.resolve()
     here = Path(__file__).resolve().parent
 
+    run(here / "apply_windows_assembly_abi.py", root)
     run(here / "apply_source_capture.py", root)
     run(here / "upgrade_source_capture_v2.py", root)
     run(here / "apply_prebrr_provider.py", root)
