@@ -24,23 +24,27 @@ jobs:
 
           path = Path('CMakeLists.txt')
           text = path.read_text(encoding='utf-8')
-          old = '''        if(MSVC)
-              target_compile_options(${test_target} PRIVATE /W4 /permissive-)
-          else()
-              target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
-          endif()'''
-          new = '''        if(MSVC)
-              target_compile_options(${test_target} PRIVATE /W4 /permissive- /UNDEBUG)
-          else()
-              target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
-          endif()'''
-          if old in text:
-              if text.count(old) != 1:
-                  raise SystemExit('core test compile-option anchor is not singular')
-              text = text.replace(old, new, 1)
+          replacements = (
+              (
+                  'target_compile_options(${test_target} PRIVATE /W4 /permissive-)',
+                  'target_compile_options(${test_target} PRIVATE /W4 /permissive- /UNDEBUG)',
+              ),
+              (
+                  'target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror)',
+                  'target_compile_options(${test_target} PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)',
+              ),
+          )
+          changed = False
+          for old, new in replacements:
+              if old in text:
+                  if text.count(old) != 1:
+                      raise SystemExit(f'core test compile-option anchor is not singular: {old}')
+                  text = text.replace(old, new, 1)
+                  changed = True
+              elif new not in text:
+                  raise SystemExit(f'core test compile-option anchor not found: {old}')
+          if changed:
               path.write_text(text, encoding='utf-8')
-          elif new not in text:
-              raise SystemExit('core test compile-option anchor not found')
           PY
 
       - name: Configure full compiler core
