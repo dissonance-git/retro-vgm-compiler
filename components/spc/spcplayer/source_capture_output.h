@@ -2,6 +2,9 @@
 
 #include "spcplayer.h"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <Windows.h>
 #include <cstdint>
 #include <iostream>
