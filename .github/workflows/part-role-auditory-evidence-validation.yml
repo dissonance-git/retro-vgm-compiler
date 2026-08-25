@@ -1,0 +1,32 @@
+name: Part-role auditory evidence bridge validation
+
+on:
+  push:
+    branches: [role-auditory-evidence-bridge]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-role-auditory-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused evidence controls
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/part_role_auditory_evidence_adapter_test.cpp \
+            -o /tmp/part_role_auditory_evidence_adapter_test
+          /tmp/part_role_auditory_evidence_adapter_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/part_role_gesture_descriptor_test.cpp \
+            -o /tmp/part_role_gesture_descriptor_test
+          /tmp/part_role_gesture_descriptor_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/vgm/realtime_musical_role_hypothesis_test.cpp \
+            -o /tmp/realtime_musical_role_hypothesis_test
+          /tmp/realtime_musical_role_hypothesis_test
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
+            tests/model/spatial_source_timed_evidence_test.cpp \
+            -o /tmp/spatial_source_timed_evidence_test
+          /tmp/spatial_source_timed_evidence_test
