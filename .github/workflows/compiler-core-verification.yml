@@ -1,0 +1,22 @@
+name: Compiler core verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compiler-core-verification.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-free-compiler-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure full compiler core
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
+      - name: Build full compiler core
+        run: cmake --build build --parallel 2
+      - name: Run full compiler core
+        run: ctest --test-dir build --output-on-failure
