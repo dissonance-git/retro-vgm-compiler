@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <vector>
 
 using namespace vgmtooling::model;
 
@@ -89,21 +90,38 @@ bass_harmony_interaction_hypothesis bass(
     return result;
 }
 
-cadential_arrival_hypothesis dominant_arrival(
-    double confidence,
-    bool cross_part,
-    bool voice_grounded,
-    std::int64_t arrival_tick = 200) {
-    cadential_arrival_hypothesis result;
-    result.arrival_time = at(arrival_tick);
-    result.root_motion_semitones = 5;
-    result.root_interval_class = 5;
-    result.harmonic_root_motion_reliable = true;
-    result.cross_part_phrase_grounded = cross_part;
-    result.voice_leading_grounded = voice_grounded;
-    result.voice_leading_confidence = voice_grounded ? 0.90 : 0.0;
-    result.confidence = confidence;
+part_phrase_boundary_hypothesis phrase_part(
+    node_id part_id,
+    std::int64_t tick,
+    double confidence = 0.90) {
+    part_phrase_boundary_hypothesis result;
+    result.part_id = part_id;
+    result.boundary.boundary = at(tick);
+    result.boundary.confidence = confidence;
     return result;
+}
+
+cadential_arrival_hypothesis arrival_between(
+    const tertian_triad_hypothesis& first,
+    const tertian_triad_hypothesis& second,
+    bool cross_part,
+    bool voice_grounded) {
+    const auto transition = infer_harmonic_transition(first, second);
+    const std::int64_t arrival_tick =
+        second.projection.source_verticality.observation_time.tick;
+
+    std::vector<part_phrase_boundary_hypothesis> parts;
+    parts.push_back(phrase_part(101, arrival_tick));
+    if (cross_part)
+        parts.push_back(phrase_part(102, arrival_tick));
+    const auto boundary = make_phrase_boundary_consensus(std::move(parts));
+
+    if (voice_grounded) {
+        const auto first_tick = first.projection.source_verticality.observation_time.tick;
+        const auto grounded = voices(true, 0.90, first_tick, arrival_tick);
+        return infer_cadential_arrival(boundary, transition, grounded);
+    }
+    return infer_cadential_arrival(boundary, transition);
 }
 } // namespace
 
@@ -157,7 +175,7 @@ int main() {
 
     // Cross-part phrase arrival plus identity-grounded voice leading can reach
     // the stronger 0.82 tendency ceiling, bounded here by the key itself.
-    const auto strong_arrival = dominant_arrival(0.90, true, true);
+    const auto strong_arrival = arrival_between(g_major, c_major, true, true);
     const auto phrase_grounded = infer_ionian_functional_tendency(
         key,
         g_major,
@@ -174,7 +192,8 @@ int main() {
     // A type-correct but overconfident arrival without voice grounding is
     // re-capped to the cadence layer's phrase+harmony ceiling. Cross-part=true
     // does not let a fabricated 0.99 value jump directly to 0.82.
-    const auto raw_arrival = dominant_arrival(0.99, true, false);
+    auto raw_arrival = arrival_between(g_major, c_major, true, false);
+    raw_arrival.confidence = 0.99;
     const auto recapped_arrival = infer_ionian_functional_tendency(
         key,
         g_major,
@@ -258,9 +277,42 @@ int main() {
     }
     CHECK(bass_without_voice_rejected);
 
+    bool stale_departure_rejected = false;
+    try {
+        auto wrong_arrival = arrival_between(g_major, c_major, true, false);
+        wrong_arrival.departure_time.tick -= 1;
+        (void)infer_ionian_functional_tendency(
+            key,
+            g_major,
+            c_major,
+            std::nullopt,
+            std::nullopt,
+            wrong_arrival);
+    } catch (const std::invalid_argument&) {
+        stale_departure_rejected = true;
+    }
+    CHECK(stale_departure_rejected);
+
+    bool mismatched_quality_rejected = false;
+    try {
+        auto wrong_arrival = arrival_between(g_major, c_major, true, false);
+        wrong_arrival.arrival_quality = tertian_triad_quality::minor;
+        (void)infer_ionian_functional_tendency(
+            key,
+            g_major,
+            c_major,
+            std::nullopt,
+            std::nullopt,
+            wrong_arrival);
+    } catch (const std::invalid_argument&) {
+        mismatched_quality_rejected = true;
+    }
+    CHECK(mismatched_quality_rejected);
+
     bool mismatched_arrival_rejected = false;
     try {
-        const auto wrong_arrival = dominant_arrival(0.82, true, false, 210);
+        auto wrong_arrival = arrival_between(g_major, c_major, true, false);
+        wrong_arrival.arrival_time.tick += 10;
         (void)infer_ionian_functional_tendency(
             key,
             g_major,
@@ -275,7 +327,7 @@ int main() {
 
     bool missing_voice_witness_rejected = false;
     try {
-        const auto voice_claiming_arrival = dominant_arrival(0.82, true, true);
+        const auto voice_claiming_arrival = arrival_between(g_major, c_major, true, true);
         (void)infer_ionian_functional_tendency(
             key,
             g_major,
