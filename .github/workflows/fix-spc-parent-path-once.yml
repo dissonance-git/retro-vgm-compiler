@@ -1,0 +1,60 @@
+name: One-shot SPC parent path repair
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/fix-spc-parent-path-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repair canonical materialized parent path
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: bytes, new: bytes, expected: int = 1) -> None:
+              target = Path(path)
+              data = target.read_bytes()
+              count = data.count(old)
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} exact matches, found {count}")
+              target.write_bytes(data.replace(old, new, expected))
+              print(f"repaired {path}: {count} exact replacement(s)")
+
+          replace_exact(
+              "tools/build_private_foobar_components.ps1",
+              b"Join-Path $SpcRoot 'foo_snesapu\\foo_snesapu.vcxproj'",
+              b"Join-Path $SpcRoot 'foobar2000\\foo_snesapu\\foo_snesapu.vcxproj'",
+          )
+          replace_exact(
+              ".github/workflows/spc-native-probe.yml",
+              b"Join-Path $workspace 'foo_snesapu\\foo_snesapu.vcxproj'",
+              b"Join-Path $workspace 'foobar2000\\foo_snesapu\\foo_snesapu.vcxproj'",
+          )
+          replace_exact(
+              ".github/workflows/spc-native-probe.yml",
+              b"foo-snesapu-current/foo_snesapu/",
+              b"foo-snesapu-current/foobar2000/foo_snesapu/",
+              3,
+          )
+          PY
+          git diff --check
+
+      - name: Commit repair and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git rm .github/workflows/fix-spc-parent-path-once.yml
+          git add tools/build_private_foobar_components.ps1 .github/workflows/spc-native-probe.yml
+          git commit -m "fix(spc): build canonical materialized parent"
+          git push origin HEAD:main
