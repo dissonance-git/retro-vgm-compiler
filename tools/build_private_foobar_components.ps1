@@ -276,7 +276,7 @@ $SpcPlayerExe = Join-Path $SpcPlayerOutDir 'spcplayer.exe'
 Require-File $SpcPlayerExe 'source-aware spcplayer child'
 Assert-PEMachine $SpcPlayerExe 0x014C 'source-aware spcplayer child'
 $spcOutArg = '/p:OutDir=' + $SpcComponentOutDir + '\'
-Run $msbuild @((Join-Path $SpcRoot 'foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $spcOutArg, '/m', '/v:m')
+Run $msbuild @((Join-Path $SpcRoot 'foobar2000\foo_snesapu\foo_snesapu.vcxproj'), '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', $spcOutArg, '/m', '/v:m')
 $FooSpc = Join-Path $SpcComponentOutDir 'foo_snesapu.dll'
 Require-File $FooSpc 'private SPC component'
 Assert-PEMachine $FooSpc 0x8664 'private SPC component'
