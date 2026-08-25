@@ -45,7 +45,7 @@ The implementation deliberately preserves competing interpretations until indepe
 | `imports/` | preserved imported/upstream evidence that must remain byte-stable |
 | `patches/` | maintained patch stacks for external source trees |
 
-Start at the smallest owner. Use `python tools/repository_catalog.py` when mechanical inventory is useful. Do not build a second prose inventory.
+Start at the smallest owner. For a task concept, prefer `python tools/repository_catalog.py --focus cadence` or another focused term before broad repository search. Use the unfiltered catalog only when repository shape itself matters. Do not build a second prose inventory.
 
 Useful local maps:
 
@@ -79,6 +79,7 @@ A compile is not a delivery. A blocked CI runner is not a pass. Report build, te
 - Similarity is evidence, not authorship proof.
 - Reference rendering remains available beneath every enhancement.
 - Generated files and caches are disposable; canonical evidence and contracts are tracked.
+- Repository structure and tooling should maximize useful reasoning per context token without sacrificing provenance, uncertainty, or validation power.
 - Historical state belongs in Git history unless it remains operationally necessary.
 - Corrections outrank narrative consistency.
 
