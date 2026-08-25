@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Keep this wrapper as the package-level diagnostic gate. The canonical builder
+# resolves the materialized SPC parent under foobar2000/foo_snesapu.
 $buildScript = Join-Path $PSScriptRoot 'build_private_foobar_components.ps1'
 $logPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'private-foobar-build.log'
 Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
