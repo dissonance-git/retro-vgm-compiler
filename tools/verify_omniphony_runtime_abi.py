@@ -53,6 +53,26 @@ def verify_api(api: Any) -> tuple[int, int]:
     return major, minor
 
 
+def _release_windows_library(api: Any) -> None:
+    """Release a WinDLL handle so package temp directories can be deleted."""
+    handle = int(getattr(api, "_handle", 0) or 0)
+    if handle == 0:
+        return
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    free_library = kernel32.FreeLibrary
+    free_library.argtypes = [ctypes.c_void_p]
+    free_library.restype = ctypes.c_int
+    if not free_library(ctypes.c_void_p(handle)):
+        error = ctypes.get_last_error()
+        raise OSError(error, f"FreeLibrary failed for handle 0x{handle:X}")
+
+    # ctypes does not provide a public unload operation for CDLL/WinDLL objects.
+    # Clear our saved handle after the explicit FreeLibrary so this object cannot
+    # accidentally be reused as though the module were still resident.
+    api._handle = 0
+
+
 def load_and_verify(path: Path) -> tuple[int, int]:
     if struct.calcsize("P") != 8:
         raise RuntimeError(
@@ -68,7 +88,11 @@ def load_and_verify(path: Path) -> tuple[int, int]:
         api = win_dll(str(path))
     except OSError as exc:
         raise RuntimeError(f"could not load Omniphony source DLL {path}: {exc}") from exc
-    return verify_api(api)
+
+    try:
+        return verify_api(api)
+    finally:
+        _release_windows_library(api)
 
 
 def main() -> int:
