@@ -1,0 +1,28 @@
+name: Temporary relational auditory salience validation
+
+on:
+  push:
+    branches:
+      - relational-auditory-salience
+
+permissions:
+  contents: read
+
+jobs:
+  relational-auditory-salience:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build focused targets
+        run: |
+          cmake --build build --parallel 2 --target \
+            part_role_auditory_evidence_adapter_test \
+            realtime_musical_role_hypothesis_test \
+            part_role_gesture_descriptor_test \
+            cross_architecture_phrase_discovery_test
+      - name: Run focused CTest entries
+        run: |
+          ctest --test-dir build --output-on-failure \
+            -R '^(part_role_auditory_evidence_adapter|realtime_musical_role_hypothesis|part_role_gesture_descriptor|cross_architecture_phrase_discovery)$'
