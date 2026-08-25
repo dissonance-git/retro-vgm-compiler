@@ -1,0 +1,30 @@
+name: Temporary rebased performed harmony validation
+
+on:
+  push:
+    branches:
+      - performed-harmony-timeline-rebased
+
+permissions:
+  contents: read
+
+jobs:
+  strict-cxx17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run focused harmonic controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in \
+            tests/vgm/genesis_performed_harmony_adapter_test.cpp \
+            tests/vgm/ym2612_performed_pitch_motion_test.cpp \
+            tests/model/part_role_harmonic_bass_evidence_adapter_test.cpp \
+            tests/model/part_role_harmonic_bass_evidence_adapter_research_test.cpp \
+            tests/model/bass_harmony_interaction_test.cpp \
+            tests/model/cross_architecture_phrase_discovery_test.cpp; do
+            exe="/tmp/$(basename "${source%.cpp}")"
+            c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. "$source" -o "$exe"
+            "$exe"
+          done
