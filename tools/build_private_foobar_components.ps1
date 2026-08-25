@@ -6,9 +6,9 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$RetroRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-if ([string]::IsNullOrWhiteSpace($WorkRoot)) { $WorkRoot = Join-Path $RetroRoot '.private-component-build' }
-if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RetroRoot 'dist\private-components' }
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if ([string]::IsNullOrWhiteSpace($WorkRoot)) { $WorkRoot = Join-Path $RepoRoot '.private-component-build' }
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RepoRoot 'dist\private-components' }
 
 $LibvgmCommit = '64e1de284e9a4305c54dd162ee8c33539a9bc0d1'
 $WtlCommit = 'd1cd80e9ce76c4d79da4cf556401ad7a970ce46f'
@@ -17,8 +17,8 @@ $OmniphonyCommit = 'c5ff2988e2b088dc200f9ca76032f3b452706262'
 $RustToolchain = '1.88.0'
 $FoobarSdkDate = '2025-03-07'
 $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
-$VgmBootstrapUrl = 'https://uu.getuploader.com/foobar2000/download/248'
-$VgmBootstrapSha256 = '93d71695fdad062dee47aefa3f857683e4a057302d1a069958eecf5dd18c60ff'
+$VgmBootstrapSource = 'repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts'
+$VgmBootstrapSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'
 $ExpectedSdkProjectBlob = '56b398318d3258da7caf04c8fa0ee405511e9db0'
 $ExpectedPfcProjectBlob = 'a03c81c5e0de11bf6b889d2ac86527c4cd54cefc'
 $ExpectedLibvgmCmakeBlob = '1f8fb7f99ec45e1d2af12231f624498e6e252732'
@@ -36,7 +36,6 @@ $LibvgmSourceTestBuild = Join-Path $WorkRoot 'libvgm-source-tests'
 $VgmOutDir = Join-Path $WorkRoot 'out-vgm-x64'
 $SpcPlayerOutDir = Join-Path $WorkRoot 'out-spcplayer-x86'
 $SpcComponentOutDir = Join-Path $WorkRoot 'out-spc-x64'
-$VgmBootstrap = Join-Path $WorkRoot 'foo_input_vgm_v0.30.7z'
 
 function Need-Command([string]$Name) {
     if (!(Get-Command $Name -ErrorAction SilentlyContinue)) { throw "Required command is not on PATH: $Name" }
@@ -129,28 +128,21 @@ Remove-Item $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $OutputRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory $WorkRoot, $OutputRoot, $VgmOutDir, $SpcPlayerOutDir, $SpcComponentOutDir -Force | Out-Null
 
-Write-Host '== 0. Recover and verify the historical foo_input_vgm bootstrap =='
-& (Join-Path $RetroRoot 'tools\fetch_foo_input_vgm_bootstrap.ps1') -OutputPath $VgmBootstrap -DownloadPage $VgmBootstrapUrl -ExpectedSha256 $VgmBootstrapSha256
-$env:RETRO_VGM_BOOTSTRAP_ARCHIVE = $VgmBootstrap
-
 Write-Host '== 1. Compile the private source-transport frontier tests =='
-Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\private_components'), '-B', $FrontierBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64')
+Run 'cmake' @('-S', (Join-Path $RepoRoot 'tests\private_components'), '-B', $FrontierBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64')
 Run 'cmake' @('--build', $FrontierBuild, '--config', 'Release', '--parallel')
 Run 'ctest' @('--test-dir', $FrontierBuild, '-C', 'Release', '--output-on-failure')
-$retroCommit = (& git -C $RetroRoot rev-parse HEAD).Trim().ToLowerInvariant()
-if ($LASTEXITCODE -ne 0 -or $retroCommit -notmatch '^[0-9a-f]{40}$') {
-    throw "Could not capture exact VGM Compiler source commit after preflight: $retroCommit"
+$sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim().ToLowerInvariant()
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
+    throw "Could not capture exact VGM Compiler source commit after preflight: $sourceCommit"
 }
 
-Write-Host '== 2. Reconstruct external build dependencies from immutable public sources =='
+Write-Host '== 2. Materialize external build dependencies from immutable public pins =='
 Clone-Pin 'https://github.com/ValleyBell/libvgm.git' $Libvgm $LibvgmCommit
 Clone-Pin 'https://github.com/Win32-WTL/WTL.git' $Wtl $WtlCommit
 Clone-Pin 'https://github.com/dgrfactory/spcplay.git' $SpcPlay $SpcPlayCommit
 Assert-GitBlob (Join-Path $Libvgm 'CMakeLists.txt') $ExpectedLibvgmCmakeBlob 'libvgm pin'
 Assert-GitBlob (Join-Path $Wtl 'Include\atlapp.h') $ExpectedWtlAtlappBlob 'WTL pin'
-# Feed the exact pinned WTL headers directly to every MSVC compile launched by
-# this builder. This is more reliable than relying on solution-local include
-# inheritance for official foobar SDK projects such as libPPUI.
 $wtlInclude = Join-Path $Wtl 'Include'
 $priorCl = $env:CL
 $env:CL = if ([string]::IsNullOrWhiteSpace($priorCl)) { "/I`"$wtlInclude`"" } else { "/I`"$wtlInclude`" $priorCl" }
@@ -179,23 +171,23 @@ Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', '
 $OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
 Require-File $OmniDll 'Omniphony source DLL'
 Assert-PEMachine $OmniDll 0x8664 'Omniphony source DLL'
-Run 'python' @((Join-Path $RetroRoot 'tools\verify_omniphony_runtime_abi.py'), $OmniDll)
+Run 'python' @((Join-Path $RepoRoot 'tools\verify_omniphony_runtime_abi.py'), $OmniDll)
 
 Write-Host '== 4. Patch and build pinned libvgm for exact source observation/replacement =='
-Run 'python' @((Join-Path $RetroRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
+Run 'python' @((Join-Path $RepoRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
 Run 'cmake' @('-S', $Libvgm, '-B', (Join-Path $Libvgm 'build_x64'), '-G', 'Visual Studio 17 2022', '-A', 'x64', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_PLAYER=OFF', '-DBUILD_VGM2WAV=OFF', '-DCMAKE_CONFIGURATION_TYPES=Release', '-DUTIL_CHARCNV_ICONV=OFF', '-DUTIL_CHARCNV_WINAPI=ON')
 Run 'cmake' @('--build', (Join-Path $Libvgm 'build_x64'), '--config', 'Release', '--parallel')
 
 Write-Host '== 4b. Run the external libvgm source/resampler regression against that patched tree =='
-Run 'cmake' @('-S', (Join-Path $RetroRoot 'tests\integration\libvgm-source'), '-B', $LibvgmSourceTestBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DLIBVGM_ROOT=$Libvgm")
+Run 'cmake' @('-S', (Join-Path $RepoRoot 'tests\integration\libvgm-source'), '-B', $LibvgmSourceTestBuild, '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DLIBVGM_ROOT=$Libvgm")
 Run 'cmake' @('--build', $LibvgmSourceTestBuild, '--config', 'Release', '--parallel')
 Run 'ctest' @('--test-dir', $LibvgmSourceTestBuild, '-C', 'Release', '--output-on-failure')
 
 Write-Host '== 5. Materialize and build the VGM component from this repository =='
 $VgmSdkRoot = Join-Path $VgmTree 'components\vgm'
 New-Item -ItemType Directory $VgmSdkRoot -Force | Out-Null
-Copy-Item (Join-Path $RetroRoot 'model') (Join-Path $VgmTree 'model') -Recurse -Force
-Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_input_vgm.py'), '--sdk-root', $VgmSdkRoot)
+Copy-Item (Join-Path $RepoRoot 'model') (Join-Path $VgmTree 'model') -Recurse -Force
+Run 'python' @((Join-Path $RepoRoot 'tools\materialize_foo_input_vgm.py'), '--sdk-root', $VgmSdkRoot)
 $VgmComponent = Join-Path $VgmSdkRoot 'foo_input_vgm'
 $vgmProject = Join-Path $VgmComponent 'foo_input_vgm.vcxproj'
 $vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'
@@ -209,10 +201,9 @@ $builtZlib = Join-Path $Libvgm 'libs\lib\zlib64.lib'
 Require-File $builtZlib 'pinned libvgm zlib static library'
 New-Item -ItemType Directory $zlibCompatRelease -Force | Out-Null
 Copy-Item (Join-Path $Libvgm 'libs\include\*') $zlibCompat -Recurse -Force
-# foo_input_vgm 0.31 predates libvgm's CMake install layout and names the
-# same release library zlib/build_x64/Release/zs.lib. Reconstruct that narrow
-# disposable compatibility projection instead of rewriting the preserved
-# project or introducing a second zlib build.
+# foo_input_vgm 0.31 expects this release library at
+# zlib/build_x64/Release/zs.lib. Provide that disposable compatibility view
+# without changing the canonical component source or creating another zlib build.
 Copy-Item $builtZlib (Join-Path $zlibCompatRelease 'zs.lib') -Force
 Junction (Join-Path $vgmBase 'SDK') (Join-Path $fb2k 'SDK')
 Junction (Join-Path $vgmBase 'helpers') (Join-Path $fb2k 'helpers')
@@ -230,8 +221,8 @@ Require-File $FooVgm 'private VGM component'
 Assert-PEMachine $FooVgm 0x8664 'private VGM component'
 
 Write-Host '== 6. Materialize the SPC parent/child and patch the pinned editable SNESAPU =='
-Run 'python' @((Join-Path $RetroRoot 'tools\materialize_foo_snesapu.py'), $SpcRoot, '--force')
-Run 'python' @((Join-Path $RetroRoot 'patches\snesapu\apply_private_snesapu.py'), $SpcPlay)
+Run 'python' @((Join-Path $RepoRoot 'tools\materialize_foo_snesapu.py'), $SpcRoot, '--force')
+Run 'python' @((Join-Path $RepoRoot 'patches\snesapu\apply_private_snesapu.py'), $SpcPlay)
 Junction (Join-Path $SpcRoot 'foobar2000\SDK') (Join-Path $fb2k 'SDK')
 Junction (Join-Path $SpcRoot 'foobar2000\helpers') (Join-Path $fb2k 'helpers')
 Junction (Join-Path $SpcRoot 'foobar2000\shared') (Join-Path $fb2k 'shared')
@@ -305,7 +296,7 @@ Push-Location $SpcPackageStage
 try { Run '7z' @('a', '-tzip', '-mx=9', $SpcPackage, '*') }
 finally { Pop-Location }
 
-Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_packages.py'), $VgmPackage, $SpcPackage)
+Run 'python' @((Join-Path $RepoRoot 'tools\verify_private_component_packages.py'), $VgmPackage, $SpcPackage)
 
 $VgmBundleDir = Join-Path $BundleStage 'VGM'
 $SpcBundleDir = Join-Path $BundleStage 'SPC'
@@ -319,9 +310,9 @@ Copy-Item $OmniDll (Join-Path $SpcBundleDir 'omniphony_source.dll') -Force
 
 $manifest = [ordered]@{
     built_at_utc = [DateTime]::UtcNow.ToString('o')
-    retro_vgm_compiler_commit = $retroCommit
+    vgm_compiler_commit = $sourceCommit
     foo_input_vgm_bootstrap = [ordered]@{
-        source_page = $VgmBootstrapUrl
+        source = $VgmBootstrapSource
         sha256 = $VgmBootstrapSha256
     }
     foobar_sdk = [ordered]@{
@@ -354,7 +345,7 @@ VGM package:
   foo_input_vgm.private.fb2k-component
   - foo_input_vgm.dll
   - omniphony_source.dll
-  Existing Surround enables Omniphony source-aware Genesis rendering.
+  Surround enables Omniphony source-aware Genesis rendering.
   enhanced is independent.
 
 SPC package:
@@ -363,7 +354,7 @@ SPC package:
   - spcplayer.exe
   - SNESAPU.dll
   - omniphony_source.dll
-  Existing Surround enables Omniphony source-aware SPC rendering.
+  Surround enables Omniphony source-aware SPC rendering.
   enhanced is independent.
 
 Manual replacement bundle:
@@ -399,7 +390,7 @@ Push-Location $BundleStage
 try { Run '7z' @('a', '-tzip', '-mx=9', $Bundle, '*') }
 finally { Pop-Location }
 
-Run 'python' @((Join-Path $RetroRoot 'tools\verify_private_component_bundle.py'), $Bundle)
+Run 'python' @((Join-Path $RepoRoot 'tools\verify_private_component_bundle.py'), $Bundle)
 
 $hashTargets = @($VgmPackage, $SpcPackage, $Bundle)
 $hashLines = foreach ($file in $hashTargets) {
