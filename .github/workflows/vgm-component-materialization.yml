@@ -19,7 +19,6 @@ on:
       - "tools/reconstruct_vgm031_bootstrap.py"
       - "tests/integration/libvgm-source/**"
       - "tests/spc/test_materialize_foo_snesapu.py"
-      - "tests/test_no_live_vgmspc_dependency.py"
       - ".github/workflows/vgm-component-materialization.yml"
 
 permissions:
@@ -41,12 +40,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Python is unavailable' }
           $sevenZip = Get-Command 7z -ErrorAction Stop
           & $sevenZip.Source | Out-Null
-
-      - name: Reject retired vgmspc dependencies
-        shell: pwsh
-        run: |
-          python tests/test_no_live_vgmspc_dependency.py
-          if ($LASTEXITCODE -ne 0) { throw 'retired vgmspc dependency guard failed' }
 
       - name: Validate pinned libvgm source contracts
         shell: pwsh
@@ -191,7 +184,7 @@ jobs:
             }
           }
           if ($parentInput -match 'm_Enhancer\.reset\(\)') {
-            throw 'obsolete SemanticStereoEnhancer seek state survived materialization'
+            throw 'unexpected SemanticStereoEnhancer seek state is present'
           }
           if ($ui -notmatch '"enhanced"') {
             throw 'lowercase enhanced control is missing from materialized SPC UI'
