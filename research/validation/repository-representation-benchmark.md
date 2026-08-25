@@ -205,6 +205,89 @@ If a scalar is useful inside one fixed experiment, name its weights and preserve
 
 ---
 
+## Wolfram formal controls
+
+Wolfram computation is used here to test the mathematics of the benchmark, not to turn design preferences into equations.
+
+### Owner ambiguity
+
+If `n` candidate owners are equally plausible, maximum routing entropy is:
+
+```text
+H_owner = log2(n)
+```
+
+That is only the uniform-prior case. The general quantity is:
+
+```text
+H_owner = -Σ p_i log2(p_i)
+```
+
+Wolfram checks give:
+
+```text
+2 owners, 50/50       -> 1 bit
+2 owners, 90/10       -> ~0.469 bits
+4 owners, uniform     -> 2 bits
+4 owners, 70/10/10/10 -> ~1.357 bits
+```
+
+Therefore this benchmark should report `log2(n)` only as **maximum owner ambiguity** unless candidate-owner probabilities are measured independently.
+
+Useful empirical estimators for `p_i` include repeated fresh-agent first-owner choices or fixed retrieval-score distributions. Do not invent priors after seeing the answer.
+
+### Relation-radius control
+
+A synthetic Wolfram graph used lexical seeds `cadence.h` and `cadence_test.cpp` with a five-file required surface.
+
+Results:
+
+```text
+lexical seeds   -> required-file recall 0.4
+one relation hop -> required-file recall 1.0
+two relation hops -> required-file recall 1.0, plus one irrelevant file
+```
+
+The second hop added cost without utility.
+
+The benchmark should therefore test expansion radii separately rather than treating deeper graph traversal as automatically better.
+
+### Pareto stopping control
+
+For that same synthetic fixture:
+
+| Representation | Required recall | Selected files | Irrelevant files |
+| --- | ---: | ---: | ---: |
+| lexical | 0.4 | 2 | 0 |
+| one-hop | 1.0 | 5 | 0 |
+| two-hop | 1.0 | 6 | 1 |
+
+Wolfram Pareto analysis keeps `lexical` and `one-hop` as non-dominated operating points and rejects `two-hop`, which is strictly dominated by `one-hop`.
+
+This gives the current stopping rule:
+
+> expand only while protected task utility improves enough to justify added context.
+
+### Expected-value expansion
+
+If a candidate neighboring file has estimated probability `p` of being required, miss cost `L_miss`, and inclusion cost `C_context`, a simple expected-value rule includes it when:
+
+```text
+p * L_miss > C_context
+```
+
+which reduces to:
+
+```text
+p > C_context / L_miss
+```
+
+for positive miss loss and nonnegative context cost.
+
+This is **not** yet an online routing rule. `p` and `L_miss` are not calibrated. Until they are, the implementation should prefer exact mechanical edges, small bounded expansion, offline ground-truth recall tests, and explicit widening when insufficiency is observed.
+
+---
+
 ## Required falsifiers
 
 A representation change fails or must be narrowed when any of these survive controlled evaluation:
@@ -216,7 +299,9 @@ A representation change fails or must be narrowed when any of these survive cont
 - focused projection repeatedly requires broad search to repair omissions;
 - a simpler lexical or filesystem baseline performs equally well at lower total cost;
 - manually maintained navigation becomes necessary to keep the derived view correct;
-- context becomes smaller while verification becomes weaker.
+- context becomes smaller while verification becomes weaker;
+- a deeper relation radius is Pareto-dominated by a shallower radius;
+- owner-entropy estimates rely on unmeasured or post-hoc probabilities.
 
 The benchmark is designed to kill attractive compression when it only moves complexity elsewhere.
 
