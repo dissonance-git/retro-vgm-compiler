@@ -19,6 +19,7 @@ on:
       - "patches/snesapu/**"
       - "tests/**"
       - "tools/build_private_foobar_components.ps1"
+      - "tools/run_private_foobar_build_with_diagnostics.ps1"
       - "tools/fetch_foo_input_vgm_bootstrap.ps1"
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
@@ -141,7 +142,7 @@ jobs:
           '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
           $env:_CL_ = "$env:_CL_ /permissive /Zc:twoPhase-"
           try {
-            ./tools/build_private_foobar_components.ps1
+            ./tools/run_private_foobar_build_with_diagnostics.ps1
           } finally {
             Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
           }
