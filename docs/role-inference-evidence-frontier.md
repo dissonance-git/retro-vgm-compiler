@@ -103,9 +103,9 @@ Focused validation has established the following behaviors:
 13. Presentation-prior feedback is rejected as non-independent evidence.
 14. Genesis YM2612 and PSG route-only writes preserve an established persistent-part binding instead of reconstructing the source record and erasing it.
 
-The focused validators were intentionally temporary. The permanent semantic suite still needs to register `tests/model/part_role_gesture_descriptor_test.cpp`, `tests/model/part_role_auditory_evidence_adapter_test.cpp`, and `tests/model/cross_architecture_phrase_discovery_test.cpp` so these boundaries cannot silently regress. The Genesis route-preservation regression should likewise be registered with the host/VGM transport tests.
+The known-green role evidence guards are now permanently registered in the root CMake/CTest suite: `tests/model/part_role_gesture_descriptor_test.cpp`, `tests/model/part_role_auditory_evidence_adapter_test.cpp`, `tests/model/cross_architecture_phrase_discovery_test.cpp`, and `tests/vgm/genesis_spatial_semantic_preservation_test.cpp`. A hosted validation configured the normal CMake graph, built all four targets through the repository's strict compiler policy, and ran all four registered CTest entries successfully.
 
-A separate existing test, `tests/model/part_role_window_inference_test.cpp`, is also not registered in the permanent semantic CMake suite and currently exposes a stale standalone counterline-confidence assertion. That test should not be promoted until its expected confidence is reconciled with the current role-evidence policy for a documented semantic reason.
+A separate existing test, `tests/model/part_role_window_inference_test.cpp`, remains intentionally unregistered because it currently exposes a stale standalone counterline-confidence assertion. That test should not be promoted until its expected confidence is reconciled with the current role-evidence policy for a documented semantic reason.
 
 ## Next evidence target
 
