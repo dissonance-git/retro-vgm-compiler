@@ -6,13 +6,12 @@ on:
     branches: [ "main" ]
     paths:
       - ".github/workflows/private-foobar-build.yml"
-      - ".delivery-safe/**"
       - "CMakeLists.txt"
       - "cmake/**"
       - "components/vgm/**"
       - "components/spc/**"
       - "imports/MANIFEST.md"
-      - "imports/foo_input_vgm-0.31.zip"
+      - "imports/bootstrap/**"
       - "model/**"
       - "patches/foo_input_vgm/**"
       - "patches/libvgm/**"
@@ -140,17 +139,11 @@ jobs:
             ionian_cadence_class_hypothesis_test `
             ionian_cadence_formal_binding_test `
             ionian_deferred_authentic_resolution_test `
-            ionian_deceptive_cadence_candidate_test
+            ionian_deceptive_cadence_candidate_test `
+            ionian_cadence_phrase_arbitration_test
           if ($LASTEXITCODE -ne 0) { throw 'cadence semantic guard build failed' }
-          ctest --test-dir .semantic-guard -C Release --output-on-failure -R '^(cadential_arrival_hypothesis|cadential_formal_closure_evidence|ionian_functional_tendency_hypothesis|ionian_cadence_class_hypothesis|ionian_cadence_formal_binding|ionian_deferred_authentic_resolution|ionian_deceptive_cadence_candidate)$'
+          ctest --test-dir .semantic-guard -C Release --output-on-failure -R '^(cadential_arrival_hypothesis|cadential_formal_closure_evidence|ionian_functional_tendency_hypothesis|ionian_cadence_class_hypothesis|ionian_cadence_formal_binding|ionian_deferred_authentic_resolution|ionian_deceptive_cadence_candidate|ionian_cadence_phrase_arbitration)$'
           if ($LASTEXITCODE -ne 0) { throw 'cadence semantic guard tests failed' }
-
-      - name: Restore tracked transport placeholder
-        shell: pwsh
-        run: |
-          git restore --source=HEAD --worktree -- imports/foo_input_vgm-0.31.zip
-          git diff --quiet -- imports/foo_input_vgm-0.31.zip
-          if ($LASTEXITCODE -ne 0) { throw 'tracked VGM bootstrap transport did not restore cleanly' }
 
       - name: Build and audit installable components
         shell: pwsh
