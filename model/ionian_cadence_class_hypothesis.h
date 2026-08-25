@@ -1,8 +1,11 @@
 #pragma once
 
+#include "cadential_melodic_arrival_evidence.h"
 #include "ionian_functional_tendency_hypothesis.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -29,8 +32,10 @@ struct ionian_cadence_class_hypothesis {
     bool phrase_cross_part_grounded = false;
     bool source_root_position = false;
     bool target_root_position = false;
-    bool final_soprano_observed = false;
-    bool final_soprano_tonic = false;
+    bool final_melodic_arrival_grounded = false;
+    node_id final_melodic_part_id = 0;
+    std::optional<std::int64_t> final_melodic_pitch_class{};
+    bool final_melodic_tonic = false;
     bool cadence_candidate_resolved = false;
     bool cadence_class_established = false;
     bool roman_numeral_named = false;
@@ -61,13 +66,51 @@ inline const char* to_string(ionian_cadence_candidate_kind kind) noexcept {
     return "unknown";
 }
 
+inline void validate_cadential_melodic_arrival_for_chord(
+    const cadential_melodic_arrival_evidence& melodic,
+    const tertian_triad_hypothesis& chord) {
+    if (melodic.part_id == 0 || !melodic.melodic_role_grounded ||
+        !std::isfinite(melodic.confidence) ||
+        melodic.confidence < 0.0 || melodic.confidence > 1.0) {
+        throw std::invalid_argument("cadence melodic arrival is not grounded");
+    }
+    const auto chord_time = chord.projection.source_verticality.observation_time;
+    if (!same_function_transition_time(melodic.arrival_time, chord_time) ||
+        melodic.pitch_role != chord.projection.source_verticality.role) {
+        throw std::invalid_argument(
+            "cadence melodic arrival must describe the same projected chord observation");
+    }
+    const auto& parts = chord.projection.source_verticality.part_ids;
+    const auto& steps = chord.projection.nearest_steps;
+    if (parts.size() != steps.size())
+        throw std::invalid_argument(
+            "cadence melodic validation requires one persistent-part id per projected pitch");
+
+    std::optional<std::size_t> match;
+    for (std::size_t index = 0; index < parts.size(); ++index) {
+        if (parts[index] != melodic.part_id)
+            continue;
+        if (match.has_value())
+            throw std::invalid_argument(
+                "cadence melodic arrival part is ambiguous in the final sonority");
+        match = index;
+    }
+    if (!match.has_value() ||
+        steps[*match] != melodic.projected_step ||
+        positive_mod(steps[*match], 12) != positive_mod(melodic.pitch_class, 12)) {
+        throw std::invalid_argument(
+            "cadence melodic arrival pitch does not match its persistent part in the final sonority");
+    }
+}
+
 inline ionian_cadence_class_hypothesis infer_ionian_cadence_class_hypothesis(
     const tonal_key_class_hypothesis& key,
     const tertian_triad_hypothesis& first_chord,
     const tertian_triad_hypothesis& second_chord,
     const cadential_arrival_hypothesis& arrival,
     const std::optional<voice_leading_hypothesis>& voices = std::nullopt,
-    const std::optional<bass_harmony_interaction_hypothesis>& bass = std::nullopt) {
+    const std::optional<bass_harmony_interaction_hypothesis>& bass = std::nullopt,
+    const std::optional<cadential_melodic_arrival_evidence>& melodic = std::nullopt) {
     const auto tendency = infer_ionian_functional_tendency(
         key,
         first_chord,
@@ -85,6 +128,15 @@ inline ionian_cadence_class_hypothesis infer_ionian_cadence_class_hypothesis(
     result.source_root_position = first_chord.inversion == triad_inversion::root_position;
     result.target_root_position = second_chord.inversion == triad_inversion::root_position;
 
+    if (melodic.has_value()) {
+        validate_cadential_melodic_arrival_for_chord(*melodic, second_chord);
+        result.final_melodic_arrival_grounded = true;
+        result.final_melodic_part_id = melodic->part_id;
+        result.final_melodic_pitch_class = positive_mod(melodic->pitch_class, 12);
+        result.final_melodic_tonic =
+            *result.final_melodic_pitch_class == positive_mod(key.center_pitch_class, 12);
+    }
+
     if (!arrival.cross_part_phrase_grounded || !tendency.candidate_resolved)
         return result;
 
@@ -100,29 +152,22 @@ inline ionian_cadence_class_hypothesis infer_ionian_cadence_class_hypothesis(
                 tendency.confidence,
                 ionian_generic_authentic_cadence_ceiling);
 
-            if (!second_chord.projection.nearest_steps.empty()) {
-                result.final_soprano_observed = true;
-                const std::int64_t soprano_pitch_class = positive_mod(
-                    second_chord.projection.nearest_steps.back(),
-                    12);
-                result.final_soprano_tonic =
-                    soprano_pitch_class == positive_mod(key.center_pitch_class, 12);
-
-                const double voicing_confidence = std::min(
-                    {first_chord.projection.confidence,
-                     second_chord.projection.confidence,
-                     key.tuning.confidence});
+            // PAC/IAC refinement needs an independently grounded melodic part.
+            // The highest sounding pitch is deliberately not used as a proxy for
+            // soprano/foreground identity in reconstructed game-music textures.
+            if (melodic.has_value()) {
                 if (result.source_root_position &&
                     result.target_root_position &&
-                    result.final_soprano_tonic) {
+                    result.final_melodic_tonic) {
                     result.kind = ionian_cadence_candidate_kind::perfect_authentic_cadence_candidate;
                 } else {
                     result.kind = ionian_cadence_candidate_kind::imperfect_authentic_cadence_candidate;
                 }
-                result.confidence = std::min(
-                    {result.confidence,
-                     voicing_confidence,
-                     ionian_specific_authentic_cadence_ceiling});
+                result.confidence = std::min({
+                    result.confidence,
+                    melodic->confidence,
+                    ionian_specific_authentic_cadence_ceiling,
+                });
             }
         } else if (source == 7 && target == 1) {
             // This is cadence-like resolution pressure, but it is not relabeled
@@ -191,6 +236,22 @@ inline node_id add_ionian_cadence_class_hypothesis(
         "",
     });
     relation.attributes.push_back({
+        "final_melodic_arrival_grounded",
+        hypothesis.final_melodic_arrival_grounded,
+        evidence_status::derived,
+        1.0,
+        "",
+    });
+    if (hypothesis.final_melodic_arrival_grounded) {
+        relation.attributes.push_back({
+            "final_melodic_part_id",
+            static_cast<std::uint64_t>(hypothesis.final_melodic_part_id),
+            evidence_status::derived,
+            hypothesis.confidence,
+            "node_id",
+        });
+    }
+    relation.attributes.push_back({
         "cadence_class_established",
         false,
         evidence_status::derived,
@@ -214,9 +275,9 @@ inline node_id add_ionian_cadence_class_hypothesis(
     relation.provenance.push_back({
         evidence_status::hypothesis,
         hypothesis.confidence,
-        "Ionian functional tendency + cross-part phrase arrival + available inversion/soprano evidence",
+        "Ionian functional tendency + cross-part phrase arrival + inversion evidence + optional persistent melodic-arrival evidence",
         std::nullopt,
-        "cadence-class candidate only; this does not establish Roman numeral, global key function, or a universal cadence ontology outside the stated theory scope",
+        "cadence-class candidate only; PAC/IAC refinement requires a separately grounded melodic-foreground part and does not use highest pitch as a voice-identity shortcut",
     });
     const node_id relation_id = graph.add_node(std::move(relation));
 
