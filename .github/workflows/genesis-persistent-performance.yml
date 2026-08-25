@@ -23,8 +23,8 @@ jobs:
           fetch-depth: 0
 
       - name: Register compiler regression
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           path = Path('cmake/semantic_model_tests.cmake')
@@ -33,27 +33,28 @@ jobs:
           if marker not in text:
               text += r'''
 
-# Source-backed Genesis persistent-part performed trajectory regression.
-list(APPEND GAMEAUDIO_TEST_TARGETS
-    genesis_persistent_performance_adapter_test
-)
+          # Source-backed Genesis persistent-part performed trajectory regression.
+          list(APPEND GAMEAUDIO_TEST_TARGETS
+              genesis_persistent_performance_adapter_test
+          )
 
-add_executable(
-    genesis_persistent_performance_adapter_test
-    tests/vgm/genesis_persistent_performance_adapter_test.cpp
-)
+          add_executable(
+              genesis_persistent_performance_adapter_test
+              tests/vgm/genesis_persistent_performance_adapter_test.cpp
+          )
 
-target_include_directories(
-    genesis_persistent_performance_adapter_test
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
+          target_include_directories(
+              genesis_persistent_performance_adapter_test
+              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+          )
 
-add_test(
-    NAME genesis_persistent_performance_adapter
-    COMMAND genesis_persistent_performance_adapter_test
-)
-'''
+          add_test(
+              NAME genesis_persistent_performance_adapter
+              COMMAND genesis_persistent_performance_adapter_test
+          )
+          '''
               path.write_text(text, encoding='utf-8')
+          PY
 
       - name: Configure compiler core
         run: cmake -S . -B build -DGAMEAUDIO_BUILD_CORE_TESTS=ON
