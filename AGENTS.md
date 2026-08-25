@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file is the **small operational contract for coding agents**. Project meaning lives in `docs/architecture.md`; active priorities live in `docs/vgm-compiler-roadmap.md`. Do not duplicate those documents here.
+This file is the operational contract for coding agents. Project meaning lives in `docs/architecture.md`; active priorities live in `docs/vgm-compiler-roadmap.md`. Do not duplicate those documents here.
 
 ## Enter the repo
 
@@ -22,10 +22,10 @@ Use `python tools/repository_catalog.py` for mechanical inventory. Search inside
 
 1. Work from current `main`; do not create branches or PRs unless explicitly requested.
 2. Before replacing a file, re-read the current file from current `main`.
-3. Make the smallest coherent change that removes the real uncertainty or duplication.
+3. Make the smallest coherent change that removes the real uncertainty or duplication. Dense implementations and documents are welcome when the task requires them.
 4. Preserve unrelated concurrent work. Never force-push.
 5. Prefer extending a canonical owner over creating a peer document, tool, cache, or abstraction.
-6. Generated data and caches must stay untracked. Git history is the archive for superseded repository state.
+6. Generated data and caches stay untracked. Git history is the archive; superseded repository state does not remain in the active tree.
 7. Do not rewrite immutable corpus source bytes or imported upstream evidence during cleanup/refactoring.
 8. After publication, verify the resulting commit and distinguish executed evidence from intended behavior.
 
@@ -38,9 +38,9 @@ model/       shared musical/evidence contracts only after cross-source agreement
 components/  source-family/device-specific semantics and runtime machinery
 tests/       executable regressions + immutable corpus
 research/    bounded evidence, experiments, testbeds, preregistrations
-docs/        durable current contracts only
+docs/        dense current/future contracts
 tools/       reusable operations, not hidden state
-imports/     preserved external evidence
+imports/     preserved external evidence required by current work
 patches/     maintained external-source patch stacks
 ```
 
@@ -85,12 +85,12 @@ For private foobar2000 VGM/SPC delivery, `.github/workflows/private-foobar-build
 
 ## Documentation rule
 
-Keep active documentation small:
+Optimize active documentation for **density and ownership**, not brevity.
 
 - `README.md` = identity + map + basic commands;
 - `AGENTS.md` = agent operating constraints;
 - `docs/architecture.md` = durable semantic/evidence architecture;
 - `docs/vgm-compiler-roadmap.md` = current frontier and next discriminating work;
-- specialized docs = only when they own a real independent contract.
+- specialized docs = dense independent contracts or research observatories with a distinct owner.
 
-Do not create status diaries, duplicate inventories, generated navigation files, or historical snapshots in the active tree.
+Do not create status diaries, compatibility tombstones, migration narratives, duplicate inventories, generated navigation files, or historical snapshots in the active tree. Superseded information is recoverable from Git history.
