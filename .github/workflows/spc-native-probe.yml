@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/spc-native-probe.yml"
       - "patches/snesapu/**"
+      - "components/spc/spcplayer/**"
 
 jobs:
   build-snesapu-native:
