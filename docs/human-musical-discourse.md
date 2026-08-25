@@ -1,14 +1,8 @@
 # Human musical discourse
 
-VGM Tooling should understand music deeply enough to discuss it naturally as well as explain it technically.
+VGM Compiler should understand music deeply enough to discuss it naturally, analytically, and technically without changing the evidence underneath the wording.
 
-This document defines the durable project rule for human-facing musical language. Detailed source mining and corpus notes belong in `research/cases/human-musical-discourse.md`.
-
-## Central rule
-
-Human musical language is not another semantic truth layer.
-
-It is a **discourse projection** over evidence-bearing musical, acoustic, perceptual, historical, and technical claims.
+Human musical language is a **discourse projection** over evidence-bearing musical, acoustic, perceptual, historical-source, and technical claims.
 
 ```text
 source / execution / synthesis evidence
@@ -18,249 +12,127 @@ performance + structure + acoustic/perceptual analyses
 comparison across time / parts / sections
         ↓
 discourse projection
-        ├─ ordinary listener
-        ├─ reviewer / critic
+        ├─ listener
+        ├─ critic
         ├─ composer / musician
-        ├─ musicologist / theorist
+        ├─ theorist / musicologist
         ├─ producer
         ├─ mixing / mastering engineer
         └─ forensic / technical
 ```
 
-The underlying evidence does not change when the wording changes.
-
-Therefore:
+The evidence model does not change when the register changes.
 
 ```text
 natural musical description
-!= technical terminology with simpler words
-```
+!= simplified technical telemetry
 
-and:
-
-```text
 metaphorical language
 != unsupported language
 ```
 
-A phrase such as `it opens up here` may be well grounded when the system can point to the musical/acoustic changes that support it.
+A phrase such as `it opens up here` is useful when the system can identify the musical or acoustic changes that support it.
 
-## Why this matters
+## Discourse modes
 
-A technically correct sentence can still be a poor description of music.
+Modes are viewpoints, not fixed user identities. A conversation can switch modes sentence by sentence.
 
-For example:
+### Listener
 
-```text
-upper-register occupancy increased while simultaneous part count rose
-```
+Focus on audible change, salience, energy, motion, contrast, memorable moments, and relationships to what came before.
 
-may support:
+Useful language can include:
 
 ```text
 it opens up here
+the bass starts pushing harder
+everything drops out for a moment
+that high part sneaks in
+the section feels suspended
+this return feels darker than the first one
 ```
 
-The first is a technical statement. The second is how a person might naturally describe the experience. Neither replaces the other.
+Theory terminology is optional unless it clarifies the answer.
 
-Likewise, a useful listener-level account such as `the track opens up here` does not replace a musicological account of what the notes are doing. The same span may also support claims about key, chord identity, harmonic function, progression, cadence, voice leading, motivic relation, or form.
+### Critic
 
-VGM Tooling should normally lead with the register appropriate to the question and descend into mechanism when asked.
-
-## Discourse communities
-
-These are modes, not fixed identities. The same person may switch registers from sentence to sentence.
-
-### Ordinary listener
-
-Typical concerns:
-
-- what changed;
-- what stands out;
-- where attention goes;
-- what the section feels like;
-- memorable moments;
-- comparison with what came before.
-
-Natural language includes phrases such as:
+Critical discourse combines description, comparison, interpretation, cultural/style context, production observation, and evaluation. Evaluation remains separate from source truth.
 
 ```text
-it gets really big here
-that little sound sneaks in
-then everything drops out
-the bass starts bouncing more
-this part feels like it's floating
-it suddenly gets darker
-this is the bit that sticks in my head
+observed behavior
+!= judgment about that behavior
 ```
 
-Do not force theory terminology into this mode unless it is useful to the conversation.
-
-### Reviewer / critic
-
-Critical discourse often combines:
-
-- description;
-- evaluation;
-- metaphor;
-- genre and cultural comparison;
-- narrative framing;
-- production commentary;
-- selective technical language.
-
-Common patterns treat music as motion, space, material, force, weather/light, architecture, conversation, or narrative:
-
-```text
-the groove lurches forward
-the synths bloom around the melody
-the arrangement stays skeletal
-the chorus bursts open
-the track never quite settles
-the bass drags everything downward
-the melody keeps circling the same thought
-```
-
-Evaluation must remain separate from description.
-
-```text
-observed / inferred musical behavior
-!= critical judgment about that behavior
-```
-
-A dense arrangement can be described as `rich and layered` or `cluttered and overstuffed`. The source does not objectively encode which judgment is correct.
+A dense arrangement may be described accurately before anyone decides whether it feels rich, crowded, exciting, or excessive.
 
 ### Composer / musician
 
-Creator discourse often centers on:
+Creator-facing discourse emphasizes shape, pacing, contrast, tension/release, gesture, thematic identity, part interaction, playability, space, and expressive intent.
 
-- intention;
-- shape and movement;
-- contrast;
-- pacing;
-- tension and release;
-- thematic identity;
-- expressive gesture;
-- interaction among parts;
-- physical playability;
-- space and silence.
-
-Typical language includes:
-
-```text
-I wanted it to breathe
-this section needed a different character
-that rhythm gives it the push
-I needed more space there
-this is where it finally arrives
-```
-
-Intent requires independent evidence such as interviews, source comments, notes, correspondence, or other reliable documentation.
+Intent is a documentary claim:
 
 ```text
 musical effect
-!= documented creator intent
+!= creator intent
 ```
 
-### Musicologist / theorist
+Claims about intention require interviews, notes, source comments, correspondence, or comparable evidence.
 
-Musicological and theory discourse asks how musical events relate to one another beyond local texture or production effect.
+### Theorist / musicologist
 
-Typical concerns include:
+Theory-facing discourse can address:
 
-- global and local key / tonal center;
-- mode and pitch collection where the analytical system supports them;
-- chord spelling, root, quality, inversion and alteration;
-- chord tones versus figuration / non-chord tones;
+- tonal center, key, mode, and pitch collection;
+- chord spelling, root, quality, inversion, and alteration;
+- chord tones versus figuration;
 - harmonic function and tonal hierarchy;
-- tonicization versus modulation;
-- chord progression and harmonic rhythm;
-- preparation, prolongation and substitution relations;
+- tonicization and modulation;
+- harmonic rhythm and progression;
+- prolongation, preparation, substitution, and resolution;
 - cadence and phrase function;
 - voice leading and contrapuntal relations;
-- motivic, schematic and transformational relations;
-- repetition, formal function and large-scale tonal/formal path;
-- style, corpus, historical practice and alternative analytical readings.
+- motif, schema, transformation, repetition, and form;
+- style/corpus scope and competing analytical readings.
 
-Natural theory-facing language may include:
-
-```text
-the phrase tonicizes V before returning to the home key
-this sonority works better as a first-inversion predominant than as an isolated chord label
-the bass changes the function even though the upper voices barely move
-the dominant is prepared across several chords rather than arriving as one local event
-the cadence closes the harmonic span before the melodic loop fully settles
-this return restores the original tonal center but changes the voice leading
-```
-
-These are analyses, not hidden source bytes. Familiar labels must retain theory and corpus scope.
+These labels are analyses over lower evidence, not bytes hidden inside the source.
 
 ```text
-exact simultaneous pitches
+simultaneous pitches
 != chord spelling
 != harmonic function
 != listener expectation
 ```
 
-Several analyses may be legitimate over the same lower evidence. VGM Tooling should preserve competing readings when the evidence does not separate them instead of inventing a single `correct` Roman numeral merely because one projection wants a label.
-
-Western functional harmony is one powerful analytical language, not the universal definition of musical structure. Roman numerals, major/minor keys, common-practice function and related concepts must be used only where their stylistic and cultural assumptions fit.
+Competing analyses remain available when the evidence does not uniquely separate them. Western functional harmony is one analytical framework, not a universal definition of musical structure.
 
 ### Producer
 
-Producer discourse is often goal-oriented and intervention-oriented.
+Producer discourse is intervention-oriented: lift, energy, momentum, hook, density, impact, contrast, making room, thinning, filling, foregrounding, and letting a section breathe.
 
-Common concepts include:
-
-- lift;
-- energy;
-- vibe;
-- momentum;
-- impact;
-- build and drop;
-- hook;
-- making room;
-- thinning or filling an arrangement;
-- bringing something forward;
-- letting something breathe;
-- making a section hit.
-
-Typical language includes:
-
-```text
-the chorus needs more lift
-pull that part out so the hook hits harder
-let the verse breathe
-the drums need to push the song more
-there is too much information here
-it needs another gear when the chorus lands
-```
-
-This mode naturally bridges musical structure and production intervention.
+The system should connect those goals to concrete musical and production relationships without pretending there is only one technical route to the result.
 
 ### Mixing / mastering engineer
 
-Engineering discourse connects perception to controllable signal relationships.
-
-Useful vocabulary families include:
+Engineering discourse connects perception to controllable signal relationships. Useful vocabulary families include:
 
 ```text
 POSITION
 forward • back • close • distant • centered
 
 WIDTH / SPACE
-wide • narrow • open • boxed-in • roomy • dry • wet • deep • shallow
+wide • narrow • open • boxed-in • dry • wet • deep • shallow
 
 SPECTRAL CHARACTER
-bright • dark • warm • cold • harsh • smooth • airy • dull • muddy • brittle
+bright • dark • warm • harsh • smooth • airy • dull • muddy • brittle
 
 MASS / BODY
-thin • thick • full • hollow • weight • body • heft
+thin • thick • full • hollow • weight • body
 
 TRANSIENT / FORCE
-punch • snap • bite • smack • hit • impact • rounded
+punch • snap • bite • impact • rounded
 
 COHESION
-blend • glue • separate • poke out • disappear • mask • fight
+blend • separate • poke out • mask • fight
 
 DYNAMICS / MOTION
 breathe • pump • choke • clamp • open up • flatten • jump out
@@ -269,11 +141,11 @@ CLARITY / DETAIL
 clean • clear • defined • smeared • blurred • crowded
 ```
 
-These terms are many-to-many perceptual concepts, not aliases for one DSP parameter.
+These descriptors are many-to-many perceptual concepts, not aliases for single DSP parameters.
 
 ### Forensic / technical
 
-This mode exposes the exact machinery:
+Technical discourse exposes exact machinery when the question calls for it:
 
 - source commands and bytes;
 - driver state and control flow;
@@ -282,140 +154,66 @@ This mode exposes the exact machinery:
 - envelopes and modulation;
 - voice allocation;
 - timing and clock mappings;
-- synthesis/routing state;
+- synthesis and routing state;
 - acoustic measurements;
 - analytical features with provenance.
 
-This is usually the answer to `why?` or `technically, what is happening?`, not the only vocabulary the system should know.
+This is the deepest explanatory register, not the mandatory surface form of every answer.
 
-## Orthogonal discourse acts
+## Discourse acts
 
-Who is speaking is only one axis. The system must also distinguish what the speaker is doing.
-
-```text
-DESCRIBING
-what seems to be happening
-
-COMPARING
-how this differs from another moment/version
-
-INTERPRETING
-what a pattern may mean or how it functions
-
-EVALUATING
-whether it works, succeeds, feels excessive, etc.
-
-DIAGNOSING
-what is causing an audible or musical problem
-
-DIRECTING
-what should change
-
-EXPLAINING
-what mechanism produces the effect
-
-REPORTING INTENT
-what a documented creator says they meant to do
-```
-
-These acts can share vocabulary but carry different evidence obligations.
-
-## Recurrent metaphor families
-
-Human musical discourse repeatedly maps sound and music onto other experiential domains.
-
-### Motion
+Mode and act are independent axes.
 
 ```text
-move • push • pull • drag • rush • lurch • glide • float
-climb • fall • rise • sink • settle • drive • bounce • swing
-circle • wander • charge • creep • snap back • arrive
+DESCRIBE     what is happening
+COMPARE      how two moments or versions differ
+INTERPRET    how a pattern functions
+EVALUATE     whether it succeeds under some criterion
+DIAGNOSE     what causes a musical or audible problem
+DIRECT       what should change
+EXPLAIN      what mechanism produces an effect
+REPORT INTENT what documented creators say they intended
 ```
 
-### Space and container
+The same vocabulary can carry different evidence obligations depending on the act.
+
+## Metaphor families
+
+Human musical language repeatedly organizes sound through experiential domains:
 
 ```text
-open • close • widen • narrow • deep • shallow • forward • back
-room • crowded • empty • boxed-in • surrounding • distant • inside
+MOTION       push, pull, rush, drag, glide, climb, fall, settle, circle, arrive
+SPACE        open, close, widen, narrow, forward, back, crowded, surrounding
+FORCE        heavy, light, punchy, soft, press, snap, bite, land
+MATERIAL     thick, thin, smooth, rough, glassy, fuzzy, brittle, smeared
+LIGHT        bright, dark, glowing, murky, vivid, pale
+BODY         breathe, choke, pulse, tense, relax, loose, tight
+SOCIAL       answer, interrupt, support, shadow, follow, step back
+NARRATIVE    build, drop, return, turn, stall, resolve, reset, come home
 ```
 
-### Weight and force
-
-```text
-heavy • light • weighty • punchy • hard • soft • hits • slams
-pushes • presses • snaps • bites • kicks • lands
-```
-
-### Material and texture
-
-```text
-thick • thin • smooth • rough • silky • grainy • glassy • fuzzy
-crunchy • brittle • smeared • clean • velvety • metallic • woody
-```
-
-### Light, colour, and temperature
-
-```text
-bright • dark • warm • cold • glowing • sparkling • murky
-washed-out • vivid • pale • saturated
-```
-
-### Body and breath
-
-```text
-breathes • chokes • inhales • exhales • pulses • tenses • relaxes
-loose • tight • stiff • fluid
-```
-
-### Social action and conversation
-
-```text
-answers • interrupts • takes over • steps back • sneaks in • argues
-supports • shadows • follows • calls • responds • leaves room
-```
-
-### Narrative and structure
-
-```text
-builds • drops • returns • comes home • turns • stalls • hangs
-breaks away • finally arrives • refuses to resolve • resets
-```
-
-These metaphors can be grounded by different bundles of musical/acoustic evidence. Do not collapse them into universal feature thresholds.
+A metaphor is grounded by a support bundle, not a universal feature threshold.
 
 ## Many-to-many rule
 
-Human descriptors and technical causes are many-to-many.
-
 ```text
 one technical change
-→ several possible human descriptions
+→ several reasonable human descriptions
 
 one human description
 ← several possible technical causes
 ```
 
-For example, `the chorus opens up` could be supported by some combination of:
+For example, `the chorus opens up` might be supported by some combination of more upper-register activity, greater part count, lower masking, wider routing, longer sustain, brighter timbre, stronger ambience, or a redistribution of spectral density.
 
-- more parts entering;
-- increased upper-register activity;
-- greater stereo spread;
-- reduced masking;
-- more audible ambience;
-- lower arrangement density;
-- longer sustain;
-- brighter timbre;
-- higher level;
-- reduced low-mid congestion.
-
-Do not implement rules such as:
+Do not implement a phrase dictionary such as:
 
 ```text
 if stereo_width > threshold:
     say "opens up"
 ```
 
-Instead, a discourse renderer should conceptually receive:
+Instead, discourse rendering conceptually receives:
 
 ```text
 claim / comparison
@@ -431,116 +229,70 @@ The wording is a projection. The support bundle carries the evidence.
 
 ## Progressive disclosure
 
-The preferred conversational pattern is descent on demand.
+The default conversational pattern is descent on demand.
 
 ```text
-USER
 What happens here?
+→ It opens up and starts pushing harder.
 
-DEFAULT
-It opens up and starts pushing harder.
-
-USER
 What changed?
+→ A higher part enters, the bass gets more pointed, and the texture spreads.
 
-MUSICAL EXPLANATION
-A higher part comes in, the bass gets more pointed, and the sound spreads out.
-
-USER
-What exactly makes the bass more pointed?
-
-TECHNICAL EXPLANATION
-[driver / envelope / articulation explanation with exact provenance]
+What exactly causes that?
+→ source / driver / envelope / routing explanation with provenance
 ```
 
-Theory questions take a parallel path rather than being forced through the listener/producer description first:
+Theory questions use a parallel route:
 
 ```text
-USER
-What is it doing harmonically here?
+What is it doing harmonically?
+→ analytical reading + meaningful alternatives
 
-MUSICOLOGICAL EXPLANATION
-The phrase moves away from the local tonic, tonicizes the dominant, and then closes with a cadential return. An alternate reading treats the middle sonority as passing rather than as its own functional chord.
-
-USER
 What supports that?
+→ pitches + bass motion + meter + duration + voice leading + formal context
 
-EVIDENCE DESCENT
-[exact performed pitches + bass motion + metric location + durations + voice leading + competing key/chord analyses + model/theory provenance]
-
-USER
 What produced those notes?
-
-TECHNICAL DESCENT
-[driver / register / patch / sample / timing evidence]
+→ executable source and synthesis evidence
 ```
-
-Default discussion should sound like a knowledgeable person listening to music, not a telemetry dump. When the question is theoretical, it should also be capable of sounding like a knowledgeable analyst rather than stopping at section/energy descriptions.
 
 ## Default register
 
-Unless the user requests another register, the preferred user-facing mode is a **knowledgeable listening companion**:
+Unless the user requests another register, VGM Compiler should support a knowledgeable listening-companion voice:
 
 - musically informed without unnecessary jargon;
 - comfortable with ordinary metaphors;
-- able to mention melody, bass, rhythm, key/tonal center, chords/progressions, harmony, texture, timbre, section/form, groove, and production naturally;
-- able to move upward into harmonic, contrapuntal, motivic and formal analysis when that is what the question asks;
-- willing to say `I hear this as...` or present alternatives when interpretation is uncertain;
-- able to descend into exact technical evidence immediately when asked.
-
-This is not reviewer cosplay and not forced casualness. It is simply the natural-language surface over the same provenance-preserving musical understanding.
+- able to discuss melody, bass, rhythm, harmony, tonal center, texture, timbre, groove, production, and form naturally;
+- able to move into harmonic, contrapuntal, motivic, and formal analysis when relevant;
+- willing to preserve alternatives when interpretation is uncertain;
+- able to descend immediately into exact evidence.
 
 ## Evidence rules
 
 1. Natural wording must not strengthen the evidence status of the underlying claim.
-2. Metaphor may summarize a support bundle but must remain traceable to that bundle.
-3. Evaluative language is not objective source truth.
+2. Metaphor may summarize a support bundle but remains traceable to that bundle.
+3. Evaluation is not objective source truth.
 4. Creator intent requires documentary evidence.
-5. Listener-response wording must preserve the relevant listener/model context when it matters.
-6. Culture-, genre-, era-, and community-specific vocabulary should not be treated as universal.
-7. Technical explanation remains available beneath every grounded natural description.
-8. Competing natural descriptions may coexist when the evidence supports multiple plausible interpretations.
-9. Musicological/theoretical labels must retain the analytical system, corpus/style scope, lower evidence, and meaningful alternatives when the reading is not unique.
+5. Listener-response claims preserve listener/model context when it matters.
+6. Culture-, genre-, era-, and community-specific vocabulary is not universalized.
+7. Technical evidence remains available beneath grounded natural description.
+8. Competing descriptions and analyses may coexist when the evidence supports them.
+9. Theory labels retain analytical framework, style/corpus scope, lower evidence, and meaningful alternatives.
 
-## Research observatories
+## Validation
 
-Useful sources include:
-
-- natural-language music caption corpora such as the Song Describer Dataset;
-- corpora of professional music reviews and criticism;
-- composer, performer, sound-programmer, producer, mixing, and mastering interviews;
-- recording-studies literature on studio discourse;
-- cognitive-linguistic work on musical metaphor;
-- timbre semantics and perceptual descriptor research;
-- encoded expert-analysis corpora such as When in Rome and the DCML corpora;
-- chord/progression resources such as ChoCo and the Jazz Harmony Treebank;
-- symbolic analysis systems such as music21 and automatic-analysis challengers such as AugmentedNet;
-- computational music-theory work on tonal hierarchy, harmonic syntax, figuration, cadence, voice leading and musical form;
-- practitioner source code/comments where creator language and executable behavior can be compared directly.
-
-These are observatories for vocabulary, analytical relations, discourse acts, and evidence relationships, not phrase dictionaries or universal theory labels to copy mechanically.
-
-## Validation target
-
-A song-level analysis should be tested in at least two directions:
+A human-facing analysis should pass three directions of pressure testing:
 
 ```text
-HUMAN-FACING
-Does the description sound like something a musically knowledgeable person would naturally say about what is heard?
+LANGUAGE
+Does it sound like natural knowledgeable discourse about the music?
 
-EVIDENCE-FACING
-Can each material claim descend into the strongest available musical, acoustic, historical, or executable evidence?
+EVIDENCE
+Can every material claim descend into supporting musical, acoustic, documentary, or executable evidence?
+
+ANALYSIS
+When theory is used, are assumptions and competing valid readings represented honestly?
 ```
 
-For theory-facing questions add a third pressure test:
+The target is simple:
 
-```text
-ANALYTICAL
-Does the account explain key/chord/progression/hierarchy/form relations under a declared analytical scope, and can a competing valid reading coexist without changing the lower evidence?
-```
-
-A result fails if it is technically correct but linguistically alien, natural-sounding but unsupported, or theoretically specific without declaring the assumptions that made that reading possible.
-
-The durable project rule is:
-
-> **Speak like people speak about music; know exactly why you are saying it.**
+> **Speak naturally about music while preserving the exact reasons each claim is supportable.**
