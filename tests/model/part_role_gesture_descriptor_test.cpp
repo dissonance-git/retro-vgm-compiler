@@ -81,9 +81,46 @@ int main() {
     assert(std::fabs(descriptor.rhythmic_repetition->value - 1.0) < 1e-12);
     assert(std::fabs(descriptor.rhythmic_repetition->confidence - 1.0) < 1e-12);
 
+    // The long gap and repeated-motif boundary agree at tick 1000. Because
+    // timing and motif analysis are independent origins, the phrase layer can
+    // legitimately corroborate structural motif evidence for this same part.
+    assert(descriptor.phrase_boundary_participation.has_value());
+    assert(std::fabs(descriptor.phrase_boundary_participation->value - 1.0) < 1e-12);
+    assert(descriptor.phrase_boundary_participation->confidence >= 0.80);
+
     const double expected_register =
         (4.00 + 4.25 + 4.50 + 4.25 + 5.00 + 5.25 + 5.50 + 5.25) / 8.0;
     assert(std::fabs(*descriptor.register_coordinate - expected_register) < 1e-12);
+
+    const auto phrased_roles = infer_part_roles_for_window(
+        {descriptor},
+        "source-backed-phrase-role-bridge-test");
+    assert(contains_role(phrased_roles, musical_part_role::melodic_foreground));
+
+    // Motif recurrence alone may suggest a phrase boundary, but it is the same
+    // structural evidence under another label. Without another phrase evidence
+    // domain it must not self-corroborate into a foreground role.
+    const std::vector<part_gesture_observation> motif_only{
+        gesture(31, 30, 0, 4.00),
+        gesture(32, 30, 100, 4.25),
+        gesture(33, 30, 200, 4.50),
+        gesture(34, 30, 300, 4.25),
+        gesture(35, 30, 400, 5.00),
+        gesture(36, 30, 500, 5.25),
+        gesture(37, 30, 600, 5.50),
+        gesture(38, 30, 700, 5.25),
+    };
+    const auto motif_only_descriptor = make_part_role_window_descriptor_from_gestures(
+        motif_only,
+        30,
+        window(0, 800),
+        policy);
+    assert(motif_only_descriptor.structural_motif_prominence.has_value());
+    assert(!motif_only_descriptor.phrase_boundary_participation.has_value());
+    const auto motif_only_roles = infer_part_roles_for_window(
+        {motif_only_descriptor},
+        "motif-self-corroboration-control");
+    assert(!contains_role(motif_only_roles, musical_part_role::melodic_foreground));
 
     // A rhythm-only recurrence remains useful but inherits the motif layer's
     // 0.55 identity ceiling. It must not impersonate structural motif evidence.
@@ -104,10 +141,12 @@ int main() {
     assert(rhythm_descriptor.rhythmic_repetition.has_value());
     assert(rhythm_descriptor.rhythmic_repetition->value <=
         rhythm_only_motif_identity_ceiling + 1e-12);
+    assert(!rhythm_descriptor.phrase_boundary_participation.has_value());
 
     // Performed trajectory shape can ground structural motif identity even when
-    // onset pitch is unavailable. This is the bridge from performed motion into
-    // role inference; it does not turn motion alone into a foreground role.
+    // onset pitch is unavailable. Here it also coincides with independent timing
+    // phrase evidence, so the descriptor can climb one rung further without any
+    // manually injected role signal.
     auto performed_only = rhythm_only;
     for (auto& observation : performed_only) {
         observation.performance_shape = part_gesture_performance_shape{
@@ -129,22 +168,13 @@ int main() {
         rhythm_only_motif_identity_ceiling);
     assert(std::fabs(performed_descriptor.structural_motif_prominence->confidence - 1.0) < 1e-12);
     assert(performed_descriptor.rhythmic_repetition.has_value());
+    assert(performed_descriptor.phrase_boundary_participation.has_value());
+    assert(performed_descriptor.phrase_boundary_participation->confidence >= 0.80);
 
     const auto performed_roles = infer_part_roles_for_window(
         {performed_descriptor},
-        "performed-shape-role-bridge-test");
-    assert(!contains_role(performed_roles, musical_part_role::melodic_foreground));
-
-    // Structural motif evidence becomes usable by the existing role inference
-    // only when an independent foreground discriminator is present. The new
-    // bridge therefore adds evidence without inventing a role from motion alone.
-    auto phrased_performed_descriptor = performed_descriptor;
-    phrased_performed_descriptor.phrase_boundary_participation =
-        bounded_role_signal{0.9, 1.0};
-    const auto phrased_roles = infer_part_roles_for_window(
-        {phrased_performed_descriptor},
-        "performed-shape-role-bridge-test");
-    assert(contains_role(phrased_roles, musical_part_role::melodic_foreground));
+        "performed-shape-phrase-role-bridge-test");
+    assert(contains_role(performed_roles, musical_part_role::melodic_foreground));
 
     // A short passage with no two non-overlapping motif windows does not get a
     // repetition signal merely because it has several onsets.
@@ -164,6 +194,7 @@ int main() {
     assert(short_descriptor.onset_count == 4);
     assert(!short_descriptor.structural_motif_prominence.has_value());
     assert(!short_descriptor.rhythmic_repetition.has_value());
+    assert(!short_descriptor.phrase_boundary_participation.has_value());
 
     // Mixed native pitch bases may still contribute onsets, but they do not
     // produce one register center through an invented coordinate conversion.
