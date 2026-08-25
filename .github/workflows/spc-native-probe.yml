@@ -42,7 +42,10 @@ jobs:
           if (-not $vs) { throw 'Visual Studio C++ toolchain not found' }
           $vcvars32 = Join-Path $vs 'VC\Auxiliary\Build\vcvars32.bat'
           if (-not (Test-Path -LiteralPath $vcvars32)) { throw "vcvars32.bat not found: $vcvars32" }
+          $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+          if (-not (Test-Path -LiteralPath $msbuild)) { throw "MSBuild.exe not found: $msbuild" }
           "VCVARS32=$vcvars32" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MSBUILD=$msbuild" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Materialize exact patched SNESAPU
         shell: pwsh
@@ -96,3 +99,17 @@ jobs:
           & cmd.exe /d /c $cmdFile
           if ($LASTEXITCODE -ne 0) { throw "SNESAPU native probe failed with stage exit code $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $source 'Release\SNESAPU.dll') -PathType Leaf)) { throw 'SNESAPU.dll missing after successful native probe' }
+
+      - name: Build source-aware spcplayer child
+        shell: pwsh
+        run: |
+          $workspace = Join-Path $env:RUNNER_TEMP 'foo-snesapu-current'
+          python -B tools/materialize_foo_snesapu.py $workspace --force
+          if ($LASTEXITCODE -ne 0) { throw 'foo_snesapu materialization failed' }
+          $source = Join-Path $env:SPCPLAY_ROOT 'snesapu.dll'
+          $lib = Join-Path $source 'Release'
+          $out = Join-Path $env:RUNNER_TEMP 'spcplayer-out'
+          New-Item -ItemType Directory $out -Force | Out-Null
+          & $env:MSBUILD (Join-Path $workspace 'spcplayer\spcplayer.vcxproj') /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 "/p:SNESAPUIncludeDir=$source" "/p:SNESAPULibDir=$lib" "/p:OutDir=$out\" /m /v:m
+          if ($LASTEXITCODE -ne 0) { throw "spcplayer probe failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath (Join-Path $out 'spcplayer.exe') -PathType Leaf)) { throw 'spcplayer.exe missing after successful child build' }
