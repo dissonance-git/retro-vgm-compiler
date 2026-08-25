@@ -1,0 +1,25 @@
+name: Cadential degree relation validation
+
+on:
+  push:
+    branches:
+      - cadential-degree-relations
+
+jobs:
+  semantic-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build registered degree regression
+        run: cmake --build build --target diatonic_chord_degree_hypothesis_test --parallel 2
+      - name: Run registered degree regression
+        run: ctest --test-dir build --output-on-failure -R '^diatonic_chord_degree_hypothesis$'
+      - name: Compile contextual figuration regression
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG
+          -I. tests/model/contextual_tertian_figuration_hypothesis_test.cpp
+          -o /tmp/contextual_tertian_figuration_hypothesis_test
+      - name: Run contextual figuration regression
+        run: /tmp/contextual_tertian_figuration_hypothesis_test
