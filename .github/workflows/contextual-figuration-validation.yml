@@ -13,7 +13,7 @@ jobs:
       - name: Compile contextual harmony regression
         run: >-
           g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG
-          -I. tests/model/tertian_triad_hypothesis_test.cpp
-          -o /tmp/tertian_triad_hypothesis_test
+          -I. tests/model/contextual_tertian_figuration_hypothesis_test.cpp
+          -o /tmp/contextual_tertian_figuration_hypothesis_test
       - name: Run contextual harmony regression
-        run: /tmp/tertian_triad_hypothesis_test
+        run: /tmp/contextual_tertian_figuration_hypothesis_test
