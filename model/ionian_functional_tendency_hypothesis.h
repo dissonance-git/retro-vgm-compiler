@@ -81,6 +81,22 @@ inline bool ionian_dominant_degree(std::uint8_t degree) noexcept {
     return degree == 5 || degree == 7;
 }
 
+inline bool cadential_arrival_matches_transition(
+    const cadential_arrival_hypothesis& arrival,
+    const harmonic_transition_hypothesis& transition) noexcept {
+    return same_function_transition_time(arrival.departure_time, transition.first_time) &&
+        same_function_transition_time(arrival.arrival_time, transition.second_time) &&
+        positive_mod(arrival.departure_root_pitch_class, 12) ==
+            positive_mod(transition.first_root_pitch_class, 12) &&
+        positive_mod(arrival.arrival_root_pitch_class, 12) ==
+            positive_mod(transition.second_root_pitch_class, 12) &&
+        arrival.departure_quality == transition.first_quality &&
+        arrival.arrival_quality == transition.second_quality &&
+        arrival.quality_changed == transition.quality_changed &&
+        arrival.root_motion_semitones == transition.directed_root_motion_semitones &&
+        arrival.root_interval_class == transition.root_interval_class;
+}
+
 inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
     const tonal_key_class_hypothesis& key,
     const tertian_triad_hypothesis& first_chord,
@@ -170,9 +186,7 @@ inline ionian_functional_tendency_hypothesis infer_ionian_functional_tendency(
         const auto& value = *arrival;
         if (!valid_function_confidence(value.confidence))
             throw std::invalid_argument("functional-tendency arrival confidence must lie in [0, 1]");
-        if (!same_function_transition_time(value.arrival_time, transition.second_time) ||
-            value.root_motion_semitones != transition.directed_root_motion_semitones ||
-            value.root_interval_class != transition.root_interval_class ||
+        if (!cadential_arrival_matches_transition(value, transition) ||
             !value.harmonic_root_motion_reliable) {
             throw std::invalid_argument("functional-tendency arrival must describe the same reliable harmonic transition");
         }
