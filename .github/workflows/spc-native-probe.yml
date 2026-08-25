@@ -1,4 +1,4 @@
-name: SPC native DSP probe
+name: SPC native build probe
 
 on:
   workflow_dispatch:
@@ -9,14 +9,14 @@ on:
       - "patches/snesapu/**"
 
 jobs:
-  assemble-dsp:
+  build-snesapu-native:
     runs-on: windows-2022
     timeout-minutes: 15
     steps:
       - name: Checkout exact Retro source
         uses: actions/checkout@v4
 
-      - name: Install pinned NASM
+      - name: Install pinned NASM and locate MSVC x86 tools
         shell: pwsh
         run: |
           $package = '2.16.3'
@@ -36,6 +36,14 @@ jobs:
           Write-Host $version
           if ($version -notmatch "NASM version $([regex]::Escape($binary))\b") { throw "Unexpected NASM: $version" }
 
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path -LiteralPath $vswhere)) { throw 'vswhere.exe not found' }
+          $vs = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
+          if (-not $vs) { throw 'Visual Studio C++ toolchain not found' }
+          $vcvars32 = Join-Path $vs 'VC\Auxiliary\Build\vcvars32.bat'
+          if (-not (Test-Path -LiteralPath $vcvars32)) { throw "vcvars32.bat not found: $vcvars32" }
+          "VCVARS32=$vcvars32" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Materialize exact patched SNESAPU
         shell: pwsh
         run: |
@@ -48,15 +56,43 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'private SNESAPU patch stack failed' }
           "SPCPLAY_ROOT=$spc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Assemble patched DSP.asm
+      - name: Build complete patched SNESAPU DLL
         shell: pwsh
         run: |
-          Push-Location (Join-Path $env:SPCPLAY_ROOT 'snesapu.dll')
-          try {
-            & nasm -f win32 -O2 DSP.asm -o DSP.probe.obj
-            if ($LASTEXITCODE -ne 0) { throw "DSP.asm failed with NASM exit code $LASTEXITCODE" }
-            if (-not (Test-Path -LiteralPath 'DSP.probe.obj' -PathType Leaf)) { throw 'DSP object missing after successful NASM exit' }
-            Write-Host 'Patched DSP.asm assembled successfully.'
-          } finally {
-            Pop-Location
-          }
+          $source = Join-Path $env:SPCPLAY_ROOT 'snesapu.dll'
+          $cmdFile = Join-Path $env:RUNNER_TEMP 'probe-snesapu-x86.cmd'
+          @"
+          @echo off
+          call "$env:VCVARS32"
+          if errorlevel 1 exit /b 10
+          cd /d "$source"
+          if not exist Release mkdir Release
+          echo === NASM APU.asm ===
+          nasm -f win32 -O2 APU.asm -o Release\APU.obj
+          if errorlevel 1 exit /b 11
+          echo === NASM DSP.asm ===
+          nasm -f win32 -O2 DSP.asm -o Release\DSP.obj
+          if errorlevel 1 exit /b 12
+          echo === NASM SPC700.asm ===
+          nasm -f win32 -O2 SPC700.asm -o Release\SPC700.obj
+          if errorlevel 1 exit /b 13
+          echo === RC version.rc ===
+          rc /nologo /fo Release\version.res version.rc
+          if errorlevel 1 exit /b 21
+          echo === CL SNESAPU.cpp ===
+          cl /nologo /Gz /MT /W3 /O2 /Ob0 /D NDEBUG /D _USRDLL /c SNESAPU.cpp /FoRelease\SNESAPU.obj
+          if errorlevel 1 exit /b 22
+          echo === LINK SNESAPU.dll ===
+          link /nologo /dll /machine:I386 /nodefaultlib /def:SNESAPU.def /out:Release\SNESAPU.dll /implib:Release\snesapu.lib Release\SNESAPU.obj Release\version.res Release\APU.obj Release\DSP.obj Release\SPC700.obj
+          if errorlevel 1 exit /b 23
+          echo === EXPORT AUDIT ===
+          for %%E in (SetDSPSourceCapture GetDSPSourceData SetDSPPreBrrProvider SetDSPStudioSourceProvider) do (
+            dumpbin /exports Release\SNESAPU.dll | findstr /c:"%%E" >nul
+            if errorlevel 1 exit /b 24
+          )
+          echo Patched SNESAPU native DLL build probe succeeded.
+          exit /b 0
+          "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
+          & cmd.exe /d /c $cmdFile
+          if ($LASTEXITCODE -ne 0) { throw "SNESAPU native probe failed with stage exit code $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath (Join-Path $source 'Release\SNESAPU.dll') -PathType Leaf)) { throw 'SNESAPU.dll missing after successful native probe' }
