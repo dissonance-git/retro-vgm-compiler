@@ -175,7 +175,10 @@ public:
         return true;
     }
 
-    // Publish one exact route transition at its already-resolved output ordinal.
+    // Publish one exact evidence transition at its already-resolved output
+    // ordinal. Callers that are changing only authored stereo routing should use
+    // publish_stereo_route() so unrelated source identity and higher evidence
+    // are not accidentally erased by reconstructing the record from scratch.
     bool publish(
         std::uint64_t ordinal,
         std::size_t source_index,
@@ -191,6 +194,25 @@ public:
         if (!queue_.push({ordinal, source_index, evidence}))
             return fail(spatial_route_transport_error::queue_overflow_or_order);
         return true;
+    }
+
+    // Publish a route-only transition for an already-known source identity.
+    // Route register writes do not constitute evidence that persistent musical
+    // identity, presentation state, effect membership, or authored position
+    // vanished. Preserve those domains and replace only stereo_route.
+    bool publish_stereo_route(
+        std::uint64_t ordinal,
+        std::size_t source_index,
+        const vgmtooling::model::stereo_route_evidence& route) noexcept
+    {
+        if (!valid())
+            return fail(spatial_route_transport_error::queue_invalid);
+        if (source_index >= source_count || !producer_known_[source_index] || !route.present)
+            return fail(spatial_route_transport_error::queue_overflow_or_order);
+
+        auto evidence = producer_evidence_[source_index];
+        evidence.stereo_route = route;
+        return publish(ordinal, source_index, evidence);
     }
 
     // Advance route evidence with the delivered audio clock. Events for absent

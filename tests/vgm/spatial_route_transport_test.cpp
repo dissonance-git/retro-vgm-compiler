@@ -56,6 +56,39 @@ int main() {
     assert(block.initial_evidence[0].stereo_route.left_gain == 0.0f);
     assert(block.initial_evidence[0].stereo_route.right_gain == 1.0f);
 
+    // Route-only transitions preserve source-semantic evidence already bound to
+    // the same source generation. A route register write is not evidence that
+    // persistent musical identity or presentation state disappeared.
+    transport.reset();
+    auto bound = evidence(7u, 1.0f, 1.0f);
+    bound.generation = 4u;
+    bound.persistent_part_present = true;
+    bound.persistent_part_id = 99u;
+    bound.persistent_part_confidence = 0.73f;
+    bound.presentation.foreground = 0.62f;
+    bound.presentation.confidence = 0.51f;
+    assert(transport.seed(0u, bound));
+    auto right_only = bound.stereo_route;
+    right_only.left_gain = 0.0f;
+    right_only.right_gain = 1.0f;
+    assert(transport.publish_stereo_route(20u, 0u, right_only));
+    assert(transport.prepare_delivered_block(20u, 2u, present, block));
+    assert(block.routes_complete);
+    assert(block.initial_evidence[0].source_id == 7u);
+    assert(block.initial_evidence[0].generation == 4u);
+    assert(block.initial_evidence[0].persistent_part_present);
+    assert(block.initial_evidence[0].persistent_part_id == 99u);
+    assert(block.initial_evidence[0].persistent_part_confidence == 0.73f);
+    assert(block.initial_evidence[0].presentation.foreground == 0.62f);
+    assert(block.initial_evidence[0].presentation.confidence == 0.51f);
+    assert(block.initial_evidence[0].stereo_route.left_gain == 0.0f);
+    assert(block.initial_evidence[0].stereo_route.right_gain == 1.0f);
+
+    // A route-only transition cannot invent source identity from a bare route.
+    transport.reset();
+    assert(!transport.publish_stereo_route(25u, 0u, right_only));
+    assert(!transport.valid());
+
     // Route events for an absent source still advance state for future blocks,
     // but are not forwarded as presentation events for the current block.
     transport.reset();
