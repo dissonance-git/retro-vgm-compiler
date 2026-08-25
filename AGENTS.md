@@ -16,7 +16,7 @@ current main HEAD
 → exact code/test/document
 ```
 
-Use `python tools/repository_catalog.py` for mechanical inventory. Search inside the chosen owner before searching the whole repository.
+Use `python tools/repository_catalog.py --focus <concept>` before repository-wide search. Use the unfiltered catalog only when the task genuinely concerns repository shape. Search inside the chosen owner before searching the whole repository.
 
 ## Change law
 
@@ -30,6 +30,19 @@ Use `python tools/repository_catalog.py` for mechanical inventory. Search inside
 8. After publication, verify the resulting commit and distinguish executed evidence from intended behavior.
 
 Direct user correction outranks repository prose.
+
+## Context efficiency law
+
+Treat human attention and LLM context as finite compute. Maximize **useful decisions and evidence per token consumed**.
+
+- Prefer a small projection from canonical truth over a duplicated summary or parallel index.
+- Collapse equivalent routes, names, wrappers, and explanations into the smallest owner that preserves meaning.
+- Derive navigational metadata mechanically when it can be derived; do not make agents read or maintain another database.
+- Prefer focused search and exact files over broad tree ingestion.
+- Compression succeeds only when provenance, uncertainty, validation routes, and task capability are preserved or improved.
+- When two correct designs are otherwise equivalent, prefer the one requiring less search, less repeated context, and fewer tokens to reach the same or stronger conclusion.
+
+The target is not merely fewer files or shorter prose. The target is a widening gap between **context consumed** and **reasoning power obtained**.
 
 ## Ownership
 
