@@ -1,10 +1,10 @@
 # Import manifest
 
-`imports/` contains preserved external inputs required to reproduce repository-owned build, analysis, or forensic paths. Imported evidence is not an editable working tree. Superseded migration material belongs in Git history rather than a permanent active shelf.
+`imports/` contains immutable external inputs required to reproduce repository-owned build, analysis, and forensic paths. Imported evidence is not an editable working tree.
 
 ## foo_input_vgm 0.31 bootstrap
 
-The canonical VGM foobar2000 bootstrap is the exact user-supplied `foo_input_vgm` 0.31 source archive.
+The canonical VGM foobar2000 bootstrap is the exact `foo_input_vgm` 0.31 source archive.
 
 ```text
 canonical archive size     66,250 bytes
@@ -15,27 +15,23 @@ component version marker   0.31
 license in supplied tree   Mozilla Public License 2.0
 ```
 
-Because the repository connector originally could not publish the binary archive safely, the exact archive is represented as immutable base64 transport parts under:
+The archive is stored as immutable base64 transport parts under:
 
 ```text
 imports/bootstrap/foo_input_vgm-0.31.base64-parts/
 ```
 
-That directory is **transport for one canonical source object**, not a second source tree. `tools/reconstruct_vgm031_bootstrap.py` concatenates the parts in a fixed order, verifies the base64 length/hash, decodes the archive, verifies archive length/SHA-256/ZIP structure/version marker, and writes the disposable ignored path:
+That directory represents one canonical source object. `tools/reconstruct_vgm031_bootstrap.py` concatenates the parts in a fixed order, verifies the base64 length and hash, decodes the archive, verifies archive length, SHA-256, ZIP structure, and version marker, then writes the disposable ignored path:
 
 ```text
 imports/foo_input_vgm-0.31.zip
 ```
 
-Current development occurs from the verified 0.31 bootstrap plus project-owned overlays under `components/vgm/` and guarded transforms under `patches/foo_input_vgm/`. Never semantically edit the reconstructed archive in place.
-
-The older 0.30 bootstrap and the retired `vgmspc` migration ledgers remain recoverable from Git history but no longer occupy the active import shelf or participate in current builds.
+VGM component development starts from the verified bootstrap, applies project-owned overlays from `components/vgm/`, and applies guarded transformations from `patches/foo_input_vgm/`. The reconstructed archive remains immutable input evidence.
 
 ## SPCPlay / SNESAPU behavioral reference
 
-The supplied SPCPlay/SNESAPU package is a behavioral reference used to reconcile editable SNESAPU source, not the editable source tree itself.
-
-Recorded reference:
+The SPCPlay/SNESAPU package is behavioral reference evidence used to reconcile editable SNESAPU source.
 
 ```text
 package               spcplay-2.21.3.9130.zip
@@ -45,6 +41,6 @@ build date            2026-07-23
 license in readme     GNU GPL v2.0
 ```
 
-Known contents include `readme.txt`, `snesapu.dll`, and `spcplay.exe`. The improved SNESAPU path exposes higher-quality options such as high sample rates, float output, sinc interpolation, and higher-precision echo/FIR processing; those are reference evidence when reconciling editable source before VGM Compiler adds its own source-native enhancement layer.
+Known contents include `readme.txt`, `snesapu.dll`, and `spcplay.exe`. Its high-quality capabilities include high sample rates, float output, sinc interpolation, and higher-precision echo/FIR processing. Those behaviors are reference evidence for source reconciliation and source-native enhancement work.
 
-Binary/reference packages remain evidence objects. Editable upstream source must retain clear provenance and must not be silently replaced by a reference binary.
+Binary/reference packages remain evidence objects. Editable upstream source retains independent provenance and is never silently replaced by a reference binary.
