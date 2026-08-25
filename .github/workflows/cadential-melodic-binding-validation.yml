@@ -1,0 +1,51 @@
+name: Cadential melodic binding validation
+
+on:
+  push:
+    branches:
+      - cadential-melodic-binding
+  workflow_dispatch:
+
+jobs:
+  semantic-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure project
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Compile and run functional tendency regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/ionian_functional_tendency_hypothesis_test.cpp \
+            -o /tmp/ionian_functional_tendency_hypothesis_test
+          /tmp/ionian_functional_tendency_hypothesis_test
+
+      - name: Compile and run cadence class regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/ionian_cadence_class_hypothesis_test.cpp \
+            -o /tmp/ionian_cadence_class_hypothesis_test
+          /tmp/ionian_cadence_class_hypothesis_test
+
+      - name: Compile and run cadential arrival regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/cadential_arrival_hypothesis_test.cpp \
+            -o /tmp/cadential_arrival_hypothesis_test
+          /tmp/cadential_arrival_hypothesis_test
+
+      - name: Compile and run degree relation regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/diatonic_chord_degree_hypothesis_test.cpp \
+            -o /tmp/diatonic_chord_degree_hypothesis_test
+          /tmp/diatonic_chord_degree_hypothesis_test
+
+      - name: Compile and run contextual figuration regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/contextual_tertian_figuration_hypothesis_test.cpp \
+            -o /tmp/contextual_tertian_figuration_hypothesis_test
+          /tmp/contextual_tertian_figuration_hypothesis_test
