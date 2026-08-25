@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject reintroduction of deprecated human-facing project names.
+"""Reject reintroduction of deprecated live project identities.
 
 VGM Compiler is the current project identity. Historical prose under docs/history/
 may retain older names when doing so preserves lineage; active repository text may
@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEPRECATED = (
     "Game" + " Music" + " Interpreter",
     "Retro" + " VGM" + " Compiler",
+    "retro-vgm" + "-compiler-roadmap.md",
 )
 TEXT_SUFFIXES = {
     ".md", ".txt", ".rst", ".py", ".h", ".hpp", ".c", ".cc", ".cpp",
