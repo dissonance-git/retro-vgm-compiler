@@ -1,0 +1,41 @@
+name: Persistent performance bridge
+
+on:
+  push:
+    paths:
+      - "tools/apply_persistent_performance_bridge_once.py"
+      - ".github/workflows/persistent-performance-bridge.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Apply guarded compiler bridge
+        run: python tools/apply_persistent_performance_bridge_once.py
+
+      - name: Configure focused core tests
+        run: cmake -S . -B build -DGAMEAUDIO_BUILD_CORE_TESTS=ON
+
+      - name: Build focused compiler tests
+        run: cmake --build build --parallel --target pitch_motion_articulation_test persistent_part_performance_trajectory_test
+
+      - name: Run focused compiler tests
+        run: ctest --test-dir build --output-on-failure -R "^(pitch_motion_articulation|persistent_part_performance_trajectory)$"
+
+      - name: Validate patch
+        run: git diff --check
+
+      - name: Commit compiler bridge
+        run: |
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add model/pitch_motion_articulation.h model/persistent_part_performance_trajectory.h tests/model/pitch_motion_articulation_test.cpp tests/model/persistent_part_performance_trajectory_test.cpp cmake/semantic_model_tests.cmake
+          git commit -m "feat(model): join persistent identity with performed motion"
+          git push origin HEAD:main
