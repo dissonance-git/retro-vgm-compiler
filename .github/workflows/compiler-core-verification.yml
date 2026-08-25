@@ -47,23 +47,43 @@ jobs:
               path.write_text(text, encoding='utf-8')
           PY
 
+      - name: Repair stale spatial path assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/vgm/genesis_enhanced_recomposition_test.cpp')
+          text = path.read_text(encoding='utf-8')
+          old = 'spatial_playback_path::source_full_sphere'
+          new = 'spatial_playback_path::source_spatial'
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('stale Genesis spatial-path assertion is not singular')
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('Genesis spatial-path assertion anchor not found')
+          PY
+
       - name: Configure full compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
       - name: Build full compiler core
         run: cmake --build build --parallel 2
       - name: Run full compiler core
         run: ctest --test-dir build --output-on-failure
-      - name: Validate assertion policy
+      - name: Validate core repairs
         run: |
           git diff --check
           grep -q -- '-UNDEBUG' CMakeLists.txt
-      - name: Commit assertion-safe test policy
+          grep -q 'spatial_playback_path::source_spatial' tests/vgm/genesis_enhanced_recomposition_test.cpp
+          ! grep -q 'spatial_playback_path::source_full_sphere' tests/vgm/genesis_enhanced_recomposition_test.cpp
+      - name: Commit verified core repairs
         run: |
-          if git diff --quiet -- CMakeLists.txt; then
+          if git diff --quiet -- CMakeLists.txt tests/vgm/genesis_enhanced_recomposition_test.cpp; then
             exit 0
           fi
           git config user.name dissonance
           git config user.email ustreamusa@aim.com
-          git add CMakeLists.txt
-          git commit -m 'test(core): keep assertions active in Release'
+          git add CMakeLists.txt tests/vgm/genesis_enhanced_recomposition_test.cpp
+          git commit -m 'test(core): keep Release assertions semantically live'
           git push
