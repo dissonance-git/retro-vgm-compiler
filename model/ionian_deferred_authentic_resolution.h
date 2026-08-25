@@ -56,6 +56,14 @@ constexpr double cadential_continuation_use_threshold = 0.70;
 constexpr double cross_part_continuation_ceiling = 0.82;
 constexpr double deferred_authentic_resolution_ceiling = 0.82;
 
+inline bool deferred_resolution_same_time_basis(
+    const time_coordinate& first,
+    const time_coordinate& second) noexcept {
+    return first.domain == second.domain &&
+        first.tick_rate == second.tick_rate &&
+        first.loop_iteration == second.loop_iteration;
+}
+
 inline cross_part_continuation_evidence infer_cross_part_continuation_evidence(
     const std::vector<part_phrase_boundary_hypothesis>& part_hypotheses,
     const time_coordinate& observation_time) {
@@ -193,6 +201,16 @@ inline ionian_deferred_authentic_resolution infer_ionian_deferred_authentic_reso
         deferred_authentic_resolution_ceiling,
     });
 
+    const auto later_dominant_time =
+        later_dominant_chord.projection.source_verticality.observation_time;
+    if (!deferred_resolution_same_time_basis(
+            diversion_transition.second_time,
+            later_dominant_time) ||
+        later_dominant_time.tick <= diversion_transition.second_time.tick) {
+        throw std::invalid_argument(
+            "deferred authentic resolution requires the later dominant to follow the diversion");
+    }
+
     const auto later_binding = infer_ionian_cadence_formal_binding(
         key,
         later_dominant_chord,
@@ -203,21 +221,12 @@ inline ionian_deferred_authentic_resolution infer_ionian_deferred_authentic_reso
         later_bass,
         later_melodic);
 
-    if (!same_function_transition_time(
+    if (!deferred_resolution_same_time_basis(
             diversion_transition.second_time,
-            later_binding.arrival_time) &&
-        (!cadential_degree_same_time_basis(
-             diversion_transition.second_time,
-             later_binding.arrival_time) ||
-         later_binding.arrival_time.tick <= diversion_transition.second_time.tick)) {
+            later_binding.arrival_time) ||
+        later_binding.arrival_time.tick <= diversion_transition.second_time.tick) {
         throw std::invalid_argument(
             "deferred authentic resolution requires a later cadence event in the same time basis");
-    }
-    if (same_function_transition_time(
-            diversion_transition.second_time,
-            later_binding.arrival_time)) {
-        throw std::invalid_argument(
-            "deferred authentic resolution requires the authentic arrival to follow the diversion");
     }
 
     result.later_authentic_arrival_time = later_binding.arrival_time;
