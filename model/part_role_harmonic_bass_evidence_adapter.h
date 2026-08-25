@@ -17,8 +17,9 @@ namespace vgmtooling::model {
 // "currently lowest pitch" and not a synonym for chord root. The evidence
 // admitted here has already passed through successive harmonic verticalities,
 // persistent-part voice correspondence, and bass/harmony interaction analysis.
-// Requiring repeated grounded transitions keeps a one-off low passing tone or
-// stale held note from becoming a bass-foundation role by register alone.
+// Requiring repeated harmonically informative grounded transitions keeps a
+// one-off low passing tone, static pedal, or stale held note from becoming a
+// bass-foundation role by register continuity alone.
 struct harmonic_bass_role_evidence_policy {
     std::size_t full_support_transitions = 3;
 };
@@ -27,6 +28,8 @@ struct harmonic_bass_ownership_summary {
     std::size_t eligible_transitions = 0;
     std::size_t grounded_transitions = 0;
     std::size_t owned_transitions = 0;
+    std::size_t informative_transitions = 0;
+    std::size_t owned_informative_transitions = 0;
     double ownership_fraction = 0.0;
     double confidence = 0.0;
 };
@@ -38,6 +41,15 @@ inline bool harmonic_bass_time_inside_window(
         part_role_same_time_basis(coordinate, window.start) &&
         coordinate.tick >= window.start.tick &&
         coordinate.tick < window.end->tick;
+}
+
+inline bool harmonic_bass_interaction_is_informative(
+    const bass_harmony_interaction_hypothesis& interaction) noexcept {
+    return interaction.harmonic_identity_changed ||
+        interaction.kind == bass_harmony_interaction_kind::inversion_or_bass_revoicing ||
+        interaction.kind == bass_harmony_interaction_kind::pedal_bass_under_harmonic_change ||
+        interaction.kind == bass_harmony_interaction_kind::moving_bass_under_retained_upper_material ||
+        interaction.kind == bass_harmony_interaction_kind::generic_harmonic_change;
 }
 
 inline void validate_bass_harmony_interaction_for_role(
@@ -69,15 +81,12 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
     harmonic_bass_ownership_summary summary;
     double grounded_weight = 0.0;
     double owned_weight = 0.0;
-    double grounded_confidence_sum = 0.0;
+    double informative_confidence_sum = 0.0;
     std::set<std::pair<std::int64_t, std::int64_t>> seen_transition_ticks;
 
     for (const auto& interaction : interactions) {
         validate_bass_harmony_interaction_for_role(interaction);
 
-        // A transition contributes to this role window only when the complete
-        // harmonic change lies inside it. Partial overlap is unknown rather than
-        // silently clipped into stronger evidence.
         if (!harmonic_bass_time_inside_window(interaction.first_time, descriptor.active) ||
             !harmonic_bass_time_inside_window(interaction.second_time, descriptor.active)) {
             continue;
@@ -101,11 +110,18 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
 
         ++summary.grounded_transitions;
         grounded_weight += interaction.confidence;
-        grounded_confidence_sum += interaction.confidence;
         if (interaction.bass_part_id == descriptor.part_id) {
             ++summary.owned_transitions;
             owned_weight += interaction.confidence;
         }
+
+        if (!harmonic_bass_interaction_is_informative(interaction))
+            continue;
+
+        ++summary.informative_transitions;
+        informative_confidence_sum += interaction.confidence;
+        if (interaction.bass_part_id == descriptor.part_id)
+            ++summary.owned_informative_transitions;
     }
 
     if (summary.grounded_transitions == 0 || !(grounded_weight > 0.0))
@@ -116,11 +132,19 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
         0.0,
         1.0);
 
-    const double mean_grounded_confidence =
-        grounded_confidence_sum / static_cast<double>(summary.grounded_transitions);
+    // Continuity contributes to ownership fraction and coverage, but only
+    // transitions that change harmony or inversion mature harmonic-role
+    // confidence. This mirrors the distinction between bass pattern evidence
+    // and chord/root evidence rather than collapsing them into "lowest note".
+    if (summary.informative_transitions == 0)
+        return summary;
+
+    const double mean_informative_confidence =
+        informative_confidence_sum /
+        static_cast<double>(summary.informative_transitions);
     const double support_maturity = std::min(
         1.0,
-        static_cast<double>(summary.grounded_transitions) /
+        static_cast<double>(summary.informative_transitions) /
             static_cast<double>(policy.full_support_transitions));
     const double grounded_coverage = summary.eligible_transitions == 0
         ? 0.0
@@ -128,7 +152,7 @@ inline harmonic_bass_ownership_summary infer_harmonic_bass_ownership(
             static_cast<double>(summary.eligible_transitions);
 
     summary.confidence = std::clamp(
-        mean_grounded_confidence * support_maturity * grounded_coverage,
+        mean_informative_confidence * support_maturity * grounded_coverage,
         0.0,
         1.0);
     return summary;
