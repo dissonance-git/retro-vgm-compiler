@@ -17,13 +17,22 @@ if ($failure) {
     Write-Host '::group::Focused private Foobar build failure diagnostics'
     if (Test-Path -LiteralPath $logPath -PathType Leaf) {
         $lines = @(Get-Content -LiteralPath $logPath)
-        $pattern = '(?i)(DSP\.asm|APU\.asm|SPC700\.asm|nasm|error[: ]|fatal|LNK\d{4}|MSB\d{4}|undefined|unresolved|syntax)'
-        $hits = @($lines | Select-String -Pattern $pattern -Context 2,2)
-        if ($hits.Count -gt 0) {
-            $hits | Select-Object -First 160 | ForEach-Object { Write-Host $_.ToString() }
+        # Prefer actual compiler/linker/build failures. Legacy NASM emits many
+        # benign macro warnings containing source filenames; letting those win
+        # the first-match budget can hide the actionable MSVC error entirely.
+        $hardPattern = '(?i)(fatal error|error C\d{4}|error LNK\d{4}|error MSB\d{4}|LNK\d{4}|MSB\d{4}|unresolved external|undefined reference|\berror:)'
+        $hardHits = @($lines | Select-String -Pattern $hardPattern -Context 3,3)
+        if ($hardHits.Count -gt 0) {
+            $hardHits | Select-Object -First 200 | ForEach-Object { Write-Host $_.ToString() }
         } else {
-            Write-Host 'No focused diagnostic pattern matched; showing final 120 captured lines.'
-            $lines | Select-Object -Last 120 | ForEach-Object { Write-Host $_ }
+            $fallbackPattern = '(?i)(DSP\.asm|APU\.asm|SPC700\.asm|nasm|fatal|undefined|unresolved|syntax)'
+            $fallbackHits = @($lines | Select-String -Pattern $fallbackPattern -Context 2,2)
+            if ($fallbackHits.Count -gt 0) {
+                $fallbackHits | Select-Object -First 120 | ForEach-Object { Write-Host $_.ToString() }
+            } else {
+                Write-Host 'No focused diagnostic pattern matched; showing final 160 captured lines.'
+                $lines | Select-Object -Last 160 | ForEach-Object { Write-Host $_ }
+            }
         }
     } else {
         Write-Host 'Build failed before a diagnostic log was created.'
