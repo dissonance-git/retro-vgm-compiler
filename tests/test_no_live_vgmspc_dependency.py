@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep vgmspc as historical provenance only, never a live build input."""
+"""Prevent reintroduction of the retired vgmspc repository as a live dependency."""
 
 from __future__ import annotations
 
@@ -15,9 +15,6 @@ SCAN_ROOTS = (
     REPO / ".github",
 )
 
-# Historical prose may name the retired source repository. Executable dependency
-# shapes are forbidden: clone/fetch URLs, the old scaffold variable/name, and
-# any attempt by maintained code to read the archival imports/vgmspc tree.
 FORBIDDEN = (
     re.compile(r"https://github\.com/dissonance-git/vgmspc(?:\.git)?", re.I),
     re.compile(r"git@github\.com:dissonance-git/vgmspc(?:\.git)?", re.I),
@@ -42,8 +39,8 @@ def main() -> int:
                 if pattern.search(text):
                     failures.append(f"{path.relative_to(REPO)} matches {pattern.pattern}")
     if failures:
-        raise AssertionError("live vgmspc dependency survived:\n" + "\n".join(failures))
-    print("no live vgmspc build dependency found")
+        raise AssertionError("retired vgmspc dependency survived:\n" + "\n".join(failures))
+    print("no retired vgmspc build dependency found")
     return 0
 
 

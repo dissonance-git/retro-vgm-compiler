@@ -1,8 +1,8 @@
 name: core-tests
 
-# GitHub-hosted runners are currently blocked by the account billing/spending
-# limit before jobs start. Keep the workflow available for manual validation
-# without painting every development commit red until runner access is restored.
+# Hosted runners are currently blocked by the account billing/spending limit
+# before jobs start. Keep one manual workflow as the canonical portable core
+# entry point rather than duplicating the CMake registry in YAML.
 on:
   workflow_dispatch:
 
@@ -14,102 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: VGM Python audits
-        run: python3 -B -m unittest discover -s tests/vgm -p 'test_*.py'
-      - name: SPC Python audits
-        run: python3 -B -m unittest discover -s tests/spc -p 'test_*.py'
-      - name: Spatial source authority and realtime musical scene
+
+      - name: Project identity
+        run: python3 -B tools/check_project_identity.py
+
+      - name: Repository structural contracts
         run: |
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/model/spatial_source_test.cpp -o /tmp/spatial_source_test
-          /tmp/spatial_source_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/model/spatial_source_timed_evidence_test.cpp -o /tmp/spatial_source_timed_evidence_test
-          /tmp/spatial_source_timed_evidence_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_spatial_scene_dsp_test.cpp -o /tmp/realtime_spatial_scene_dsp_test
-          /tmp/realtime_spatial_scene_dsp_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_musical_spatial_observer_test.cpp -o /tmp/realtime_musical_spatial_observer_test
-          /tmp/realtime_musical_spatial_observer_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_musical_role_hypothesis_test.cpp -o /tmp/realtime_musical_role_hypothesis_test
-          /tmp/realtime_musical_role_hypothesis_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_musical_role_tracker_test.cpp -o /tmp/realtime_musical_role_tracker_test
-          /tmp/realtime_musical_role_tracker_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_musical_spatial_frontend_test.cpp -o /tmp/realtime_musical_spatial_frontend_test
-          /tmp/realtime_musical_spatial_frontend_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_auditory_state_evidence_test.cpp -o /tmp/realtime_auditory_state_evidence_test
-          /tmp/realtime_auditory_state_evidence_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/omniphony_source_transport_test.cpp -o /tmp/omniphony_source_transport_test
-          /tmp/omniphony_source_transport_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/omniphony_realtime_client_test.cpp -o /tmp/omniphony_realtime_client_test
-          /tmp/omniphony_realtime_client_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/realtime_musical_omniphony_pipeline_test.cpp -o /tmp/realtime_musical_omniphony_pipeline_test
-          /tmp/realtime_musical_omniphony_pipeline_test
-      - name: QSound source controls and native evidence sidecars
+          python3 -B tests/test_cmake_registration_uniqueness.py
+          python3 -B tests/test_no_live_vgmspc_dependency.py
+
+      - name: Source-family Python audits
         run: |
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_spatial_source_test.cpp -o /tmp/qsound_spatial_source_test
-          /tmp/qsound_spatial_source_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_control_capture_test.cpp -o /tmp/qsound_control_capture_test
-          /tmp/qsound_control_capture_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_environment_control_state_test.cpp -o /tmp/qsound_environment_control_state_test
-          /tmp/qsound_environment_control_state_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_environment_control_replay_test.cpp -o /tmp/qsound_environment_control_replay_test
-          /tmp/qsound_environment_control_replay_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_native_source_capture_test.cpp -o /tmp/qsound_native_source_capture_test
-          /tmp/qsound_native_source_capture_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_native_mix_capture_test.cpp -o /tmp/qsound_native_mix_capture_test
-          /tmp/qsound_native_mix_capture_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_native_time_map_test.cpp -o /tmp/qsound_native_time_map_test
-          /tmp/qsound_native_time_map_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_native_source_window_test.cpp -o /tmp/qsound_native_source_window_test
-          /tmp/qsound_native_source_window_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_native_linear_projection_test.cpp -o /tmp/qsound_native_linear_projection_test
-          /tmp/qsound_native_linear_projection_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_consumer_source_block_test.cpp -o /tmp/qsound_consumer_source_block_test
-          /tmp/qsound_consumer_source_block_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_consumer_source_storage_test.cpp -o /tmp/qsound_consumer_source_storage_test
-          /tmp/qsound_consumer_source_storage_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_spatial_routing_segments_test.cpp -o /tmp/qsound_spatial_routing_segments_test
-          /tmp/qsound_spatial_routing_segments_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_spatial_source_bus_test.cpp -o /tmp/qsound_spatial_source_bus_test
-          /tmp/qsound_spatial_source_bus_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_echo_input_recomposition_test.cpp -o /tmp/qsound_echo_input_recomposition_test
-          /tmp/qsound_echo_input_recomposition_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_echo_state_test.cpp -o /tmp/qsound_echo_state_test
-          /tmp/qsound_echo_state_test
-          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -I. \
-            tests/vgm/qsound_reference_recomposition_test.cpp -o /tmp/qsound_reference_recomposition_test
-          /tmp/qsound_reference_recomposition_test
+          python3 -B -m unittest discover -s tests/vgm -p 'test_*.py'
+          python3 -B -m unittest discover -s tests/spc -p 'test_*.py'
+
       - name: Behavioral equivalence controls
         run: |
           python3 -B tools/nes_pulse_behavioral_equivalence.py
           python3 -B tools/signed_routing_phase_control.py
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: cmake --build build --parallel 2
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
+
+      - name: Full dependency-free core
+        run: python3 -B tests/run_full_core_suite.py --config Release

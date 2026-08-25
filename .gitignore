@@ -63,8 +63,7 @@ Thumbs.db
 tests/output/
 captures/
 
-# Keep intentionally versioned reference/import artifacts
-!imports/*.7z
+# Keep intentionally versioned reference artifacts
 !references/**/*.zip
 !references/**/*.dll
 !references/**/*.exe

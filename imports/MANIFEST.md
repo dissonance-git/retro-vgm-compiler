@@ -1,6 +1,6 @@
 # Import manifest
 
-`imports/` contains preserved external inputs that are required to reproduce repository-owned build, analysis, or forensic paths. Imported evidence is not an editable working tree.
+`imports/` contains preserved external inputs required to reproduce repository-owned build, analysis, or forensic paths. Imported evidence is not an editable working tree. Superseded migration material belongs in Git history rather than a permanent active shelf.
 
 ## foo_input_vgm 0.31 bootstrap
 
@@ -27,9 +27,9 @@ That directory is **transport for one canonical source object**, not a second so
 imports/foo_input_vgm-0.31.zip
 ```
 
-The materialized ZIP is generated state and is not tracked. Current development occurs from the verified 0.31 bootstrap plus project-owned overlays under `components/vgm/` and guarded transforms under `patches/foo_input_vgm/`. Never semantically edit the reconstructed archive in place.
+Current development occurs from the verified 0.31 bootstrap plus project-owned overlays under `components/vgm/` and guarded transforms under `patches/foo_input_vgm/`. Never semantically edit the reconstructed archive in place.
 
-The older `imports/foo_input_vgm.7z` route predates the canonical 0.31 bootstrap and is historical only; it is not accepted source authority for the current private build.
+The older 0.30 bootstrap and the retired `vgmspc` migration ledgers remain recoverable from Git history but no longer occupy the active import shelf or participate in current builds.
 
 ## SPCPlay / SNESAPU behavioral reference
 
