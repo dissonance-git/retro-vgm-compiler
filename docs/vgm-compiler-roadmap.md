@@ -88,6 +88,8 @@ cadential-arrival evidence
         ↓
 cadence morphology + independent formal-closure evidence
         ↓
+deceptive-close vs deferred-resolution candidates
+        ↓
 phrase syntax / longer-range harmonic-formal planning
         ↓
 sections / arrangement / orchestration / texture
@@ -121,27 +123,22 @@ The repository contains working machinery for:
 - Ionian authentic, PAC/IAC, half, and leading-tone resolution morphology candidates;
 - independent non-cadence-derived formal-closure evidence;
 - morphology/formal-closure integration;
-- V→VI continuation and deferred-authentic-resolution candidates without automatically naming deceptive cadence;
+- V→VI continuation and deferred-authentic-resolution candidates;
+- V→VI deceptive-close candidates requiring independent phrase completion;
 - section, counterpoint, imitation, orchestration, and creator-grammar models;
 - source-native enhanced rendering and Omniphony handoff contracts;
 - semantic projection/round-trip experiments and a broad real corpus.
 
-## Active frontier: deceptive close vs deferred resolution
+## Active frontier: cadence arbitration and phrase syntax
 
-The most immediate unresolved bridge is now precise.
-
-A raw Ionian V→VI progression is insufficient to name a deceptive cadence.
-
-The code already models this path:
+The compiler now has two bounded interpretations for an Ionian V→VI arrival.
 
 ```text
 V → VI
-+ independently grounded cross-part continuation through VI
-+ later integrated V → I authentic closure
++ cross-part continuation through VI
++ later independently grounded V → I closure
 → deferred authentic resolution candidate
 ```
-
-The next bridge is the complementary case:
 
 ```text
 V → VI
@@ -150,17 +147,21 @@ V → VI
 → deceptive cadence candidate
 ```
 
-The evidence firewall matters. A cadence detector cannot supply the phrase-completion evidence that is then used to prove its own cadence label.
+This closes the previous representational gap but deliberately leaves the final classification unresolved. Local morphology and local grouping can disagree, and real music can make the VI arrival sound both locally closing and globally continuational.
 
-The immediate implementation sequence is:
+The next implementation sequence is:
 
-1. add a bounded deceptive-cadence candidate that combines diatonic 5→6 morphology with independent phrase-completion evidence at the VI arrival;
-2. preserve `cadence_class_established = false` until stronger style/formal evidence earns a final class;
-3. keep continuation/deferred-resolution evidence distinct from terminal closure evidence;
-4. register the entire recent cadence regression family in CMake so the normal suite actually executes it;
-5. move next into phrase-role and style/grouping evidence that can separate close, continuation, return, and deferred resolution across longer contexts.
+1. introduce a phrase-role / cadence-arbitration layer that can consume both candidate families without allowing either one to erase the other;
+2. add longer-range evidence for continuation, return, prolongation, new-phrase onset, and delayed authentic closure;
+3. define explicit conflict states for cases where local closure and subsequent continuation are both grounded;
+4. make final cadence-class establishment conditional on the arbitration layer rather than on chord morphology alone;
+5. pressure-test the distinction on real and matched synthetic passages before adding richer cadence vocabulary.
 
-## Near-term priorities after cadence closure
+The next question is therefore not `is V→VI deceptive?` It is:
+
+> **What happens after the arrival, and does the surrounding phrase syntax treat VI as an ending, a reroute, or both at different scales?**
+
+## Near-term priorities after cadence arbitration
 
 ### 1. Phrase syntax and longer-range harmony
 
@@ -278,7 +279,7 @@ A disagreement is an experiment. Correction outranks a convenient narrative.
 
 Unless a discriminating test requires otherwise:
 
-1. close the cadence/phrase-syntax gap without circular evidence;
+1. arbitrate cadence and phrase syntax without circular evidence;
 2. strengthen phrase role, orchestration, texture, dynamics, and longer-range harmony;
 3. integrate cue-level analysis into whole-work and soundtrack models;
 4. execute those relations over heterogeneous real corpora;
