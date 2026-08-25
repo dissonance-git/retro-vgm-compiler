@@ -1,0 +1,45 @@
+name: Performed motif bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/performed-motif-bridge.yml'
+      - 'tools/ci/add_performed_motif_bridge.py'
+
+permissions:
+  contents: write
+
+jobs:
+  performed-motif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Stage performed motif bridge
+        run: python tools/ci/add_performed_motif_bridge.py
+
+      - name: Configure compiler core
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
+
+      - name: Build compiler core
+        run: cmake --build build --parallel 2 -- -k
+
+      - name: Run compiler core
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Validate and commit bridge
+        run: |
+          git diff --check
+          grep -q 'performance_shape_comparable' model/part_motif_profile.h
+          grep -q 'make_performed_part_gesture_observations' model/performed_part_motif_bridge.h
+          grep -q 'make_genesis_performance_trajectory_motif_profile' components/vgm/enhancement/genesis_part_motif_adapter.h
+          grep -q 'make_spc_performance_trajectory_motif_profile' components/spc/spc_part_motif_adapter.h
+          grep -q 'performed_part_motif_shape_test' cmake/semantic_model_tests.cmake
+          git config user.name dissonance
+          git config user.email ustreamusa@aim.com
+          git add -A
+          git commit -m 'feat(motif): use performed trajectory shape evidence'
+          git push
