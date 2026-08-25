@@ -70,12 +70,14 @@ The repository already contains substantial working machinery across the stack.
 - persistent-melody PAC/IAC refinement;
 - non-circular formal-closure evidence;
 - morphology/formal-closure binding;
-- V→VI continuation and deferred-authentic-resolution candidates without prematurely naming deceptive cadence;
+- V→VI continuation and deferred-authentic-resolution candidates;
+- V→VI deceptive-close candidates grounded by independent phrase completion;
 - section, counterpoint, imitation, arrangement, creator-grammar, and role-aware attribution structures.
 
 ### Verification and transformation
 
 - dependency-free C++17 semantic regressions;
+- CMake/CTest registration for the current cadence evidence family;
 - real-corpus controls and immutable corpus manifests;
 - negative and matched-decoy controls;
 - source/representation differential tests;
@@ -84,13 +86,7 @@ The repository already contains substantial working machinery across the stack.
 
 ## Current semantic frontier
 
-The immediate cadence problem is deliberately narrow:
-
-> **When a grounded Ionian V→VI arrival occurs, what evidence distinguishes a real deceptive phrase close from a continuation that only delays an authentic resolution?**
-
-The code already refuses the shortcut `V→VI = deceptive cadence`.
-
-Current evidence paths are intentionally separate:
+The compiler now represents two competing interpretations of an Ionian V→VI arrival without pretending the chord sequence settles the answer.
 
 ```text
 V → VI
@@ -99,17 +95,19 @@ V → VI
 → deferred authentic resolution candidate
 ```
 
-versus the next bridge:
-
 ```text
 V → VI
 + independently grounded non-cadence-derived phrase completion at VI
 → deceptive cadence candidate
 ```
 
-The classifier must preserve the difference between harmonic morphology and formal grouping. Cadence labels may not prove the phrase closure that is then used to prove the cadence label.
+Both are intentionally **candidates**. Neither layer is allowed to establish the final cadence class or Roman-numeral discourse by itself.
 
-After that bridge, the next pressure is broader style/grouping evidence: continuation, return, close, phrase role, and longer-range harmonic/formal planning should become distinguishable without turning chord sequences into a vocabulary lookup.
+The next bridge is phrase-syntax arbitration:
+
+> **When local harmonic morphology and formal evidence support different interpretations, what independent longer-range evidence distinguishes close, continuation, return, prolongation, and deferred resolution?**
+
+That requires phrase role, continuation/return structure, subsequent harmonic behavior, and style-sensitive grouping evidence without turning chord sequences into a vocabulary lookup. The evidence firewall remains strict: a cadence label may not supply the phrase closure used to prove itself.
 
 ## Evidence boundaries
 
