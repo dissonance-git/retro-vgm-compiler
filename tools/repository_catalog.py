@@ -5,9 +5,10 @@ The catalog is an on-demand navigation projection, not committed documentation a
 not a source of corpus provenance. `tests/corpus/manifest.json` owns corpus
 identity; README/AGENTS/docs own human and agent guidance.
 
-Use --focus before broad repository search. It intentionally returns a small,
-ranked, cross-owner path set so humans and language models can spend context on
-canonical files rather than inventory.
+Use --focus before broad repository search. A focus projection begins with lexical
+seeds, then expands exact mechanical repository relations so humans and language
+models can spend context on a small cross-owner slice without maintaining a
+second semantic database.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ import pathlib
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from typing import Iterable
 
 
@@ -39,6 +41,20 @@ FOCUS_TEXT_SUFFIXES = {
 }
 FOCUS_TEXT_NAMES = {"CMakeLists.txt", "CMakePresets.json"}
 FOCUS_MAX_BYTES = 1_000_000
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.MULTILINE)
+MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+)\)")
+CMAKE_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_.+-])"
+    r"(CMakeLists\.txt|[A-Za-z0-9_./+-]+\."
+    r"(?:c|cc|cmake|cpp|h|hpp|json|md|ps1|py|sh|txt|yaml|yml))"
+)
+
+
+@dataclass(frozen=True, order=True)
+class Relation:
+    source: str
+    kind: str
+    target: str
 
 
 def repo_root_from(start: pathlib.Path) -> pathlib.Path:
@@ -188,7 +204,7 @@ def focus_text(repo_root: pathlib.Path, file: str) -> str:
     try:
         if path.stat().st_size > FOCUS_MAX_BYTES:
             return ""
-        return path.read_text(encoding="utf-8", errors="ignore").lower()
+        return path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return ""
 
@@ -218,7 +234,7 @@ def focus_entry(
             score += 70
             path_hit = True
 
-    text = focus_text(repo_root, file)
+    text = focus_text(repo_root, file).lower()
     content_hits = 0
     if text:
         if phrase and phrase in text:
@@ -237,6 +253,122 @@ def focus_entry(
         "signal": signal,
         "_score": score,
     }
+
+
+def normalize_repo_path(base_file: str, reference: str, tracked: set[str]) -> str | None:
+    reference = reference.split("#", 1)[0].split("?", 1)[0].strip()
+    if not reference or reference.startswith(("http://", "https://", "mailto:", "data:")):
+        return None
+
+    if reference.startswith("/"):
+        candidates = [pathlib.PurePosixPath(reference.lstrip("/"))]
+    else:
+        source_parent = pathlib.PurePosixPath(base_file).parent
+        candidates = [source_parent / reference, pathlib.PurePosixPath(reference)]
+
+    for candidate in candidates:
+        normalized_parts: list[str] = []
+        escaped = False
+        for part in candidate.parts:
+            if part in {"", "."}:
+                continue
+            if part == "..":
+                if not normalized_parts:
+                    escaped = True
+                    break
+                normalized_parts.pop()
+            else:
+                normalized_parts.append(part)
+        if escaped:
+            continue
+        normalized = pathlib.PurePosixPath(*normalized_parts).as_posix()
+        if normalized in tracked:
+            return normalized
+    return None
+
+
+def mechanical_relations(repo_root: pathlib.Path, files: list[str]) -> list[Relation]:
+    tracked = set(files)
+    relations: set[Relation] = set()
+
+    for file in files:
+        text = focus_text(repo_root, file)
+        if not text:
+            continue
+        pure = pathlib.PurePosixPath(file)
+        suffix = pure.suffix.lower()
+
+        if suffix in {".c", ".cc", ".cpp", ".h", ".hpp"}:
+            for match in INCLUDE_RE.finditer(text):
+                target = normalize_repo_path(file, match.group(1), tracked)
+                if target and target != file:
+                    relations.add(Relation(file, "includes", target))
+
+        if suffix == ".md":
+            for match in MARKDOWN_LINK_RE.finditer(text):
+                target = normalize_repo_path(file, match.group(1), tracked)
+                if target and target != file:
+                    relations.add(Relation(file, "links_to", target))
+
+        if suffix == ".cmake" or pure.name == "CMakeLists.txt":
+            for match in CMAKE_PATH_RE.finditer(text):
+                target = normalize_repo_path(file, match.group(1), tracked)
+                if target and target != file:
+                    relations.add(Relation(file, "registers", target))
+
+    return sorted(relations)
+
+
+def relation_adjacency(relations: Iterable[Relation]) -> dict[str, list[tuple[str, str]]]:
+    adjacency: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+    reverse_kind = {
+        "includes": "included_by",
+        "links_to": "linked_from",
+        "registers": "registered_by",
+    }
+    for relation in relations:
+        adjacency[relation.source].append((relation.kind, relation.target))
+        adjacency[relation.target].append(
+            (reverse_kind.get(relation.kind, f"{relation.kind}_from"), relation.source)
+        )
+    for values in adjacency.values():
+        values.sort()
+    return dict(adjacency)
+
+
+def relation_expansion_entries(
+    lexical_entries: list[dict[str, object]],
+    adjacency: dict[str, list[tuple[str, str]]],
+    *,
+    seed_limit: int,
+) -> tuple[list[dict[str, object]], set[str]]:
+    ranked = sorted(
+        lexical_entries,
+        key=lambda entry: (-int(entry["_score"]), str(entry["path"])),
+    )
+    seed_paths = {str(entry["path"]) for entry in ranked[:seed_limit]}
+    lexical_by_path = {str(entry["path"]): entry for entry in lexical_entries}
+    expanded: dict[str, dict[str, object]] = {}
+
+    for seed in ranked[:seed_limit]:
+        seed_path = str(seed["path"])
+        seed_score = int(seed["_score"])
+        for kind, neighbor in adjacency.get(seed_path, []):
+            if neighbor in lexical_by_path:
+                continue
+            relation_score = max(1, seed_score - 35)
+            current = expanded.get(neighbor)
+            candidate = {
+                "path": neighbor,
+                "owner": focus_owner(neighbor),
+                "signal": f"relation:{kind}",
+                "_score": relation_score,
+                "_via": seed_path,
+            }
+            if current is None or relation_score > int(current["_score"]):
+                expanded[neighbor] = candidate
+
+    return list(expanded.values()), seed_paths
 
 
 def select_cross_owner(entries: list[dict[str, object]], limit: int) -> list[dict[str, object]]:
@@ -277,25 +409,50 @@ def build_focus_projection(
     terms = focus_terms(query)
     if not terms:
         raise ValueError("focus query must contain at least one searchable term")
-    entries = [
+
+    lexical_entries = [
         entry
         for file in files
         if (entry := focus_entry(repo_root, file, query, terms)) is not None
     ]
-    selected = select_cross_owner(entries, limit)
+    relations = mechanical_relations(repo_root, files)
+    adjacency = relation_adjacency(relations)
+    relation_entries, seed_paths = relation_expansion_entries(
+        lexical_entries,
+        adjacency,
+        seed_limit=max(1, min(limit, max(4, limit // 2))),
+    )
+    selected = select_cross_owner(lexical_entries + relation_entries, limit)
+    selected_paths = {str(entry["path"]) for entry in selected}
+
     projected = [
         {key: value for key, value in entry.items() if not key.startswith("_")}
         for entry in selected
     ]
+    selected_relations = [
+        {
+            "source": relation.source,
+            "type": relation.kind,
+            "target": relation.target,
+        }
+        for relation in relations
+        if relation.source in selected_paths
+        and relation.target in selected_paths
+        and (relation.source in seed_paths or relation.target in seed_paths)
+    ]
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "purpose": "llm_context_compression_projection_not_source_truth",
         "focus": query,
         "tracked_file_count": len(files),
-        "matched_file_count": len(entries),
+        "lexically_matched_file_count": len(lexical_entries),
+        "mechanical_relation_count": len(relations),
+        "relation_expanded_candidate_count": len(relation_entries),
         "selected_file_count": len(projected),
         "selection_ratio": round(len(projected) / len(files), 6) if files else 0.0,
         "files": projected,
+        "relations": selected_relations,
     }
 
 
@@ -366,7 +523,8 @@ Detected corpus directories: **{corpus['set_count']}**
 
 def render_focus_markdown(projection: dict[str, object]) -> str:
     files = projection["files"]
-    assert isinstance(files, list)
+    relations = projection["relations"]
+    assert isinstance(files, list) and isinstance(relations, list)
     rows = "\n".join(
         f"| `{entry['owner']}` | `{entry['path']}` | {entry['signal']} |"
         for entry in files
@@ -374,15 +532,35 @@ def render_focus_markdown(projection: dict[str, object]) -> str:
     )
     if not rows:
         rows = "| _(none)_ | _(no matching tracked text/path)_ | - |"
+
+    relation_rows = "\n".join(
+        f"| `{entry['source']}` | `{entry['type']}` | `{entry['target']}` |"
+        for entry in relations
+        if isinstance(entry, dict)
+    )
+    if not relation_rows:
+        relation_rows = "| _(none)_ | - | _(none)_ |"
+
     ratio = float(projection["selection_ratio"]) * 100.0
     return f"""# VGM Compiler focus: `{projection['focus']}`
 
 Selected **{projection['selected_file_count']}** of **{projection['tracked_file_count']}** tracked files ({ratio:.2f}%).
-Matched before cap: **{projection['matched_file_count']}**. Ranked across owners to maximize navigation signal per context token; canonical files remain source truth.
+Lexical matches: **{projection['lexically_matched_file_count']}**.
+Mechanical relations derived: **{projection['mechanical_relation_count']}**.
+Relation-only candidates added before cap: **{projection['relation_expanded_candidate_count']}**.
 
-| Owner | File | Match |
+The projection begins with lexical seeds and expands exact derived repository
+relations. It is disposable navigation; canonical files remain source truth.
+
+| Owner | File | Signal |
 | --- | --- | --- |
 {rows}
+
+## Selected mechanical relations
+
+| Source | Relation | Target |
+| --- | --- | --- |
+{relation_rows}
 """
 
 
