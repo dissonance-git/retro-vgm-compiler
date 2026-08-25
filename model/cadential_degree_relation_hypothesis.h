@@ -122,6 +122,17 @@ inline cadential_degree_relation_hypothesis infer_cadential_degree_relation(
             "cadential degree relation chords must be the exact harmonic transition that licensed the arrival");
     }
 
+    const std::int64_t first_root = positive_mod(first_chord.root_pitch_class, 12);
+    const std::int64_t second_root = positive_mod(arrival_chord.root_pitch_class, 12);
+    if (first_root != arrival.departure_root_pitch_class ||
+        second_root != arrival.arrival_root_pitch_class ||
+        first_chord.quality != arrival.departure_quality ||
+        arrival_chord.quality != arrival.arrival_quality ||
+        arrival.quality_changed != (first_chord.quality != arrival_chord.quality)) {
+        throw std::invalid_argument(
+            "cadential degree relation chord identities disagree with the harmonic arrival endpoints");
+    }
+
     const std::int64_t expected_motion = positive_mod(
         arrival_degree.chord_root_pitch_class - first.chord_root_pitch_class,
         12);
