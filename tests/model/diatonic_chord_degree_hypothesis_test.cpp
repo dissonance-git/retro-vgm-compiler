@@ -1,3 +1,4 @@
+#include "model/cadential_degree_relation_hypothesis.h"
 #include "model/diatonic_chord_degree_hypothesis.h"
 
 #include <cmath>
@@ -8,7 +9,6 @@ using namespace vgmtooling::model;
 #define CHECK(expression) do { if (!(expression)) return __LINE__; } while (false)
 
 namespace {
-
 time_coordinate at(std::int64_t tick) {
     return {time_domain::source, tick, 0, 0};
 }
@@ -61,6 +61,45 @@ tertian_triad_hypothesis triad(
     chord.projection.source_verticality.role = role;
     chord.projection.confidence = confidence;
     return chord;
+}
+
+cadential_arrival_hypothesis arrival_between(
+    std::int64_t first_root,
+    std::int64_t second_root,
+    std::int64_t first_tick,
+    std::int64_t second_tick,
+    bool cross_part_phrase_grounded = true,
+    bool reliable_root_motion = true,
+    bool with_identity_grounded_voice_leading = true) {
+    phrase_boundary_consensus boundary;
+    boundary.representative = at(second_tick);
+    boundary.confidence = 0.90;
+    boundary.cross_part_grounded = cross_part_phrase_grounded;
+
+    harmonic_transition_hypothesis transition;
+    transition.first_time = at(first_tick);
+    transition.second_time = at(second_tick);
+    transition.first_root_pitch_class = positive_mod(first_root, 12);
+    transition.second_root_pitch_class = positive_mod(second_root, 12);
+    transition.directed_root_motion_semitones = positive_mod(
+        second_root - first_root,
+        12);
+    transition.root_interval_class = std::min(
+        transition.directed_root_motion_semitones,
+        12 - transition.directed_root_motion_semitones);
+    transition.root_motion_reliable = reliable_root_motion;
+    transition.confidence = 0.91;
+
+    if (!with_identity_grounded_voice_leading)
+        return infer_cadential_arrival(boundary, transition);
+
+    voice_leading_hypothesis voices;
+    voices.first_time = at(first_tick);
+    voices.second_time = at(second_tick);
+    voices.total_absolute_motion_semitones = 4;
+    voices.all_correspondence_identity_grounded = true;
+    voices.confidence = 0.88;
+    return infer_cadential_arrival(boundary, transition, voices);
 }
 } // namespace
 
@@ -173,6 +212,130 @@ int main() {
         outside_region_rejected = true;
     }
     CHECK(outside_region_rejected);
+
+    // Key-relative degree motion is useful evidence at a phrase arrival, but it
+    // remains one layer below functional Roman-numeral/cadence naming. G -> C
+    // in C Ionian is therefore "five_to_one_arrival", not automatically PAC/IAC.
+    const auto five_at_100 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(7, tertian_triad_quality::major, 100));
+    const auto one_at_200 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(0, tertian_triad_quality::major, 200));
+    const auto five_to_one_arrival = arrival_between(7, 0, 100, 200);
+    const auto five_to_one = infer_cadential_degree_relation(
+        five_at_100,
+        one_at_200,
+        five_to_one_arrival);
+    CHECK(five_to_one.kind == cadential_degree_relation_kind::five_to_one_arrival);
+    CHECK(five_to_one.first_scale_degree.has_value());
+    CHECK(*five_to_one.first_scale_degree == 5);
+    CHECK(five_to_one.arrival_scale_degree.has_value());
+    CHECK(*five_to_one.arrival_scale_degree == 1);
+    CHECK(five_to_one.root_motion_semitones == 5);
+    CHECK(five_to_one.root_interval_class == 5);
+    CHECK(five_to_one.phrase_grounded);
+    CHECK(five_to_one.root_motion_grounded);
+    CHECK(five_to_one.voice_leading_grounded);
+    CHECK(close_enough(five_to_one.confidence, 0.82));
+    CHECK(!five_to_one.roman_numeral_named);
+    CHECK(!five_to_one.tonal_function_named);
+    CHECK(!five_to_one.cadence_class_named);
+
+    // The same degree-5 departure can arrive on degree 6. Record that sequential
+    // fact without inventing the label "deceptive cadence" at this layer.
+    const auto five_at_300 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(7, tertian_triad_quality::major, 300));
+    const auto six_at_400 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(9, tertian_triad_quality::minor, 400));
+    const auto five_to_six = infer_cadential_degree_relation(
+        five_at_300,
+        six_at_400,
+        arrival_between(7, 9, 300, 400));
+    CHECK(five_to_six.kind == cadential_degree_relation_kind::five_to_six_arrival);
+    CHECK(!five_to_six.cadence_class_named);
+    CHECK(!five_to_six.tonal_function_named);
+
+    // Arrival on degree 5 is separately represented, but does not become a half
+    // cadence unless a later layer earns that interpretation from more context.
+    const auto two_at_500 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(2, tertian_triad_quality::minor, 500));
+    const auto five_at_600 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(7, tertian_triad_quality::major, 600));
+    const auto on_five = infer_cadential_degree_relation(
+        two_at_500,
+        five_at_600,
+        arrival_between(2, 7, 500, 600));
+    CHECK(on_five.kind == cadential_degree_relation_kind::arrival_on_five);
+    CHECK(!on_five.cadence_class_named);
+
+    // Phrase grounding is independent evidence. A root relation occurring near
+    // an uncorroborated boundary is retained only as unresolved bounded evidence.
+    const auto ungrounded_boundary = infer_cadential_degree_relation(
+        five_at_100,
+        one_at_200,
+        arrival_between(7, 0, 100, 200, false));
+    CHECK(ungrounded_boundary.kind == cadential_degree_relation_kind::unresolved);
+    CHECK(ungrounded_boundary.confidence <= unresolved_cadential_degree_relation_ceiling);
+    CHECK(!ungrounded_boundary.phrase_grounded);
+
+    // Root-motion ambiguity also blocks cadence-shaped degree naming, even when
+    // the key-relative roots themselves can still be enumerated.
+    const auto unreliable_root = infer_cadential_degree_relation(
+        five_at_100,
+        one_at_200,
+        arrival_between(7, 0, 100, 200, true, false));
+    CHECK(unreliable_root.kind == cadential_degree_relation_kind::unresolved);
+    CHECK(!unreliable_root.root_motion_grounded);
+    CHECK(unreliable_root.confidence <= unresolved_cadential_degree_relation_ceiling);
+
+    // A chromatic root cannot be squeezed into the diatonic cadence-shaped
+    // vocabulary. B-flat -> C remains unresolved here.
+    const auto flat_seven_at_700 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(10, tertian_triad_quality::major, 700));
+    const auto one_at_800 = infer_diatonic_chord_degree_hypothesis(
+        key,
+        triad(0, tertian_triad_quality::major, 800));
+    const auto chromatic_arrival = infer_cadential_degree_relation(
+        flat_seven_at_700,
+        one_at_800,
+        arrival_between(10, 0, 700, 800));
+    CHECK(chromatic_arrival.kind == cadential_degree_relation_kind::unresolved);
+    CHECK(chromatic_arrival.confidence <= unresolved_cadential_degree_relation_ceiling);
+
+    // Evidence from a different harmonic transition cannot be loaned into a
+    // degree relation merely because the arrival time looks plausible.
+    bool root_motion_mismatch_rejected = false;
+    try {
+        auto mismatched = five_to_one_arrival;
+        mismatched.root_motion_semitones = 7;
+        (void)infer_cadential_degree_relation(
+            five_at_100,
+            one_at_200,
+            mismatched);
+    } catch (const std::invalid_argument&) {
+        root_motion_mismatch_rejected = true;
+    }
+    CHECK(root_motion_mismatch_rejected);
+
+    // Both degree hypotheses must live in the same resolved key-class context.
+    bool key_context_mismatch_rejected = false;
+    try {
+        auto foreign_arrival_degree = one_at_200;
+        foreign_arrival_degree.key_center_pitch_class = 7;
+        (void)infer_cadential_degree_relation(
+            five_at_100,
+            foreign_arrival_degree,
+            five_to_one_arrival);
+    } catch (const std::invalid_argument&) {
+        key_context_mismatch_rejected = true;
+    }
+    CHECK(key_context_mismatch_rejected);
 
     // Materialization requires both support nodes before it mutates the graph.
     musical_execution_graph graph;
