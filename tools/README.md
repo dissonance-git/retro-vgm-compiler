@@ -16,7 +16,19 @@ python tools/repository_catalog.py
 python tools/repository_catalog.py --json
 ```
 
-The catalog is generated on demand and printed to stdout. It is not committed documentation. Focus mode ranks path and content matches across owners, then caps the result so a human or LLM can locate canonical evidence without ingesting the whole tree.
+The catalog is generated on demand and printed to stdout. It is not committed documentation. Focus mode begins with path/content matches, then expands exact mechanical relations derived from tracked files before applying the context cap.
+
+Current derived relation classes are intentionally small:
+
+```text
+C/C++ quoted local include   -> includes / included_by
+local Markdown link          -> links_to / linked_from
+tracked CMake path           -> registers / registered_by
+```
+
+These edges exist only in the projection. Do not maintain a parallel graph file for relations the repository can derive exactly.
+
+A low selection ratio is not success by itself. Repository-representation changes are evaluated by [`../research/validation/repository-representation-benchmark.md`](../research/validation/repository-representation-benchmark.md): compression must preserve or increase required-file/relation recall, verified task success, and validation quality while reducing context or routing cost.
 
 ## Tool families
 
