@@ -1,0 +1,44 @@
+name: Cadential deferred resolution validation
+
+on:
+  push:
+    branches:
+      - cadential-deferred-resolution
+  workflow_dispatch:
+
+jobs:
+  semantic-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure project
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Compile and run deferred resolution regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/ionian_deferred_authentic_resolution_test.cpp \
+            -o /tmp/ionian_deferred_authentic_resolution_test
+          /tmp/ionian_deferred_authentic_resolution_test
+
+      - name: Compile and run integrated cadence binding regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/ionian_cadence_formal_binding_test.cpp \
+            -o /tmp/ionian_cadence_formal_binding_test
+          /tmp/ionian_cadence_formal_binding_test
+
+      - name: Compile and run formal closure regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/cadential_formal_closure_evidence_test.cpp \
+            -o /tmp/cadential_formal_closure_evidence_test
+          /tmp/cadential_formal_closure_evidence_test
+
+      - name: Compile and run cadence class regression
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -UNDEBUG -I. \
+            tests/model/ionian_cadence_class_hypothesis_test.cpp \
+            -o /tmp/ionian_cadence_class_hypothesis_test
+          /tmp/ionian_cadence_class_hypothesis_test
