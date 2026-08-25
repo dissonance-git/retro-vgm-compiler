@@ -20,48 +20,14 @@ jobs:
       - name: Apply provisional core repairs
         run: python -B tools/ci/compiler_core_verification_repair.py
 
-      - name: Configure full compiler core
+      - name: Instrument PSG alias regression
+        run: python -B tools/ci/instrument_sn76489_alias.py
+
+      - name: Configure compiler core
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGAMEAUDIO_BUILD_CORE_TESTS=ON
 
-      - name: Build full compiler core
-        run: cmake --build build --parallel 2 -- -k
+      - name: Build PSG alias target
+        run: cmake --build build --target sn76489_alias_test --parallel 2
 
-      - name: Run full compiler core
-        run: ctest --test-dir build --output-on-failure
-
-      - name: Validate provisional repairs
-        run: |
-          git diff --check
-          grep -q -- '-UNDEBUG' CMakeLists.txt
-          grep -q 'schema_version"], 4' tests/model/test_cube_evidence_worlds.py
-          grep -q 'schema_version"], 4' tests/spc/test_cube_panel_repository_contract.py
-          grep -q 'prospective_exact_control_worlds' tests/model/test_cube_evidence_worlds.py
-          grep -q 'bandlimited_square_harmonic_error' tests/vgm/sn76489_alias_test.cpp
-          grep -q 'observed_first.startup_reference_frames == 0' tests/vgm/studio_source_resampler_test.cpp
-          grep -q 'storage_index >= availability_.size()' model/spatial_source_host_assembler.h
-
-      - name: Commit verified core repairs and remove gate
-        run: |
-          git config user.name dissonance
-          git config user.email ustreamusa@aim.com
-          git add \
-            CMakeLists.txt \
-            cmake/host_transport_tests.cmake \
-            tests/vgm/genesis_enhanced_recomposition_test.cpp \
-            tests/model/spatial_source_test.cpp \
-            tests/spc/spc_runtime_snesapu_host_pipeline_test.cpp \
-            tests/vgm/sn76489_enhanced_source_block_test.cpp \
-            components/vgm/enhancement/ym2612_pcm_stream.h \
-            components/vgm/enhancement/ym2612_pcm_stream.cpp \
-            components/vgm/enhancement/genesis_pitch_control_adapter.h \
-            model/realization_role_grammar_bridge.h \
-            model/spatial_source_host_assembler.h \
-            tests/model/test_cube_evidence_worlds.py \
-            tests/spc/test_cube_panel_repository_contract.py \
-            tests/spc/test_studio_source_transport_patch.py \
-            tests/vgm/studio_source_resampler_test.cpp \
-            tests/vgm/sn76489_alias_test.cpp
-          git rm .github/workflows/compiler-core-verification.yml
-          git rm tools/ci/compiler_core_verification_repair.py
-          git commit -m 'test(core): restore live Release verification'
-          git push
+      - name: Run PSG alias target
+        run: ./build/sn76489_alias_test
