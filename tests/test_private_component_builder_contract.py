@@ -107,8 +107,7 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
             self.text,
         )
         self.assertIn("source = $VgmBootstrapSource", self.text)
-        self.assertNotIn("RETRO_VGM_BOOTSTRAP_ARCHIVE", self.text)
-        self.assertNotIn("foo_input_vgm_v0.30", self.text)
+        self.assertIn("sha256 = $VgmBootstrapSha256", self.text)
 
     def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
         self.assertIn("shared\\shared-x64.lib", self.text)
