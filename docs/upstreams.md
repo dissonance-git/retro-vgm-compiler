@@ -1,340 +1,370 @@
-# Upstream provenance
+# Upstream and reference registry
 
-This file records the starting sources, reference builds, and major research/reference systems used by this repository.
+This document records the external sources, exact build pins, specifications, implementations, and research observatories that define VGM Compiler's **current evidence surface**.
 
-The list is deliberately broader than the runtime dependency set. VGM Compiler treats mature repositories, standards, preservation tools, papers, documentation and emulators as **observatories over different strata of game-music execution**. A research reference does not automatically become a dependency, and its code is not copied into the common model merely because its concepts are useful.
+A reference is not automatically a runtime dependency. Code, standards, manuals, preservation tools, papers, and emulators expose different strata of the same problem. VGM Compiler uses them to constrain claims while keeping its shared semantic model project-owned.
 
-## VGM foobar2000 component
+```text
+primary specification / source / measurement
+        ↓
+source-family implementation evidence
+        ↓
+independent implementation controls
+        ↓
+project-owned semantic model
+```
 
-Initial source supplied for this repository as `foo_input_vgm.7z`.
+Conceptual usefulness never grants permission to copy code. Exact pins below are evidence identities, not claims that one upstream defines a universal ontology.
 
-Imported source path:
+## Canonical build inputs
 
-`components/vgm/foo_input_vgm/`
+### foo_input_vgm 0.31
 
-The supplied component source carries the **Mozilla Public License 2.0** in its `LICENSE` file. Preserve that license with covered files and modifications.
+The canonical foobar2000 VGM component bootstrap is the exact `foo_input_vgm` 0.31 archive represented under:
 
-The project expects libvgm plus foobar2000 SDK/support projects according to its Visual Studio project files. The imported wrapper is the editable foobar component baseline; libvgm should be tracked deliberately rather than copied anonymously into the wrapper tree.
+```text
+imports/bootstrap/foo_input_vgm-0.31.base64-parts/
+```
 
-Primary upstream library:
+Canonical archive SHA-256:
 
-- ValleyBell/libvgm
+```text
+e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1
+```
 
-VGM/VGZ is the enhancement design center. Existing GYM, DRO, and S98 input code is retained as upstream compatibility code but is not an enhancement priority.
+`tools/reconstruct_vgm031_bootstrap.py` verifies and materializes the archive. `tools/materialize_foo_input_vgm.py` combines that immutable input with project-owned source under `components/vgm/` and guarded transformations under `patches/foo_input_vgm/`.
 
-## VGM specification and primary hardware documentation
+The supplied component source is MPL-2.0. Preserve the license obligations of covered files and modifications.
 
-Format semantics and device semantics are separate evidence layers.
+### libvgm
 
-### VGMRips VGM specification
+Primary VGM playback/device dependency:
+
+```text
+ValleyBell/libvgm
+commit 64e1de284e9a4305c54dd162ee8c33539a9bc0d1
+```
+
+The private build applies the maintained source-observation patch stack under `patches/libvgm/` and runs `tests/integration/libvgm-source/` against that exact patched tree before compiling the VGM component.
+
+libvgm is a playback/device implementation observatory. It does not override VGM format semantics defined by the format specification.
+
+### WTL
+
+```text
+Win32-WTL/WTL
+commit d1cd80e9ce76c4d79da4cf556401ad7a970ce46f
+```
+
+Used by the current private foobar2000 component build.
+
+### foobar2000 SDK
+
+```text
+release 2025-03-07
+https://www.foobar2000.org/downloads/SDK-2025-03-07.7z
+```
+
+The private builder validates exact project identities before use.
+
+### SPCPlay / SNESAPU
+
+Editable source and runtime observatory:
+
+```text
+dgrfactory/spcplay
+commit fc770e268ecacb4523699e2edc5c0efdf80957d6
+license GPL-2.0
+```
+
+VGM Compiler patches and builds the source directly. The reference package recorded in `imports/MANIFEST.md` is behavioral evidence, not a substitute for editable source.
+
+### Omniphony
+
+```text
+dissonance-git/Omniphony-Headphones
+commit c5ff2988e2b088dc200f9ca76032f3b452706262
+Rust toolchain 1.88.0
+```
+
+Omniphony owns general spatial presentation. VGM Compiler owns source identity, source-supported routing, and game-music semantics. The private build validates the source FFI ABI before packaging.
+
+## VGM format authority
 
 Canonical format reference:
 
-- `https://vgmrips.net/wiki/VGM_Specification`
+- VGMRips VGM Specification: `https://vgmrips.net/wiki/VGM_Specification`
 
-Use the specification as the primary authority for VGM header fields, version gates, command bytes, operand sizes, chip-clock fields, dual-chip flags, data blocks, DAC Stream Control, wait/sample accounting and loop-field semantics.
+Use the specification as primary authority for:
 
-Do not use an emulator implementation to redefine a format byte when the specification already defines it. Emulator and player code remain valuable independent controls for whether a parser implements the specification correctly.
+- header fields and version gates;
+- clock fields and dual-chip flags;
+- command bytes and operand widths;
+- data blocks and DAC Stream Control;
+- wait/sample accounting;
+- loop and GD3 structure;
+- reserved-field semantics.
 
-Current code derived from this format-level role includes:
+The evidence boundary is:
 
-- `vgm_format_version.h`;
-- `vgm_chip_clock.h`;
-- `vgm_yamaha_register_write.h`;
-- `vgm_dac_stream_command.h`;
-- `tools/vgm_corpus_audit.py`.
+```text
+VGM bytes
+→ format semantics
+→ chip/device state
+→ performed behavior
+→ musical inference
+```
 
-### Sega/Yamaha development and hardware documents
+An emulator or player is an independent implementation control, not permission to redefine a byte already specified by the format.
 
-Sega Retro preserves scans and archives of official development and hardware material, including categories for Mega Drive official documentation and broader hardware documentation.
+## Hardware and development documentation
 
-High-value documents include material such as:
+Official manuals, application notes, schematics, and development-system documents are primary evidence where applicable. High-value material includes:
 
-- the YM2612 manual;
+- Yamaha YM2612 documentation;
 - SN76489 documentation;
-- Mega Drive development-system documentation;
-- SNASM/Z80/68000 programming material;
-- schematics and board-revision documents.
+- Mega Drive development-system material;
+- Z80/68000 programming documentation;
+- console and arcade schematics;
+- board and chip revision documentation.
 
-Use the **underlying official manual, application note, schematic, or development document** as primary evidence where applicable. A Sega Retro wiki summary, forum post, or editorial description remains secondary evidence unless independently corroborated.
+Sega Retro is a useful preservation index for many of these documents. Prefer the underlying official artifact over a wiki summary when the primary document is available.
 
-These documents are especially useful for:
+These sources constrain:
 
-- documented versus later-discovered behavior;
-- official register terminology and ordering;
-- clocks, buses, memory maps and DAC behavior;
-- what programmers were expected to rely on;
-- discrete versus integrated hardware-revision distinctions.
+- register terminology and ordering;
+- clocks, buses, memory maps, and DAC behavior;
+- documented programmer-facing behavior;
+- hardware-revision distinctions;
+- which mechanisms were officially exposed versus established through later measurement or reverse engineering.
 
-They do not replace modern emulator, die-analysis, driver-source or measurement work. Instead they provide another independent observatory that can strengthen or falsify a reverse-engineered claim.
+Manuals complement rather than replace emulator, die-analysis, driver-source, and measurement evidence.
 
-## SPC foobar2000 component
+## Device and synthesis observatories
 
-Legacy component:
+### Yamaha and related synthesis
 
-- `foo_snesapu`
-- original developer: kode54 / Christopher Snowhill
-- historical source repository: `https://gitlab.com/kode54/foo_snesapu`
+- `ValleyBell/libvgm`: multi-chip playback/device architecture.
+- `nukeykt/Nuked-OPN2` and related Nuked cores: high-fidelity FM/PSG reference implementations.
+- `aaronsgiles/ymfm` at `81aec25ccbb98f4873a255f7551ac4dadac59b4a`: Yamaha FM engine/channel/operator comparison surface.
+- `Wohlstand/libOPNMIDI`: OPN-family synthesis and instrument-bank handling.
+- `Wohlstand/OPN2BankEditor`: OPN-family patch extraction, conversion, and comparison.
 
-The foobar component is a wrapper around SNESAPU.DLL. Its historical public release is old; do not treat that component release date as the desired SNESAPU rendering baseline.
+Similarity among OPN, OPM, OPL, and OPLL is admitted into shared semantics only when independently different implementations support the same relation. Register layout similarity alone is insufficient.
 
-## SNESAPU / SPCPlay
+### QSound
 
-Editable SNESAPU implementation lineage:
+- `ValleyBell/qsound-hle`: QSound DSP behavior and source-domain spatial architecture.
 
-- dgrfactory/spcplay
-- repository default development branch: `develop`
-- project description: SNES SPC700 Player + Improved SNESAPU.DLL
-- upstream license: GPL-2.0
+QSound is especially valuable for distinguishing pre-pan source identity from the final stereo mix.
 
-Local reference build supplied at repository creation:
+### SNES / SPC
 
-- `spcplay-2.21.3.9130`
-- files: `spcplay.exe`, `snesapu.dll`, `readme.txt`
-- supplied build timestamp: 2026-07-23
+- `dgrfactory/spcplay`: SPC700/S-DSP execution and SNESAPU behavior.
+- `aikiriao/spc700`: executable SPC700/S-DSP simulation used by higher-level recovery tools.
 
-Important: the supplied SPCPlay package is a **newer binary/behavior reference**, not a substitute for editable source. The editable SNESAPU source must be brought forward to the behavior represented by the newest supplied files before enhancement changes are trusted.
+The project keeps SPC execution, source/sample identity, DSP state, and inferred musical parts as separate layers.
 
-The initial SNESAPU source import should preserve upstream file history/provenance as clearly as practical.
+### Other device/system controls
 
-## Research/reference implementations
+- `munt/munt`: MT-32/CM-32L synthesis and device behavior.
+- `nukeykt/Nuked-SC55`: low-level Sound Canvas reference implementation, subject to its ROM/licensing constraints.
+- MAME: system-context device execution and hardware behavior beyond isolated music-player abstractions.
 
-These are research inputs, not automatically vendored dependencies.
+## xSF container and platform observatories
 
-### Reference emulation and device behavior
+The shared xSF envelope is intentionally smaller than the platform runtime underneath it.
 
-- `dgrfactory/spcplay`: current SNESAPU behavior and SPC internals
-- `ValleyBell/libvgm`: VGM playback/device architecture
-- `nukeykt/Nuked-OPN2` and related Nuked cores: high-fidelity FM/PSG reference implementations
-- `aaronsgiles/ymfm`: reusable Yamaha FM engine/channel/operator architecture; observed research head during the cross-chip Yamaha pass: `81aec25ccbb98f4873a255f7551ac4dadac59b4a`
-- `ValleyBell/qsound-hle`: QSound DSP behavior and source-domain spatial architecture
-- `munt/munt`: MT-32/CM-32L family synthesis and device behavior
-- `nukeykt/Nuked-SC55`: low-level Sound Canvas reference implementation; licensing/ROM restrictions mean research reference unless a legally compatible route is established
-- MAME: whole-machine and device implementations that preserve system context around sound hardware and can expose behavior omitted by isolated music players
+Current comparison sources include:
 
-The current Yamaha comparison uses ymfm as an implementation observatory rather than as proof that all Yamaha FM families share one register ontology. OPN, OPM, OPL and OPLL similarities graduate only when their independently different register/state implementations support the same semantic relation; explicit negative controls are retained when they do not.
+- `kode54/psflib` at `95509e0c6f13d769593bbf51a1b0e0efdc355ba1`: xSF envelope, tags, CRC, and library traversal.
+- `kode54/viogsf` at `6c43a9926a6a85fbb736ea8f5f7f6c4f59ed3d64`: GSF/GBA execution.
+- `loveemu/gsfopt` at `41538ea8bb9e3087f0c485e937467ed6b354f7b6`: GSF upload headers, address mapping, dependency overlay, and ROM reconstruction.
+- `loveemu/saptapper` at `ff7ec3e4da1f1ffc3bcc05793268036a319b4466`: GSF construction and entry/load/size header emission.
+- `ipatix/agbplay` at `0960aadec72dddbefc144216886d86bef220a0bb`: independent GBA/GSF execution control.
+- `kode54/lazyusf2` at `421f00bcaa1988b8e1825e91780129f24fbd1aa0`: USF/N64 ROM and save-state upload semantics.
+- `RGBA-CRT/vio2sf-fork` at `cbad66408b72d3bdc9f6c5ba724fe3e17f996865`: 2SF/Nintendo DS ROM-map and reserved `SAVE` semantics.
+- `CyberBotX/NCSF` at `fe1b91afec25fe18a10fe1697f95341e8dd5a44d`: NCSF construction, SDAT structure, sequence selection, SSEQ/SBNK/SWAR, and PLAYER behavior.
+- `CyberBotX/in_xsf` at `74fceae1f09f2e42afff4f71fb68b1952f494916`: independent GSF/NCSF mapping control.
+- `fincs/FSS` at `c0f69d6105e8877ca8ff3b929d230e49e05726c7`: Nintendo DS sequence/player implementation control.
+- `vgmtrans/vgmtrans` at `083f7c71fe773078061eb785573621082c3e0d1c`: independent PS1 AKAO and Nintendo DS SDAT structure observatory.
 
-### xSF envelope and platform execution semantics
+These support a small shared container/dependency mechanism plus separate platform effective-object loaders. They do **not** support one shared runtime, driver model, sequence model, voice model, or playback claim.
 
-- `kode54/psflib`, observed at `95509e0c6f13d769593bbf51a1b0e0efdc355ba1`: shared xSF envelope, tags, CRC, and library traversal order
-- `kode54/viogsf`, observed at `6c43a9926a6a85fbb736ea8f5f7f6c4f59ed3d64`: current GSF player-side GBA execution observatory
-- `loveemu/gsfopt`, observed at `41538ea8bb9e3087f0c485e937467ed6b354f7b6`: GSF 12-byte upload headers, address mapping, dependency overlay, and `gsf2rom` lineage
-- `loveemu/saptapper`, observed at `ff7ec3e4da1f1ffc3bcc05793268036a319b4466`: GSF construction and little-endian entry/load/size header emission
-- `ipatix/agbplay`, observed at `0960aadec72dddbefc144216886d86bef220a0bb`: independent GSF header and GBA music-player observatory
-- `kode54/lazyusf2`, observed at `421f00bcaa1988b8e1825e91780129f24fbd1aa0`: USF/Nintendo 64 ROM and Project64 save-state upload semantics
-- `RGBA-CRT/vio2sf-fork`, observed at `cbad66408b72d3bdc9f6c5ba724fe3e17f996865`: 2SF/Nintendo DS ROM-map and reserved `SAVE` semantics
-- `CyberBotX/NCSF`, observed at `fe1b91afec25fe18a10fe1697f95341e8dd5a44d`: current NCSF construction, sequence selection, SDAT stripping, INFO/FAT, SSEQ/SBNK/SWAR, and PLAYER behavior
-- `CyberBotX/in_xsf`, observed at `74fceae1f09f2e42afff4f71fb68b1952f494916`: independent historical GSF/NCSF player-side mapping control
-- `fincs/FSS`, observed at `c0f69d6105e8877ca8ff3b929d230e49e05726c7`: historical DS sequence/player implementation lineage used by NCSF
-- `vgmtrans/vgmtrans`, observed at `083f7c71fe773078061eb785573621082c3e0d1c`: independent PS1 AKAO and Nintendo DS SDAT structure observatory
+## Driver and sequence semantics
 
-These references support a small shared container/dependency mechanism and
-separate PSF1, GSF, USF, 2SF, and NCSF effective-object loaders. They do not support one
-shared runtime, driver model, sequence model, voice model, or playback claim.
-See `research/xsf-execution-observatories.md`.
+Useful execution/source observatories include:
 
-### Driver and sequence semantics
+- `ValleyBell/SMPSPlay`: Sega SMPS track, instrument, modulation, and channel-allocation behavior.
+- `ValleyBell/GEMSPlay`: GEMS sequence/driver behavior and dynamic FM/PSG/DAC allocation.
+- `vgmtrans/vgmtrans`: driver-aware sequence, instrument, and sample recovery across many formats.
+- Hoot / Hoot Archive: Japanese-computer and arcade driver execution/data corpora.
+- VGMRips driver documentation and technical discussions: driver identity, command semantics, extraction, playback, and obscure platform details.
 
-- `ValleyBell/SMPSPlay`: Sega SMPS track/instrument/modulation/channel-allocation behavior
-- `ValleyBell/GEMSPlay`: GEMS sequence/driver behavior and dynamic FM/PSG/DAC allocation
-- `vgmtrans/vgmtrans`: driver-aware recovery of sequence, instrument and sample collections across many game formats
-- Hoot / Hoot Archive: broad Japanese-computer driver corpus and examples of running original game music drivers/data inside an emulated target environment
-- VGMRips sound-driver documentation and development forums: driver identity, file formats, commands, platform-specific extraction, playback knowledge, preservation history and obscure implementation details
+These are especially useful for the layer above chip registers:
 
-The Hoot/VGMRips corpus is especially useful for understanding the layer above chip registers: which driver is running, what data it consumes, and how a song is commanded to play. Hoot itself is not treated as a VGM logging reference because historical Hoot logging routes have known timing/emulation limitations.
+```text
+driver identity
++ command/control flow
++ sequence/instrument/sample data
+→ executable musical behavior
+```
 
-### Chip execution to musical semantics
+A driver corpus is not automatically a format or timing authority. Claims remain scoped to the evidence source that supports them.
 
-- `aikiriao/spc2midi-tsuu`: modern SPC-to-MIDI work that runs an SPC simulator and maps executed S-DSP voice state to note, pitch-bend, pan, volume/expression, sample/program and effect-send concepts
-- `aikiriao/spc700`: SPC700/S-DSP simulator used by `spc2midi-tsuu`, including a MIDI-oriented DSP implementation
-- historical `spc2midi` by Gigo/Hill: prior art for recovering note-like events from SPC execution
-- historical/current `vgm2mid` work by Paul Jensen / ValleyBell: prior art for deriving note events from VGM chip-frequency/register trajectories
-- `jkarenko/vgm2midi`: modern readable reference for translating VGM command timing and several chip frequency models into MIDI-like note events
+## Execution-to-music recovery controls
 
-These converters are not the target architecture. MIDI is too small to preserve all FM, PSG, sample, effect and continuous-control semantics. Their value is showing which musical variables can be derived reliably from device execution and where information is lost by forcing the result into MIDI.
+Converters are useful because they expose which musical variables can be recovered from live device execution and where a smaller target representation loses information.
 
-### High-level synthesis / symbolic rendering
+Useful controls include:
 
-- `Wohlstand/libOPNMIDI`: OPN2-based MIDI synthesis and bank/instrument handling
-- `stuerp/foo_midi`: broad realtime MIDI playback/component architecture and multiple historical synth backends
-- `Wohlstand/OPN2BankEditor`: YM2612/OPN-family instrument extraction, conversion and comparison
+- `aikiriao/spc2midi-tsuu`: SPC execution to note/pitch-bend/pan/volume/program/effect-send concepts.
+- `aikiriao/spc700`: execution substrate used by SPC recovery work.
+- `vgm2mid` implementations by Paul Jensen / ValleyBell.
+- `jkarenko/vgm2midi`: readable VGM timing and chip-frequency-to-note conversion reference.
 
-### Broad game-music execution and integration
+MIDI is not the target architecture. It cannot preserve the full FM, PSG, sample, effect, control, provenance, or structural state available in richer executable sources.
 
-- `libgme/game-music-emu`: common playback interface across multiple executable/ripped game-music formats; useful both for its shared operations and for the places where capability varies by emulator
-- `OpenMPT/openmpt` / libopenmpt: tracker/module playback with richer access to patterns, rows, channels, subsongs and module state than a generic PCM replay boundary
-- `tildearrow/furnace`: multi-system tracker/emulation architecture with extensive chip/channel state and multiple emulator cores
-- Hoot: broad PC-88/PC-98/X68000/FM Towns/MSX/arcade/home-system driver execution, including external MIDI-module routes
-- `yoyofr/modizer`: practical integration of a very large set of replay engines, including libvgm, Game Music Emu, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX, XSF-family players, vgmstream and others
+```text
+rich execution evidence
+→ musical projection
+→ MIDI-like output
+```
 
-Modizer is valuable precisely because its breadth does **not** erase backend differences. Its player layer retains substantial engine-specific state and options. That makes it a useful boundary case for VGM Compiler:
+The projection may be useful while still being strictly smaller than the evidence that produced it.
+
+## Broad replay and integration observatories
+
+- `libgme/game-music-emu`: compact common playback interface across several executable/ripped formats.
+- `OpenMPT/openmpt` / libopenmpt: tracker/module playback with pattern, row, channel, subsong, and module-state access.
+- `tildearrow/furnace`: multi-system tracker/emulation architecture with chip/channel state and multiple cores.
+- Hoot: multi-platform driver execution.
+- `yoyofr/modizer`: integration of a broad set of replay engines including libvgm, GME, libopenmpt, Furnace, UADE, sidplayfp, NSFPlay, PMD/MDX, xSF players, and vgmstream.
+
+Their combined lesson is capability-aware abstraction:
 
 ```text
 shared frontend
-≠ shared semantic depth
+!= shared semantic depth
 ```
 
-Game Music Emu shows the complementary pattern: a compact common playback API can remain useful while explicitly allowing some features or metadata to be unsupported or unknown for particular emulator types.
+A common playback operation can be useful while richer source families retain source-specific structure. VGM Compiler should not fabricate semantic parity merely because two sources share a player API.
 
-OpenMPT shows that richer source families should not be forced down to that least-common-denominator boundary when pattern/structure state is actually available.
-
-Together these systems motivate capability-aware adapters rather than fabricated semantic parity. A permanent VGM Compiler capability schema is deferred until concrete adapters require one.
-
-## Music representation and production research
+## Music representation observatories
 
 These systems pressure-test the layers above device execution.
 
-### Symbolic and score representations
+### Symbolic / score
 
-- music21: computational musicology and higher musical relations above individual note events
-- Partitura: score/performance representation, parts, voices, time points and explicit mappings between musical time coordinates
-- MEI / Music Encoding Initiative: structured music notation and metadata/provenance representation
-- MusicXML and Humdrum: additional notation/analysis interchange references to inspect where materially useful
+- music21: computational musicology and higher musical relations.
+- Partitura: score/performance representation, voices, time points, and mappings among musical time coordinates.
+- MEI: structured notation plus metadata/provenance relationships.
+- MusicXML and Humdrum: additional interchange/analysis comparison surfaces.
 
-The purpose is not to make VGM Compiler a notation editor. These systems expose requirements for representing meter, voice, phrase, harmony, form, score identity and other musical structures without confusing them with driver/device state.
+They expose requirements for meter, voice, phrase, harmony, form, score identity, and related upper-layer structures without making those structures device state.
 
 ### Computer-assisted composition
 
-- OpenMusic: explicit musical objects, transformations and compositional/analytical structure above raw event execution
+- OpenMusic: explicit musical objects, constraints, transformations, and compositional/analytical structure.
 
-OpenMusic is particularly useful as a pressure test for the upper half of the common model: whether recovered musical objects and relations can remain explicit and transformable while retaining provenance back to executable source truth.
+See `docs/openmusic-libraries.md` and `docs/music-representation-systems.md`.
 
-### DAWs, session systems and audio graphs
+### DAW / session / graph systems
 
-- LMMS: arrangement, pattern, automation, instrument, mixer and effect distinctions
-- Ardour: session identity, regions/playlists, routing, tempo/meter maps, buses and processing topology
-- AudioKit: node graphs, runtime object identity, parameters and sample-offset event scheduling
+- LMMS: arrangement, pattern, automation, instrument, mixer, and effect distinctions.
+- Ardour: session identity, regions/playlists, tempo/meter maps, routing, buses, and processing topology.
+- AudioKit: node graphs, runtime object identity, parameter state, and sample-offset event scheduling.
 
-These systems reinforce that a final mix is a projection of a larger graph and that arrangement, automation, synthesis, routing and effects are not properties of a single note list.
+These reinforce that a final mix is a projection of a larger execution graph rather than a complete representation of the musical object.
 
-### Inverse transcription and analysis
+### Inverse analysis
 
-- `spotify/basic-pitch`: useful inverse case where frame/onset/pitch-contour evidence is richer than the eventual MIDI projection
-- chord/progression corpora such as `ldrolez/free-midi-chords`: potential fixtures for harmony and transposition tests rather than architecture
-
-The key lesson is that an output format may be smaller than the internal evidence used to derive it. VGM Compiler should preserve the richer evidence when source execution provides it.
+- `spotify/basic-pitch`: frame/onset/pitch-contour evidence followed by a smaller note/MIDI projection.
+- chord/progression corpora: useful fixtures for harmony, transposition, and analytical robustness when provenance is appropriate.
 
 ### Algorithmic sequencing
 
-- `hundredrabbits/Orca`: executable pattern/state generation and event-network behavior
+- `hundredrabbits/Orca`: executable pattern/state generation and event-network behavior.
 
-This is useful for game music because future events can be generated by running state and control flow rather than stored as a pre-expanded note list.
+This is a useful pressure test for music whose future events are generated by running state and control flow rather than stored as a pre-expanded note list.
 
-See `docs/music-representation-systems.md`.
+## Audio-programming-language observatories
 
-## Audio programming language research
+Useful comparisons include:
 
-Audio and synthesis languages expose the machinery between musical instruction and PCM.
-
-Important comparisons include:
-
-- MPEG-4 Structured Audio / SAOL / SASL: synthesis language, score/control language, samples/MIDI semantics and scheduler as separable concepts
-- SuperCollider: instrument definitions, running synth instances, unit-generator graphs, buses and execution order
-- Max/MSP and Pure Data: explicit control/message versus signal-rate graphs and mutable realtime processing topology
-- Csound: initialization, control-rate and audio-rate computation
-- ChucK: explicit logical time and concurrent temporal execution
-- Faust: semantic DSP/signal graphs independent of generated target code
-- Cmajor: distinct stream, event and persistent-value endpoints
-- TidalCycles: symbolic patterns as time-domain processes rather than flat note arrays
-- Sonic Pi, Extempore/Impromptu and related live-coding systems: dynamic musical programs whose state evolves while time continues
-- Alda, ABC, LilyPond and other text/notation languages where they expose useful authored structure
-
-The project does not need their languages or user interfaces. Their value is the execution distinctions they make explicit.
+- MPEG-4 Structured Audio / SAOL / SASL: synthesis definition, score/control, samples, MIDI-like control, and scheduler separation.
+- SuperCollider: instrument definitions, running synth instances, unit-generator graphs, buses, and execution order.
+- Max/MSP and Pure Data: explicit message/control versus signal-rate topology.
+- Csound: initialization, control-rate, and audio-rate computation.
+- ChucK: explicit logical time and concurrent temporal execution.
+- Faust: semantic DSP/signal graphs independent of generated target code.
+- Cmajor: distinct stream, event, and persistent-value endpoints.
+- TidalCycles: symbolic patterns as time-domain processes.
+- Sonic Pi and related live-coding systems: evolving program state during musical time.
+- Alda, ABC, LilyPond, and related authored text/notation systems where their structural distinctions are useful.
 
 See `docs/audio-programming-languages.md`.
 
-## Representation research and literature
+## Research literature
 
-The architecture in `docs/musical-execution-model.md` is also pressure-tested against academic work. Literature is used in the same way as repositories: extract established distinctions, formal results and test cases, not a new dependency stack.
+Literature is treated like source code and specifications: extract established distinctions, formal results, and falsifiable test ideas rather than importing an ontology wholesale.
 
-### General and multilayer music representation
+High-value references include:
 
-- Roger B. Dannenberg, **Music Representation Issues, Techniques, and Systems**, *Computer Music Journal* 17(3), 1993. DOI `10.2307/3680940`. Useful for the longstanding distinction among notation, performance/control information and sound, and for the warning that no single representation is the one true form of music.
-- Adriano Baratè, Goffredo Haus and Luca A. Ludovico, **Music Representation of Score, Sound, MIDI, Structure and Metadata All Integrated in a Single Multilayer Environment Based on XML**, 2008. DOI `10.4018/978-1-59904-663-1.CH014`. Useful for the IEEE 1599/MX multilayer model linking logical, structural, notational, performance and audio descriptions.
-- Diogo Cocharro, Gilberto Bernardes, Gonçalo Bernardo and Cláudio Lemos Fonteles, **A Review of Musical Rhythm Representation and (Dis)similarity in Symbolic and Audio Domains**, 2021. DOI `10.1007/978-3-030-78451-5_10`. Useful for cross-modal and hierarchical representation questions.
+- Roger B. Dannenberg, **Music Representation Issues, Techniques, and Systems**, *Computer Music Journal* 17(3), 1993, DOI `10.2307/3680940`.
+- Adriano Baratè, Goffredo Haus, Luca A. Ludovico, **Music Representation of Score, Sound, MIDI, Structure and Metadata All Integrated in a Single Multilayer Environment Based on XML**, 2008, DOI `10.4018/978-1-59904-663-1.CH014`.
+- Diogo Cocharro et al., **A Review of Musical Rhythm Representation and (Dis)similarity in Symbolic and Audio Domains**, 2021, DOI `10.1007/978-3-030-78451-5_10`.
+- Roger B. Dannenberg and Christopher Raphael, **Music Score Alignment and Computer Accompaniment**, DOI `10.1184/r1/6607616`.
+- Carlos E. Cancino-Chacón et al., **Computational Models of Expressive Music Performance: A Comprehensive and Critical Review**, 2018, DOI `10.3389/FDIGH.2018.00025`.
+- Johanna Devaney, Daniel McKemie, Amy L. Morgan, **pyAMPACT**, 2024, arXiv `2412.05436`.
+- Akira Maezawa and Hiroshi G. Okuno, **Bayesian Audio-to-Score Alignment Based on Joint Inference of Timbre, Volume, Tempo, and Note Onset Timings**, 2015, DOI `10.1162/COMJ_A_00286`.
+- Zeyu Jin and Roger B. Dannenberg, **Formal Semantics for Music Notation Control Flow**, ICMC 2013.
+- Florent Jacquemard and Clément Poncelet Sanchez, **Antescofo Intermediate Representation**, 2014, arXiv `1404.7335`.
+- James McDermott and Una-May O'Reilly, **An Executable Graph Representation for Evolutionary Generative Music**, GECCO 2011, DOI `10.1145/2001576.2001632`.
+- Andreas Arzt and Gerhard Widmer, **Towards Effective 'Any-Time' Music Tracking**, 2010, DOI `10.3233/978-1-60750-676-8-24`.
 
-### Score, performance and time alignment
+Current architectural consequences:
 
-- Roger B. Dannenberg and Christopher Raphael, **Music Score Alignment and Computer Accompaniment**, 2018 repository version DOI `10.1184/r1/6607616`. Useful for symbolic-to-audio event correspondence and the separation of score position from performed time.
-- Carlos E. Cancino-Chacón, Maarten Grachten, Werner Goebl and Gerhard Widmer, **Computational Models of Expressive Music Performance: A Comprehensive and Critical Review**, 2018. DOI `10.3389/FDIGH.2018.00025`. Useful for distinguishing notated score from performed timing, dynamics, intonation and articulation.
-- Johanna Devaney, Daniel McKemie and Amy L. Morgan, **pyAMPACT: A Score-Audio Alignment Toolkit for Performance Data Estimation and Multi-modal Processing**, 2024. arXiv `2412.05436`. Useful for explicit linking of symbolic notes, aligned audio regions and note-level performance descriptors.
-- Akira Maezawa and Hiroshi G. Okuno, **Bayesian Audio-to-Score Alignment Based on Joint Inference of Timbre, Volume, Tempo, and Note Onset Timings**, *Computer Music Journal* 39(1), 2015. DOI `10.1162/COMJ_A_00286`. Useful for treating several score/audio correspondences as uncertain variables rather than assuming a fixed clock mapping.
+1. static program/control flow and realized execution are distinct;
+2. mappings among authored, driver, device, sample, and acoustic time are explicit evidence and may be piecewise;
+3. competing high-level interpretations remain alternatives until evidence discriminates among them;
+4. multiple linked representation layers are preferable to flattening the musical object into MIDI, notation, or PCM;
+5. performance timing, dynamics, intonation, and articulation are trajectories rather than mere note labels;
+6. executable control flow can be semantically important even when the resulting note sequence is superficially similar.
 
-### Control flow and interactive execution
+Ongoing literature comparison should cover auditory scene analysis, music cognition, MIR, computational musicology, score-informed source separation, controllable synthesis, provenance-aware preservation, and interactive/adaptive game music.
 
-- Zeyu Jin and Roger B. Dannenberg, **Formal Semantics for Music Notation Control Flow**, ICMC 2013. Useful for treating repeats/endings as static control-flow semantics distinct from the realized performance traversal and for mapping performance location back to static score position.
-- Florent Jacquemard and Clément Poncelet Sanchez, **Antescofo Intermediate Representation**, 2014. arXiv `1404.7335`. Useful for a medium-level music-program IR based on finite-state control, variables, delays and concurrency, independent of source syntax and execution platform.
-- James McDermott and Una-May O'Reilly, **An Executable Graph Representation for Evolutionary Generative Music**, GECCO 2011. DOI `10.1145/2001576.2001632`. Useful as precedent for executable graph representations and separation of large-scale control from realized outputs.
-- Andreas Arzt and Gerhard Widmer, **Towards Effective 'Any-Time' Music Tracking**, 2010. DOI `10.3233/978-1-60750-676-8-24`. Useful for retaining and updating multiple high-level hypotheses in the presence of jumps, repeats, omissions and restarts.
-
-### Current architectural consequences
-
-This literature does not become a new ontology by citation. The current durable consequences are narrower:
-
-1. static program/control flow and realized execution are separate;
-2. mappings between score/authored, driver, device, sample and acoustic time are explicit evidence and may be piecewise;
-3. competing high-level interpretations should remain alternatives until evidence separates them;
-4. multiple linked representation layers are preferable to flattening the entire musical object into MIDI, notation or PCM.
-
-These obligations are reflected in the current musical execution graph and its tests.
-
-The project should continue comparing against research on:
-
-- note/performance ontologies;
-- music information retrieval;
-- auditory scene analysis;
-- concurrent and sequential auditory grouping;
-- differentiable/controllable synthesis and resynthesis;
-- score-informed source separation;
-- music cognition and computational musicology;
-- provenance-aware digital music preservation;
-- interactive and adaptive game-music systems.
-
-The project should borrow established terminology and experimentally useful distinctions rather than invent new names for ordinary concepts.
-
-## Source use and licensing rule
-
-A research reference does not grant permission to copy code.
+## Source use and licensing
 
 For every external implementation:
 
-1. record what question it helps answer;
-2. inspect its license before any reuse;
-3. distinguish conceptual influence from imported implementation;
-4. preserve attribution and original licenses for code that is legitimately imported;
-5. prefer independent project-owned implementation for the common execution/reasoning model;
-6. keep source-specific upstream code source-specific rather than laundering it into a supposedly universal abstraction.
+1. record the question it helps answer;
+2. inspect its license before reuse;
+3. distinguish conceptual evidence from imported implementation;
+4. preserve attribution and licenses for legitimately imported code;
+5. prefer project-owned implementation for shared execution/reasoning semantics;
+6. keep source-specific upstream code source-specific rather than laundering it into a universal abstraction.
 
-The goal is to synthesize a stronger model from established evidence, not to assemble a dependency collage.
+The goal is a stronger evidence model, not a dependency collage.
 
-## Omniphony
+## Cross-project boundaries
 
-Related repository:
+### Omniphony
 
-- `dissonance-git/Omniphony-Headphones`
+`dissonance-git/Omniphony-Headphones` owns general spatial presentation. VGM Compiler supplies source identity and source-supported route/trajectory evidence. Chip-specific behavior stays in VGM Compiler.
 
-Omniphony consumes the enhanced playback result and remains the general headphone-spatial layer. Do not move chip-specific code into it.
+### libaural
 
-## libaural
-
-Related repository:
-
-- `dissonance-git/libaural`
-
-libaural may use executable game-music internal state as ground truth for artificial-hearing research. It is not a mandatory realtime dependency of playback frontends.
-
-The intended relationship is:
+`dissonance-git/libaural` owns general artificial-hearing research. VGM Compiler can provide exact hidden game-music execution state as a controlled truth surface:
 
 ```text
-VGM Compiler
-exact source / driver / synthesis state
+VGM Compiler exact source / driver / synthesis state
         ↓
 reference acoustic render
         ↓
-libaural
-inferred auditory events and streams
+libaural inferred auditory events / streams
         ↓
 comparison against known hidden state
 ```
 
-This lets game-music execution act as a controlled testground for general machine hearing without teaching libaural chip-specific formats.
+libaural does not need chip-specific formats to benefit from game-music execution as a controlled machine-hearing experiment.
