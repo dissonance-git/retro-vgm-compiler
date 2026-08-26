@@ -104,6 +104,8 @@ jobs:
           foreach ($required in @(
             'genesis_selected_source_queue',
             'genesis_selected_source_block',
+            'genesis_source_episode_transport',
+            'genesis_source_spread_7_1',
             'surround_bed_7_1'
           )) {
             if ($header -notmatch [regex]::Escape($required)) {
@@ -113,6 +115,9 @@ jobs:
           foreach ($required in @(
             'capture_genesis_reference_sources',
             'render_genesis_surround_output',
+            'm_genesis_surround_episodes.observe',
+            'm_genesis_surround_episodes.prepare_delivered_block',
+            'project_genesis_source_spread_7_1',
             'audio_chunk::channel_config_7point1',
             'cfg_vgm_enhanced_enabled'
           )) {
@@ -124,7 +129,8 @@ jobs:
           foreach ($retired in @(
             'genesis_spatial_route_transport',
             'genesis_realtime_musical_omniphony_pipeline',
-            'render_genesis_spatial_output'
+            'render_genesis_spatial_output',
+            'genesis_source_spread_depth_fraction'
           )) {
             if ($header -match [regex]::Escape($retired) -or
                 $shadow -match [regex]::Escape($retired)) {
@@ -142,7 +148,9 @@ jobs:
             'src\linear_source_resampler.h',
             'src\nuked_opn2_source_capture.h',
             '..\enhancement\genesis_selected_source_queue.h',
-            '..\enhancement\genesis_selected_source_block.h'
+            '..\enhancement\genesis_selected_source_block.h',
+            '..\enhancement\genesis_source_episode_7_1.h',
+            '..\enhancement\genesis_source_spread_7_1.h'
           )
           foreach ($relative in $required) {
             $path = Join-Path $component $relative
