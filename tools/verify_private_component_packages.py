@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Verify the final private foobar component archives before bundling them.
 
+The inputs emit standard multichannel beds and ship no decoder-side Omniphony
+runtime. Validate exact package membership, PE machine/export contracts,
+forbidden private imports, archive safety, and the packaged x86 spcplayer /
+SNESAPU loader boundary.
+"""Verify the final private foobar component archives before bundling them.
+
 The build stages files in disposable directories, but the deletion gate is about
 what is actually shipped. This verifier reopens each renamed ZIP
 (`.fb2k-component`), checks the exact sibling payload expected by the runtime,
@@ -18,7 +24,6 @@ private imports.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import os
 from pathlib import Path, PurePosixPath
 import struct
@@ -32,24 +37,12 @@ IMAGE_FILE_MACHINE_AMD64 = 0x8664
 
 VGM_EXPECTED = {
     "foo_input_vgm.dll",
-    "omniphony_source.dll",
 }
 
 SPC_EXPECTED = {
     "foo_snesapu.dll",
     "spcplayer.exe",
     "SNESAPU.dll",
-    "omniphony_source.dll",
-}
-
-OMNIPHONY_REQUIRED_EXPORTS = {
-    "omniphony_source_abi_major",
-    "omniphony_source_abi_minor",
-    "omniphony_source_create",
-    "omniphony_source_destroy",
-    "omniphony_source_reset",
-    "omniphony_source_set_mix_budget",
-    "omniphony_source_process_events_f32",
 }
 
 SNESAPU_REQUIRED_EXPORTS = {
@@ -66,22 +59,13 @@ SNESAPU_REQUIRED_EXPORTS = {
 
 VGM_RUNTIME_CONTRACTS = {
     "foo_input_vgm.dll": (IMAGE_FILE_MACHINE_AMD64, frozenset()),
-    "omniphony_source.dll": (
-        IMAGE_FILE_MACHINE_AMD64,
-        frozenset(OMNIPHONY_REQUIRED_EXPORTS),
-    ),
 }
 
 SPC_RUNTIME_CONTRACTS = {
     "foo_snesapu.dll": (IMAGE_FILE_MACHINE_AMD64, frozenset()),
     "spcplayer.exe": (IMAGE_FILE_MACHINE_I386, frozenset()),
     "SNESAPU.dll": (IMAGE_FILE_MACHINE_I386, frozenset(SNESAPU_REQUIRED_EXPORTS)),
-    "omniphony_source.dll": (
-        IMAGE_FILE_MACHINE_AMD64,
-        frozenset(OMNIPHONY_REQUIRED_EXPORTS),
-    ),
 }
-
 
 def _u16(data: bytes, offset: int) -> int:
     if offset < 0 or offset + 2 > len(data):
@@ -394,54 +378,16 @@ def validate_package(
                 )
 
 
-def _load_runtime_verifier(repo_root: Path):
-    verifier_path = repo_root / "tools" / "verify_omniphony_runtime_abi.py"
-    if not verifier_path.is_file():
-        raise AssertionError(f"Omniphony runtime verifier missing: {verifier_path}")
-    spec = importlib.util.spec_from_file_location("verify_omniphony_runtime_abi", verifier_path)
-    if spec is None or spec.loader is None:
-        raise AssertionError(f"could not load Omniphony runtime verifier: {verifier_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def validate_windows_runtime(
-    vgm_path: Path,
-    spc_path: Path,
-    repo_root: Path,
-) -> None:
+def validate_windows_runtime(spc_path: Path) -> None:
     if os.name != "nt":
         return
 
-    verifier = _load_runtime_verifier(repo_root)
     with tempfile.TemporaryDirectory() as temp_dir:
-        root = Path(temp_dir)
-        vgm_dir = root / "vgm"
-        spc_dir = root / "spc"
-        vgm_dir.mkdir()
+        spc_dir = Path(temp_dir) / "spc"
         spc_dir.mkdir()
-
-        with zipfile.ZipFile(vgm_path, "r") as archive:
-            archive.extractall(vgm_dir)
         with zipfile.ZipFile(spc_path, "r") as archive:
             archive.extractall(spc_dir)
 
-        vgm_version = verifier.load_and_verify(vgm_dir / "omniphony_source.dll")
-        spc_version = verifier.load_and_verify(spc_dir / "omniphony_source.dll")
-        if vgm_version != spc_version:
-            raise AssertionError(
-                "packaged Omniphony runtime versions differ: "
-                f"VGM={vgm_version}, SPC={spc_version}"
-            )
-        if (vgm_dir / "omniphony_source.dll").read_bytes() != (
-            spc_dir / "omniphony_source.dll"
-        ).read_bytes():
-            raise AssertionError("VGM/SPC packages do not carry the same Omniphony DLL bytes")
-
-        # Start the exact packaged child binary so Windows resolves its imports
-        # using the package directory. The no-argument path is expected to fail
-        # after startup with a usage error; loader failure must be distinguishable.
         child = subprocess.run(
             [str(spc_dir / "spcplayer.exe")],
             cwd=spc_dir,
@@ -465,7 +411,7 @@ def main() -> int:
     spc_path = args.spc_package.resolve()
     validate_package(vgm_path, VGM_EXPECTED, VGM_RUNTIME_CONTRACTS)
     validate_package(spc_path, SPC_EXPECTED, SPC_RUNTIME_CONTRACTS)
-    validate_windows_runtime(vgm_path, spc_path, Path(__file__).resolve().parents[1])
+    validate_windows_runtime(spc_path)
     print("private foobar component packages verified")
     return 0
 

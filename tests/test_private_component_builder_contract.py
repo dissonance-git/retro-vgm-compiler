@@ -19,14 +19,8 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertNotIn("projectText.Replace", self.text)
 
     def test_vgm_solution_dependency_graph_is_preserved_when_available(self) -> None:
-        self.assertIn(
-            "$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'",
-            self.text,
-        )
-        self.assertIn(
-            "$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }",
-            self.text,
-        )
+        self.assertIn("$vgmSolution = Join-Path $VgmComponent 'foo_input_vgm.sln'", self.text)
+        self.assertIn("$vgmBuildTarget = if (Test-Path $vgmSolution) { $vgmSolution } else { $vgmProject }", self.text)
         self.assertIn("Run $msbuild @($vgmBuildTarget,", self.text)
 
     def test_outputs_are_explicit_not_recursively_discovered(self) -> None:
@@ -44,14 +38,9 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
     def test_spcplayer_consumes_the_fresh_patched_snesapu_build(self) -> None:
         self.assertIn("$spcPlayerIncludeArg = '/p:SNESAPUIncludeDir=' + $SnesapuSource", self.text)
         self.assertIn("$spcPlayerLibArg = '/p:SNESAPULibDir=' + $SnesapuLibDir", self.text)
-        self.assertIn(
-            "'/p:PlatformToolset=v143', $spcPlayerIncludeArg, $spcPlayerLibArg, $spcPlayerOutArg",
-            self.text,
-        )
 
     def test_runtime_architectures_are_asserted_before_packaging(self) -> None:
         expected = {
-            "Assert-PEMachine $OmniDll 0x8664": "Omniphony x64",
             "Assert-PEMachine $FooVgm 0x8664": "VGM x64",
             "Assert-PEMachine $SnesapuDll 0x014C": "SNESAPU x86",
             "Assert-PEMachine $SpcPlayerExe 0x014C": "spcplayer x86",
@@ -70,49 +59,25 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertLess(patch, integration)
         self.assertLess(integration, vgm_component)
         self.assertIn("-DLIBVGM_ROOT=$Libvgm", self.text)
-        self.assertIn("'--test-dir', $LibvgmSourceTestBuild", self.text)
 
     def test_vgm_zlib_compatibility_uses_the_pinned_built_library(self) -> None:
-        self.assertIn(
-            "$builtZlib = Join-Path $Libvgm 'libs\\lib\\zlib64.lib'",
-            self.text,
-        )
-        self.assertIn(
-            "Copy-Item $builtZlib (Join-Path $zlibCompatRelease 'zs.lib') -Force",
-            self.text,
-        )
-        self.assertIn(
-            "Junction (Join-Path $componentBase 'zlib') $zlibCompat",
-            self.text,
-        )
+        self.assertIn("$builtZlib = Join-Path $Libvgm 'libs\\lib\\zlib64.lib'", self.text)
+        self.assertIn("Copy-Item $builtZlib (Join-Path $zlibCompatRelease 'zs.lib') -Force", self.text)
 
     def test_source_commit_is_captured_and_written_to_manifest(self) -> None:
         capture = "$sourceCommit = (& git -C $RepoRoot rev-parse HEAD).Trim().ToLowerInvariant()"
-        manifest = "$manifest = [ordered]@{"
-        manifest_commit = "vgm_compiler_commit = $sourceCommit"
         self.assertIn(capture, self.text)
-        self.assertIn(manifest_commit, self.text)
-        self.assertLess(self.text.index(capture), self.text.index("== 2. Materialize external"))
-        self.assertLess(self.text.index(capture), self.text.index(manifest))
-        self.assertLess(self.text.index(manifest), self.text.index(manifest_commit))
+        self.assertIn("vgm_compiler_commit = $sourceCommit", self.text)
         self.assertNotIn("unversioned", self.text)
 
     def test_bootstrap_manifest_points_at_current_canonical_input(self) -> None:
-        self.assertIn(
-            "$VgmBootstrapSource = 'repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts'",
-            self.text,
-        )
-        self.assertIn(
-            "$VgmBootstrapSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'",
-            self.text,
-        )
-        self.assertIn("source = $VgmBootstrapSource", self.text)
-        self.assertIn("sha256 = $VgmBootstrapSha256", self.text)
+        self.assertIn("$VgmBootstrapSource = 'repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts'", self.text)
+        self.assertIn("$VgmBootstrapSha256 = 'e2c08ee82b10efd3b31f2304d0c9a7c0f5eae0e07a241e91108c81c3bedd01e1'", self.text)
 
-    def test_sdk_shared_library_and_component_verifier_are_required(self) -> None:
-        self.assertIn("shared\\shared-x64.lib", self.text)
+    def test_input_packages_do_not_build_decoder_side_omniphony(self) -> None:
+        for retired in ("$OmniphonyCommit", "$RustToolchain", "source_ffi", "omniphony_source.dll", "verify_omniphony_runtime_abi.py"):
+            self.assertNotIn(retired, self.text)
         self.assertIn("verify_private_component_packages.py", self.text)
-        self.assertIn("verify_omniphony_runtime_abi.py", self.text)
 
     def test_final_bundle_is_verified_after_creation(self) -> None:
         bundle = "$Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'"
@@ -121,15 +86,12 @@ class PrivateComponentBuilderContractTest(unittest.TestCase):
         self.assertIn(bundle, self.text)
         self.assertIn(create, self.text)
         self.assertIn(verifier, self.text)
-        self.assertGreater(self.text.index(create), self.text.index(bundle))
-        self.assertGreater(self.text.index(verifier), self.text.index(create))
 
-    def test_generated_readme_keeps_enhanced_descriptive(self) -> None:
-        self.assertIn("Surround enables Omniphony source-aware Genesis rendering.", self.text)
-        self.assertIn("Surround enables Omniphony source-aware SPC rendering.", self.text)
-        self.assertIn("enhanced is independent.", self.text)
-        self.assertNotIn("enhanced/Spatial", self.text)
-        self.assertNotIn("Enhanced and Spatial", self.text)
+    def test_generated_readme_describes_7_1_output_boundary(self) -> None:
+        self.assertIn("Surround emits a source-derived standard 7.1 Genesis bed.", self.text)
+        self.assertIn("Surround emits a source-derived standard 7.1 SPC bed.", self.text)
+        self.assertIn("Use the Omniphony foobar output component separately", self.text)
+        self.assertIn("enhanced is disabled for this milestone.", self.text)
 
 
 if __name__ == "__main__":

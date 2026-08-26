@@ -89,39 +89,17 @@ class PrivateComponentPackageContractTest(unittest.TestCase):
             root = Path(tmp)
             vgm = root / "vgm.fb2k-component"
             spc = root / "spc.fb2k-component"
-            self.write_zip(
-                vgm,
-                {
-                    "foo_input_vgm.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64),
-                    "omniphony_source.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_AMD64,
-                        _verifier.OMNIPHONY_REQUIRED_EXPORTS,
-                    ),
-                },
-            )
-            self.write_zip(
-                spc,
-                {
-                    "foo_snesapu.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64),
-                    "spcplayer.exe": make_pe(_verifier.IMAGE_FILE_MACHINE_I386),
-                    "SNESAPU.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_I386,
-                        _verifier.SNESAPU_REQUIRED_EXPORTS,
-                    ),
-                    "omniphony_source.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_AMD64,
-                        _verifier.OMNIPHONY_REQUIRED_EXPORTS,
-                    ),
-                },
-            )
+            self.write_zip(vgm, {"foo_input_vgm.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64)})
+            self.write_zip(spc, {
+                "foo_snesapu.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64),
+                "spcplayer.exe": make_pe(_verifier.IMAGE_FILE_MACHINE_I386),
+                "SNESAPU.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_I386, _verifier.SNESAPU_REQUIRED_EXPORTS),
+            })
             _verifier.verify_runtime_contracts(vgm, _verifier.VGM_RUNTIME_CONTRACTS, "VGM")
             _verifier.verify_runtime_contracts(spc, _verifier.SPC_RUNTIME_CONTRACTS, "SPC")
 
     def test_accepts_spcplayer_usage_startup_result(self) -> None:
-        _verifier.validate_spcplayer_startup_result(
-            1,
-            "spcplayer version 1.1\nUsage: spcplayer.exe [options]\n",
-        )
+        _verifier.validate_spcplayer_startup_result(1, "spcplayer version 1.1\nUsage: spcplayer.exe [options]\n")
 
     def test_rejects_spcplayer_loader_or_crash_exit(self) -> None:
         with self.assertRaisesRegex(AssertionError, "expected usage exit 1"):
@@ -131,72 +109,37 @@ class PrivateComponentPackageContractTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "did not reach its own usage path"):
             _verifier.validate_spcplayer_startup_result(1, "some unrelated failure")
 
-    def test_rejects_missing_runtime_export(self) -> None:
+    def test_rejects_missing_snesapu_runtime_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
-            exports = set(_verifier.OMNIPHONY_REQUIRED_EXPORTS)
-            exports.remove("omniphony_source_create")
-            self.write_zip(
-                package,
-                {
-                    "foo_input_vgm.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64),
-                    "omniphony_source.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_AMD64,
-                        exports,
-                    ),
-                },
-            )
+            exports = set(_verifier.SNESAPU_REQUIRED_EXPORTS)
+            exports.remove("SetDSPSourceCapture")
+            self.write_zip(package, {
+                "foo_snesapu.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_AMD64),
+                "spcplayer.exe": make_pe(_verifier.IMAGE_FILE_MACHINE_I386),
+                "SNESAPU.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_I386, exports),
+            })
             with self.assertRaisesRegex(AssertionError, "missing required exports"):
-                _verifier.verify_runtime_contracts(
-                    package, _verifier.VGM_RUNTIME_CONTRACTS, "VGM"
-                )
+                _verifier.verify_runtime_contracts(package, _verifier.SPC_RUNTIME_CONTRACTS, "SPC")
 
     def test_rejects_wrong_packaged_machine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
-            self.write_zip(
-                package,
-                {
-                    "foo_input_vgm.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_I386),
-                    "omniphony_source.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_AMD64,
-                        _verifier.OMNIPHONY_REQUIRED_EXPORTS,
-                    ),
-                },
-            )
+            self.write_zip(package, {"foo_input_vgm.dll": make_pe(_verifier.IMAGE_FILE_MACHINE_I386)})
             with self.assertRaisesRegex(AssertionError, "machine mismatch"):
-                _verifier.verify_runtime_contracts(
-                    package, _verifier.VGM_RUNTIME_CONTRACTS, "VGM"
-                )
+                _verifier.verify_runtime_contracts(package, _verifier.VGM_RUNTIME_CONTRACTS, "VGM")
 
     def test_rejects_malformed_packaged_pe(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
-            self.write_zip(
-                package,
-                {
-                    "foo_input_vgm.dll": b"not-a-pe",
-                    "omniphony_source.dll": make_pe(
-                        _verifier.IMAGE_FILE_MACHINE_AMD64,
-                        _verifier.OMNIPHONY_REQUIRED_EXPORTS,
-                    ),
-                },
-            )
+            self.write_zip(package, {"foo_input_vgm.dll": b"not-a-pe"})
             with self.assertRaisesRegex(AssertionError, "valid packaged PE"):
-                _verifier.verify_runtime_contracts(
-                    package, _verifier.VGM_RUNTIME_CONTRACTS, "VGM"
-                )
+                _verifier.verify_runtime_contracts(package, _verifier.VGM_RUNTIME_CONTRACTS, "VGM")
 
     def test_rejects_missing_or_extra_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
-            self.write_zip(
-                package,
-                {
-                    "foo_input_vgm.dll": b"x",
-                    "unexpected.dll": b"x",
-                },
-            )
+            self.write_zip(package, {"foo_input_vgm.dll": b"x", "unexpected.dll": b"x"})
             with self.assertRaisesRegex(AssertionError, "payload mismatch"):
                 _verifier.verify_archive(package, _verifier.VGM_EXPECTED, "VGM")
 
@@ -204,22 +147,14 @@ class PrivateComponentPackageContractTest(unittest.TestCase):
         for bad_name in ("nested/foo_input_vgm.dll", "../foo_input_vgm.dll"):
             with self.subTest(bad_name=bad_name), tempfile.TemporaryDirectory() as tmp:
                 package = Path(tmp) / "bad.fb2k-component"
-                self.write_zip(
-                    package,
-                    {
-                        bad_name: b"x",
-                        "omniphony_source.dll": b"x",
-                    },
-                )
+                self.write_zip(package, {bad_name: b"x"})
                 with self.assertRaisesRegex(AssertionError, "unsafe/nested"):
                     _verifier.verify_archive(package, _verifier.VGM_EXPECTED, "VGM")
 
     def test_rejects_zero_byte_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             package = Path(tmp) / "bad.fb2k-component"
-            entries = {name: b"x" for name in _verifier.VGM_EXPECTED}
-            entries["omniphony_source.dll"] = b""
-            self.write_zip(package, entries)
+            self.write_zip(package, {"foo_input_vgm.dll": b""})
             with self.assertRaisesRegex(AssertionError, "zero-byte"):
                 _verifier.verify_archive(package, _verifier.VGM_EXPECTED, "VGM")
 
@@ -231,7 +166,6 @@ class PrivateComponentPackageContractTest(unittest.TestCase):
                 archive.writestr("FOO_SNESAPU.DLL", b"x")
                 archive.writestr("spcplayer.exe", b"x")
                 archive.writestr("SNESAPU.dll", b"x")
-                archive.writestr("omniphony_source.dll", b"x")
             with self.assertRaisesRegex(AssertionError, "duplicate"):
                 _verifier.verify_archive(package, _verifier.SPC_EXPECTED, "SPC")
 

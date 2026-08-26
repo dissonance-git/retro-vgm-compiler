@@ -22,7 +22,6 @@ on:
       - "tools/materialize_foo_input_vgm.py"
       - "tools/materialize_foo_snesapu.py"
       - "tools/reconstruct_vgm031_bootstrap.py"
-      - "tools/verify_omniphony_runtime_abi.py"
       - "tools/verify_private_component_packages.py"
       - "tools/verify_private_component_bundle.py"
       - "tools/verify_snesapu_package_runtime.ps1"
@@ -98,7 +97,6 @@ jobs:
           git --version
           python --version
           cmake --version
-          cargo --version
           $nasmVersion = (& $nasmExePath -v | Out-String).Trim()
           Write-Host $nasmVersion
           if ($nasmVersion -notmatch "NASM version $([regex]::Escape($nasmBinaryVersion))\b") {
@@ -110,11 +108,11 @@ jobs:
         shell: pwsh
         run: |
           python -B -m unittest tests.vgm.test_surround_omniphony_patch_contract
-          if ($LASTEXITCODE -ne 0) { throw 'VGM Surround/Omniphony contract failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'VGM Surround 7.1 contract failed' }
           python -B -m unittest tests.spc.test_surround_omniphony_patch_contract
-          if ($LASTEXITCODE -ne 0) { throw 'SPC Surround/Omniphony contract failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'SPC Surround 7.1 contract failed' }
           python -B -m unittest tests.vgm.test_omniphony_private_build_contract
-          if ($LASTEXITCODE -ne 0) { throw 'private Omniphony dependency contract failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'private 7.1 output-boundary contract failed' }
 
       - name: Run project identity and cadence semantic guards
         shell: pwsh

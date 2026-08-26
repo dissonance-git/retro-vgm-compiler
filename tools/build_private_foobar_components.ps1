@@ -13,8 +13,6 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $RepoRo
 $LibvgmCommit = '64e1de284e9a4305c54dd162ee8c33539a9bc0d1'
 $WtlCommit = 'd1cd80e9ce76c4d79da4cf556401ad7a970ce46f'
 $SpcPlayCommit = 'fc770e268ecacb4523699e2edc5c0efdf80957d6'
-$OmniphonyCommit = 'c5ff2988e2b088dc200f9ca76032f3b452706262'
-$RustToolchain = '1.88.0'
 $FoobarSdkDate = '2025-03-07'
 $FoobarSdkUrl = 'https://www.foobar2000.org/downloads/SDK-2025-03-07.7z'
 $VgmBootstrapSource = 'repository:imports/bootstrap/foo_input_vgm-0.31.base64-parts'
@@ -27,7 +25,6 @@ $ExpectedWtlAtlappBlob = '4b3fe38d846da65e2f04257dec2bd4c0bb63cf8e'
 $Libvgm = Join-Path $WorkRoot 'libvgm'
 $Wtl = Join-Path $WorkRoot 'WTL'
 $SpcPlay = Join-Path $WorkRoot 'spcplay'
-$Omniphony = Join-Path $WorkRoot 'omniphony'
 $SdkExtract = Join-Path $WorkRoot 'foobar-sdk'
 $VgmTree = Join-Path $WorkRoot 'vgm-current'
 $SpcRoot = Join-Path $WorkRoot 'foo-snesapu-current'
@@ -113,7 +110,7 @@ function Clone-Pin([string]$Url, [string]$Path, [string]$Commit) {
     if ($actual -ne $Commit) { throw "revision drift for ${Path}: expected $Commit, got $actual" }
 }
 
-foreach ($command in @('git', 'python', 'cmake', 'ctest', 'rustup', 'cargo', 'nasm', '7z')) { Need-Command $command }
+foreach ($command in @('git', 'python', 'cmake', 'ctest', 'nasm', '7z')) { Need-Command $command }
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (!(Test-Path $vswhere)) { throw 'Visual Studio 2022 / vswhere.exe not found' }
@@ -159,19 +156,8 @@ Assert-GitBlob $sdkProject.FullName $ExpectedSdkProjectBlob 'foobar SDK project'
 Assert-GitBlob (Join-Path $sdkRoot 'pfc\pfc.vcxproj') $ExpectedPfcProjectBlob 'foobar pfc project'
 Require-File (Join-Path $fb2k 'shared\shared-x64.lib') 'foobar SDK shared x64 library'
 
-Write-Host '== 3. Checkout and validate the Omniphony source renderer =='
-Clone-Pin 'https://github.com/dissonance-git/Omniphony-Headphones.git' $Omniphony $OmniphonyCommit
-Run 'rustup' @('toolchain', 'install', $RustToolchain, '--profile', 'minimal')
-$OmniRenderer = Join-Path $Omniphony 'omniphony-renderer'
-Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--lib') $OmniRenderer
-Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'abi_layout') $OmniRenderer
-Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'dynamic_source_motion') $OmniRenderer
-Run 'cargo' @("+$RustToolchain", 'test', '-p', 'source_ffi', '--test', 'source_episode_attack_extent') $OmniRenderer
-Run 'cargo' @("+$RustToolchain", 'build', '--profile', 'release-deploy', '-p', 'source_ffi') $OmniRenderer
-$OmniDll = Join-Path $OmniRenderer 'target\release-deploy\omniphony_source.dll'
-Require-File $OmniDll 'Omniphony source DLL'
-Assert-PEMachine $OmniDll 0x8664 'Omniphony source DLL'
-Run 'python' @((Join-Path $RepoRoot 'tools\verify_omniphony_runtime_abi.py'), $OmniDll)
+Write-Host '== 3. Keep spatial rendering at the foobar output boundary =='
+Write-Host 'Input components emit standard 7.1; install/use the Omniphony foobar output component separately.'
 
 Write-Host '== 4. Patch and build pinned libvgm for exact source observation/replacement =='
 Run 'python' @((Join-Path $RepoRoot 'patches\libvgm\apply_source_capture.py'), $Libvgm)
@@ -273,8 +259,6 @@ Require-File $FooSpc 'private SPC component'
 Assert-PEMachine $FooSpc 0x8664 'private SPC component'
 
 Write-Host '== 9. Package installable private components and final bundle =='
-Copy-Item $OmniDll (Join-Path $VgmOutDir 'omniphony_source.dll') -Force
-Copy-Item $OmniDll (Join-Path $SpcComponentOutDir 'omniphony_source.dll') -Force
 $VgmPackage = Join-Path $OutputRoot 'foo_input_vgm.private.fb2k-component'
 $SpcPackage = Join-Path $OutputRoot 'foo_snesapu.private.fb2k-component'
 $Bundle = Join-Path $OutputRoot 'private-foobar-vgm-spc.zip'
@@ -283,11 +267,9 @@ $SpcPackageStage = Join-Path $WorkRoot 'package-spc'
 $BundleStage = Join-Path $WorkRoot 'bundle'
 New-Item -ItemType Directory $VgmPackageStage, $SpcPackageStage, $BundleStage -Force | Out-Null
 Copy-Item $FooVgm (Join-Path $VgmPackageStage 'foo_input_vgm.dll') -Force
-Copy-Item $OmniDll (Join-Path $VgmPackageStage 'omniphony_source.dll') -Force
 Copy-Item $FooSpc (Join-Path $SpcPackageStage 'foo_snesapu.dll') -Force
 Copy-Item $SpcPlayerExe (Join-Path $SpcPackageStage 'spcplayer.exe') -Force
 Copy-Item $SnesapuDll (Join-Path $SpcPackageStage 'SNESAPU.dll') -Force
-Copy-Item $OmniDll (Join-Path $SpcPackageStage 'omniphony_source.dll') -Force
 
 Push-Location $VgmPackageStage
 try { Run '7z' @('a', '-tzip', '-mx=9', $VgmPackage, '*') }
@@ -302,11 +284,9 @@ $VgmBundleDir = Join-Path $BundleStage 'VGM'
 $SpcBundleDir = Join-Path $BundleStage 'SPC'
 New-Item -ItemType Directory $VgmBundleDir, $SpcBundleDir -Force | Out-Null
 Copy-Item $FooVgm (Join-Path $VgmBundleDir 'foo_input_vgm.dll') -Force
-Copy-Item $OmniDll (Join-Path $VgmBundleDir 'omniphony_source.dll') -Force
 Copy-Item $FooSpc (Join-Path $SpcBundleDir 'foo_snesapu.dll') -Force
 Copy-Item $SpcPlayerExe (Join-Path $SpcBundleDir 'spcplayer.exe') -Force
 Copy-Item $SnesapuDll (Join-Path $SpcBundleDir 'SNESAPU.dll') -Force
-Copy-Item $OmniDll (Join-Path $SpcBundleDir 'omniphony_source.dll') -Force
 
 $manifest = [ordered]@{
     built_at_utc = [DateTime]::UtcNow.ToString('o')
@@ -324,10 +304,6 @@ $manifest = [ordered]@{
     libvgm = [ordered]@{ commit = $LibvgmCommit }
     wtl = [ordered]@{ commit = $WtlCommit }
     spcplay = [ordered]@{ commit = $SpcPlayCommit }
-    omniphony = [ordered]@{
-        commit = $OmniphonyCommit
-        rust_toolchain = $RustToolchain
-    }
     outputs = @(
         'foo_input_vgm.private.fb2k-component',
         'foo_snesapu.private.fb2k-component',
@@ -344,31 +320,30 @@ Private foobar2000 builds generated from VGM Compiler.
 VGM package:
   foo_input_vgm.private.fb2k-component
   - foo_input_vgm.dll
-  - omniphony_source.dll
-  Surround enables Omniphony source-aware Genesis rendering.
-  enhanced is independent.
+  Surround emits a source-derived standard 7.1 Genesis bed.
+  enhanced is disabled for this milestone.
 
 SPC package:
   foo_snesapu.private.fb2k-component
   - foo_snesapu.dll
   - spcplayer.exe
   - SNESAPU.dll
-  - omniphony_source.dll
-  Surround enables Omniphony source-aware SPC rendering.
-  enhanced is independent.
+  Surround emits a source-derived standard 7.1 SPC bed.
+  enhanced is disabled for this milestone.
+
+Use the Omniphony foobar output component separately to render these authored
+7.1 beds to headphones. The input packages contain no decoder-side Omniphony DLL.
 
 Manual replacement bundle:
   private-foobar-vgm-spc.zip
 
   VGM/
     foo_input_vgm.dll
-    omniphony_source.dll
 
   SPC/
     foo_snesapu.dll
     spcplayer.exe
     SNESAPU.dll
-    omniphony_source.dll
 
 spcplayer.exe is the required SNES child player for this build. Do not substitute or rename spcplay.exe.
 "@ | Set-Content $readmePath -Encoding UTF8
