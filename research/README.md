@@ -27,69 +27,39 @@ research/
 └── rendering/    fidelity / equivalence / reconstruction / enhancement
 ```
 
-A named game gets a project folder only when the game itself is an integrative testbed. Otherwise it remains a corpus or control under the durable question it informs.
-
 ## Evidence, policy, and derived state
 
-Keep these ownership classes separate:
+Keep these classes separate:
 
 ```text
 source / documentary evidence     tracked when required for reproducibility
 research policy / admission data  tracked canonical input
 frozen preregistration            tracked experimental contract
-reusable result with current use  tracked only when it is itself evidence
-analysis cache / feature cache    disposable derived state
-score / matrix / projection       regenerated unless explicitly admitted as evidence
+frozen result used as evidence    tracked with provenance and stated reason
+analysis / feature cache          disposable derived state
+score / matrix / projection       regenerated unless explicitly promoted
 ```
 
-Generated analysis caches belong under ignored runtime paths such as `research/cache/` or another caller-selected ignored location. A tracked label catalog, admission file, policy, or preregistration is not a cache merely because a tool consumes it.
+Generated caches belong under ignored runtime paths such as `research/cache/` or another caller-selected ignored location. Scores, matrices, projections, reports, and feature capsules are not repository truth merely because they are expensive to compute.
 
-A research result may support a roadmap change or a durable contract change, but it does not silently become either. Promotion is explicit.
+Before committing a generated object, its owning experiment must state why regeneration is insufficient and what evidential obligation requires the exact bytes to remain tracked. Without that promotion record, keep it disposable.
+
+A filename such as `matrix`, `validation`, `calibration`, or `result` is not enough to classify an object. Frozen panels, preregistrations, admissions, policies, and result records that an experiment explicitly treats as evidence remain tracked. Delete only derived state whose owner identifies it as reproducible intermediate output.
+
+A research result may support a roadmap or durable-contract change, but promotion is explicit.
 
 ## Routing
 
-| Question | Owner |
-| --- | --- |
-| general whole-track / soundtrack method research | `music/` |
-| composer grammar / attribution method | `music/` |
-| Sonic 3 integrative attribution case | `projects/sonic3/` |
-| Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
-| source / driver / chip mechanism | `formats/` |
-| runtime/state relation | `runtime/` |
-| external upstream / specification / implementation evidence | `validation/upstreams.md` |
-| external music-representation pressure test | `validation/music-representation-systems.md` |
-| OpenMusic-specific pressure evidence | `validation/openmusic-libraries.md` |
-| other external method / observatory / control | `validation/` |
-| rendering equivalence / reconstruction / enhancement | `rendering/` |
+Use the durable question as the route:
 
-For Genesis source semantics, the source ledger owns provenance and re-entry. Conceptual and experimental claims remain with the format-specific research owner that asks the question. Shared evidence does not require shared ownership.
+- general musical/creator methods → `music/`
+- named integrative Sonic 3 program → `projects/sonic3/`
+- source/driver/chip investigations → `formats/`
+- runtime/state investigations → `runtime/`
+- upstream/specification/representation observatories and controls → `validation/`
+- rendering/equivalence/reconstruction research → `rendering/`
 
-## Sonic 3 testbed
-
-`projects/sonic3/` owns the integrative Sonic 3 research program spanning attribution, ROM/SMPS evidence, cross-soundtrack controls, and frozen validation generations.
-
-Use the narrowest current route:
-
-```text
-projects/sonic3/README.md
-→ canonical policy / admission input
-→ exact frozen preregistration
-→ disposable creator-blind derived state if required
-→ execution / result for that generation
-```
-
-Keep creative roles distinct:
-
-```text
-composition
-!= arrangement
-!= sequence / sound-data programming
-!= driver programming
-!= patch / sample design
-!= final realization
-```
-
-Similarity can support a calibrated candidate. It cannot establish historical authorship by itself.
+External evidence registries explain why a source matters. Exact mutable build pins belong to the operational owner that verifies them, while immutable imported-package identities belong to `imports/MANIFEST.md`.
 
 ## Placement law
 
@@ -99,9 +69,10 @@ Before adding research material:
 2. Distinguish evidence, method contract, canonical policy input, derived object, and bounded result.
 3. Treat named games as controls unless the game itself is the integrative research problem.
 4. Extend an owner before creating a peer narrative.
-5. Keep status and priority out of research prose unless the statement is itself part of a frozen experimental contract.
-6. Do not place surveys, literature syntheses, upstream registries, observatory notes, or pressure tests under `docs/` merely because their conclusions are useful.
-7. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
+5. Keep current project status out of research prose unless it is part of a frozen experiment.
+6. Keep surveys, literature syntheses, upstream registries, observatories, and pressure tests in `research/`, not `docs/`.
+7. Promote a result into durable project law only after a discriminating experiment earns the generalization.
+8. Do not track a mechanically derivable inventory or generated analysis object when the owner can reproduce it exactly.
 
 Navigation compression must preserve evidence boundaries:
 

@@ -2,13 +2,13 @@
 
 `model/` owns **source-independent musical and evidential contracts that have earned sharing across materially different source families**.
 
-Start with [`../docs/architecture.md`](../docs/architecture.md) for the common semantic/evidence laws and [`../docs/vgm-compiler-roadmap.md`](../docs/vgm-compiler-roadmap.md) for the current frontier. Use `python tools/repository_catalog.py` from the repository root when exact mechanical inventory is useful.
+Start with [`../docs/architecture.md`](../docs/architecture.md) for common semantic/evidence law. Read [`../docs/vgm-compiler-roadmap.md`](../docs/vgm-compiler-roadmap.md) only when the task depends on current implementation status or priority. Use `python tools/repository_catalog.py --focus <concept>` when exact mechanical routing is useful.
 
 ## Semantic ladder
 
 ```text
 provenance-aware observations
-→ source / authored / driver semantic ancestry and explicit gaps
+→ source / authored / driver ancestry and explicit gaps
 → pitch / timing / performance evidence
 → voice episodes and persistent parts
 → motifs and transformations
@@ -21,7 +21,7 @@ provenance-aware observations
 → human-facing musical explanation
 ```
 
-Individual headers implement bounded relations on this ladder. Higher layers may summarize lower evidence but may not erase uncertainty or provenance.
+Higher layers may summarize lower evidence but may not erase uncertainty or provenance.
 
 ## Ownership boundary
 
@@ -32,25 +32,8 @@ shared implementation convenience
 != shared semantic law
 ```
 
-BRR reconstruction, FM topology, driver allocation, xSF platform execution, and other source-native mechanisms remain in their owning components until independent source families genuinely require the same abstraction without erasing useful information.
+BRR reconstruction, FM topology, driver allocation, xSF platform execution, and other source-native mechanisms remain in their owning components until materially different source families require the same abstraction without information loss.
 
-The shared `execution_semantic_provenance` contract does **not** make source-native driver grammars generic. It only provides a common evidential shape for facts that materially different driver families can establish independently: source/authored/driver ancestry, native-token preservation, documentary annotations, hypotheses, and explicit missing-information gaps.
-
-## Navigation hints
-
-Common filename families are descriptive:
-
-```text
-*execution_semantic*  source/authored/driver ancestry + explicit information gaps
-*pitch*               pitch evidence and bridges
-*persistent_part*     identity above physical channels
-*motif* / *phrase*    recurring material and form building blocks
-*harmon* / *chord*    vertical and harmonic relations
-*bass* / *voice*      cross-part relations
-*cadential* / *section* formal evidence
-*composer_grammar*    creator-blind recurring grammar evidence
-*attribution*         role-aware evaluation/hypothesis contracts
-*discourse*           human-readable projections over evidence
-```
+The shared `execution_semantic_provenance` contract provides a common evidential shape for facts independent source families can establish: source/authored/driver ancestry, native-token preservation, documentary annotations, hypotheses, and explicit missing-information gaps. It does not make source-native driver grammars generic.
 
 Choose the semantic layer first, then search within `model/`. Repository-wide search is the fallback, not the entry point.

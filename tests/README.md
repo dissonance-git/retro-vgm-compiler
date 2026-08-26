@@ -2,21 +2,7 @@
 
 `tests/` owns executable contracts and immutable real-music evidence. Tests validate current behavior, boundaries, and evidence obligations. They do not preserve retired implementation shapes merely because those shapes once existed.
 
-## Owners
-
-| Path | Owns |
-| --- | --- |
-| `model/` | shared musical/evidence semantic regressions |
-| `vgm/` | VGM/Genesis execution, source, synthesis, bridge, and semantic regressions |
-| `spc/` | SPC/SNESAPU state, runtime, source, and reconstruction regressions |
-| `hes/` | HES-specific contracts |
-| `integration/` | behavior spanning multiple durable owners |
-| `private_components/` | package/build/runtime fixtures for private installable components |
-| `spc_provider_contracts/` | provider-facing SPC contract fixtures |
-| `corpus/` | immutable real-music controls, provenance, and machine inventory |
-| root `test_*.py` | repository/build/package contracts that do not belong to one source family |
-
-The real-music corpus contract is [`corpus/README.md`](corpus/README.md). Machine inventory and provenance live beside the corpus in tracked manifests and hashes.
+Choose the narrowest current owner: shared-model regressions live with model tests, source-family regressions with their family tests, cross-owner behavior in integration tests, repository/build/package contracts at the repository-contract layer, and immutable real-music controls under the corpus owner. Use the tree or `repository_catalog.py` for exact directory inventory rather than copying it here.
 
 ## Test law
 
@@ -29,13 +15,9 @@ current owner
 → executable falsifier
 ```
 
-Do not require deleted helpers, obsolete filenames, historical prose, or generated artifacts unless their continued existence is itself a current contract.
+Do not require deleted helpers, obsolete filenames, historical prose, or generated artifacts unless their continued existence is itself a current contract. When a refactor removes duplicate ownership, update tests to validate the surviving invariant rather than recreating the retired route.
 
-When a refactor removes duplicate ownership, update tests to validate the surviving invariant rather than recreating the retired route.
-
-## Evidence classes
-
-Keep these outcomes distinct:
+Keep outcome classes distinct:
 
 ```text
 unit / semantic regression
@@ -58,6 +40,6 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-`tests/run_full_core_suite.py` provides a repository-owned broader suite. Focused source-family or model tests should run first when they can falsify a change more cheaply.
+`tests/run_full_core_suite.py` is the repository-owned broader core/provider/package route. `tools/run_core_tests.py` independently compiles dependency-free C++ tests against the complete local core so unregistered translation units cannot hide behind CMake registration. Those routes are complementary, not aliases.
 
 Generated captures and outputs belong in ignored runtime paths such as `tests/output/`, not in the tracked test tree unless a fixture is explicitly canonical evidence.
