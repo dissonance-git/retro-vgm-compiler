@@ -42,6 +42,10 @@ jobs:
     timeout-minutes: 90
 
     steps:
+      - name: Preserve LF checkout semantics
+        shell: pwsh
+        run: git config --global core.autocrlf false
+
       - name: Checkout exact source
         uses: actions/checkout@v4
 
@@ -139,7 +143,6 @@ jobs:
       - name: Build and audit installable components
         shell: pwsh
         run: |
-          git config --global core.autocrlf false
           $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
           $rsp = Join-Path $PWD 'Directory.Build.rsp'

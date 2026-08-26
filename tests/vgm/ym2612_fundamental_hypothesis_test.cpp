@@ -149,7 +149,10 @@ int main() {
         simple,
         123,
         77,
-        time_span{{time_domain::source, 10, 0, 0}, {time_domain::source, 20, 0, 0}},
+        time_span{
+            time_coordinate{time_domain::source, 10, 0, 0},
+            time_coordinate{time_domain::source, 20, 0, 0},
+        },
         "ym2612-operator-network-analysis");
     CHECK(performed.has_value());
     CHECK(performed->role == musical_pitch_role::performed);

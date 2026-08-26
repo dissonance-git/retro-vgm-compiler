@@ -195,8 +195,8 @@ int main() {
     pac.phrase_cross_part_grounded = true;
     pac.source_root_position = true;
     pac.target_root_position = true;
-    pac.final_soprano_observed = true;
-    pac.final_soprano_tonic = true;
+    pac.final_melodic_arrival_grounded = true;
+    pac.final_melodic_tonic = true;
     pac.confidence = 0.82;
 
     const auto cadence_a = ionian_cadence_as_grammar_observation(
@@ -211,6 +211,7 @@ int main() {
         creative_attribution_role::composer);
     CHECK(cadence_a.rule_key == cadence_b.rule_key);
     CHECK(cadence_a.rule_key.find("perfect_authentic_cadence_candidate") != std::string::npos);
+    CHECK(cadence_a.rule_key.find("final_melodic_tonic=true") != std::string::npos);
     CHECK(cadence_a.observation.dimension == composer_grammar_dimension::phrase_form);
 
     // Two independent works from Sonic 3 alone can establish recurrence within

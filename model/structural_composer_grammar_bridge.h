@@ -258,9 +258,9 @@ inline blind_structural_grammar_observation ionian_cadence_as_grammar_observatio
         std::string{cadence.source_root_position ? "true" : "false"} +
         ";target_root_position=" +
         std::string{cadence.target_root_position ? "true" : "false"} +
-        ";soprano_tonic=" +
-        std::string{cadence.final_soprano_observed
-            ? (cadence.final_soprano_tonic ? "true" : "false")
+        ";final_melodic_tonic=" +
+        std::string{cadence.final_melodic_arrival_grounded
+            ? (cadence.final_melodic_tonic ? "true" : "false")
             : "unresolved"};
 
     return make_blind_structural_observation(
@@ -269,7 +269,7 @@ inline blind_structural_grammar_observation ionian_cadence_as_grammar_observatio
         composer_grammar_dimension::phrase_form,
         role_scope,
         cadence.confidence,
-        "theory-scoped cadence candidate grounded at a cross-part phrase arrival; absolute tonic and creator identity are excluded from the signature");
+        "theory-scoped cadence candidate grounded at a cross-part phrase arrival; final melodic tonic status requires a separately grounded persistent melodic part; absolute tonic and creator identity are excluded from the signature");
 }
 
 inline blind_structural_grammar_observation tonal_region_as_grammar_observation(
