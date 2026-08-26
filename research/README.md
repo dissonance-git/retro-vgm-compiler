@@ -1,10 +1,10 @@
 # Research
 
-`research/` is organized by **durable research program**, not date, game count, or latest experiment. Research can be dense; duplication and ambiguous ownership are the enemies.
+`research/` is organized by durable research question, not date, experiment order, or game count. Dense evidence is welcome; duplicate ownership and chronology-shaped navigation are not.
 
 > Few trunks, many chapters. One canonical owner per question.
 
-## Shelf
+## Programs
 
 ```text
 research/
@@ -16,49 +16,53 @@ research/
 └── rendering/    fidelity / equivalence / reconstruction / enhancement
 ```
 
-A named game gets a project folder only when the game itself is an integrative testbed. Otherwise it remains a corpus/control under the general program that owns the question.
+A named game gets a project folder only when the game itself is an integrative testbed. Otherwise it remains a corpus or control under the durable question it informs.
 
-Derived analysis caches are runtime state, not research documents. Tools may materialize them under ignored `research/cache/` or another caller-selected path; they are never source truth and are never committed.
+## Evidence, policy, and derived state
 
-## Fast routing
+Keep these ownership classes separate:
+
+```text
+source / documentary evidence     tracked when required for reproducibility
+research policy / admission data  tracked canonical input
+frozen preregistration            tracked experimental contract
+reusable result with current use  tracked only when it is itself evidence
+analysis cache / feature cache    disposable derived state
+score / matrix / projection       regenerated unless explicitly admitted as evidence
+```
+
+Generated analysis caches belong under ignored runtime paths such as `research/cache/` or another caller-selected ignored location. A tracked label catalog, admission file, policy, or preregistration is not a cache merely because a tool consumes it.
+
+## Routing
 
 | Question | Owner |
 | --- | --- |
-| whole-track / soundtrack understanding | `music/` + `docs/musical-understanding.md` |
+| whole-track / soundtrack understanding | `music/` + `../docs/musical-understanding.md` |
 | composer grammar / attribution method | `music/` |
 | Sonic 3 integrative attribution case | `projects/sonic3/` |
 | Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
 | source / driver / chip mechanism | `formats/` |
 | runtime/state relation | `runtime/` |
-| external pressure test | `validation/` |
+| external method or representation pressure test | `validation/` |
 | rendering equivalence / reconstruction / enhancement | `rendering/` |
 
-For Genesis source semantics, the ledger is provenance/re-entry, while conceptual and experimental owners remain the format-specific documents around it. Inventory, generic model conclusions, comparative driver anatomy, and forward/inverse validation are separate concerns even when they share evidence.
+For Genesis source semantics, the source ledger owns provenance and re-entry. Conceptual and experimental claims remain with the format-specific research owner that asks the question. Shared evidence does not require shared ownership.
 
-## Sonic 3
+## Sonic 3 testbed
 
-`projects/sonic3/` is one program spanning attribution, ROM/SMPS evidence, cross-soundtrack controls, and validation generations.
+`projects/sonic3/` owns the integrative Sonic 3 research program spanning attribution, ROM/SMPS evidence, cross-soundtrack controls, and frozen validation generations.
 
-Use:
+Use the narrowest current route:
 
 ```text
 projects/sonic3/README.md
-→ canonical policy / admission file
+→ canonical policy / admission input
 → exact frozen preregistration
-→ creator-blind derived cache if required
+→ disposable creator-blind derived state if required
 → execution / result for that generation
 ```
 
-Do not merge these ownership layers:
-
-```text
-attribution-control-admissions.jsonl   grounded role evidence
-cube-calibration-policy.json           CUBE rules, holdouts, transfer boundary
-role-credit-index.jsonl                Genesis cache-routing controls
-derived cache                          disposable creator-blind song objects
-```
-
-`tools/build_admitted_composer_caches.py` joins canonical admissions with routing controls at runtime. Cross-format controls remain visible without copying attribution state into a second source of truth.
+Keep creative roles distinct:
 
 ```text
 composition
@@ -75,13 +79,13 @@ Similarity can support a calibrated candidate. It cannot establish historical au
 
 Before adding research material:
 
-1. Find the existing durable question that owns it.
-2. Distinguish evidence, method contract, reusable derived object, and bounded result.
+1. Find the durable question that already owns the claim.
+2. Distinguish evidence, method contract, canonical policy input, derived object, and bounded result.
 3. Treat named games as controls unless the game itself is the integrative research problem.
 4. Extend an owner before creating a peer narrative.
-5. Move a result into a durable contract only after the experiment has earned that generalization.
+5. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
 
-Navigation compression must never erase evidence boundaries:
+Navigation compression must preserve evidence boundaries:
 
 ```text
 source semantics != runtime execution != heard result

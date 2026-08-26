@@ -1,8 +1,8 @@
 # AGENTS.md
 
-This file is the operational contract for coding agents. Project meaning lives in `docs/architecture.md`; active priorities live in `docs/vgm-compiler-roadmap.md`. Do not duplicate those documents here.
+This file is the operating contract for coding agents. Project meaning lives in `docs/architecture.md`, the musical target lives in `docs/musical-understanding.md`, and active priorities live in `docs/vgm-compiler-roadmap.md`. Do not restate those contracts here.
 
-## Enter the repo
+## Enter the repository
 
 For substantive work:
 
@@ -10,77 +10,61 @@ For substantive work:
 current main HEAD
 → README.md
 → AGENTS.md
-→ docs/vgm-compiler-roadmap.md
 → smallest task owner
 → recent commits touching that owner
-→ exact code/test/document
+→ exact code / test / contract
 ```
 
-Use `python tools/repository_catalog.py --focus <concept>` before repository-wide search. Use the unfiltered catalog only when the task genuinely concerns repository shape. Search inside the chosen owner before searching the whole repository.
+Use `python tools/repository_catalog.py --focus <concept>` before broad repository search. Search inside the selected owner before widening. Use the unfiltered catalog only when repository shape itself is the task.
 
 ## Change law
 
-1. Work from current `main`; do not create branches or PRs unless explicitly requested.
-2. Before replacing a file, re-read the current file from current `main`.
-3. Make the smallest coherent change that removes the real uncertainty or duplication. Dense implementations and documents are welcome when the task requires them.
-4. Preserve unrelated concurrent work. Never force-push.
-5. Prefer extending a canonical owner over creating a peer document, tool, cache, or abstraction.
-6. Generated data and caches stay untracked. Git history is the archive; superseded repository state does not remain in the active tree.
-7. Do not rewrite immutable corpus source bytes or imported upstream evidence during cleanup/refactoring.
+1. Work from current `main`. Do not create branches or pull requests unless explicitly requested.
+2. Re-read a file from current `main` immediately before replacing it.
+3. Prefer one canonical owner over a peer summary, redirect document, duplicate registry, compatibility tombstone, or manually maintained index.
+4. Git history owns superseded repository state. Keep historical-origin material only when it remains current evidence, provenance, a reproducibility input, or an implementation obligation.
+5. Preserve unrelated concurrent work. Never force-push.
+6. Never rewrite immutable corpus bytes or imported upstream evidence during cleanup or refactoring.
+7. Generated data, caches, build products, and task projections are disposable unless a current contract explicitly makes an artifact canonical evidence.
 8. After publication, verify the resulting commit and distinguish executed evidence from intended behavior.
 
 Direct user correction outranks repository prose.
 
-## Context efficiency law
+## Context law
 
-Treat human attention and LLM context as finite compute. Maximize **useful decisions and evidence per token consumed**.
+Human attention and LLM context are finite compute.
 
-- Prefer a small projection from canonical truth over a duplicated summary or parallel index.
-- Collapse equivalent routes, names, wrappers, and explanations into the smallest owner that preserves meaning.
-- Derive navigational metadata mechanically when it can be derived; do not make agents read or maintain another database.
-- Prefer focused search and exact files over broad tree ingestion.
-- Compression succeeds only when provenance, uncertainty, validation routes, and task capability are preserved or improved.
-- When two correct designs are otherwise equivalent, prefer the one requiring less search, less repeated context, and fewer tokens to reach the same or stronger conclusion.
+- Route to the smallest canonical owner that can answer the task.
+- Prefer mechanically derived relations over duplicated prose navigation.
+- Read relation shape before opening every related file in full.
+- Widen context only when required recall, uncertainty, or verification demands it.
+- A smaller context is better only when correctness, provenance, required recall, task capability, and verification are preserved or improved.
+- When two correct designs are otherwise equivalent, prefer the one requiring fewer searches, fewer repeated explanations, and less context to reach the same verified conclusion.
 
-The target is not merely fewer files or shorter prose. The target is a widening gap between **context consumed** and **reasoning power obtained**.
+The target is useful reasoning per unit of context, not arbitrary brevity.
 
 ## Ownership
 
-```text
-model/       shared musical/evidence contracts only after cross-source agreement
-components/  source-family/device-specific semantics and runtime machinery
-tests/       executable regressions + immutable corpus
-research/    bounded evidence, experiments, testbeds, preregistrations
-docs/        dense current/future contracts
-tools/       reusable operations, not hidden state
-imports/     preserved external evidence required by current work
-patches/     maintained external-source patch stacks
-```
+Top-level ownership is defined in `README.md`; local owner maps belong beside the objects they route. Semantic and evidence laws belong in `docs/architecture.md`. Do not turn `AGENTS.md` into a second repository manual.
 
-If an existing owner can absorb a distinction cleanly, use it. A successful refactor leaves fewer places the next agent must search.
-
-## Evidence law
-
-Never collapse these coordinates:
+Before adding a file or abstraction, ask:
 
 ```text
-source fact != musical inference != listener/perceptual claim
-exact != derived != hypothesis
-artifact identity != work identity != authorship
-physical slot != voice episode != persistent part != auditory stream
+Does a current owner already exist?
+Can this relation be derived?
+Would another writable surface create competing truth?
+What current obligation would this new object uniquely own?
 ```
 
-Unknown is not negative evidence. A higher claim may compress support but must retain a route to the evidence and uncertainty beneath it. Cadence/form/attribution layers may not circularly manufacture their own prerequisites.
+If the last question has no strong answer, extend an existing owner instead.
 
-See `docs/architecture.md` for the full contract.
+## Evidence and source boundaries
 
-## Source and abstraction rule
+Do not collapse source fact, musical inference, perceptual claim, documentary evidence, or hypothesis into one evidence state. Preserve source-native semantics before normalization. Shared abstractions are earned when materially different source families need the same relation without losing useful native distinctions.
 
-Respect source semantics before normalization. VGM/VGZ logs, SPC snapshots, xSF effective objects, native drivers/sequences, MML/MIDI/tracker source, and audio expose different information.
+The complete rules are canonical in `docs/architecture.md`.
 
-A mechanism becomes shared only when materially different source families require the same abstraction without erasing useful native distinctions. Shared implementation convenience is not shared semantic law.
-
-## Validation
+## Verification
 
 Default core route:
 
@@ -92,18 +76,6 @@ ctest --test-dir build --output-on-failure
 
 Prefer focused tests first, then broader suites when the touched surface warrants them. Use real corpus controls when a claim crosses from implementation into preserved music.
 
-Do not call CI green unless a runner actually executed successfully. Do not weaken an acceptance gate to obtain an artifact.
+Do not call CI green unless a runner executed successfully. Do not weaken an acceptance gate merely to obtain an artifact.
 
-For private foobar2000 VGM/SPC delivery, `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1` are canonical. A DLL compile or archive creation alone is not publish-ready.
-
-## Documentation rule
-
-Optimize active documentation for **density and ownership**, not brevity.
-
-- `README.md` = identity + map + basic commands;
-- `AGENTS.md` = agent operating constraints;
-- `docs/architecture.md` = durable semantic/evidence architecture;
-- `docs/vgm-compiler-roadmap.md` = current frontier and next discriminating work;
-- specialized docs = dense independent contracts or research observatories with a distinct owner.
-
-Do not create status diaries, compatibility tombstones, migration narratives, duplicate inventories, generated navigation files, or historical snapshots in the active tree. Superseded information is recoverable from Git history.
+Private foobar2000 VGM/SPC delivery is owned by `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1`. A DLL compile or archive creation alone is not publish-ready.
