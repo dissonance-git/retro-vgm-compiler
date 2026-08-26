@@ -32,11 +32,14 @@ SPEC.loader.exec_module(strict)
 
 DSP_API_OLD = """\ttypedef short sample_t;
 \tvoid set_output( sample_t* out, int out_size );
+
+\t// Number of samples written to output since it was last set, always
 """
 
 DSP_API_NEW = """\ttypedef short sample_t;
 \tvoid set_output( sample_t* out, int out_size );
-\n\t// RETRO_VGM_COMPILER_SNES_SPC_NATIVE_SPATIAL_OBSERVER
+
+\t// RETRO_VGM_COMPILER_SNES_SPC_NATIVE_SPATIAL_OBSERVER
 \t// Observation only: eight pre-route dry voices plus the shared post-EVOL
 \t// return for the same native DSP frame. No source identity is inferred here.
 \ttypedef void (*native_spatial_observer_t)(
@@ -46,12 +49,18 @@ DSP_API_NEW = """\ttypedef short sample_t;
 \t\tsample_t echo_left,
 \t\tsample_t echo_right );
 \tvoid set_native_spatial_observer( native_spatial_observer_t observer, void* user );
+
+\t// Number of samples written to output since it was last set, always
 """
 
-DSP_STATE_OLD = """\tvoid init_counter();
+DSP_STATE_OLD = """\tstate_t m;
+\t
+\tvoid init_counter();
 """
 
-DSP_STATE_NEW = """\t// Host-only observation state. These values are outside state_t and therefore
+DSP_STATE_NEW = """\tstate_t m;
+\t
+\t// Host-only observation state. These values are outside state_t and therefore
 \t// cannot enter emulator save/copy state or alter causal DSP state.
 \tnative_spatial_observer_t native_spatial_observer = 0;
 \tvoid* native_spatial_user = 0;
@@ -61,9 +70,13 @@ DSP_STATE_NEW = """\t// Host-only observation state. These values are outside st
 """
 
 DSP_INLINE_OLD = """inline void SPC_DSP::mute_voices( int mask ) { m.mute_mask = mask; }
+
+inline bool SPC_DSP::check_kon()
 """
 
-DSP_INLINE_NEW = """inline void SPC_DSP::set_native_spatial_observer(
+DSP_INLINE_NEW = """inline void SPC_DSP::mute_voices( int mask ) { m.mute_mask = mask; }
+
+inline void SPC_DSP::set_native_spatial_observer(
 \t\tnative_spatial_observer_t observer, void* user )
 {
 \tnative_spatial_observer = observer;
@@ -73,29 +86,38 @@ DSP_INLINE_NEW = """inline void SPC_DSP::set_native_spatial_observer(
 \tnative_echo_left = 0;
 }
 
-inline void SPC_DSP::mute_voices( int mask ) { m.mute_mask = mask; }
+inline bool SPC_DSP::check_kon()
 """
 
 SNES_API_OLD = """\ttypedef short sample_t;
 \tvoid set_output( sample_t* out, int out_size );
+
+\t// Number of samples written to output since last set
 """
 
 SNES_API_NEW = """\ttypedef short sample_t;
 \tvoid set_output( sample_t* out, int out_size );
-\n\ttypedef SPC_DSP::native_spatial_observer_t native_spatial_observer_t;
+
+\ttypedef SPC_DSP::native_spatial_observer_t native_spatial_observer_t;
 \tvoid set_native_spatial_observer( native_spatial_observer_t observer, void* user );
+
+\t// Number of samples written to output since last set
 """
 
 SNES_INLINE_OLD = """inline void SNES_SPC::mute_voices( int mask ) { dsp.mute_voices( mask ); }
+\t
+inline void SNES_SPC::disable_surround( bool disable ) { dsp.disable_surround( disable ); }
 """
 
-SNES_INLINE_NEW = """inline void SNES_SPC::set_native_spatial_observer(
+SNES_INLINE_NEW = """inline void SNES_SPC::mute_voices( int mask ) { dsp.mute_voices( mask ); }
+\t
+inline void SNES_SPC::set_native_spatial_observer(
 \t\tnative_spatial_observer_t observer, void* user )
 {
 \tdsp.set_native_spatial_observer( observer, user );
 }
 
-inline void SNES_SPC::mute_voices( int mask ) { dsp.mute_voices( mask ); }
+inline void SNES_SPC::disable_surround( bool disable ) { dsp.disable_surround( disable ); }
 """
 
 # V3c owns the causal mono source value after interpolation/noise, PMON
@@ -114,10 +136,14 @@ DRY_TAP_NEW = """\t\tm.t_output = (output * v->env) >> 11 & ~1;
 # ECHO 26/27 are the exact point where the shared FIR return is multiplied by
 # signed EVOL for left/right. Capture that contribution separately from MVOL dry
 # arithmetic; the normal echo_output() and WRITE_SAMPLES path remains untouched.
-ECHO_LEFT_OLD = """\tm.t_main_out [0] = echo_output( 0 );
+ECHO_LEFT_OLD = """\t// Left output volumes
+\t// (save sample for next clock so we can output both together)
+\tm.t_main_out [0] = echo_output( 0 );
 """
 
-ECHO_LEFT_NEW = """\tnative_echo_left = (sample_t) (int16_t)
+ECHO_LEFT_NEW = """\t// Left output volumes
+\t// (save sample for next clock so we can output both together)
+\tnative_echo_left = (sample_t) (int16_t)
 \t\t((m.t_echo_in [0] * (int8_t) REG(evoll)) >> 7);
 \tm.t_main_out [0] = echo_output( 0 );
 """
