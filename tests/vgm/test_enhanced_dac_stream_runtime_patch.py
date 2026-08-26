@@ -104,20 +104,20 @@ void deferred_fixture()
 	UINT32 rendered_base_playback_sample = 100;
 	SourceAwareVGMPlayer* source_player = nullptr;
 	bool deferred_psg_block = false;
-	if (deferred_psg_block)
-	{
-		if (!deferred_psg_block)
-			fail_studio_deferred_psg();
-	}
+		if (deferred_psg_block)
+		{
+			if (!deferred_psg_block)
+				fail_studio_deferred_psg();
+		}
 
-	for (UINT32 frame = 0; frame < rendered_count; ++frame)
-	{
-		foobar_vgm::source_audio::studio_transport_input_frame input{};
-		input.protected_left = deferred_psg_block
-			? m_enhanced_family_scratch[frame].L : rendered_samples[frame].L;
-		input.protected_right = deferred_psg_block
-			? m_enhanced_family_scratch[frame].R : rendered_samples[frame].R;
-	}
+		for (UINT32 frame = 0; frame < rendered_count; ++frame)
+		{
+			foobar_vgm::source_audio::studio_transport_input_frame input{};
+			input.protected_left = deferred_psg_block
+				? m_enhanced_family_scratch[frame].L : rendered_samples[frame].L;
+			input.protected_right = deferred_psg_block
+				? m_enhanced_family_scratch[frame].R : rendered_samples[frame].R;
+		}
 }
 void input_vgm::decode_initialize(unsigned int p_flags, abort_callback &p_abort)
 {
