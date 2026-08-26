@@ -7,7 +7,7 @@ Private-build prerequisite:
 The pinned parent/child already transports protected stereo plus SRCE-v2. This
 patch removes the old semantic enhancer and uses only source-native separation:
 
-  front dry = protected stereo - exact post-EVOL S-DSP echo
+  front remainder = protected stereo - exact post-EVOL S-DSP echo
   rear/side field = exact post-EVOL S-DSP echo, equal-power split
 
 No compiler-side scene inference, role classifier, adaptive governor, HRTF, room

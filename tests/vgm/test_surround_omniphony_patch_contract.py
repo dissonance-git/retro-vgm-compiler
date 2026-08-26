@@ -72,6 +72,12 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertIn("sn76489_noise", runtime)
         self.assertIn("ym2612_dac", runtime)
         self.assertIn("audio_chunk::channel_config_7point1", runtime)
+        self.assertIn("m_studio_deferred_capture_bypass", runtime)
+        self.assertIn("Surround is a host-delivery operation", runtime)
+        self.assertLess(
+            runtime.index("m_studio_deferred_capture_bypass"),
+            runtime.index("const std::uint64_t genesis_block_start"),
+        )
         self.assertNotIn("omniphony_source_spatial_full_sphere", runtime)
         self.assertNotIn("genesis_spatial_route_transport", runtime)
         self.assertNotIn("realtime_musical_omniphony_pipeline", runtime)

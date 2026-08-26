@@ -192,11 +192,37 @@ bool input_vgm::render_genesis_surround_output(
 
     replace_once(
         shadow,
-        """\tproject_qsound_consumer_sources(block_start, m_render_done);
-\treplay_captured_sources(m_render_done);
+        """\tif (m_studio_deferred_capture_bypass)
+\t{
+\t\t// PlayerA may have rendered beyond m_render_done to satisfy the FIR. The
+\t\t// command tap was in direct-shadow mode, so advance the continuous state
+\t\t// to the actual engine clock rather than the delivered foobar clock.
+\t\tif (m_vgm_player != nullptr)
+\t\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
+\t}
+\telse
+\t{
+\t\tproject_qsound_consumer_sources(block_start, m_render_done);
+\t\treplay_captured_sources(m_render_done);
+\t}
 \treturn true;
 """,
-        """\tproject_qsound_consumer_sources(block_start, m_render_done);
+        """\tif (m_studio_deferred_capture_bypass)
+\t{
+\t\t// PlayerA may have rendered beyond m_render_done to satisfy the FIR. The
+\t\t// command tap was in direct-shadow mode, so advance the continuous state
+\t\t// to the actual engine clock rather than the delivered foobar clock.
+\t\tif (m_vgm_player != nullptr)
+\t\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
+\t}
+\telse
+\t{
+\t\tproject_qsound_consumer_sources(block_start, m_render_done);
+\t\treplay_captured_sources(m_render_done);
+\t}
+
+\t// Surround is a host-delivery operation. Run it after the deferred/ordinary
+\t// shadow-clock branch so both playback paths feed the same authored 7.1 bed.
 \tconst std::uint64_t genesis_block_start = m_genesis_delivered_ordinal;
 \tif (m_render_done != 0)
 \t{
@@ -206,7 +232,6 @@ bool input_vgm::render_genesis_surround_output(
 \t\t\tstatic_cast<std::size_t>(m_render_done));
 \t\tm_genesis_delivered_ordinal += static_cast<std::uint64_t>(m_render_done);
 \t}
-\treplay_captured_sources(m_render_done);
 \treturn true;
 """,
         "render delivered Genesis sources into 7.1 bed",
