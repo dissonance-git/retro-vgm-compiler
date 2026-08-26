@@ -10,6 +10,8 @@ set(PRIVATE_COMPONENT_TESTS
     surround_bed_7_1_test
     genesis_timed_spatial_transport_test
     genesis_selected_source_block_test
+    genesis_source_episode_7_1_test
+    genesis_source_spread_7_1_test
     genesis_spatial_route_transport_test
     snesapu_private_spatial_transport_test
 )
@@ -22,6 +24,10 @@ add_executable(genesis_timed_spatial_transport_test
     ${RETRO_ROOT}/tests/vgm/genesis_timed_spatial_transport_test.cpp)
 add_executable(genesis_selected_source_block_test
     ${RETRO_ROOT}/tests/vgm/genesis_selected_source_block_test.cpp)
+add_executable(genesis_source_episode_7_1_test
+    ${RETRO_ROOT}/tests/vgm/genesis_source_episode_7_1_test.cpp)
+add_executable(genesis_source_spread_7_1_test
+    ${RETRO_ROOT}/tests/vgm/genesis_source_spread_7_1_test.cpp)
 add_executable(genesis_spatial_route_transport_test
     ${RETRO_ROOT}/tests/vgm/genesis_spatial_route_transport_test.cpp)
 add_executable(snesapu_private_spatial_transport_test

@@ -100,7 +100,35 @@ public:
         float side_gain,
         float back_gain) noexcept
     {
-        if (!source_valid(left, right, frame_count)
+        if (!source_valid(left, right, frame_count))
+            return false;
+        for (std::size_t frame = 0; frame < frame_count_; ++frame) {
+            if (!redistribute_stereo_frame_to_depth(
+                    frame,
+                    left[frame],
+                    right[frame],
+                    front_gain,
+                    side_gain,
+                    back_gain))
+                return false;
+        }
+        return finite_output();
+    }
+
+    // Frame-local form used when a source episode changes position inside a
+    // delivered block. The source remains sample-aligned with the protected
+    // reference while the placement sideband changes at its exact output frame.
+    bool redistribute_stereo_frame_to_depth(
+        std::size_t frame,
+        float source_left,
+        float source_right,
+        float front_gain,
+        float side_gain,
+        float back_gain) noexcept
+    {
+        if (!valid_ || frame >= frame_count_
+            || !std::isfinite(source_left)
+            || !std::isfinite(source_right)
             || !std::isfinite(front_gain)
             || !std::isfinite(side_gain)
             || !std::isfinite(back_gain)
@@ -109,31 +137,20 @@ public:
             || back_gain < 0.0f)
             return false;
 
-        for (std::size_t frame = 0; frame < frame_count_; ++frame) {
-            const float source_left = left[frame];
-            const float source_right = right[frame];
-            if (!std::isfinite(source_left) || !std::isfinite(source_right))
-                return false;
-
-            float* destination = data_.data() + frame * surround_7_1_channel_count;
-
-            // begin_from_interleaved_stereo() already contains this source at
-            // unity in front. Replace that unity contribution with the chosen
-            // front anchor, then add side/back energy.
-            destination[index(surround_7_1_channel::front_left)] +=
-                source_left * (front_gain - 1.0f);
-            destination[index(surround_7_1_channel::front_right)] +=
-                source_right * (front_gain - 1.0f);
-            destination[index(surround_7_1_channel::side_left)] +=
-                source_left * side_gain;
-            destination[index(surround_7_1_channel::side_right)] +=
-                source_right * side_gain;
-            destination[index(surround_7_1_channel::back_left)] +=
-                source_left * back_gain;
-            destination[index(surround_7_1_channel::back_right)] +=
-                source_right * back_gain;
-        }
-        return finite_output();
+        float* destination = data_.data() + frame * surround_7_1_channel_count;
+        destination[index(surround_7_1_channel::front_left)] +=
+            source_left * (front_gain - 1.0f);
+        destination[index(surround_7_1_channel::front_right)] +=
+            source_right * (front_gain - 1.0f);
+        destination[index(surround_7_1_channel::side_left)] +=
+            source_left * side_gain;
+        destination[index(surround_7_1_channel::side_right)] +=
+            source_right * side_gain;
+        destination[index(surround_7_1_channel::back_left)] +=
+            source_left * back_gain;
+        destination[index(surround_7_1_channel::back_right)] +=
+            source_right * back_gain;
+        return true;
     }
 
     // Shared environmental returns are fields rather than point sources. Remove
