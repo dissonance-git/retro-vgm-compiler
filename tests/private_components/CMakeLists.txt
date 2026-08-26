@@ -7,6 +7,7 @@ get_filename_component(RETRO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
 set(PRIVATE_COMPONENT_TESTS
     spatial_playback_options_test
+    surround_bed_7_1_test
     genesis_timed_spatial_transport_test
     genesis_selected_source_block_test
     genesis_spatial_route_transport_test
@@ -15,6 +16,8 @@ set(PRIVATE_COMPONENT_TESTS
 
 add_executable(spatial_playback_options_test
     ${RETRO_ROOT}/tests/model/spatial_playback_options_test.cpp)
+add_executable(surround_bed_7_1_test
+    ${RETRO_ROOT}/tests/model/surround_bed_7_1_test.cpp)
 add_executable(genesis_timed_spatial_transport_test
     ${RETRO_ROOT}/tests/vgm/genesis_timed_spatial_transport_test.cpp)
 add_executable(genesis_selected_source_block_test
