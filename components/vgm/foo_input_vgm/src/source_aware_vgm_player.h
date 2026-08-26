@@ -58,7 +58,7 @@ public:
 
     SourceAwareVGMPlayer()
     {
-        force_selected_chip_source_options();
+        force_genesis_source_options();
         clear_output_block();
     }
 
@@ -168,7 +168,7 @@ public:
     bool source_topology_supported() const noexcept
     {
         const bool any = m_ym.expected || m_psg.expected;
-        return any && !m_unsupported_selected_chip_topology
+        return any && !m_unsupported_genesis_topology
             && (!m_ym.expected || m_ym.attached)
             && (!m_psg.expected || m_psg.attached);
     }
@@ -196,13 +196,13 @@ protected:
     {
         if (linkIndex != 0) {
             if (chipDev.chipType == DEVID_YM2612 || chipDev.chipType == DEVID_SN76496)
-                m_unsupported_selected_chip_topology = true;
+                m_unsupported_genesis_topology = true;
             return;
         }
 
         if ((chipDev.chipType == DEVID_YM2612 || chipDev.chipType == DEVID_SN76496)
             && chipDev.chipID != 0) {
-            m_unsupported_selected_chip_topology = true;
+            m_unsupported_genesis_topology = true;
             return;
         }
         if (chipDev.chipID != 0) return;
@@ -495,7 +495,7 @@ private:
         return true;
     }
 
-    void force_selected_chip_source_options()
+    void force_genesis_source_options()
     {
         for (UINT8 instance = 0; instance < 2; ++instance) {
             const UINT32 ym_id = PLR_DEV_ID(DEVID_YM2612, instance);
@@ -519,7 +519,7 @@ private:
     {
         m_ym = {};
         m_psg = {};
-        m_unsupported_selected_chip_topology = false;
+        m_unsupported_genesis_topology = false;
         clear_output_block();
         invalidate_output_block();
     }
@@ -542,7 +542,7 @@ private:
 
     bool m_starting = false;
     bool m_render_capacity_ok = true;
-    bool m_unsupported_selected_chip_topology = false;
+    bool m_unsupported_genesis_topology = false;
     bool m_ym_block_valid = false;
     bool m_psg_block_valid = false;
     std::size_t m_output_count = 0;
