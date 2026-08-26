@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Normalize two OPM-added host shapes so the pinned Genesis HQ-FM patch applies.
+"""Normalize OPM-added host shapes so the pinned Genesis HQ-FM patch applies.
 
 This is transformation-order glue only. It temporarily lets the existing HQ-FM
-patch own the shared overflow/member anchors; the post-HQ OPM fix then restores
-OPM-specific invalidation. No audio or source-selection semantics change here.
+patch own shared Genesis anchors while preserving the independent OPM source
+view and storage. No audio or source-selection semantics change here.
 """
 
 from __future__ import annotations
@@ -49,6 +49,46 @@ def main() -> int:
         "    bool m_unsupported_opm_topology = false;\n"
         "    bool m_opm_block_valid = false;\n",
         "pre-HQ shared validity-member anchor",
+    )
+
+    replace_once(
+        header,
+        "    const stereo_sample* source_output(source_lane lane) const noexcept\n"
+        "    {\n"
+        "        const std::size_t index = static_cast<std::size_t>(lane);\n"
+        "        return index < kLaneCount ? m_output[index].data() : nullptr;\n"
+        "    }\n\n"
+        "    const stereo_sample* opm_source_output(foobar_vgm::ym2151::source_lane lane) const noexcept\n"
+        "    {\n"
+        "        const std::size_t index = static_cast<std::size_t>(lane);\n"
+        "        return index < kOpmLaneCount ? m_opm_output[index].data() : nullptr;\n"
+        "    }\n\n"
+        "protected:\n",
+        "    const stereo_sample* opm_source_output(foobar_vgm::ym2151::source_lane lane) const noexcept\n"
+        "    {\n"
+        "        const std::size_t index = static_cast<std::size_t>(lane);\n"
+        "        return index < kOpmLaneCount ? m_opm_output[index].data() : nullptr;\n"
+        "    }\n\n"
+        "    const stereo_sample* source_output(source_lane lane) const noexcept\n"
+        "    {\n"
+        "        const std::size_t index = static_cast<std::size_t>(lane);\n"
+        "        return index < kLaneCount ? m_output[index].data() : nullptr;\n"
+        "    }\n\n"
+        "protected:\n",
+        "pre-HQ public source-view anchor",
+    )
+
+    replace_once(
+        header,
+        "    YmCapture m_ym{};\n"
+        "    PsgCapture m_psg{};\n"
+        "    OpmCapture m_opm{};\n"
+        "    std::array<std::array<stereo_sample, kOutputCapacity>, kLaneCount> m_output{};\n",
+        "    YmCapture m_ym{};\n"
+        "    OpmCapture m_opm{};\n"
+        "    PsgCapture m_psg{};\n"
+        "    std::array<std::array<stereo_sample, kOutputCapacity>, kLaneCount> m_output{};\n",
+        "pre-HQ host-output storage anchor",
     )
 
     print("prepared YM2151 host additions for exact Genesis HQ-FM patch ordering")

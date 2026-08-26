@@ -72,7 +72,9 @@ void input_vgm::source_event_tap(void* user_param, const gameaudio::vgm::command
 	if (self->m_source_capture_active)
 		return;
 }
-void input_vgm::advance_shadow_to(uint_fast64_t absolute_sample) noexcept {}
+void input_vgm::advance_shadow_to(uint_fast64_t absolute_sample) noexcept
+{
+}
 #if defined(LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI) && defined(LIBVGM_GAMEAUDIO_POSTRENDER_ABI)
 void input_vgm::enhanced_post_render_callback(
 	void* user_param,
