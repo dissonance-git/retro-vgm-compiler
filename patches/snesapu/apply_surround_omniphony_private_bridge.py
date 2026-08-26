@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Route SNESAPU's historical DSP_SURND preference into Omniphony.
+"""Route SNESAPU's historical DSP_SURND preference into the 7.1 source bed.
 
-Runs after the private Omniphony runtime is installed. The saved DSP_SURND bit
+Runs after the private source-native 7.1 runtime is installed. The saved DSP_SURND bit
 continues to live in cfg_dsp_option, but it is masked out of the SNESAPU DSP
 options so the old surround algorithm never runs. The same bit gates causal SRCE
-capture and Omniphony presentation. Failure still leaves protected stereo intact.
+capture and 7.1 presentation. Failure still leaves protected stereo intact.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def main() -> int:
         source,
         """\tm_Apu.SetAPUOpt(m_CnfMixing, m_CnfChannels, m_CnfBPS, m_CnfSampleRate, m_CnfInterpolation, m_CnfOptions);
 """,
-        """\t// The persisted DSP_SURND bit now selects Omniphony below. Mask it
+        """\t// The persisted DSP_SURND bit now selects the source-native 7.1 bed below. Mask it
 \t// from SNESAPU itself so the historical surround DSP is never double-applied.
 \tconst int snesapu_runtime_options = m_CnfOptions & ~DSP_SURND;
 \tm_Apu.SetAPUOpt(m_CnfMixing, m_CnfChannels, m_CnfBPS, m_CnfSampleRate, m_CnfInterpolation, snesapu_runtime_options);
@@ -63,10 +63,10 @@ def main() -> int:
         """\tm_Sem71Enabled = (m_CnfOptions & DSP_SURND) != 0;
 \tm_Apu.SetSourceEnabled(m_Sem71Enabled);
 """,
-        "route historical SNESAPU Surround bit to Omniphony",
+        "route historical SNESAPU Surround bit to 7.1 bed",
     )
 
-    print("SNESAPU Surround -> Omniphony runtime bridge applied")
+    print("SNESAPU Surround -> source-native 7.1 bridge applied")
     return 0
 
 

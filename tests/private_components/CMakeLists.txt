@@ -136,17 +136,6 @@ set_tests_properties(
 )
 
 add_test(
-    NAME spc_spatial_omniphony_rate_lifecycle_patch
-    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
-        -s ${RETRO_ROOT}/tests/spc
-        -p test_spatial_omniphony_private_rate_lifecycle_patch.py
-)
-set_tests_properties(
-    spc_spatial_omniphony_rate_lifecycle_patch
-    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
-)
-
-add_test(
     NAME spc_private_child_launch_path_patch
     COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
         -s ${RETRO_ROOT}/tests/spc

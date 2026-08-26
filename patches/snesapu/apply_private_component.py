@@ -74,17 +74,14 @@ def main() -> int:
 
     run(here / "apply_enhanced_component.py", parent)
     run(here / "apply_prebrr_transport_complete.py", root)
+    # Replace the retired semantic enhancer with the smallest useful product
+    # path: protected dry front + exact native S-DSP echo in a standard 7.1 bed.
     run(here / "apply_spatial_omniphony_private_runtime.py", root)
     # The staged model is a presentation overlay, not a second owner of the
-    # child/parent process ABI. Replace its copied wire header with a fail-closed
-    # forwarding header before any later patch consumes the overlay.
+    # child/parent process ABI. Keep the wire contract fail-closed.
     run(here / "fix_overlay_source_wire_alias.py", root)
-    run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)
-    # Output: Omniphony owns the one final headphone render when selected;
-    # other outputs retain the established direct source_ffi fallback.
-    run(here / "apply_foobar_source_session.py", root)
-    # Preserve the historical Surround preference, but mask the old SNESAPU
-    # surround algorithm and use that saved bit to gate Omniphony instead.
+    # Preserve the historical Surround preference, mask the old SNESAPU phase
+    # trick, and use that saved bit only to request SRCE + the 7.1 bed.
     run(here / "apply_surround_omniphony_private_bridge.py", root)
     run(here / "apply_private_child_launch_path.py", root)
     remove_obsolete_enhancer_seek_reset(parent / "input_snesapu.cpp")
@@ -92,7 +89,7 @@ def main() -> int:
     # before that boundary so model code can use std::min/std::max literally.
     add_algorithm_include(parent / "stdafx.h")
 
-    print("private foo_snesapu enhanced + Surround/Omniphony patch stack applied")
+    print("private foo_snesapu source-native 7.1 Surround patch stack applied")
     return 0
 
 
