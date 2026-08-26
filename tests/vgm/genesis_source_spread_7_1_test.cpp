@@ -45,7 +45,11 @@ int main()
     episodes.event_count = 1u;
     episodes.valid = true;
 
-    const double reference[4] = {1.0, 0.5, 1.0, 0.5};
+    // The protected reference may contain other chips. Only the selected
+    // Genesis lane is redistributed; the unmatched residual must stay front L/R.
+    const double reference[4] = {1.25, 0.75, 1.25, 0.75};
+    constexpr float passthrough_left = 0.25f;
+    constexpr float passthrough_right = 0.25f;
     surround_7_1_bed_storage<2> bed;
     assert(project_genesis_source_spread_7_1(
         selected, episodes, reference, 2u, bed));
@@ -63,12 +67,18 @@ int main()
 
     assert(near(
         out[f0 + channel_index(surround_7_1_channel::front_left)],
-        early.front));
+        passthrough_left + early.front));
     assert(near(
         out[f1 + channel_index(surround_7_1_channel::front_left)],
-        late.front));
+        passthrough_left + late.front));
     assert(near(early.front, late.front));
 
+    assert(near(
+        out[f0 + channel_index(surround_7_1_channel::side_left)],
+        early.side));
+    assert(near(
+        out[f0 + channel_index(surround_7_1_channel::back_left)],
+        early.back));
     assert(
         out[f0 + channel_index(surround_7_1_channel::side_left)]
         > out[f0 + channel_index(surround_7_1_channel::back_left)]);
@@ -89,7 +99,7 @@ int main()
 
     assert(near(
         out[f0 + channel_index(surround_7_1_channel::front_right)],
-        0.5f * early.front));
+        passthrough_right + 0.5f * early.front));
     assert(near(
         out[f1 + channel_index(surround_7_1_channel::back_right)],
         0.5f * late.back));

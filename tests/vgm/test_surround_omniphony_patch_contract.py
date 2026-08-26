@@ -31,9 +31,10 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertIn("cfg_surround_sound", bridge)
         self.assertIn("pa_cfg.chnInvert = 0x00;", bridge)
         self.assertIn(
-            "!cfg_surround_sound || !sources_ready || !episodes_ready",
+            "!cfg_surround_sound || !m_genesis_surround_eligible",
             bridge,
         )
+        self.assertIn("|| !sources_ready || !episodes_ready", bridge)
 
     def test_bridge_executes_against_expected_generated_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -45,7 +46,8 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             shadow.write_text(
-                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || !episodes_ready || frame_count == 0\n"
+                "\tif (!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible\n"
+                "\t\t|| !sources_ready || !episodes_ready || frame_count == 0\n"
                 "\t\t|| frame_count > 8192u || chunk.get_channels() != 2\n"
                 "\t\t|| chunk.get_srate() != m_sample_rate)\n",
                 encoding="utf-8",
@@ -65,10 +67,27 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             self.assertIn("pa_cfg.chnInvert = 0x00;", patched_base)
             self.assertNotIn("cfg_surround_sound ? 0x02 : 0x00", patched_base)
             self.assertIn(
-                "!cfg_surround_sound || !sources_ready || !episodes_ready",
+                "!cfg_surround_sound || !m_genesis_surround_eligible",
                 patched_shadow,
             )
+            self.assertIn("|| !sources_ready || !episodes_ready", patched_shadow)
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
+
+    def test_surround_is_explicitly_genesis_only(self) -> None:
+        runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
+        bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
+        self.assertIn("m_genesis_surround_eligible", runtime)
+        self.assertIn("source_topology_supported()", runtime)
+        self.assertIn(
+            "!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible",
+            runtime,
+        )
+        self.assertIn(
+            "!cfg_surround_sound || !m_genesis_surround_eligible",
+            bridge,
+        )
+        self.assertIn("every other", runtime)
+        self.assertIn("stereo chunk untouched", runtime)
 
     def test_episode_observer_composes_after_pcm_command_boundary(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")

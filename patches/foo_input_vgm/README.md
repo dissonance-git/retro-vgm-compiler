@@ -167,6 +167,14 @@ Dynamic family admission is deliberately independent. The deferred FM path check
 
 Unrelated VGM chips remain untouched. There is no requirement that every device in a mixed-chip VGM have an enhanced renderer before already-proven source families can improve.
 
+### Surround scope
+
+The persisted **Surround** checkbox is currently narrower than general VGM playback: it spatializes only the exact primary **YM2612** and **SN76489/96** source lanes.
+
+For a mixed-chip VGM, the protected stereo mix is the starting point. Only the selected Genesis source contributions are subtracted and redistributed into the 7.1 bed; every unsupported-chip contribution remains in the protected front L/R residual. If the current VGM has no supported YM2612 or SN76489/96 topology at all, Surround does not convert the chunk to 7.1 and the original stereo output passes through unchanged.
+
+QSound, YM2151, and every other VGM chip remain outside this checkbox until their surround behavior is independently implemented and admitted.
+
 ## Four combinations
 
 ```text
