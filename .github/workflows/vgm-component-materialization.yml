@@ -104,8 +104,7 @@ jobs:
           foreach ($required in @(
             'genesis_selected_source_queue',
             'genesis_selected_source_block',
-            'genesis_spatial_route_transport',
-            'genesis_realtime_musical_omniphony_pipeline'
+            'surround_bed_7_1'
           )) {
             if ($header -notmatch [regex]::Escape($required)) {
               throw "materialized input_vgm.h missing current runtime marker: $required"
@@ -113,11 +112,23 @@ jobs:
           }
           foreach ($required in @(
             'capture_genesis_reference_sources',
-            'render_genesis_spatial_output',
+            'render_genesis_surround_output',
+            'audio_chunk::channel_config_7point1',
             'cfg_vgm_enhanced_enabled'
           )) {
             if ($shadow -notmatch [regex]::Escape($required)) {
               throw "materialized input_vgm_shadow.cpp missing current runtime marker: $required"
+            }
+          }
+
+          foreach ($retired in @(
+            'genesis_spatial_route_transport',
+            'genesis_realtime_musical_omniphony_pipeline',
+            'render_genesis_spatial_output'
+          )) {
+            if ($header -match [regex]::Escape($retired) -or
+                $shadow -match [regex]::Escape($retired)) {
+              throw "retired decoder-side spatial runtime is active: $retired"
             }
           }
 
@@ -131,7 +142,7 @@ jobs:
             'src\linear_source_resampler.h',
             'src\nuked_opn2_source_capture.h',
             '..\enhancement\genesis_selected_source_queue.h',
-            '..\enhancement\genesis_spatial_route_transport.h'
+            '..\enhancement\genesis_selected_source_block.h'
           )
           foreach ($relative in $required) {
             $path = Join-Path $component $relative
@@ -178,7 +189,12 @@ jobs:
               throw "materialized parent transport missing current marker: $required"
             }
           }
-          foreach ($required in @('RenderSpatialBlock', 'ResetSpatialRuntime')) {
+          foreach ($required in @(
+            'RenderSurroundBlock',
+            'ResetSurroundRuntime',
+            'audio_chunk::channel_config_7point1',
+            'EmuAPU_with_sources'
+          )) {
             if ($parentInput -notmatch [regex]::Escape($required)) {
               throw "materialized parent runtime missing current marker: $required"
             }
@@ -186,8 +202,12 @@ jobs:
           if ($parentInput -match 'm_Enhancer\.reset\(\)') {
             throw 'unexpected SemanticStereoEnhancer seek state is present'
           }
-          if ($ui -notmatch '"enhanced"') {
-            throw 'lowercase enhanced control is missing from materialized SPC UI'
+          if ($ui -notmatch '"Surround"') {
+            throw 'Surround control is missing from materialized SPC UI'
+          }
+          if ($ui -notmatch '"enhanced \(later\)"' -or
+              $ui -notmatch 'WS_DISABLED') {
+            throw 'later enhanced control is not visibly disabled in materialized SPC UI'
           }
 
       - name: Run focused SPC materializer regression
