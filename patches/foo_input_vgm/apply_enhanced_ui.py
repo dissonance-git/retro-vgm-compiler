@@ -65,8 +65,8 @@ def main() -> int:
         '''    CONTROL         """Surround"" sound",IDC_SURROUND_SOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,73,10
     LTEXT           "Volume",IDC_STATIC,13,242,24,8
 ''',
-        '''    CONTROL         """Surround"" sound",IDC_SURROUND_SOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,73,10
-    CONTROL         "enhanced",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,97,222,70,10
+        '''    CONTROL         "Surround",IDC_SURROUND_SOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,222,73,10
+    CONTROL         "enhanced (later)",IDC_ENHANCED_ENABLED_VGM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP | WS_DISABLED,97,222,86,10
     LTEXT           "Volume",IDC_STATIC,13,242,24,8
 ''',
         "VGM enhanced checkbox beside existing Surround",
