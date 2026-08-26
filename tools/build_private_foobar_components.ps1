@@ -105,6 +105,9 @@ function Assert-GitBlob([string]$Path, [string]$Expected, [string]$Label) {
 
 function Clone-Pin([string]$Url, [string]$Path, [string]$Commit) {
     Run 'git' @('clone', '--filter=blob:none', '--no-checkout', $Url, $Path)
+    # Blob audits compare checked-out bytes against Git object IDs. Configure
+    # line endings before the first checkout so Windows cannot rewrite the pin.
+    Run 'git' @('-C', $Path, 'config', 'core.autocrlf', 'false')
     Run 'git' @('-C', $Path, 'checkout', '--detach', $Commit)
     $actual = (& git -C $Path rev-parse HEAD).Trim()
     if ($actual -ne $Commit) { throw "revision drift for ${Path}: expected $Commit, got $actual" }
