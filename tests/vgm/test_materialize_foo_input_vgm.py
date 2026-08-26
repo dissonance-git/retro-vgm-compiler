@@ -41,8 +41,8 @@ def main() -> int:
             source / "nuked_opn2_source_capture.h",
             enhancement / "genesis_selected_source_queue.h",
             enhancement / "genesis_selected_source_block.h",
-            enhancement / "genesis_spatial_route_transport.h",
-            enhancement / "genesis_realtime_musical_omniphony_pipeline.h",
+            enhancement / "genesis_source_episode_7_1.h",
+            enhancement / "genesis_source_spread_7_1.h",
         )
         missing = [str(path) for path in required if not path.is_file()]
         if missing:
@@ -55,19 +55,27 @@ def main() -> int:
         for marker in (
             "genesis_selected_source_queue",
             "genesis_selected_source_block",
-            "genesis_spatial_route_transport",
-            "genesis_realtime_musical_omniphony_pipeline",
+            "genesis_source_spread_7_1",
+            "genesis_source_episode_transport",
         ):
             assert marker in header, f"materialized input_vgm.h missing {marker}"
 
         for marker in (
             "capture_genesis_reference_sources",
-            "render_genesis_spatial_output",
+            "render_genesis_surround_output",
+            "m_genesis_surround_episodes.observe",
+            "m_genesis_surround_episodes.prepare_delivered_block",
+            "project_genesis_source_spread_7_1",
             "cfg_vgm_enhanced_enabled",
-            "m_genesis_delivered_sources.consume",
-            "process_selected_sources_timed",
         ):
             assert marker in shadow, f"materialized input_vgm_shadow.cpp missing {marker}"
+
+        for retired in (
+            "render_genesis_spatial_output",
+            "genesis_realtime_musical_omniphony_pipeline",
+            "process_selected_sources_timed",
+        ):
+            assert retired not in shadow, f"retired VGM runtime is active: {retired}"
 
         assert '#include "my_cfg_external.h"' in shadow
         assert "class SourceAwareVGMPlayer;" in header
@@ -88,23 +96,30 @@ def main() -> int:
         )
         assert rendered_end < studio_branch < deferred_psg_use
 
-        call_marker = "render_genesis_spatial_output(\n\t\t\tp_chunk,"
+        call_marker = "render_genesis_surround_output(\n\t\t\tp_chunk,"
         call = shadow.index(call_marker)
         protected_stereo = shadow.rfind(
             "result = input_base::decode_run(p_chunk, p_abort);", 0, call
         )
-        assert protected_stereo >= 0, "VGM Spatial call must follow protected 0.31 decode"
+        assert protected_stereo >= 0, "VGM Surround call must follow protected 0.31 decode"
         assert protected_stereo < call
 
-        helper_start = shadow.index("bool input_vgm::render_genesis_spatial_output(")
+        helper_start = shadow.index("bool input_vgm::render_genesis_surround_output(")
         helper_end = shadow.index(
             "bool input_vgm::capture_genesis_reference_sources(", helper_start
         )
         helper = shadow[helper_start:helper_end]
         replacement = helper.index("chunk.set_data_floatingpoint_ex(")
-        assert "return false;" in helper[:replacement]
-        assert "!rendered.source_block_valid || !rendered.omniphony.rendered" in helper[:replacement]
+        before_replacement = helper[:replacement]
+        assert "return false;" in before_replacement
+        assert "!cfg_surround_sound || !sources_ready || !episodes_ready" in before_replacement
+        assert "project_genesis_source_spread_7_1" in before_replacement
         assert helper.rfind("return true;") > replacement
+
+        seek = shadow.index("void input_vgm::decode_seek(")
+        assert "m_genesis_surround_episodes.begin_replay();" in shadow[seek:]
+        assert "m_genesis_surround_episodes.end_replay();" in shadow[seek:]
+        assert "reset_genesis_surround_audio_delivery(genesis_seek_sample);" in shadow[seek:]
 
         assert "input_vgm_shadow.cpp" in targets
         assert "<PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>" in targets

@@ -52,7 +52,6 @@ def main() -> int:
         )
         parent_ui = (parent / "resource.rc").read_text(encoding="utf-8-sig")
 
-        # Final child protocol/ABI, not merely patch-script presence.
         assert "SPCP_HEADER_VERSION    3" in child_header
         assert "SPCP_HEADER_STUDIO_SIZE_OFFSET" in child_header
         assert "__stdcall retro_prebrr_callback" in child_source
@@ -60,7 +59,6 @@ def main() -> int:
         assert "SetDSPStudioSourceProvider" in child_source
         assert "prepare_spc_studio_sample_reconstruction" in child_source
 
-        # Final parent source transport and native sibling process geometry.
         assert "m_studio_source_size" in controller_source
         assert "SetStudioSourcePacket" in controller_source
         assert "std::string componentPath = core_api::get_my_full_path();" in controller_source
@@ -68,34 +66,48 @@ def main() -> int:
         assert 'find_last_of("\\\\/")' in controller_source
         assert 'szCmdLine += "spcplayer.exe\\\"";' in controller_source
 
-        # Final composed host must contain current Spatial state and no reference
-        # to the removed SemanticStereoEnhancer member after seek cleanup.
-        assert "ResetSpatialRuntime" in input_source
-        assert "RenderSpatialBlock" in input_source
-        assert "m_Enhancer.reset()" not in input_source
+        # Final host owns only the source-native 7.1 Surround path.
+        for marker in (
+            "ResetSurroundRuntime",
+            "RenderSurroundBlock",
+            "EmuAPU_with_sources",
+            "audio_chunk::channel_config_7point1",
+        ):
+            assert marker in input_source, f"SPC materialized runtime missing {marker}"
+        for retired in (
+            "ResetSpatialRuntime",
+            "RenderSpatialBlock",
+            "omniphony",
+            "m_Enhancer.reset()",
+        ):
+            assert retired not in input_source, f"retired SPC runtime is active: {retired}"
 
-        # Fail closed at the final audible seam. Historical/enhanced stereo is
-        # committed to p_chunk before the conditional Spatial render is called.
-        # RenderSpatialBlock itself mutates the chunk only after all source and
-        # Omniphony checks pass, so a false return preserves protected stereo.
-        spatial_call = input_source.index("RenderSpatialBlock(p_chunk, wanted_sample);")
-        protected_stereo = input_source.rfind("p_chunk.set_data_fixedpoint(", 0, spatial_call)
-        assert protected_stereo >= 0, "SPC Spatial call no longer follows protected stereo output"
-        assert protected_stereo < spatial_call
+        # Protected stereo is committed before the source-native 7.1 replacement.
+        surround_call = input_source.index(
+            "RenderSurroundBlock(p_chunk, wanted_sample);"
+        )
+        protected_stereo = input_source.rfind(
+            "p_chunk.set_data_fixedpoint(", 0, surround_call
+        )
+        assert protected_stereo >= 0, "SPC Surround call no longer follows protected stereo"
+        assert protected_stereo < surround_call
 
-        helper_start = input_source.index("bool input_snesapu::RenderSpatialBlock(")
-        helper_end = input_source.index("void input_snesapu::decode_initialize(", helper_start)
+        helper_start = input_source.index("bool input_snesapu::RenderSurroundBlock(")
+        helper_end = input_source.index(
+            "void input_snesapu::decode_initialize(", helper_start
+        )
         helper = input_source[helper_start:helper_end]
         replacement = helper.index("chunk.set_data_floatingpoint_ex(")
-        assert "return false;" in helper[:replacement]
-        assert "!rendered.source_chunk_valid || !rendered.omniphony.rendered" in helper[:replacement]
+        before_replacement = helper[:replacement]
+        assert "return false;" in before_replacement
+        assert "!m_SourceBlock.valid()" in before_replacement
+        assert "move_stereo_to_surround_field" in before_replacement
         assert helper.rfind("return true;") > replacement
 
-        # UI/source-quality naming remains descriptive rather than a tier name.
-        assert '"enhanced"' in parent_ui
+        assert '"Surround"' in parent_ui
+        assert '"enhanced (later)"' in parent_ui
+        assert "WS_DISABLED" in parent_ui
 
-        # The materializer is allowed to explain that a migration source was not
-        # consulted, but it must never print or require the retired repository.
         assert "vgmspc" not in completed.stdout.lower()
         assert "vgmspc" not in completed.stderr.lower()
 
