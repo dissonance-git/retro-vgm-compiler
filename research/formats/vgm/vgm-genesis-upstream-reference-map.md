@@ -353,6 +353,90 @@ source identity + native route/effect evidence
 
 Do not import QSound's spatial mechanism into OPN2 merely because both can feed Omniphony.
 
+## FM surround / widening implementation controls
+
+The first Genesis Surround implementation should follow software-FM mixer
+practice rather than assign musical roles to physical FM channels.
+
+### `Wohlstand/libOPNMIDI` + Nuked OPN2 full panning
+
+libOPNMIDI exposes a full-panning mode for OPN2 emulator cores. Its OPN2 mixer
+keeps both hardware output gates enabled and calls the emulator-side `writePan`
+extension instead. Nuked OPN2 implements that extension with a pan-law table
+whose center values are approximately 0.707 of full scale on each side.
+
+Useful law:
+
+```text
+synthesize FM channel once
+→ apply continuous constant-power gains at mixer/output boundary
+→ do not reinterpret operator algorithm or instrument role
+```
+
+This is directly useful to Surround because VGM Compiler already owns exact
+per-channel source PCM. The extension can happen after source capture rather
+than by altering YM2612 synthesis.
+
+### `Wohlstand/libADLMIDI` / `nukeykt/Nuked-OPL3`
+
+The OPL3 software extensions use the same kind of continuous pan law, while the
+native OPL3 architecture can retain four A/B/C/D output buses. This is valuable
+as two separate controls:
+
+- continuous software panning is a mixer operation, not an FM timbre operation;
+- genuine multibus hardware should stay multibus rather than being flattened
+  before presentation.
+
+### Furnace OPL3 surround panning
+
+Furnace calls Nuked OPL3's four-channel generator and exposes the extra OPL3
+output bits through its surround-panning command. It is useful precedent for
+keeping per-channel FM output independent until a later bus-placement stage.
+
+Do not copy OPL3's A/B/C/D hardware meaning onto OPN2. Copy the architecture:
+preserve source first, route later.
+
+### MiniDexed / DX-style FM mixing
+
+MiniDexed mixes independent FM engines with sine/cosine panorama gains. This is
+another clean example of FM synthesis remaining untouched while position is
+applied as a constant-power mixer transform.
+
+### Vital stereo-spread control
+
+Vital is not an OPN2 emulator, but its oscillator path is a useful modern synth
+control: stereo width is implemented with equal-power mixing at the output
+stage rather than by changing oscillator identity.
+
+### VGMPlay YM2612 `PseudoStereo` as a negative control
+
+VGMPlay/libvgm carries an older YM2612 pseudo-stereo mode that alternates
+left/right chip updates; its configuration warns that this can halve effective
+chip update rate in one emulation mode.
+
+Do not use this technique for VGM Compiler Surround. Width should come from
+already-separated exact source PCM, not timing distortion, alternating samples,
+phase inversion, or hidden rate changes.
+
+### Product rule derived from these implementations
+
+For arbitrary Genesis tracks:
+
+```text
+physical channel number != bass/lead/drum role
+
+exact source lane
+→ keep front anchor
+→ constant-power horizontal spread
+→ preserve original L/R hemisphere
+→ Omniphony output
+```
+
+The current 7.1 implementation therefore gives every exact YM2612 FM/DAC and
+SN76489 tone/noise lane the same power law. A low-discrepancy per-lane seed only
+prevents all lanes from stacking at the same side/back depth. It carries no
+musical semantics, and no source is allowed to lose its front anchor merely
+because of which hardware channel happened to play it.
 ## Immediate source-separation consequence for Genesis VGM
 
 For the current non-Enhanced path, prefer source products that are directly justified by execution:
