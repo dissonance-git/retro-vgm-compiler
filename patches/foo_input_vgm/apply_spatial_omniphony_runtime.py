@@ -6,11 +6,12 @@ is produced first. Every exact independently delivered YM2612 FM/DAC or SN76489
 lane then keeps a constant-power front anchor while part of its energy is spread
 between side and back speakers on the same L/R hemisphere.
 
-Physical channel number is only a low-discrepancy spacing seed. It is never used
-as a claim about bass, lead, percussion or any other musical role. Center/LFE
-remain empty. No delay, phase inversion, detune, pseudo-stereo timing, semantic
-governor, HRTF, source-session side channel or decoder-side Omniphony renderer
-is introduced.
+Placement belongs to source episodes rather than hardware channel numbers. A
+new YM2612 key-on, DAC enable, or SN76489 unmute takes the least-occupied
+horizontal depth slot; placement remains stable through that episode and FM
+release tail. Center/LFE remain empty. No delay, phase inversion, detune,
+pseudo-stereo timing, semantic governor, HRTF, source-session side channel or
+decoder-side Omniphony renderer is introduced.
 """
 
 from __future__ import annotations
@@ -109,6 +110,7 @@ def main() -> int:
         "\tgenesis_selected_source_queue_type m_genesis_selected_sources{};\n",
         "\tgenesis_selected_source_queue_type m_genesis_selected_sources{};\n"
         "\tgameaudio::vgm::genesis_selected_source_block_storage<8192> m_genesis_delivered_sources{};\n"
+        "\tgameaudio::vgm::genesis_source_episode_transport<2048, 256> m_genesis_surround_episodes{};\n"
         "\tvgmtooling::model::surround_7_1_bed_storage<8192> m_genesis_surround_bed{};\n"
         "\tstd::uint64_t m_genesis_delivered_ordinal = 0;\n",
         "Genesis 7.1 runtime state",
@@ -117,18 +119,25 @@ def main() -> int:
     replace_once(
         header,
         "\tbool capture_genesis_reference_sources(SourceAwareVGMPlayer* source_player, UINT32 sample_count, UINT32 base_playback_sample) noexcept;\n",
+        "\tvoid reset_genesis_surround_audio_delivery(std::uint64_t delivered_ordinal = 0) noexcept;\n"
         "\tvoid reset_genesis_surround_transport(std::uint64_t delivered_ordinal = 0) noexcept;\n"
         "\tbool render_genesis_surround_output(audio_chunk& chunk, std::uint64_t block_start, std::size_t frame_count) noexcept;\n"
         "\tbool capture_genesis_reference_sources(SourceAwareVGMPlayer* source_player, UINT32 sample_count, UINT32 base_playback_sample) noexcept;\n",
         "Genesis 7.1 runtime declarations",
     )
 
-    helpers = r'''void input_vgm::reset_genesis_surround_transport(std::uint64_t delivered_ordinal) noexcept
+    helpers = r'''void input_vgm::reset_genesis_surround_audio_delivery(std::uint64_t delivered_ordinal) noexcept
 {
 	m_genesis_selected_sources.reset(delivered_ordinal);
 	m_genesis_delivered_sources.reset();
 	m_genesis_surround_bed.reset();
 	m_genesis_delivered_ordinal = delivered_ordinal;
+}
+
+void input_vgm::reset_genesis_surround_transport(std::uint64_t delivered_ordinal) noexcept
+{
+	reset_genesis_surround_audio_delivery(delivered_ordinal);
+	m_genesis_surround_episodes.reset();
 }
 
 bool input_vgm::render_genesis_surround_output(
@@ -143,8 +152,14 @@ bool input_vgm::render_genesis_surround_output(
 		m_genesis_selected_sources,
 		block_start,
 		frame_count);
+	gameaudio::vgm::genesis_source_episode_transport<2048, 256>::block_type
+		episode_block{};
+	const bool episodes_ready = m_genesis_surround_episodes.prepare_delivered_block(
+		block_start,
+		frame_count,
+		episode_block);
 
-	if (!cfg_vgm_sem71_enabled || !sources_ready || frame_count == 0
+	if (!cfg_vgm_sem71_enabled || !sources_ready || !episodes_ready || frame_count == 0
 		|| frame_count > 8192u || chunk.get_channels() != 2
 		|| chunk.get_srate() != m_sample_rate)
 		return false;
@@ -153,6 +168,7 @@ bool input_vgm::render_genesis_surround_output(
 	if (reference == nullptr
 		|| !gameaudio::vgm::project_genesis_source_spread_7_1(
 			m_genesis_delivered_sources,
+			episode_block,
 			reference,
 			frame_count,
 			m_genesis_surround_bed))
@@ -206,6 +222,26 @@ bool input_vgm::render_genesis_surround_output(
 
     replace_once(
         shadow,
+        """\tconst uint_fast64_t absolute_sample =
+\t\tstatic_cast<uint_fast64_t>(self->m_vgm_player->Tick2Sample(static_cast<UINT32>(event.tick)));
+
+\tif (self->m_source_capture_active)
+""",
+        """\tconst uint_fast64_t absolute_sample =
+\t\tstatic_cast<uint_fast64_t>(self->m_vgm_player->Tick2Sample(static_cast<UINT32>(event.tick)));
+
+\t// Placement follows source episodes on the same resolved output ordinal as
+\t// source capture and stays synchronized while Surround is disabled.
+\tself->m_genesis_surround_episodes.observe(
+\t\tevent, static_cast<std::uint64_t>(absolute_sample));
+
+\tif (self->m_source_capture_active)
+""",
+        "observe Genesis source episodes on delivered clock",
+    )
+
+    replace_once(
+        shadow,
         """\tif (m_studio_deferred_capture_bypass)
 \t{
 \t\t// PlayerA may have rendered beyond m_render_done to satisfy the FIR. The
@@ -251,6 +287,27 @@ bool input_vgm::render_genesis_surround_output(
         "render delivered Genesis sources into 7.1 bed",
     )
 
+    replace_once(
+        shadow,
+        """\t// libvgm emits reset/replayed source events during seek. The command tap
+\t// rebuilds source controls while the historical QSound renderer remains
+\t// authoritative. Native source/mix audio is captured only during real decode
+\t// blocks, never while seeking through discarded audio.
+\tinput_base::decode_seek(p_seconds, p_abort);
+""",
+        """\t// Rebuild episode allocation from command replay without queueing every
+\t// historical placement transition before the seek target.
+\tm_genesis_surround_episodes.begin_replay();
+
+\t// libvgm emits reset/replayed source events during seek. The command tap
+\t// rebuilds source controls while the historical QSound renderer remains
+\t// authoritative. Native source/mix audio is captured only during real decode
+\t// blocks, never while seeking through discarded audio.
+\tinput_base::decode_seek(p_seconds, p_abort);
+""",
+        "replay Genesis Surround episodes during seek",
+    )
+
     insert_before_function_close(
         shadow,
         "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)\n",
@@ -260,7 +317,8 @@ bool input_vgm::render_genesis_surround_output(
 \tif (m_vgm_player != nullptr)
 \t\tgenesis_seek_sample = static_cast<std::uint64_t>(
 \t\t\tm_vgm_player->GetCurPos(PLAYPOS_SAMPLE));
-\treset_genesis_surround_transport(genesis_seek_sample);
+\tm_genesis_surround_episodes.end_replay();
+\treset_genesis_surround_audio_delivery(genesis_seek_sample);
 """,
         "reseed Genesis Surround source clock after seek",
     )

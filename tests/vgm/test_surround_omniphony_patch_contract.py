@@ -76,14 +76,27 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertIn("surround_bed_7_1.h", runtime)
         self.assertIn("genesis_source_spread_7_1.h", runtime)
         self.assertIn("project_genesis_source_spread_7_1", runtime)
+        episode = self.read(
+            ROOT
+            / "components"
+            / "vgm"
+            / "enhancement"
+            / "genesis_source_episode_7_1.h"
+        )
         self.assertIn("genesis_source_spread_front_gain", helper)
-        self.assertIn("genesis_source_spread_depth_fraction", helper)
-        self.assertIn("redistribute_stereo_to_depth", helper)
+        self.assertIn("genesis_source_spread_gains_for_depth", helper)
+        self.assertIn("genesis_source_episode_transport", episode)
+        self.assertIn("choose_depth_slot", episode)
+        self.assertIn("begin_replay", episode)
+        self.assertIn("end_replay", episode)
+        self.assertIn("redistribute_stereo_frame_to_depth", helper)
         self.assertNotIn("move_stereo_to_sides", runtime)
         self.assertNotIn("move_stereo_to_backs", runtime)
         self.assertNotIn("ym2612_fm1", runtime)
         self.assertNotIn("ym2612_dac", runtime)
         self.assertNotIn("sn76489_tone0", runtime)
+        self.assertIn("m_genesis_surround_episodes.observe", runtime)
+        self.assertIn("prepare_delivered_block", runtime)
         self.assertIn("audio_chunk::channel_config_7point1", runtime)
         self.assertIn("m_studio_deferred_capture_bypass", runtime)
         self.assertIn("Surround is a host-delivery operation", runtime)
@@ -122,14 +135,15 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             module.insert_before_function_close(
                 source,
                 "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)\n",
-                "\treset_genesis_surround_transport(456);\n",
+                "\tm_genesis_surround_episodes.end_replay();\n"
+                "\treset_genesis_surround_audio_delivery(456);\n",
                 "test seek insertion",
             )
             patched = source.read_text(encoding="utf-8")
             seek_close = patched.index("}\n\nvoid input_vgm::next_function")
-            reset = patched.index("reset_genesis_surround_transport(456);")
-            self.assertLess(reset, seek_close)
-            self.assertGreater(reset, patched.index("reset_pcm_streams();"))
+            rebase = patched.index("reset_genesis_surround_audio_delivery(456);")
+            self.assertLess(rebase, seek_close)
+            self.assertGreater(rebase, patched.index("reset_pcm_streams();"))
 
     def test_active_stack_has_no_decoder_side_omniphony_or_route_governor(self) -> None:
         master = self.read(PATCHES / "apply_enhanced_component.py")
