@@ -33,8 +33,8 @@ node_id add_event(musical_execution_graph& graph, const char* label) {
     value.flow = flow_kind::stream;
     value.label = label;
     value.active = time_span{
-        {time_domain::musical, 0, 960, 0},
-        time_coordinate{time_domain::musical, 960, 960, 0},
+        {time_domain::authored, 0, 960, 0},
+        time_coordinate{time_domain::authored, 960, 960, 0},
     };
     return graph.add_node(std::move(value));
 }
@@ -48,8 +48,8 @@ absolute_musical_pitch_observation pitch(
         event,
         part,
         {
-            {time_domain::musical, 0, 960, 0},
-            time_coordinate{time_domain::musical, 960, 960, 0},
+            {time_domain::authored, 0, 960, 0},
+            time_coordinate{time_domain::authored, 960, 960, 0},
         },
         frequency_for_step(step),
         musical_pitch_role::programmed,
@@ -61,7 +61,7 @@ absolute_musical_pitch_observation pitch(
 
 const attribute* find_attribute(const node& value, const char* name) {
     for (const auto& item : value.attributes) {
-        if (item.name == name)
+        if (item.key == name)
             return &item;
     }
     return nullptr;
@@ -83,7 +83,7 @@ int main() {
     const node_id e3 = add_event(graph, "E");
 
     const auto verticality = make_harmonic_verticality(
-        {time_domain::musical, 480, 960, 0},
+        {time_domain::authored, 480, 960, 0},
         {
             pitch(e1, bass, 45, 0.97),
             pitch(e2, inner, 49, 0.95),
@@ -127,13 +127,12 @@ int main() {
     assert(find_attribute(*materialized, "harmonic_function") == nullptr);
     assert(find_attribute(*materialized, "enharmonic_spelling") == nullptr);
 
-    // First inversion is a voicing fact once the root candidate is known.
     const node_id f1 = add_event(graph, "C sharp bass");
     const node_id f2 = add_event(graph, "E upper");
     const node_id f3 = add_event(graph, "A upper");
     const auto first_inversion_projection = project_verticality_to_equal_temperament(
         make_harmonic_verticality(
-            {time_domain::musical, 480, 960, 0},
+            {time_domain::authored, 480, 960, 0},
             {
                 pitch(f1, bass, 49),
                 pitch(f2, inner, 52),
@@ -147,14 +146,12 @@ int main() {
     assert(first_inversion.front().quality == tertian_triad_quality::major);
     assert(first_inversion.front().inversion == triad_inversion::first);
 
-    // Augmented triads are symmetrical. Do not invent one privileged root from
-    // the pitch-class set alone.
     const node_id a1 = add_event(graph, "aug1");
     const node_id a2 = add_event(graph, "aug2");
     const node_id a3 = add_event(graph, "aug3");
     const auto augmented_projection = project_verticality_to_equal_temperament(
         make_harmonic_verticality(
-            {time_domain::musical, 480, 960, 0},
+            {time_domain::authored, 480, 960, 0},
             {
                 pitch(a1, bass, 60),
                 pitch(a2, inner, 64),
@@ -170,7 +167,6 @@ int main() {
         assert(candidate.confidence <= ambiguous_triad_root_ceiling);
     }
 
-    // The current triad vocabulary is explicitly 12-TET only.
     equal_temperament_model nineteen = tuning;
     nineteen.divisions_per_octave = 19;
     const auto nineteen_projection = project_verticality_to_equal_temperament(
@@ -185,8 +181,6 @@ int main() {
     }
     assert(rejected_nineteen);
 
-    // A frequency outside the declared tuning tolerance must be rejected rather
-    // than rounded into the nearest chord tone.
     auto detuned = verticality;
     detuned.frequencies_hz[1] *= std::pow(2.0, 50.0 / 1200.0);
     bool rejected_detuned = false;

@@ -91,7 +91,6 @@ def main() -> int:
             generator=args.generator,
             platform=args.platform,
             config=args.config,
-            extra_configure=("-DGAMEAUDIO_BUILD_CORE_TESTS=ON",),
         )
         configure_build_test(
             SPC_PROVIDER_CONTRACTS,

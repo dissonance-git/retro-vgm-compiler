@@ -18,7 +18,7 @@ node_id add_event(musical_execution_graph& graph, std::int64_t tick, const char*
     value.layer = semantic_layer::musical_performance;
     value.flow = flow_kind::event;
     value.label = label;
-    value.active = time_span{{time_domain::musical, tick, 960, 0}, std::nullopt};
+    value.active = time_span{{time_domain::authored, tick, 960, 0}, std::nullopt};
     return graph.add_node(std::move(value));
 }
 
@@ -43,14 +43,14 @@ tertian_triad_hypothesis chord(
     result.projection.tuning.confidence = 1.0;
     result.projection.tuning.source = "explicit-12tet-control";
     result.projection.source_verticality.observation_time = {
-        time_domain::musical, tick, 960, 0};
+        time_domain::authored, tick, 960, 0};
     result.projection.source_verticality.source_nodes = std::move(sources);
     return result;
 }
 
 const attribute* find_attribute(const edge& value, const char* name) {
     for (const auto& item : value.attributes) {
-        if (item.name == name)
+        if (item.key == name)
             return &item;
     }
     return nullptr;
@@ -113,15 +113,11 @@ int main() {
     assert(std::get<std::uint64_t>(
         find_attribute(*relation, "common_pitch_classes")->value) == 1);
 
-    // Tonal function is intentionally absent. Root-class motion is observable
-    // here, but IV/V/I language requires a separately grounded key/context.
     assert(find_attribute(*relation, "roman_numeral") == nullptr);
     assert(find_attribute(*relation, "harmonic_function") == nullptr);
     assert(find_attribute(*relation, "cadence") == nullptr);
     assert(find_attribute(*relation, "key") == nullptr);
 
-    // A symmetrical/root-ambiguous chord cannot yield highly confident root
-    // motion even if its pitch-class collection itself was strong.
     const auto ambiguous = chord(
         0,
         tertian_triad_quality::augmented,
@@ -140,7 +136,6 @@ int main() {
         ambiguous_transition.confidence,
         ambiguous_root_transition_ceiling));
 
-    // Temporal order is part of the transition claim.
     auto reversed = a_major;
     reversed.projection.source_verticality.observation_time.tick = 240;
     bool rejected_reversed = false;

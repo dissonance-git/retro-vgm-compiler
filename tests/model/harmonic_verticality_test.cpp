@@ -28,8 +28,8 @@ node_id add_pitch_event(musical_execution_graph& graph, std::int64_t start, std:
     value.flow = flow_kind::stream;
     value.label = "absolute musical pitch observation";
     value.active = time_span{
-        {time_domain::musical, start, 960, 0},
-        time_coordinate{time_domain::musical, end, 960, 0},
+        {time_domain::authored, start, 960, 0},
+        time_coordinate{time_domain::authored, end, 960, 0},
     };
     return graph.add_node(std::move(value));
 }
@@ -46,8 +46,8 @@ absolute_musical_pitch_observation pitch(
         source,
         part,
         {
-            {time_domain::musical, start, 960, 0},
-            time_coordinate{time_domain::musical, end, 960, 0},
+            {time_domain::authored, start, 960, 0},
+            time_coordinate{time_domain::authored, end, 960, 0},
         },
         frequency,
         role,
@@ -59,7 +59,7 @@ absolute_musical_pitch_observation pitch(
 
 const attribute* find_attribute(const std::vector<attribute>& attributes, const char* name) {
     for (const auto& item : attributes) {
-        if (item.name == name)
+        if (item.key == name)
             return &item;
     }
     return nullptr;
@@ -81,7 +81,7 @@ int main() {
     const node_id inner_event = add_pitch_event(graph, 0, 960);
     const node_id melody_event = add_pitch_event(graph, 0, 960);
 
-    const time_coordinate sample_time{time_domain::musical, 480, 960, 0};
+    const time_coordinate sample_time{time_domain::authored, 480, 960, 0};
     const auto verticality = make_harmonic_verticality(
         sample_time,
         {
@@ -111,8 +111,6 @@ int main() {
     assert(scope != nullptr);
     assert(std::get<std::string>(scope->value) == "harmonic_verticality");
 
-    // The verticality layer must not smuggle in a chord label, root, key, or
-    // harmonic function. Those require separate higher-order evidence.
     assert(find_attribute(materialized->attributes, "chord") == nullptr);
     assert(find_attribute(materialized->attributes, "root") == nullptr);
     assert(find_attribute(materialized->attributes, "key") == nullptr);
@@ -126,8 +124,6 @@ int main() {
         assert(find_attribute(support->attributes, "persistent_part_id") != nullptr);
     }
 
-    // Programmed and heard pitch are different evidence roles. Do not average
-    // them into one vertical slice merely because their numbers happen to match.
     bool rejected_mixed_roles = false;
     try {
         (void)make_harmonic_verticality(
@@ -141,8 +137,6 @@ int main() {
     }
     assert(rejected_mixed_roles);
 
-    // Supplying two pitches is not enough if only one is actually sounding at
-    // the observation time.
     bool rejected_inactive = false;
     try {
         (void)make_harmonic_verticality(
@@ -156,8 +150,6 @@ int main() {
     }
     assert(rejected_inactive);
 
-    // Relative motif pitch coordinates are intentionally not accepted by this
-    // API. Callers must first earn an absolute musical frequency observation.
     bool rejected_nonpositive = false;
     try {
         auto invalid = pitch(

@@ -1,7 +1,7 @@
-# Test registration is derived from the test tree whenever the relation is exact.
-# Every dependency-free C++ contract named *_test.cpp under model/, vgm/, or
-# spc/ is a build + CTest target. Python registrations stay explicit because
-# not every Python test has the same runtime or dependency contract.
+# Test identity is derived from the test tree whenever that relation is exact.
+# Build scope is narrower: root C++ tests must also be dependency-free. Tests
+# that compile against patched upstream source are classified explicitly below
+# and belong to external-source verification, not this root projection.
 
 function(vgm_compiler_add_cpp_test source)
     get_filename_component(test_target "${source}" NAME_WE)
@@ -52,6 +52,19 @@ file(GLOB VGM_COMPILER_CPP_TEST_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/model/*_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/vgm/*_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/spc/*_test.cpp"
+)
+
+# These contracts compile the patched upstream snes_spc API itself. Their test
+# identity is still derivable from *_test.cpp, but their dependency class is not.
+# Keep that distinction explicit instead of pretending filename shape implies a
+# dependency-free build contract.
+set(VGM_COMPILER_EXTERNAL_SOURCE_CPP_TEST_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/spc/snes_spc_forensic_bridge_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/spc/snes_spc_native_spatial_observer_test.cpp"
+)
+list(REMOVE_ITEM
+    VGM_COMPILER_CPP_TEST_SOURCES
+    ${VGM_COMPILER_EXTERNAL_SOURCE_CPP_TEST_SOURCES}
 )
 list(SORT VGM_COMPILER_CPP_TEST_SOURCES)
 
