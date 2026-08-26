@@ -64,6 +64,24 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             self.assertIn("!cfg_surround_sound || !sources_ready", patched_shadow)
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
+    def test_episode_observer_composes_after_pcm_command_boundary(self) -> None:
+        runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
+        self.assertIn(
+            '"""\\t(void)self->advance_pcm_streams_to(absolute_sample);',
+            runtime,
+        )
+        self.assertIn("m_genesis_surround_episodes.observe", runtime)
+        advance = runtime.index(
+            '"""\\t(void)self->advance_pcm_streams_to(absolute_sample);'
+        )
+        observe = runtime.index("m_genesis_surround_episodes.observe", advance)
+        capture = runtime.index(
+            "\\tif (self->m_source_capture_active)",
+            observe,
+        )
+        self.assertLess(advance, observe)
+        self.assertLess(observe, capture)
+
     def test_runtime_uses_role_free_constant_power_source_spread(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
         helper = self.read(

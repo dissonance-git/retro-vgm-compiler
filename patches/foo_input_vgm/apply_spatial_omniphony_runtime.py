@@ -222,16 +222,15 @@ bool input_vgm::render_genesis_surround_output(
 
     replace_once(
         shadow,
-        """\tconst uint_fast64_t absolute_sample =
-\t\tstatic_cast<uint_fast64_t>(self->m_vgm_player->Tick2Sample(static_cast<UINT32>(event.tick)));
+        """\t(void)self->advance_pcm_streams_to(absolute_sample);
 
 \tif (self->m_source_capture_active)
 """,
-        """\tconst uint_fast64_t absolute_sample =
-\t\tstatic_cast<uint_fast64_t>(self->m_vgm_player->Tick2Sample(static_cast<UINT32>(event.tick)));
+        """\t(void)self->advance_pcm_streams_to(absolute_sample);
 
-\t// Placement follows source episodes on the same resolved output ordinal as
-\t// source capture and stays synchronized while Surround is disabled.
+\t// The DAC-stream observer has already advanced its sideband to this exact
+\t// output ordinal. Place source episodes at the same command boundary so
+\t// render-ahead audio and delivered 7.1 placement remain sample-aligned.
 \tself->m_genesis_surround_episodes.observe(
 \t\tevent, static_cast<std::uint64_t>(absolute_sample));
 
