@@ -68,6 +68,19 @@ class SpcSurroundBedPatchContractTest(unittest.TestCase):
             self.assertIn("(m_CnfOptions & DSP_SURND) != 0", patched)
             self.assertNotIn("cfg_sem71_enabled", patched)
 
+    def test_surround_ui_bridge_owns_enhanced_lockout(self) -> None:
+        ui = self.read(PATCHES / "apply_surround_ui_bridge.py")
+        self.assertIn('"enhanced (later)"', ui)
+        self.assertIn("WS_DISABLED", ui)
+        self.assertIn("cfg_enhanced_enabled = 0;", ui)
+        self.assertIn("BST_UNCHECKED", ui)
+        self.assertNotIn(
+            "cfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED",
+            ui.split('"remove duplicate SNES spatial apply"')[0].split(
+                '"remove SNES duplicate spatial reset"'
+            )[-1],
+        )
+
     def test_runtime_is_exact_dry_wet_to_standard_7_1(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_private_runtime.py")
         self.assertIn("surround_bed_7_1.h", runtime)

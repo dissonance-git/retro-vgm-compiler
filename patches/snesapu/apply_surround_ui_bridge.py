@@ -4,7 +4,7 @@
 Runs immediately after apply_enhanced_ui.py. The temporary semantic-7.1/spatial
 preference is removed; IDC_DSP_SURROUND and DSP_SURND return to the ordinary DSP
 option table, so the existing guid_options/cfg_dsp_option state owns persistence.
-enhanced remains a separate x64 preference.
+Enhanced remains only as a disabled future preference for this product phase.
 """
 
 from __future__ import annotations

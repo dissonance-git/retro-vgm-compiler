@@ -82,18 +82,31 @@ class SpcSpatialOmniphonyRateLifecyclePatchTest(unittest.TestCase):
             )
             self.assertNotEqual(second.returncode, 0)
 
-    def test_rate_lifecycle_runs_after_private_spatial_runtime(self):
+    def test_rate_lifecycle_is_dormant_in_private_product_chain(self):
         repo = Path(__file__).resolve().parents[2]
         chain = (
             repo / "patches" / "snesapu" / "apply_private_component.py"
         ).read_text(encoding="utf-8")
-        runtime = chain.index(
-            'run(here / "apply_spatial_omniphony_private_runtime.py", root)'
+        self.assertIn(
+            'run(here / "apply_spatial_omniphony_private_runtime.py", root)',
+            chain,
         )
-        rate = chain.index(
-            'run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)'
+        self.assertNotIn(
+            'run(here / "apply_spatial_omniphony_private_rate_lifecycle.py", root)',
+            chain,
         )
-        self.assertLess(runtime, rate)
+        self.assertNotIn(
+            'run(here / "apply_foobar_source_session.py", root)',
+            chain,
+        )
+        self.assertTrue(
+            (
+                repo
+                / "patches"
+                / "snesapu"
+                / "apply_spatial_omniphony_private_rate_lifecycle.py"
+            ).is_file()
+        )
 
 
 if __name__ == "__main__":
