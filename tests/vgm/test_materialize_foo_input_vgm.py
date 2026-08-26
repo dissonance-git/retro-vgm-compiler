@@ -57,7 +57,7 @@ def main() -> int:
             "genesis_selected_source_block",
             "genesis_source_spread_7_1",
             "genesis_source_episode_transport",
-            "m_genesis_surround_eligible",
+            "m_supported_chip_surround_eligible",
         ):
             assert marker in header, f"materialized input_vgm.h missing {marker}"
 
@@ -113,7 +113,7 @@ def main() -> int:
         replacement = helper.index("chunk.set_data_floatingpoint_ex(")
         before_replacement = helper[:replacement]
         assert "return false;" in before_replacement
-        assert "!cfg_surround_sound || !m_genesis_surround_eligible" in before_replacement
+        assert "!cfg_surround_sound || !m_supported_chip_surround_eligible" in before_replacement
         assert "|| !sources_ready || !episodes_ready" in before_replacement
         assert "project_genesis_source_spread_7_1" in before_replacement
         assert "source_topology_supported()" in shadow

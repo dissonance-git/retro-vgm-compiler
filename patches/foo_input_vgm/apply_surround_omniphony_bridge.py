@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Make the historical VGM Surround preference own the Genesis-only 7.1 bed.
+"""Make the historical VGM Surround preference own a chip-scoped 7.1 bed.
 
 The old libvgm surround effect is a channel-inversion trick. Disable that effect
 and route the same persisted cfg_surround_sound switch only into exact primary
-YM2612/SN76489 source spreading. Unsupported chips remain protected passthrough;
-a VGM with no supported Genesis topology stays stereo even when Surround is on.
-The generated runtime remains fail-closed when exact source delivery fails.
+YM2612/SN76489 source spreading. Admission is based on chip identity, not the
+VGM system/platform label. Unsupported chips remain protected passthrough; a VGM
+with no supported YM2612/SN76489 source topology stays stereo even when Surround
+is on. The generated runtime remains fail-closed when exact source delivery fails.
 """
 
 from __future__ import annotations
@@ -56,12 +57,12 @@ def main() -> int:
 
     replace_once(
         shadow,
-        """\tif (!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible
+        """\tif (!cfg_vgm_sem71_enabled || !m_supported_chip_surround_eligible
 \t\t|| !sources_ready || !episodes_ready || frame_count == 0
 \t\t|| frame_count > 8192u || chunk.get_channels() != 2
 \t\t|| chunk.get_srate() != m_sample_rate)
 """,
-        """\tif (!cfg_surround_sound || !m_genesis_surround_eligible
+        """\tif (!cfg_surround_sound || !m_supported_chip_surround_eligible
 \t\t|| !sources_ready || !episodes_ready || frame_count == 0
 \t\t|| frame_count > 8192u || chunk.get_channels() != 2
 \t\t|| chunk.get_srate() != m_sample_rate)

@@ -31,7 +31,7 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertIn("cfg_surround_sound", bridge)
         self.assertIn("pa_cfg.chnInvert = 0x00;", bridge)
         self.assertIn(
-            "!cfg_surround_sound || !m_genesis_surround_eligible",
+            "!cfg_surround_sound || !m_supported_chip_surround_eligible",
             bridge,
         )
         self.assertIn("|| !sources_ready || !episodes_ready", bridge)
@@ -46,7 +46,7 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             shadow.write_text(
-                "\tif (!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible\n"
+                "\tif (!cfg_vgm_sem71_enabled || !m_supported_chip_surround_eligible\n"
                 "\t\t|| !sources_ready || !episodes_ready || frame_count == 0\n"
                 "\t\t|| frame_count > 8192u || chunk.get_channels() != 2\n"
                 "\t\t|| chunk.get_srate() != m_sample_rate)\n",
@@ -67,27 +67,35 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             self.assertIn("pa_cfg.chnInvert = 0x00;", patched_base)
             self.assertNotIn("cfg_surround_sound ? 0x02 : 0x00", patched_base)
             self.assertIn(
-                "!cfg_surround_sound || !m_genesis_surround_eligible",
+                "!cfg_surround_sound || !m_supported_chip_surround_eligible",
                 patched_shadow,
             )
             self.assertIn("|| !sources_ready || !episodes_ready", patched_shadow)
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
-    def test_surround_is_explicitly_genesis_only(self) -> None:
+    def test_surround_is_chip_scoped_not_platform_scoped(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
         bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
-        self.assertIn("m_genesis_surround_eligible", runtime)
+        source_player = self.read(
+            ROOT / "components" / "vgm" / "foo_input_vgm" / "src" / "source_aware_vgm_player.h"
+        )
+        self.assertIn("m_supported_chip_surround_eligible", runtime)
         self.assertIn("source_topology_supported()", runtime)
         self.assertIn(
-            "!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible",
+            "!cfg_vgm_sem71_enabled || !m_supported_chip_surround_eligible",
             runtime,
         )
         self.assertIn(
-            "!cfg_surround_sound || !m_genesis_surround_eligible",
+            "!cfg_surround_sound || !m_supported_chip_surround_eligible",
             bridge,
         )
-        self.assertIn("every other", runtime)
-        self.assertIn("stereo chunk untouched", runtime)
+        self.assertIn("chip-scoped, not platform-scoped", runtime)
+        self.assertIn("chip identity, not the", bridge)
+        self.assertIn("chipDev.chipType == DEVID_YM2612", source_player)
+        self.assertIn("chipDev.chipType == DEVID_SN76496", source_player)
+        self.assertIn("No VGM system/platform metadata is consulted", source_player)
+        self.assertNotIn("Genesis-only", runtime)
+        self.assertNotIn("Genesis-only", bridge)
 
     def test_episode_observer_composes_after_pcm_command_boundary(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the first role-free Genesis 7.1 bed from exact YM2612/SN76489 lanes.
+"""Build the first role-free chip-scoped 7.1 bed from exact YM2612/SN76489 lanes.
 
 Runs after apply_spatial_selected_source_transport.py. The protected stereo mix
 is produced first. Every exact independently delivered YM2612 FM/DAC or SN76489
@@ -113,7 +113,7 @@ def main() -> int:
         "\tgameaudio::vgm::genesis_source_episode_transport<2048, 256> m_genesis_surround_episodes{};\n"
         "\tvgmtooling::model::surround_7_1_bed_storage<8192> m_genesis_surround_bed{};\n"
         "\tstd::uint64_t m_genesis_delivered_ordinal = 0;\n"
-        "\tbool m_genesis_surround_eligible = false;\n",
+        "\tbool m_supported_chip_surround_eligible = false;\n",
         "Genesis 7.1 runtime state",
     )
 
@@ -139,7 +139,7 @@ void input_vgm::reset_genesis_surround_transport(std::uint64_t delivered_ordinal
 {
 	reset_genesis_surround_audio_delivery(delivered_ordinal);
 	m_genesis_surround_episodes.reset();
-	m_genesis_surround_eligible = false;
+	m_supported_chip_surround_eligible = false;
 }
 
 bool input_vgm::render_genesis_surround_output(
@@ -161,7 +161,7 @@ bool input_vgm::render_genesis_surround_output(
 		frame_count,
 		episode_block);
 
-	if (!cfg_vgm_sem71_enabled || !m_genesis_surround_eligible
+	if (!cfg_vgm_sem71_enabled || !m_supported_chip_surround_eligible
 		|| !sources_ready || !episodes_ready || frame_count == 0
 		|| frame_count > 8192u || chunk.get_channels() != 2
 		|| chunk.get_srate() != m_sample_rate)
@@ -207,16 +207,16 @@ bool input_vgm::render_genesis_surround_output(
 \t\t&& source_player->source_output_count() == sample_count;
 """,
         """\tauto* source_player = static_cast<SourceAwareVGMPlayer*>(m_vgm_player);
-\t// The Surround checkbox is intentionally Genesis-only. A mixed-chip VGM
-\t// may spatialize its exact primary YM2612/SN76489 lanes, but every other
-\t// chip remains in the protected reference residual. With no supported
-\t// Genesis topology at all, the host must leave the stereo chunk untouched.
-\tm_genesis_surround_eligible = source_player != nullptr
+\t// Surround admission is chip-scoped, not platform-scoped. Any VGM
+\t// exposing exact primary YM2612/SN76489 lanes may spatialize them; unrelated
+\t// chips remain in the protected reference residual. No console/system identity
+\t// is consulted here; with no supported chip source topology, stereo passes untouched.
+\tm_supported_chip_surround_eligible = source_player != nullptr
 \t\t&& source_player->source_topology_supported();
-\tconst bool source_block_ready = m_genesis_surround_eligible
+\tconst bool source_block_ready = m_supported_chip_surround_eligible
 \t\t&& source_player->source_output_count() == sample_count;
 """,
-        "gate Genesis Surround to supported source topology",
+        "gate Surround to supported chip source topology",
     )
 
     replace_once(
@@ -339,7 +339,7 @@ bool input_vgm::render_genesis_surround_output(
         "reseed Genesis Surround source clock after seek",
     )
 
-    print("foo_input_vgm minimal source-native Genesis 7.1 runtime applied")
+    print("foo_input_vgm minimal source-native YM2612/SN76489 7.1 runtime applied")
     return 0
 
 
