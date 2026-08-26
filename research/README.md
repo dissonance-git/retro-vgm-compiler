@@ -1,6 +1,6 @@
 # Research
 
-`research/` owns evidence, experiments, controls, and bounded investigations. It does not own project identity, durable semantic law, the musical north star, or current project priority.
+`research/` owns evidence, experiments, controls, observatories, and bounded investigations. It does not own project identity, durable semantic law, the musical north star, or current project priority.
 
 Those authorities are:
 
@@ -23,7 +23,7 @@ research/
 ├── music/        musical understanding / creator grammar / attribution methods
 ├── runtime/      execution / synthesis / control / state
 ├── formats/      source / driver / chip / platform investigations
-├── validation/   observatories / controls / pressure tests
+├── validation/   observatories / external evidence / controls / pressure tests
 └── rendering/    fidelity / equivalence / reconstruction / enhancement
 ```
 
@@ -56,7 +56,10 @@ A research result may support a roadmap change or a durable contract change, but
 | Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
 | source / driver / chip mechanism | `formats/` |
 | runtime/state relation | `runtime/` |
-| external method or representation pressure test | `validation/` |
+| external upstream / specification / implementation evidence | `validation/upstreams.md` |
+| external music-representation pressure test | `validation/music-representation-systems.md` |
+| OpenMusic-specific pressure evidence | `validation/openmusic-libraries.md` |
+| other external method / observatory / control | `validation/` |
 | rendering equivalence / reconstruction / enhancement | `rendering/` |
 
 For Genesis source semantics, the source ledger owns provenance and re-entry. Conceptual and experimental claims remain with the format-specific research owner that asks the question. Shared evidence does not require shared ownership.
@@ -97,7 +100,8 @@ Before adding research material:
 3. Treat named games as controls unless the game itself is the integrative research problem.
 4. Extend an owner before creating a peer narrative.
 5. Keep status and priority out of research prose unless the statement is itself part of a frozen experimental contract.
-6. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
+6. Do not place surveys, literature syntheses, upstream registries, observatory notes, or pressure tests under `docs/` merely because their conclusions are useful.
+7. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
 
 Navigation compression must preserve evidence boundaries:
 

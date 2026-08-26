@@ -2,7 +2,7 @@
 
 This research owner records the OpenMusic-library evidence that pressure-tests VGM Compiler's musical representation. OpenMusic and its libraries are research inputs, not runtime dependencies and not an ontology source of authority.
 
-The durable representation contract distilled from this evidence lives in [`../../docs/music-representation-systems.md`](../../docs/music-representation-systems.md).
+The cross-system representation pressure test is [`music-representation-systems.md`](music-representation-systems.md). Durable semantics promoted from this evidence live in [`../../docs/architecture.md`](../../docs/architecture.md).
 
 ## Research question
 

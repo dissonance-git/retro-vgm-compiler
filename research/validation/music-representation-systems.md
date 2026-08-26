@@ -1,12 +1,14 @@
-# Music representation systems
+# Music representation systems observatory
 
-This document owns the durable lessons VGM Compiler takes from external music-representation, sequencing, synthesis, analysis, and computer-assisted-composition systems. The external systems are observatories, not runtime dependencies and not competing ontologies.
+This research owner records what external music-representation, sequencing, synthesis, analysis, and computer-assisted-composition systems pressure-test in VGM Compiler. These systems are observatories, not runtime dependencies and not sources of project-wide semantic authority.
 
 The governing question is:
 
 > Which distinctions must remain explicit so source-native execution can be related to musical structure without flattening either one?
 
-Detailed OpenMusic evidence and literature live in [`../research/validation/openmusic-libraries.md`](../research/validation/openmusic-libraries.md). The project-wide evidence rules live in [`architecture.md`](architecture.md). The musical target lives in [`musical-understanding.md`](musical-understanding.md).
+Detailed OpenMusic evidence lives in [`openmusic-libraries.md`](openmusic-libraries.md). Durable semantic and evidence laws live in [`../../docs/architecture.md`](../../docs/architecture.md). The musical target lives in [`../../docs/musical-understanding.md`](../../docs/musical-understanding.md).
+
+Research conclusions here are candidates for promotion. They become durable project law only when explicitly adopted by a contract under `docs/`.
 
 ## Linked representations
 
@@ -46,9 +48,9 @@ whole-work interpretation
 
 Forward and inverse representations can share vocabulary while retaining different provenance and evidence states.
 
-## Required distinctions
+## Recurrent pressure points
 
-External systems repeatedly pressure-test the same boundaries.
+External systems repeatedly expose the value of keeping these boundaries explicit:
 
 ```text
 IDENTITY
@@ -93,7 +95,7 @@ exact
 
 When a source does not expose one of these distinctions, absence of evidence must not be converted into a false value.
 
-## The final mix is a projection
+## Final mix as projection
 
 DAWs, trackers, sequencers, score systems, synthesis languages, and game-music formats expose different slices of causality. A final render cannot replace arrangement, control, synthesis, routing, timing, or source identity when those relations are known.
 
@@ -101,7 +103,7 @@ Likewise, MIDI, notation, piano roll, chord labels, stems, spectral models, and 
 
 ## Program is not execution
 
-Procedural and interactive music systems demonstrate another durable boundary:
+Procedural and interactive music systems pressure-test another boundary:
 
 ```text
 static musical program
@@ -110,7 +112,7 @@ static musical program
 != resulting audio
 ```
 
-Loops, branches, variables, macros, allocation, and interaction can make the program richer than one expanded event list. VGM Compiler therefore preserves control-flow or source-program structure separately from captured runtime traces where the source supports it.
+Loops, branches, variables, macros, allocation, and interaction can make a program richer than one expanded event list. Where source evidence supports it, control flow and source-program structure should remain separable from captured runtime traces.
 
 ## Cross-representation teaching
 
@@ -130,9 +132,9 @@ Examples include symbolic tracks teaching persistent-part continuity through har
 
 The mapping never proves that an unrelated soundtrack used the supervising format, tool, or historical workflow.
 
-## Analysis projections do not mutate evidence
+## Analysis projections
 
-Voice separation, rhythm quantization, motif discovery, harmonic analysis, spectral decomposition, and constraint solving all create analysis-specific views above retained evidence.
+Voice separation, rhythm quantization, motif discovery, harmonic analysis, spectral decomposition, and constraint solving create analysis-specific views above retained evidence.
 
 ```text
 exact evidence
@@ -146,11 +148,11 @@ validation / comparison
 
 A quantized rhythm does not rewrite exact source time. A separated voice does not become a source-proved part. A reconstruction candidate does not become recovered historical truth. Competing candidates may coexist.
 
-## External-system pressure tests
+## External-system families
 
-The useful lesson is the distinction each family forces, not its syntax or API.
+The useful observation is the distinction each family pressures, not its syntax or API.
 
-| System family | Pressure on VGM Compiler |
+| System family | Research pressure |
 | --- | --- |
 | score / symbolic systems | explicit parts, voices, durations, hierarchy, transformations |
 | trackers / sequencers | executable patterns, effects, loops, control flow, authored timing |
@@ -163,16 +165,15 @@ The useful lesson is the distinction each family forces, not its syntax or API.
 
 No external family defines the VGM Compiler ontology by itself.
 
-## Admission rule
+## Admission test
 
-A distinction enters shared project semantics only when it solves a current cross-source problem and survives materially different source families without erasing useful native evidence.
-
-Before promoting an external-system idea, ask:
+Before proposing an external-system distinction for shared project semantics, ask:
 
 1. What current inference or verification problem does it solve?
 2. Which independent source families need the distinction?
 3. What information would normalization erase?
 4. Can the result descend to its supporting evidence?
 5. Is the new representation canonical state, a derived projection, or a hypothesis?
+6. Which discriminating test would falsify the proposed generalization?
 
-Research succeeds when it produces sharper obligations, tests, and relations. It does not succeed by accumulating dependencies.
+Research succeeds when it produces sharper obligations, tests, and relations. Promotion into `docs/` is a separate act.
