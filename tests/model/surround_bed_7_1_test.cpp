@@ -13,29 +13,29 @@ bool near(float a, float b, float tolerance = 1.0e-6f) {
 int main() {
     using namespace vgmtooling::model;
 
-    constexpr std::size_t frames = 2;
-    const std::array<double, frames * 2> reference{
+    constexpr std::size_t frame_count = 2;
+    const std::array<double, frame_count * 2> reference{
         0.80, -0.60,
         -0.25, 0.50,
     };
-    const std::array<float, frames> wet_left{0.20f, -0.05f};
-    const std::array<float, frames> wet_right{-0.10f, 0.15f};
+    const std::array<float, frame_count> wet_left{0.20f, -0.05f};
+    const std::array<float, frame_count> wet_right{-0.10f, 0.15f};
 
-    surround_7_1_bed_storage<frames> bed{};
-    assert(bed.begin_from_interleaved_stereo(reference.data(), frames));
+    surround_7_1_bed_storage<2> bed{};
+    assert(bed.begin_from_interleaved_stereo(reference.data(), frame_count));
     assert(bed.valid());
-    assert(bed.frame_count() == frames);
+    assert(bed.frame_count() == frame_count);
     assert(bed.move_stereo_to_surround_field(
-        wet_left.data(), wet_right.data(), frames));
+        wet_left.data(), wet_right.data(), frame_count));
 
     const float* out = bed.data();
     assert(out != nullptr);
     const auto at = [&](std::size_t frame, surround_7_1_channel channel) {
         return out[frame * surround_7_1_channel_count +
-            surround_7_1_bed_storage<frames>::index(channel)];
+            surround_7_1_bed_storage<2>::index(channel)];
     };
 
-    // Dry/reference-minus-wet stays in front.
+    // The protected front remainder stays in front.
     assert(near(at(0, surround_7_1_channel::front_left), 0.60f));
     assert(near(at(0, surround_7_1_channel::front_right), -0.50f));
     assert(near(at(0, surround_7_1_channel::front_center), 0.0f));
@@ -57,7 +57,7 @@ int main() {
 
     // A conventional -3 dB surround fold reconstructs the original stereo
     // exactly for this shared-field operation.
-    for (std::size_t frame = 0; frame < frames; ++frame) {
+    for (std::size_t frame = 0; frame < frame_count; ++frame) {
         const float folded_left =
             at(frame, surround_7_1_channel::front_left) +
             surround_equal_power_split * (
@@ -73,9 +73,9 @@ int main() {
     }
 
     // Exact isolated stereo families can instead move to one speaker pair.
-    const std::array<float, frames> source_left{0.10f, 0.02f};
-    const std::array<float, frames> source_right{0.05f, -0.03f};
-    assert(bed.move_stereo_to_sides(source_left.data(), source_right.data(), frames));
+    const std::array<float, frame_count> source_left{0.10f, 0.02f};
+    const std::array<float, frame_count> source_right{0.05f, -0.03f};
+    assert(bed.move_stereo_to_sides(source_left.data(), source_right.data(), frame_count));
     assert(near(at(0, surround_7_1_channel::front_left), 0.50f));
     assert(near(
         at(0, surround_7_1_channel::side_left),
