@@ -82,7 +82,9 @@ class CubeCalibrationPolicyTests(unittest.TestCase):
         policy = read_policy()
         admissions = read_admissions()
         confounds = policy["evidence_worlds"]["arrangement_or_implementation_only"]
-        galaxy_force = next(world for world in confounds if world["work"] == "Galaxy Force II (Mega Drive)")
+        galaxy_force = next(
+            world for world in confounds if world.get("work") == "Galaxy Force II (Mega Drive)"
+        )
 
         self.assertEqual(galaxy_force["candidate"], "Masanori Hikichi")
         self.assertIn("exclude from Hikichi composer supervision", galaxy_force["usage"])

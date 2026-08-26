@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise YM2151 host capture through the existing Genesis HQ-FM transform."""
+"""Exercise the independent YM2151 host-capture reference experiment."""
 
 from __future__ import annotations
 
@@ -63,27 +63,24 @@ class Ym2151ReferenceCapturePatchTest(unittest.TestCase):
             self.assertIn("m_hq_fm_block_valid = false;", text)
             self.assertIn("m_opm_block_valid = false;", text)
 
-            # OPM topology is independent. The existing Genesis predicate must
-            # not suddenly include m_opm or m_unsupported_opm_topology.
+            # OPM topology remains an independent reference lane. The Genesis
+            # predicate must not silently absorb OPM state.
             start = text.index("    bool source_topology_supported() const noexcept")
             end = text.index("    bool source_block_complete() const noexcept", start)
             genesis_predicate = text[start:end]
             self.assertNotIn("m_opm", genesis_predicate)
             self.assertNotIn("m_unsupported_opm_topology", genesis_predicate)
 
-    def test_component_chain_preserves_required_patch_order(self) -> None:
+    def test_installable_component_keeps_reference_capture_independent(self) -> None:
         chain = CHAIN.read_text(encoding="utf-8")
-        names = [
-            'run(here / "apply_source_aware_player.py", source)',
-            'run(here / "apply_ym2151_reference_capture.py", source)',
-            'run(here / "apply_ym2151_hq_fm_compat.py", source)',
-            'run(here / "apply_hq_nuked_fm_lift.py", source)',
-            'run(here / "apply_ym2151_reference_startup_fix.py", source)',
-        ]
-        for item in names:
-            self.assertIn(item, chain)
-        positions = [chain.index(item) for item in names]
-        self.assertEqual(positions, sorted(positions))
+        self.assertIn('run(here / "apply_source_aware_player.py", source)', chain)
+        self.assertIn('run(here / "apply_hq_nuked_fm_lift.py", source)', chain)
+        for experiment in (
+            "apply_ym2151_reference_capture.py",
+            "apply_ym2151_hq_fm_compat.py",
+            "apply_ym2151_reference_startup_fix.py",
+        ):
+            self.assertNotIn(experiment, chain)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,9 @@ class SourceAwareShadowIncludePatchTest(unittest.TestCase):
             source = Path(tmp)
             shadow = source / "input_vgm_shadow.cpp"
             shadow.write_text(
-                '#include "input_vgm.h"\n\n#include <emu/cores/sn764intf.h>\n',
+                '#include "input_vgm.h"\n'
+                '#include "my_cfg_external.h"\n\n'
+                '#include <emu/cores/sn764intf.h>\n',
                 encoding="utf-8",
             )
 

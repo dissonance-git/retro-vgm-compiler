@@ -180,10 +180,15 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
         }
 
         original_structural = evaluator.base.structural_similarity
+        original_pitch = evaluator.structural_pitch_similarity
+        original_rhythm = evaluator.structural_rhythm_similarity
         original_realization = evaluator.base.realization_similarity
-        evaluator.base.structural_similarity = (
+        synthetic_structural = (
             lambda left, right: 1.0 - abs(left["latent"] - right["latent"])
         )
+        evaluator.base.structural_similarity = synthetic_structural
+        evaluator.structural_pitch_similarity = synthetic_structural
+        evaluator.structural_rhythm_similarity = synthetic_structural
         evaluator.base.realization_similarity = (
             lambda left, right: 1.0
             - abs(left["realization_latent"] - right["realization_latent"])
@@ -192,6 +197,8 @@ class MaedaCalibrationEvalTest(unittest.TestCase):
             result = evaluator.evaluate(audit, policy, k=1)
         finally:
             evaluator.base.structural_similarity = original_structural
+            evaluator.structural_pitch_similarity = original_pitch
+            evaluator.structural_rhythm_similarity = original_rhythm
             evaluator.base.realization_similarity = original_realization
 
         self.assertIn("validated as creator-blind", result["label_policy"])

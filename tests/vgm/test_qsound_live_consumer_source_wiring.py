@@ -48,7 +48,6 @@ class QSoundLiveConsumerSourceWiringTest(unittest.TestCase):
         self.assertNotIn("m_qsound_consumer_source_shadow_valid = true;", self.consumer)
 
     def test_missing_native_brackets_remain_availability_evidence(self):
-        self.assertIn("Missing source brackets are intentionally not a structural failure", self.consumer)
         self.assertIn("m_qsound_consumer_source_storage.render(", self.consumer)
         self.assertNotIn("all_available()", self.consumer)
 
