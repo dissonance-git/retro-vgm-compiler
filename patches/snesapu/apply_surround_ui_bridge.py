@@ -139,8 +139,7 @@ static const int g_DSP_OPT[][2] = {
         prefs,
         """#ifdef _WIN64
 \tSendDlgItemMessage(IDC_SEM71_ENABLED, BM_SETCHECK, cfg_sem71_enabled, 0);
-\tcfg_enhanced_enabled = 0;
-\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, BST_UNCHECKED, 0);
+\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, cfg_enhanced_enabled, 0);
 #else
 \t// Source-aware Spatial/enhanced paths are x64-only in this shell.
 \t::EnableWindow(GetDlgItem(IDC_SEM71_ENABLED), FALSE);
@@ -148,9 +147,10 @@ static const int g_DSP_OPT[][2] = {
 #endif
 """,
         """#ifdef _WIN64
-\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, cfg_enhanced_enabled, 0);
+\tcfg_enhanced_enabled = 0;
+\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, BST_UNCHECKED, 0);
 #else
-\t// Omniphony source presentation and enhanced playback are x64-only here.
+\t// Source-aware Surround and future enhanced playback are x64-only here.
 \t::EnableWindow(GetDlgItem(IDC_DSP_SURROUND), FALSE);
 \t::EnableWindow(GetDlgItem(IDC_ENHANCED_ENABLED), FALSE);
 #endif
@@ -176,11 +176,11 @@ static const int g_DSP_OPT[][2] = {
         prefs,
         """#ifdef _WIN64
 \tcfg_sem71_enabled = SendDlgItemMessage(IDC_SEM71_ENABLED, BM_GETCHECK, 0, 0);
-\tcfg_enhanced_enabled = 0;
+\tcfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_GETCHECK, 0, 0);
 #endif
 """,
         """#ifdef _WIN64
-\tcfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_GETCHECK, 0, 0);
+\tcfg_enhanced_enabled = 0;
 #endif
 """,
         "remove duplicate SNES spatial apply",
@@ -197,13 +197,8 @@ static const int g_DSP_OPT[][2] = {
 \t}
 #endif
 """,
-        """#ifdef _WIN64
-\tif (m_IDLastChanged == -1 || m_IDLastChanged == IDC_ENHANCED_ENABLED) {
-\t\tif (SendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_GETCHECK) != cfg_enhanced_enabled) return true;
-\t}
-#endif
-""",
-        "remove duplicate SNES spatial dirty-state check",
+        "",
+        "remove duplicate SNES spatial/enhanced dirty-state checks",
     )
 
     replace_once(

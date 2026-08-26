@@ -74,11 +74,13 @@ class SpcSurroundBedPatchContractTest(unittest.TestCase):
         self.assertIn("WS_DISABLED", ui)
         self.assertIn("cfg_enhanced_enabled = 0;", ui)
         self.assertIn("BST_UNCHECKED", ui)
-        self.assertNotIn(
-            "cfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED",
-            ui.split('"remove duplicate SNES spatial apply"')[0].split(
-                '"remove SNES duplicate spatial reset"'
-            )[-1],
+        self.assertIn(
+            '"""#ifdef _WIN64\n\\tcfg_enhanced_enabled = 0;\n#endif\n"""',
+            ui,
+        )
+        self.assertIn(
+            '"remove duplicate SNES spatial/enhanced dirty-state checks"',
+            ui,
         )
 
     def test_runtime_is_exact_dry_wet_to_standard_7_1(self) -> None:
