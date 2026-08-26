@@ -44,6 +44,17 @@ jobs:
       - name: Checkout exact source
         uses: actions/checkout@v4
 
+      - name: Normalize exact source bytes
+        shell: pwsh
+        run: |
+          # The bootstrap audits compare working-tree bytes against Git objects.
+          # Configure line endings before force-restoring the checkout so Windows
+          # cannot make a clean commit appear modified after checkout.
+          git config --local core.autocrlf false
+          git reset --hard "$env:GITHUB_SHA"
+          python -B tools/verify_build_source_provenance.py . --expected-commit "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'exact source normalization failed' }
+
       - name: Publish running locator for connected clients
         shell: pwsh
         env:
@@ -137,7 +148,6 @@ jobs:
       - name: Build and audit installable components
         shell: pwsh
         run: |
-          git config --global core.autocrlf false
           $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
           $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
           $rsp = Join-Path $PWD 'Directory.Build.rsp'
