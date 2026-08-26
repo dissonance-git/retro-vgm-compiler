@@ -345,13 +345,13 @@ void input_vgm::apply_enhanced_post_render(WAVE_32BS* samples, UINT32 sample_cou
         shadow,
         """bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 {
-\t// enhanced is a later project. Clear stale persisted state before any
-\t// source-quality admission can observe it in this playback block.
-\tcfg_vgm_enhanced_enabled = 0;
 \tconfigure_enhancement_shadow();
 """,
         """bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 {
+\t// enhanced is a later project. Clear stale persisted state before any
+\t// source-quality admission can observe it in this playback block.
+\tcfg_vgm_enhanced_enabled = 0;
 \tconfigure_enhancement_shadow();
 \tm_enhanced_psg_block_rendered = false;
 #if defined(LIBVGM_GAMEAUDIO_SOURCE_CAPTURE_ABI) && defined(LIBVGM_GAMEAUDIO_POSTRENDER_ABI)
