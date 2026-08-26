@@ -55,11 +55,11 @@ def main() -> int:
 
     replace_once(
         shadow,
-        """\tif (!cfg_vgm_sem71_enabled || !sources_ready || frame_count == 0
+        """\tif (!cfg_vgm_sem71_enabled || !sources_ready || !episodes_ready || frame_count == 0
 \t\t|| frame_count > 8192u || chunk.get_channels() != 2
 \t\t|| chunk.get_srate() != m_sample_rate)
 """,
-        """\tif (!cfg_surround_sound || !sources_ready || frame_count == 0
+        """\tif (!cfg_surround_sound || !sources_ready || !episodes_ready || frame_count == 0
 \t\t|| frame_count > 8192u || chunk.get_channels() != 2
 \t\t|| chunk.get_srate() != m_sample_rate)
 """,

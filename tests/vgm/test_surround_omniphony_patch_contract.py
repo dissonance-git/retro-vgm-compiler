@@ -30,7 +30,10 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
         self.assertIn("cfg_surround_sound", bridge)
         self.assertIn("pa_cfg.chnInvert = 0x00;", bridge)
-        self.assertIn("!cfg_surround_sound || !sources_ready", bridge)
+        self.assertIn(
+            "!cfg_surround_sound || !sources_ready || !episodes_ready",
+            bridge,
+        )
 
     def test_bridge_executes_against_expected_generated_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -42,7 +45,7 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             shadow.write_text(
-                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || frame_count == 0\n"
+                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || !episodes_ready || frame_count == 0\n"
                 "\t\t|| frame_count > 8192u || chunk.get_channels() != 2\n"
                 "\t\t|| chunk.get_srate() != m_sample_rate)\n",
                 encoding="utf-8",
@@ -61,7 +64,10 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             patched_shadow = shadow.read_text(encoding="utf-8")
             self.assertIn("pa_cfg.chnInvert = 0x00;", patched_base)
             self.assertNotIn("cfg_surround_sound ? 0x02 : 0x00", patched_base)
-            self.assertIn("!cfg_surround_sound || !sources_ready", patched_shadow)
+            self.assertIn(
+                "!cfg_surround_sound || !sources_ready || !episodes_ready",
+                patched_shadow,
+            )
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
     def test_episode_observer_composes_after_pcm_command_boundary(self) -> None:
