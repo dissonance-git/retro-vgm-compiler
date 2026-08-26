@@ -1,49 +1,42 @@
-# Creator feature cache
+# Creator feature extraction
 
-This directory is the analysis-ready catalog for creator-attribution research.
+This directory owns the tracked inputs that make creator-attribution feature extraction interpretable and reproducible. Generated feature capsules are reusable local acceleration, not repository truth.
+
+## Ownership
+
+```text
+creator-feature-cache/
+├── README.md       extraction / cache contract
+└── catalogs/       tracked documentary label and admission data
+
+research/cache/creator-feature-cache/
+└── tracks/         ignored generated feature capsules
+```
+
+The naming retains “feature cache” because the tooling exposes a reusable cache, but the tracked directory contains only the contract and canonical catalog inputs. Generated cache bytes live under the repository-wide ignored `research/cache/` owner.
 
 ## Rule
 
-**Parse a song once. Research it many times.**
+**Parse a song once when useful. Research the resulting view many times. Regenerate it when needed.**
 
-VGM/VGZ binaries are ingestion inputs, not the normal query surface. Each song gets one creator-blind JSON capsule under `tracks/<soundtrack-id>/`. Later experiments load those capsules and operate on small feature objects or similarity matrices.
+VGM/VGZ binaries remain the source evidence. A generated capsule is a creator-blind projection that reduces repeated parsing cost. It must never outrank the source or silently become a second canonical music database.
 
-The cache deliberately separates two concerns:
+Documentary labels remain separate from extracted music features. Do not put composer or artist names into song capsules. Overlay catalog labels only after blind extraction when an experiment needs ground truth.
 
-- **features/evidence**: creator-blind material extracted from the music stream;
-- **labels**: documentary composer / arranger / programmer evidence stored in separate research policy or catalog files.
+## Capsule views
 
-Do not put composer names into song capsules. A label is overlaid only after blind extraction when an experiment needs ground truth.
+The current extractor can cache:
 
-## Current capsule views
+- `canonical_events`: accepted ordinary full YM2612 key-ons with timing, physical channel, FNUM/block, patch fingerprints, algorithm, feedback, AMS/FMS, and pan;
+- `gen1`: pooled relative-semitone interval, interval-bigram, contour, rhythm, channel-density, patch, and realization summaries;
+- `gen2_parts`: interval and interval-bigram views per active YM2612 physical channel;
+- `gen3_motion_parts`: the Gen-2 view with repeated-note zero intervals and zero-touching bigrams removed.
 
-A single ingestion operation stores both a reusable event layer and the current derived views:
+These are analysis projections. `canonical_events` is deliberately closer to observed execution than the higher feature views, but it is still a generated cache of source evidence rather than authored notation or persistent-part proof.
 
-1. `canonical_events`
-   - every accepted ordinary full YM2612 key-on
-   - VGM tick, physical channel, FNUM, block
-   - patch fingerprints, algorithm, feedback, AMS/FMS, pan
-   - this is the future-facing layer: new interval, timing, part, phrase, register, or patch ideas can usually be derived from JSON without reopening the VGM
-2. `gen1`
-   - pooled relative-semitone interval histogram
-   - interval bigrams
-   - contour
-   - normalized onset-gap rhythm
-   - channel usage / density
-   - patch and realization summaries
-3. `gen2_parts`
-   - interval and interval-bigram histograms kept separately for each active YM2612 channel
-   - enough to perform permutation-invariant part matching without reparsing audio
-4. `gen3_motion_parts`
-   - Gen-2 parts with repeated-note `0` intervals removed
-   - all bigrams touching `0` removed
-   - enough to run the frozen Gen-3 motion matcher directly from cache
+Scores and similarity matrices are cheaper derived products and should normally be regenerated rather than tracked.
 
-The cache stores evidence/features, not creator scores. Scores are cheap derived products and can be regenerated for any reference/query set.
-
-## Commands
-
-Ingest a corpus once:
+## Generate
 
 ```bash
 python tools/vgm_creator_feature_cache.py \
@@ -51,36 +44,35 @@ python tools/vgm_creator_feature_cache.py \
   --soundtrack-id golden-axe-iii-genesis-vgz
 ```
 
-The default destination is:
+Default output:
 
 ```text
-research/music/creator-feature-cache/tracks/<soundtrack-id>/
+research/cache/creator-feature-cache/tracks/<soundtrack-id>/
 ```
 
-Existing song capsules are reused. `--refresh` is intentionally explicit and should be used only when the extractor/schema or source corpus intentionally changes.
+Existing local capsules are reused. `--refresh` explicitly recomputes them after a source, extractor, or schema change. `--out` may point elsewhere when a bounded experiment needs its own disposable workspace.
 
-Build a creator-blind matrix later without touching a VGM:
+A later similarity query can operate entirely on the generated projection:
 
 ```bash
 python tools/vgm_creator_cached_similarity.py \
-  research/music/creator-feature-cache/tracks/golden-axe-iii-genesis-vgz \
-  research/music/creator-feature-cache/tracks/sonic-3d-blast-genesis-vgm \
+  research/cache/creator-feature-cache/tracks/golden-axe-iii-genesis-vgz \
+  research/cache/creator-feature-cache/tracks/sonic-3d-blast-genesis-vgm \
   --view gen3-motion-parts \
   --json /tmp/matrix.json
 ```
 
-## Composer catalogs
+## Catalogs
 
-A composer catalog is a **small label/index overlay** pointing at cached song identities. `catalogs/tatsuyuki-maeda.json`, for example, lists the 26 primary Genesis tracks currently supported by documentary Maeda composer evidence without duplicating their musical data.
+`catalogs/` is different from the cache. It contains tracked documentary label/admission data that a research protocol may treat as canonical input. For example, `catalogs/tatsuyuki-maeda.json` identifies tracks supported by documentary role evidence without duplicating their musical bytes.
 
-That means adding another creator should usually cost only:
+Adding another creator should normally require only:
 
-1. ingest any songs not already cached;
-2. add documentary role labels to a separate catalog;
-3. run queries over the existing feature library.
+1. source/corpus evidence already admitted by the relevant research owner;
+2. documentary labels in a tracked catalog or policy input;
+3. generated creator-blind capsules when computational reuse is worthwhile;
+4. a bounded experiment over those inputs.
 
-No repeated soundtrack-wide parsing is required.
+## Promotion boundary
 
-## Cache invalidation
-
-Routine research does not hash or revalidate every source file. If a source corpus or extractor intentionally changes, refresh the affected capsules once and commit the new cache generation. Otherwise the checked-in cache is the analysis input.
+Do not commit routine cache refreshes. If a particular generated object becomes necessary evidence for a frozen experiment, promote it deliberately into that experiment's evidence owner with provenance and an explicit reason it must be retained. Promotion is an evidence decision, not a cache policy.

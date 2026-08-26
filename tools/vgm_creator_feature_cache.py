@@ -28,6 +28,7 @@ import vgm_creator_part_matcher as gen2
 
 SCHEMA_VERSION = 2
 MODEL = "creator-blind Genesis VGM reusable feature capsule"
+DEFAULT_CACHE_ROOT = pathlib.Path("research/cache/creator-feature-cache/tracks")
 
 
 def _slug(text: str) -> str:
@@ -247,7 +248,8 @@ def main() -> int:
         "--out",
         type=pathlib.Path,
         help=(
-            "Cache directory. Defaults to research/music/creator-feature-cache/tracks/<soundtrack-id>."
+            "Cache directory. Defaults to "
+            "research/cache/creator-feature-cache/tracks/<soundtrack-id>."
         ),
     )
     parser.add_argument(
@@ -260,9 +262,7 @@ def main() -> int:
     paths = _source_paths(args.inputs)
     if not paths:
         raise SystemExit("no VGM/VGZ inputs found")
-    output_dir = args.out or pathlib.Path(
-        "research/music/creator-feature-cache/tracks"
-    ) / _slug(args.soundtrack_id)
+    output_dir = args.out or DEFAULT_CACHE_ROOT / _slug(args.soundtrack_id)
     manifest = cache_corpus(
         paths,
         soundtrack_id=args.soundtrack_id,
