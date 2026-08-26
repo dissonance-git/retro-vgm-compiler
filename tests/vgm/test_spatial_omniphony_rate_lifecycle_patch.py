@@ -83,18 +83,27 @@ class SpatialOmniphonyRateLifecyclePatchTest(unittest.TestCase):
             )
             self.assertNotEqual(second.returncode, 0)
 
-    def test_rate_lifecycle_runs_after_spatial_runtime(self):
+    def test_rate_lifecycle_is_dormant_in_product_chain(self):
         repo = Path(__file__).resolve().parents[2]
         chain = (
             repo / "patches" / "foo_input_vgm" / "apply_enhanced_component.py"
         ).read_text(encoding="utf-8")
-        runtime = chain.index(
-            'run(here / "apply_spatial_omniphony_runtime.py", source)'
+        self.assertIn(
+            'run(here / "apply_spatial_omniphony_runtime.py", source)',
+            chain,
         )
-        rate = chain.index(
-            'run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)'
+        self.assertNotIn(
+            'run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)',
+            chain,
         )
-        self.assertLess(runtime, rate)
+        self.assertTrue(
+            (
+                repo
+                / "patches"
+                / "foo_input_vgm"
+                / "apply_spatial_omniphony_rate_lifecycle.py"
+            ).is_file()
+        )
 
 
 if __name__ == "__main__":
