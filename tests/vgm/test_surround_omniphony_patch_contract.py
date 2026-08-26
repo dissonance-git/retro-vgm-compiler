@@ -64,14 +64,26 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
             self.assertIn("!cfg_surround_sound || !sources_ready", patched_shadow)
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
-    def test_runtime_redistributes_only_exact_delivered_families(self) -> None:
+    def test_runtime_uses_role_free_constant_power_source_spread(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
+        helper = self.read(
+            ROOT
+            / "components"
+            / "vgm"
+            / "enhancement"
+            / "genesis_source_spread_7_1.h"
+        )
         self.assertIn("surround_bed_7_1.h", runtime)
-        self.assertIn("move_stereo_to_sides", runtime)
-        self.assertIn("move_stereo_to_backs", runtime)
-        self.assertIn("sn76489_tone0", runtime)
-        self.assertIn("sn76489_noise", runtime)
-        self.assertIn("ym2612_dac", runtime)
+        self.assertIn("genesis_source_spread_7_1.h", runtime)
+        self.assertIn("project_genesis_source_spread_7_1", runtime)
+        self.assertIn("genesis_source_spread_front_gain", helper)
+        self.assertIn("genesis_source_spread_depth_fraction", helper)
+        self.assertIn("redistribute_stereo_to_depth", helper)
+        self.assertNotIn("move_stereo_to_sides", runtime)
+        self.assertNotIn("move_stereo_to_backs", runtime)
+        self.assertNotIn("ym2612_fm1", runtime)
+        self.assertNotIn("ym2612_dac", runtime)
+        self.assertNotIn("sn76489_tone0", runtime)
         self.assertIn("audio_chunk::channel_config_7point1", runtime)
         self.assertIn("m_studio_deferred_capture_bypass", runtime)
         self.assertIn("Surround is a host-delivery operation", runtime)

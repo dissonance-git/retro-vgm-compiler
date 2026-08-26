@@ -87,6 +87,55 @@ public:
             1.0f);
     }
 
+    // Rebalance one exact source from the protected front stereo into a
+    // front-anchored horizontal 7.1 spread. The three gains describe the
+    // destination amplitude on the same left/right half of the bed. This is
+    // intentionally phase-free and delay-free so callers can implement
+    // constant-power synth-style spreading without changing source timbre.
+    bool redistribute_stereo_to_depth(
+        const float* left,
+        const float* right,
+        std::size_t frame_count,
+        float front_gain,
+        float side_gain,
+        float back_gain) noexcept
+    {
+        if (!source_valid(left, right, frame_count)
+            || !std::isfinite(front_gain)
+            || !std::isfinite(side_gain)
+            || !std::isfinite(back_gain)
+            || front_gain < 0.0f
+            || side_gain < 0.0f
+            || back_gain < 0.0f)
+            return false;
+
+        for (std::size_t frame = 0; frame < frame_count_; ++frame) {
+            const float source_left = left[frame];
+            const float source_right = right[frame];
+            if (!std::isfinite(source_left) || !std::isfinite(source_right))
+                return false;
+
+            float* destination = data_.data() + frame * surround_7_1_channel_count;
+
+            // begin_from_interleaved_stereo() already contains this source at
+            // unity in front. Replace that unity contribution with the chosen
+            // front anchor, then add side/back energy.
+            destination[index(surround_7_1_channel::front_left)] +=
+                source_left * (front_gain - 1.0f);
+            destination[index(surround_7_1_channel::front_right)] +=
+                source_right * (front_gain - 1.0f);
+            destination[index(surround_7_1_channel::side_left)] +=
+                source_left * side_gain;
+            destination[index(surround_7_1_channel::side_right)] +=
+                source_right * side_gain;
+            destination[index(surround_7_1_channel::back_left)] +=
+                source_left * back_gain;
+            destination[index(surround_7_1_channel::back_right)] +=
+                source_right * back_gain;
+        }
+        return finite_output();
+    }
+
     // Shared environmental returns are fields rather than point sources. Remove
     // the exact wet contribution from the protected front mix once, then divide
     // it equally by power between side and rear speakers on the same authored

@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
-"""Build a minimal Genesis 7.1 bed from exact delivered source families.
+"""Build the first role-free Genesis 7.1 bed from exact YM2612/SN76489 lanes.
 
 Runs after apply_spatial_selected_source_transport.py. The protected stereo mix
-is still produced first. Surround then redistributes only source contributions
-that the patched libvgm path has already proven exact and aligned to that mix:
+is produced first. Every exact independently delivered YM2612 FM/DAC or SN76489
+lane then keeps a constant-power front anchor while part of its energy is spread
+between side and back speakers on the same L/R hemisphere.
 
-  FM + residual/unproven content -> front
-  exact SN76489 tone/noise       -> sides
-  exact YM2612 DAC               -> backs
-  center / LFE                   -> empty
-
-This is a fixed presentation convention, not a claim that the Mega Drive
-authored rear speakers. It deliberately contains no role inference, scene
-governor, HRTF, room model, source-session side channel, or decoder-side
-Omniphony renderer. Future VGM chips with real multichannel buses can map those
-buses directly into the same standard 7.1 bed contract.
+Physical channel number is only a low-discrepancy spacing seed. It is never used
+as a claim about bass, lead, percussion or any other musical role. Center/LFE
+remain empty. No delay, phase inversion, detune, pseudo-stereo timing, semantic
+governor, HRTF, source-session side channel or decoder-side Omniphony renderer
+is introduced.
 """
 
 from __future__ import annotations
@@ -103,6 +99,7 @@ def main() -> int:
         '#include "../../enhancement/genesis_selected_source_queue.h"\n',
         '#include "../../enhancement/genesis_selected_source_queue.h"\n'
         '#include "../../enhancement/genesis_selected_source_block.h"\n'
+        '#include "../../enhancement/genesis_source_spread_7_1.h"\n'
         '#include "../../../../model/surround_bed_7_1.h"\n',
         "Genesis 7.1 runtime includes",
     )
@@ -153,40 +150,13 @@ bool input_vgm::render_genesis_surround_output(
 		return false;
 
 	const audio_sample* reference = chunk.get_data();
-	if (reference == nullptr || !m_genesis_surround_bed.begin_from_interleaved_stereo(
-			reference, frame_count))
+	if (reference == nullptr
+		|| !gameaudio::vgm::project_genesis_source_spread_7_1(
+			m_genesis_delivered_sources,
+			reference,
+			frame_count,
+			m_genesis_surround_bed))
 		return false;
-
-	const auto& sources = m_genesis_delivered_sources.sources();
-
-	// YM2612 DAC is an exact independently delivered source contribution. Move it
-	// from the protected front mix to the rear pair without cloning it.
-	const std::size_t dac = static_cast<std::size_t>(
-		gameaudio::vgm::genesis_recomposition_source::ym2612_dac);
-	if (m_genesis_delivered_sources.source_present(dac))
-	{
-		const auto& source = sources[dac];
-		if (!source.exact || !m_genesis_surround_bed.move_stereo_to_backs(
-				source.left, source.right, frame_count))
-			return false;
-	}
-
-	// SN76489 tones/noise remain distinct in the transport but share one simple
-	// presentation family for this first bed. Every exact lane is subtracted from
-	// the front once before being accumulated into the side pair.
-	for (std::size_t source_index =
-			static_cast<std::size_t>(gameaudio::vgm::genesis_recomposition_source::sn76489_tone0);
-		source_index <=
-			static_cast<std::size_t>(gameaudio::vgm::genesis_recomposition_source::sn76489_noise);
-		++source_index)
-	{
-		if (!m_genesis_delivered_sources.source_present(source_index))
-			continue;
-		const auto& source = sources[source_index];
-		if (!source.exact || !m_genesis_surround_bed.move_stereo_to_sides(
-				source.left, source.right, frame_count))
-			return false;
-	}
 
 	chunk.set_data_floatingpoint_ex(
 		m_genesis_surround_bed.data(),
