@@ -66,7 +66,7 @@ def main() -> int:
     CONTROL         "enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,240,65,70,15
 """,
         """    CONTROL         "Surround",IDC_DSP_SURROUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,65,145,15
-    CONTROL         "enhanced",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,143,70,15
+    CONTROL         "enhanced (later)",IDC_ENHANCED_ENABLED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP | WS_DISABLED,170,143,85,15
 """,
         "restore SNES Surround UI slot",
     )
@@ -139,7 +139,8 @@ static const int g_DSP_OPT[][2] = {
         prefs,
         """#ifdef _WIN64
 \tSendDlgItemMessage(IDC_SEM71_ENABLED, BM_SETCHECK, cfg_sem71_enabled, 0);
-\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, cfg_enhanced_enabled, 0);
+\tcfg_enhanced_enabled = 0;
+\tSendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_SETCHECK, BST_UNCHECKED, 0);
 #else
 \t// Source-aware Spatial/enhanced paths are x64-only in this shell.
 \t::EnableWindow(GetDlgItem(IDC_SEM71_ENABLED), FALSE);
@@ -175,7 +176,7 @@ static const int g_DSP_OPT[][2] = {
         prefs,
         """#ifdef _WIN64
 \tcfg_sem71_enabled = SendDlgItemMessage(IDC_SEM71_ENABLED, BM_GETCHECK, 0, 0);
-\tcfg_enhanced_enabled = SendDlgItemMessage(IDC_ENHANCED_ENABLED, BM_GETCHECK, 0, 0);
+\tcfg_enhanced_enabled = 0;
 #endif
 """,
         """#ifdef _WIN64

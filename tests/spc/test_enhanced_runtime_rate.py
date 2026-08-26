@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 class EnhancedRuntimeRateTest(unittest.TestCase):
-    def test_private_x64_playback_is_always_48khz_but_sinc_is_enhanced_only(self):
+    def test_private_x64_playback_is_48khz_and_enhanced_is_hard_disabled(self):
         repo = Path(__file__).resolve().parents[2]
         script = repo / "patches" / "snesapu" / "apply_enhanced_runtime.py"
 
@@ -34,19 +34,14 @@ class EnhancedRuntimeRateTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
 
             patched = input_cpp.read_text(encoding="utf-8")
-            # The stored preference remains visible in the audited predecessor,
-            # but the x64 private runtime overrides its host clock unconditionally.
-            self.assertIn("m_CnfSampleRate", patched)
-            self.assertIn("m_CnfSampleRate = 48000;", patched)
             rate = patched.index("m_CnfSampleRate = 48000;")
-            enhanced = patched.index("if (cfg_enhanced_enabled)")
-            sinc = patched.index("m_CnfInterpolation = INT_SINC;")
-            self.assertLess(rate, enhanced)
-            self.assertLess(enhanced, sinc)
+            disable = patched.index("cfg_enhanced_enabled = 0;")
+            sinc_gate = patched.index("if (cfg_enhanced_enabled)")
+            self.assertLess(rate, disable)
+            self.assertLess(disable, sinc_gate)
+            self.assertIn("m_CnfInterpolation = INT_SINC;", patched)
             self.assertNotIn("m_CnfSampleRate = 96000;", patched)
 
-            # Guarded patching remains non-idempotent: applying it twice must
-            # fail instead of stacking another private rate/source policy block.
             second = subprocess.run(
                 [sys.executable, str(script), str(root)],
                 cwd=repo,

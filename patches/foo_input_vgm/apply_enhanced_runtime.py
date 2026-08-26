@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wire source-native enhanced VGM replacement into the foobar shell.
+"""Retain the future enhanced VGM machinery behind a hard runtime gate.
 
 Prerequisites are composed by apply_enhanced_component.py:
   * guarded libvgm source capture + PlayerA pre-volume hook;
@@ -345,6 +345,9 @@ void input_vgm::apply_enhanced_post_render(WAVE_32BS* samples, UINT32 sample_cou
         shadow,
         """bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)
 {
+\t// enhanced is a later project. Clear stale persisted state before any
+\t// source-quality admission can observe it in this playback block.
+\tcfg_vgm_enhanced_enabled = 0;
 \tconfigure_enhancement_shadow();
 """,
         """bool input_vgm::decode_run(audio_chunk &p_chunk, abort_callback &p_abort)

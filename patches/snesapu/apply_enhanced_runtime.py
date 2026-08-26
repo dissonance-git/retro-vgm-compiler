@@ -6,9 +6,9 @@ regardless of source-quality or Spatial settings. The audited parent still keeps
 its stored sample-rate preference, but this private build does not expose that
 preference to the runtime clock.
 
-enhanced remains independent: only while enhanced is active do we select
-SNESAPU's sinc source interpolator (and any stronger verified source-restoration
-rung layered above it). Spatial remains presentation-only.
+enhanced is a later project. The preference identifier remains for patch/ABI
+continuity, but this private build clears it before source realization so only
+the protected reference interpolation path can be selected.
 """
 
 from __future__ import annotations
@@ -72,6 +72,8 @@ def main() -> int:
 \t// Private playback has one final host clock in every combination. Source
 \t// quality and Spatial remain independent decisions above/below this clock.
 \tm_CnfSampleRate = {PRIVATE_PLAYBACK_RATE};
+\t// enhanced is intentionally unavailable in this build phase.
+\tcfg_enhanced_enabled = 0;
 \tif (cfg_enhanced_enabled)
 \t{{
 \t\t// enhanced changes source realization, not the host-rate contract.

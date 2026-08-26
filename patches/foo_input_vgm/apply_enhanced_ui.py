@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Add the independent enhanced preference to foo_input_vgm 0.31.
+"""Keep the future enhanced preference inert while exposing Surround.
 
-The historical foo_input_vgm Surround preference remains the sole user-facing
-switch for source-native Omniphony presentation. enhanced is a separate quality
-choice, defaults off, and does not create a second spatial control.
+The historical foo_input_vgm preference is relabeled exactly "Surround". The
+enhanced preference remains in the generated ABI because later source-capture
+patches consume its identifier, but the control is visibly disabled and runtime
+code hard-gates the value to zero for this project phase.
 """
 
 from __future__ import annotations
@@ -124,7 +125,8 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0);
 """,
         """\tCheckDlgButton(IDC_HARD_STOP_OLD_VGMS, (UINT)cfg_hard_stop_old_vgms);
 \tCheckDlgButton(IDC_SURROUND_SOUND, (UINT)cfg_surround_sound);
-\tCheckDlgButton(IDC_ENHANCED_ENABLED_VGM, (UINT)cfg_vgm_enhanced_enabled);
+\tcfg_vgm_enhanced_enabled = 0;
+\tCheckDlgButton(IDC_ENHANCED_ENABLED_VGM, BST_UNCHECKED);
 
 \tSetDlgItemInt(IDC_VOLUME, (UINT)cfg_volume, FALSE);
 """,
@@ -150,7 +152,7 @@ cfg_int cfg_vgm_enhanced_enabled(guid_cfg_vgm_enhanced_enabled, 0);
 """,
         """\tcfg_hard_stop_old_vgms = IsDlgButtonChecked(IDC_HARD_STOP_OLD_VGMS);
 \tcfg_surround_sound = IsDlgButtonChecked(IDC_SURROUND_SOUND);
-\tcfg_vgm_enhanced_enabled = IsDlgButtonChecked(IDC_ENHANCED_ENABLED_VGM);
+\tcfg_vgm_enhanced_enabled = 0;
 
 \tcfg_volume = GetDlgItemInt(IDC_VOLUME, NULL, FALSE);
 """,
