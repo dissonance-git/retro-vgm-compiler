@@ -1,8 +1,6 @@
 # VGM Compiler
 
-VGM Compiler is a provenance-preserving compiler and musical reasoning system for digital game music. Its goal is to recover coherent musical structure while retaining a route back to the source, execution, synthesis, and evidence behind every material claim.
-
-## Working model
+VGM Compiler is a provenance-preserving compiler and musical reasoning system for digital game music. It recovers coherent musical structure while retaining a route back to the source, execution, synthesis, and evidence behind every material claim.
 
 ```text
 native source / executable state / audio evidence
@@ -22,11 +20,21 @@ creator grammar / attribution / explanation / transformation
 
 Convenient outputs are projections, not source truth. MIDI, notation, stems, PCM, chord labels, prose, and attribution remain source evidence only when their provenance actually establishes that role.
 
-The durable semantic and evidence contract is [`docs/architecture.md`](docs/architecture.md). The musical north star is [`docs/musical-understanding.md`](docs/musical-understanding.md). Active work is owned by [`docs/vgm-compiler-roadmap.md`](docs/vgm-compiler-roadmap.md).
+## Canonical authority
 
-## Current frontier
+Each project-level question has one active owner.
 
-The active semantic frontier is phrase-role evidence around locally ambiguous cadential behavior, especially cases where a local close can coexist with larger-scale continuation and later authentic resolution. The implementation preserves competing interpretations until independent evidence separates them.
+| Question | Canonical owner |
+| --- | --- |
+| What is this repository and where does work live? | `README.md` |
+| How should an agent change it? | `AGENTS.md` |
+| What semantic and evidence laws must remain true? | `docs/architecture.md` |
+| What does musical understanding mean here? | `docs/musical-understanding.md` |
+| What is implemented, active, and next? | `docs/vgm-compiler-roadmap.md` |
+| What does a specialized subsystem promise? | the corresponding specialized document under `docs/` |
+| What evidence or experiment supports a claim? | the narrowest owner under `research/` |
+
+Do not mirror current status into durable contracts. Do not copy durable laws into status documents. Git history owns superseded repository state.
 
 ## Repository owners
 
@@ -36,7 +44,7 @@ The active semantic frontier is phrase-role evidence around locally ambiguous ca
 | `components/` | source-family, device, decoder, execution, and rendering machinery |
 | `tests/` | executable contracts and immutable real-music corpus |
 | `research/` | bounded investigations, evidence, controls, and named testbeds |
-| `docs/` | durable current architecture, musical target, and specialized contracts |
+| `docs/` | durable architecture, musical target, roadmap, and specialized contracts |
 | `tools/` | reusable operations and on-demand projections |
 | `imports/` | immutable external inputs required by current work |
 | `patches/` | maintained transformations of external source trees |
@@ -47,7 +55,7 @@ Start at the smallest owner. For a task concept, prefer:
 python tools/repository_catalog.py --focus <concept>
 ```
 
-The catalog derives local relations from tracked files and prints a task-sized projection. Use repository-wide search or the full catalog only when the task genuinely requires repository-wide shape.
+The catalog derives local relations from tracked files and prints a task-sized projection. Widen only when the task genuinely requires repository-wide shape.
 
 Local owner maps:
 

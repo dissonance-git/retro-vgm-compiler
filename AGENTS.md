@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file is the operating contract for coding agents. Project meaning lives in `docs/architecture.md`, the musical target lives in `docs/musical-understanding.md`, and active priorities live in `docs/vgm-compiler-roadmap.md`. Do not restate those contracts here.
+This file is the operating contract for coding agents. Project identity and repository ownership live in `README.md`; semantic and evidence laws live in `docs/architecture.md`; the musical target lives in `docs/musical-understanding.md`; active priorities live in `docs/vgm-compiler-roadmap.md`. Do not restate those contracts here.
 
 ## Enter the repository
 
@@ -17,6 +17,8 @@ current main HEAD
 
 Use `python tools/repository_catalog.py --focus <concept>` before broad repository search. Search inside the selected owner before widening. Use the unfiltered catalog only when repository shape itself is the task.
 
+Read the roadmap only when the task depends on project priority or current frontier. Read durable contracts only when the touched surface depends on them. Do not load every project document by default.
+
 ## Change law
 
 1. Work from current `main`. Do not create branches or pull requests unless explicitly requested.
@@ -30,9 +32,28 @@ Use `python tools/repository_catalog.py --focus <concept>` before broad reposito
 
 Direct user correction outranks repository prose.
 
+## Authority discipline
+
+A project fact should have one writable authority.
+
+Before adding or duplicating a file, section, registry, wrapper, or abstraction, ask:
+
+```text
+What exact obligation does this object uniquely own?
+Does a current owner already exist?
+Can this relation be derived instead of stored?
+Would this create a second place that can become stale?
+```
+
+If the first question has no strong answer, extend or derive from an existing owner instead.
+
+Current-state statements belong in `docs/vgm-compiler-roadmap.md`. Durable semantic laws belong in `docs/architecture.md`. Musical goals belong in `docs/musical-understanding.md`. Repository identity and routing belong in `README.md`.
+
+Specialized documents under `docs/` must own a distinct durable contract. Research material belongs under the narrowest durable question in `research/`; it does not become architecture merely by being detailed.
+
 ## Context law
 
-Human attention and LLM context are finite compute.
+Human attention and model context are finite compute.
 
 - Route to the smallest canonical owner that can answer the task.
 - Prefer mechanically derived relations over duplicated prose navigation.
@@ -43,26 +64,11 @@ Human attention and LLM context are finite compute.
 
 The target is useful reasoning per unit of context, not arbitrary brevity.
 
-## Ownership
+## Semantic discipline
 
-Top-level ownership is defined in `README.md`; local owner maps belong beside the objects they route. Semantic and evidence laws belong in `docs/architecture.md`. Do not turn `AGENTS.md` into a second repository manual.
+Do not invent local substitutes for project-wide evidence or semantic laws. When work crosses source fact, musical inference, perceptual claim, documentary evidence, provenance, identity, or availability, follow `docs/architecture.md` exactly.
 
-Before adding a file or abstraction, ask:
-
-```text
-Does a current owner already exist?
-Can this relation be derived?
-Would another writable surface create competing truth?
-What current obligation would this new object uniquely own?
-```
-
-If the last question has no strong answer, extend an existing owner instead.
-
-## Evidence and source boundaries
-
-Do not collapse source fact, musical inference, perceptual claim, documentary evidence, or hypothesis into one evidence state. Preserve source-native semantics before normalization. Shared abstractions are earned when materially different source families need the same relation without losing useful native distinctions.
-
-The complete rules are canonical in `docs/architecture.md`.
+Preserve source-native semantics before normalization. Shared abstractions are earned when materially different source families need the same relation without losing useful native distinctions.
 
 ## Verification
 

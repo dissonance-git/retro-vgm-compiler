@@ -1,22 +1,8 @@
 # VGM Compiler roadmap
 
-## Mission
+This is the canonical current-state document for VGM Compiler. It owns what is implemented, what is active, and what comes next. Durable semantic laws belong in `architecture.md`; the musical target belongs in `musical-understanding.md`.
 
-VGM Compiler is a provenance-aware compiler and musical reasoning system for digital game music. Its job is not merely to decode formats, render sound chips, or export MIDI. It should recover enough of the musical object that analysis, reconstruction, attribution, porting, explanation, re-realization, and search become projections of the same evidence-carrying understanding.
-
-```text
-many native musical representations
-            ↓
-source-specific execution / semantics
-            ↓
-provenance-preserving musical model
-            ↓
-understanding / verification passes
-            ↓
-many useful projections and realizations
-```
-
-See `architecture.md` for the semantic/evidence contract and `musical-understanding.md` for the north star.
+If a status or priority is not represented here, do not infer it from an older research note, commit message, or durable contract.
 
 ## Implemented semantic surface
 
@@ -41,11 +27,11 @@ The repository contains working machinery for:
 - source-native enhanced rendering and Omniphony handoff contracts;
 - semantic projection/round-trip experiments and a broad immutable real corpus.
 
-Every arrow between these layers is an inference boundary. Missing evidence remains visible.
+Every arrow between these layers remains an inference boundary. Missing evidence remains visible.
 
 ## Active frontier: positive phrase-role evidence
 
-The compiler preserves multiple cadence-scale interpretations when local closure and larger-scale continuation are both grounded. The active problem is **positive syntax**: accumulating independent longer-range evidence that explains what the phrase does after an arrival.
+The compiler already preserves multiple cadence-scale interpretations when local closure and larger-scale continuation are both grounded. The active problem is **positive syntax**: accumulating independent longer-range evidence that explains what a phrase does after an arrival.
 
 Target phrase-role vocabulary must be earned by evidence such as:
 
@@ -75,7 +61,7 @@ For Ionian `V → VI`, the discriminating question is:
    - ground continuation of persistent parts through or after an arrival;
    - model motivic continuation and sequence;
    - model sustained harmonic process;
-   - use phrase-boundary evidence that is independent of cadence labels.
+   - use phrase-boundary evidence independent of cadence labels.
 
 3. **New-phrase and return evidence**
    - model re-onset after a boundary;
@@ -98,7 +84,7 @@ For Ionian `V → VI`, the discriminating question is:
 
 Final cadence-class establishment remains downstream of phrase-role evidence rather than chord morphology alone.
 
-## Near-term musical priorities
+## Near-term parallel priorities
 
 ### Orchestration and role grammar
 
@@ -135,7 +121,7 @@ Move the strongest shared relations through materially different source families
 
 ## Creator grammar and attribution
 
-Attribution is a downstream stress test of genuine understanding.
+Attribution remains a downstream stress test of genuine understanding.
 
 The strongest controls compare:
 
@@ -149,7 +135,7 @@ same work / different representation
 
 Keep composition, arrangement/programming, patch/sample design, driver/toolchain, and final realization separate. Technical resemblance may strengthen a role-scoped hypothesis without silently becoming composer proof.
 
-Sonic 3 / Sonic & Knuckles is an adversarial integration testbed because it combines version divergence, mixed credits, ROM/SMPS evidence, VGM execution, cross-soundtrack controls, and unresolved role boundaries.
+Sonic 3 / Sonic & Knuckles remains an adversarial integration testbed because it combines version divergence, mixed credits, ROM/SMPS evidence, VGM execution, cross-soundtrack controls, and unresolved role boundaries.
 
 ## Rendering and transformation
 
@@ -168,26 +154,6 @@ source A → model → target B
 ```
 
 A successful port or re-realization need not preserve bytes or timbre unless that contract requires them. It preserves named musical obligations and exposes intentional losses.
-
-## Future applications
-
-Downstream goals include:
-
-- high-quality symbolic transcription;
-- real-synth realization;
-- cross-format and cross-platform porting;
-- semantic remastering;
-- musical decompilation and source reconstruction;
-- representation-independent musical search;
-- composer/arranger/programmer grammar;
-- musical genealogy and influence analysis;
-- version archaeology and lost-version reconstruction;
-- adaptive-music reconstruction;
-- music debugging and linting;
-- semantic deduplication;
-- arrangement reduction and expansion;
-- hardware counterfactuals;
-- integrated end-user tooling once the semantic core is trustworthy.
 
 ## Validation pattern
 

@@ -1,6 +1,17 @@
 # Research
 
-`research/` is organized by durable research question, not date, experiment order, or game count. Dense evidence is welcome; duplicate ownership and chronology-shaped navigation are not.
+`research/` owns evidence, experiments, controls, and bounded investigations. It does not own project identity, durable semantic law, the musical north star, or current project priority.
+
+Those authorities are:
+
+```text
+README.md                         repository identity and routing
+docs/architecture.md             durable semantic/evidence law
+docs/musical-understanding.md    musical target
+docs/vgm-compiler-roadmap.md     implemented / active / next state
+```
+
+Research is organized by durable question, not date, experiment order, or game count.
 
 > Few trunks, many chapters. One canonical owner per question.
 
@@ -33,11 +44,13 @@ score / matrix / projection       regenerated unless explicitly admitted as evid
 
 Generated analysis caches belong under ignored runtime paths such as `research/cache/` or another caller-selected ignored location. A tracked label catalog, admission file, policy, or preregistration is not a cache merely because a tool consumes it.
 
+A research result may support a roadmap change or a durable contract change, but it does not silently become either. Promotion is explicit.
+
 ## Routing
 
 | Question | Owner |
 | --- | --- |
-| whole-track / soundtrack understanding | `music/` + `../docs/musical-understanding.md` |
+| general whole-track / soundtrack method research | `music/` |
 | composer grammar / attribution method | `music/` |
 | Sonic 3 integrative attribution case | `projects/sonic3/` |
 | Genesis driver/toolchain source quarry and re-entry | `formats/genesis/genesis-driver-source-ledger.md` |
@@ -83,7 +96,8 @@ Before adding research material:
 2. Distinguish evidence, method contract, canonical policy input, derived object, and bounded result.
 3. Treat named games as controls unless the game itself is the integrative research problem.
 4. Extend an owner before creating a peer narrative.
-5. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
+5. Keep status and priority out of research prose unless the statement is itself part of a frozen experimental contract.
+6. Promote a result into a durable project contract only after a discriminating experiment earns the generalization.
 
 Navigation compression must preserve evidence boundaries:
 
