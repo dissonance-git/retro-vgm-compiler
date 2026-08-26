@@ -288,20 +288,14 @@ bool input_vgm::render_genesis_surround_output(
 
     replace_once(
         shadow,
-        """\t// libvgm emits reset/replayed source events during seek. The command tap
-\t// rebuilds source controls while the historical QSound renderer remains
-\t// authoritative. Native source/mix audio is captured only during real decode
-\t// blocks, never while seeking through discarded audio.
+        """\treset_pcm_streams();
 \tinput_base::decode_seek(p_seconds, p_abort);
 """,
-        """\t// Rebuild episode allocation from command replay without queueing every
-\t// historical placement transition before the seek target.
-\tm_genesis_surround_episodes.begin_replay();
+        """\treset_pcm_streams();
 
-\t// libvgm emits reset/replayed source events during seek. The command tap
-\t// rebuilds source controls while the historical QSound renderer remains
-\t// authoritative. Native source/mix audio is captured only during real decode
-\t// blocks, never while seeking through discarded audio.
+\t// Rebuild episode allocation from the same command replay without queueing
+\t// every historical placement transition before the seek target.
+\tm_genesis_surround_episodes.begin_replay();
 \tinput_base::decode_seek(p_seconds, p_abort);
 """,
         "replay Genesis Surround episodes during seek",

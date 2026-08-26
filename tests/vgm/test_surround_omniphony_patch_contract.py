@@ -126,6 +126,24 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertNotIn("genesis_spatial_route_transport", runtime)
         self.assertNotIn("realtime_musical_omniphony_pipeline", runtime)
 
+    def test_seek_replay_composes_after_pcm_seek_reset(self) -> None:
+        runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
+        seek_patch = runtime.index('"replay Genesis Surround episodes during seek"')
+        reset = runtime.rfind("\\treset_pcm_streams();", 0, seek_patch)
+        replay = runtime.rfind(
+            "\\tm_genesis_surround_episodes.begin_replay();",
+            0,
+            seek_patch,
+        )
+        decode = runtime.rfind(
+            "\\tinput_base::decode_seek(p_seconds, p_abort);",
+            0,
+            seek_patch,
+        )
+        self.assertGreaterEqual(reset, 0)
+        self.assertGreater(replay, reset)
+        self.assertGreater(decode, replay)
+
     def test_seek_insertion_survives_prior_lifecycle_edits(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "vgm_surround_runtime_patch",
