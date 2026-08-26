@@ -33,20 +33,18 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
         path: Path,
         *,
         commit: str = "1" * 40,
-        readme: str = "enhanced and Surround remain independent controls.\n",
+        readme: str = "enhanced is disabled; Surround emits a standard 7.1 bed.\n",
         mutate_manifest=None,
         mutate_sums=None,
         extra_entries: dict[str, bytes] | None = None,
     ) -> None:
         vgm_members = {
             "foo_input_vgm.dll": b"vgm-dll",
-            "omniphony_source.dll": b"vgm-omniphony",
         }
         spc_members = {
             "foo_snesapu.dll": b"spc-dll",
             "spcplayer.exe": b"spcplayer-exe",
             "SNESAPU.dll": b"snesapu-dll",
-            "omniphony_source.dll": b"spc-omniphony",
         }
         vgm = component_bytes(vgm_members)
         spc = component_bytes(spc_members)
@@ -67,10 +65,6 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             "libvgm": {"commit": "5" * 40},
             "wtl": {"commit": "6" * 40},
             "spcplay": {"commit": "7" * 40},
-            "omniphony": {
-                "commit": "8" * 40,
-                "rust_toolchain": "1.88.0",
-            },
             "outputs": list(_verifier.EXPECTED_OUTPUTS),
         }
         if mutate_manifest is not None:
@@ -91,11 +85,9 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             "SHA256SUMS.txt": sums_text.encode("ascii"),
             "README.txt": readme.encode("utf-8"),
             "VGM/foo_input_vgm.dll": vgm_members["foo_input_vgm.dll"],
-            "VGM/omniphony_source.dll": vgm_members["omniphony_source.dll"],
             "SPC/foo_snesapu.dll": spc_members["foo_snesapu.dll"],
             "SPC/spcplayer.exe": spc_members["spcplayer.exe"],
             "SPC/SNESAPU.dll": spc_members["SNESAPU.dll"],
-            "SPC/omniphony_source.dll": spc_members["omniphony_source.dll"],
         }
         if extra_entries:
             entries.update(extra_entries)
@@ -110,6 +102,30 @@ class PrivateComponentBundleContractTest(unittest.TestCase):
             self.make_bundle(bundle)
             manifest = _verifier.verify_bundle_metadata(bundle)
             self.assertEqual(manifest["vgm_compiler_commit"], "1" * 40)
+            self.assertNotIn("omniphony", manifest)
+
+    def test_rejects_stale_decoder_side_omniphony_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.zip"
+            self.make_bundle(
+                bundle,
+                mutate_manifest=lambda manifest: manifest.__setitem__(
+                    "omniphony",
+                    {"commit": "8" * 40, "rust_toolchain": "1.88.0"},
+                ),
+            )
+            with self.assertRaisesRegex(AssertionError, "output component"):
+                _verifier.verify_bundle_metadata(bundle)
+
+    def test_rejects_stale_decoder_side_omniphony_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.zip"
+            self.make_bundle(
+                bundle,
+                extra_entries={"VGM/omniphony_source.dll": b"stale"},
+            )
+            with self.assertRaisesRegex(AssertionError, "payload mismatch"):
+                _verifier.verify_bundle_metadata(bundle)
 
     def test_rejects_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -43,20 +43,16 @@ TOP_LEVEL_ENTRIES = {
 }
 RUNTIME_ENTRIES = {
     "VGM/foo_input_vgm.dll",
-    "VGM/omniphony_source.dll",
     "SPC/foo_snesapu.dll",
     "SPC/spcplayer.exe",
     "SPC/SNESAPU.dll",
-    "SPC/omniphony_source.dll",
 }
 EXPECTED_ENTRIES = TOP_LEVEL_ENTRIES | RUNTIME_ENTRIES
 RUNTIME_PACKAGE_MEMBERS = {
     "VGM/foo_input_vgm.dll": (VGM_COMPONENT, "foo_input_vgm.dll"),
-    "VGM/omniphony_source.dll": (VGM_COMPONENT, "omniphony_source.dll"),
     "SPC/foo_snesapu.dll": (SPC_COMPONENT, "foo_snesapu.dll"),
     "SPC/spcplayer.exe": (SPC_COMPONENT, "spcplayer.exe"),
     "SPC/SNESAPU.dll": (SPC_COMPONENT, "SNESAPU.dll"),
-    "SPC/omniphony_source.dll": (SPC_COMPONENT, "omniphony_source.dll"),
 }
 HEX40 = re.compile(r"^[0-9a-fA-F]{40}$")
 HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
@@ -169,12 +165,11 @@ def _verify_manifest(manifest: dict[str, object]) -> None:
     _require_commit_pin(manifest, "libvgm")
     _require_commit_pin(manifest, "wtl")
     _require_commit_pin(manifest, "spcplay")
-    _require_commit_pin(manifest, "omniphony")
-    omniphony = manifest["omniphony"]
-    assert isinstance(omniphony, dict)
-    rust_toolchain = omniphony.get("rust_toolchain")
-    if not isinstance(rust_toolchain, str) or not rust_toolchain.strip():
-        raise AssertionError("manifest omniphony.rust_toolchain is missing")
+    if "omniphony" in manifest:
+        raise AssertionError(
+            "manifest must not claim decoder-side Omniphony ownership; "
+            "the foobar output component is installed separately"
+        )
 
 
 def _package_members(package_bytes: bytes, label: str) -> dict[str, bytes]:
