@@ -47,6 +47,50 @@ def replace_once(path: Path, old: str, new: str, label: str) -> None:
     print(f"patched {label}: {path}")
 
 
+def insert_before_function_close(
+    path: Path,
+    signature: str,
+    insertion: str,
+    label: str,
+) -> None:
+    raw = path.read_bytes()
+    newline = "\r\n" if b"\r\n" in raw else "\n"
+    text, encoding, bom = decode_source(raw)
+    signature_file = signature.replace("\n", newline)
+    insertion_file = insertion.replace("\n", newline)
+
+    start = text.find(signature_file)
+    if start < 0 or text.find(signature_file, start + len(signature_file)) >= 0:
+        raise RuntimeError(f"{label}: expected one function signature in {path}")
+
+    open_brace = text.find("{", start + len(signature_file))
+    if open_brace < 0:
+        raise RuntimeError(f"{label}: function body not found in {path}")
+
+    depth = 0
+    close_brace = -1
+    for index in range(open_brace, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                close_brace = index
+                break
+
+    if close_brace < 0:
+        raise RuntimeError(f"{label}: unterminated function body in {path}")
+    if insertion_file.strip() in text[start:close_brace]:
+        raise RuntimeError(f"{label}: insertion already present in {path}")
+
+    encoded = (text[:close_brace] + insertion_file + text[close_brace:]).encode(encoding)
+    if bom:
+        encoded = b"\xef\xbb\xbf" + encoded
+    path.write_bytes(encoded)
+    print(f"patched {label}: {path}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source_dir", type=Path, help="foo_input_vgm/src directory")
@@ -237,23 +281,16 @@ bool input_vgm::render_genesis_surround_output(
         "render delivered Genesis sources into 7.1 bed",
     )
 
-    replace_once(
+    insert_before_function_close(
         shadow,
-        """\tif (m_vgm_player != nullptr)
-\t\tadvance_shadow_to(static_cast<uint_fast64_t>(m_vgm_player->GetCurPos(PLAYPOS_SAMPLE)));
-}
-""",
-        """\tstd::uint64_t genesis_seek_sample = static_cast<std::uint64_t>(
+        "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)\n",
+        """\t// Rejoin the delivered-source clock to the post-seek player position.
+\tstd::uint64_t genesis_seek_sample = static_cast<std::uint64_t>(
 \t\taudio_math::time_to_samples(p_seconds, m_sample_rate));
 \tif (m_vgm_player != nullptr)
-\t{
-\t\tconst auto player_sample = static_cast<uint_fast64_t>(
+\t\tgenesis_seek_sample = static_cast<std::uint64_t>(
 \t\t\tm_vgm_player->GetCurPos(PLAYPOS_SAMPLE));
-\t\tadvance_shadow_to(player_sample);
-\t\tgenesis_seek_sample = static_cast<std::uint64_t>(player_sample);
-\t}
 \treset_genesis_surround_transport(genesis_seek_sample);
-}
 """,
         "reseed Genesis Surround source clock after seek",
     )

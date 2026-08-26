@@ -35,10 +35,10 @@ REQUIRED_TEXT = {
         "canonical north-star contract",
         "VGM Compiler should understand a cue and a soundtrack as coherent music",
     ),
-    Path("docs/music-representation-systems.md"): (
-        "# Music representation systems\n",
+    Path("research/validation/music-representation-systems.md"): (
+        "# Music representation systems observatory\n",
         "## Linked representations\n",
-        "../research/validation/openmusic-libraries.md",
+        "openmusic-libraries.md",
     ),
     Path("docs/vgm-compiler-roadmap.md"): (
         "# VGM Compiler roadmap\n",
@@ -50,7 +50,7 @@ REQUIRED_TEXT = {
     ),
     Path("tests/README.md"): (
         "# Tests\n",
-        "corpus/README.md",
+        "under the corpus owner",
         "## Test law\n",
     ),
 }
@@ -62,7 +62,7 @@ FORBIDDEN_PATHS = (
 )
 
 FORBIDDEN_TEXT = {
-    Path("docs/music-representation-systems.md"): (
+    Path("research/validation/music-representation-systems.md"): (
         "docs/composer-level-understanding.md",
         "research/cases/human-musical-discourse.md",
         "docs/openmusic-libraries.md",

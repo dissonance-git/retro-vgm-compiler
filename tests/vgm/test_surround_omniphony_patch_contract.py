@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 from pathlib import Path
 import subprocess
 import sys
@@ -81,6 +82,42 @@ class VgmSurroundBedPatchContractTest(unittest.TestCase):
         self.assertNotIn("omniphony_source_spatial_full_sphere", runtime)
         self.assertNotIn("genesis_spatial_route_transport", runtime)
         self.assertNotIn("realtime_musical_omniphony_pipeline", runtime)
+
+    def test_seek_insertion_survives_prior_lifecycle_edits(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "vgm_surround_runtime_patch",
+            PATCHES / "apply_spatial_omniphony_runtime.py",
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "input_vgm_shadow.cpp"
+            source.write_text(
+                "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)\n"
+                "{\n"
+                "\tif (m_vgm_player != nullptr)\n"
+                "\t{\n"
+                "\t\tadvance_shadow_to(123);\n"
+                "\t}\n"
+                "\treset_pcm_streams();\n"
+                "}\n\n"
+                "void input_vgm::next_function() {}\n",
+                encoding="utf-8",
+            )
+            module.insert_before_function_close(
+                source,
+                "void input_vgm::decode_seek(double p_seconds, abort_callback &p_abort)\n",
+                "\treset_genesis_surround_transport(456);\n",
+                "test seek insertion",
+            )
+            patched = source.read_text(encoding="utf-8")
+            seek_close = patched.index("}\n\nvoid input_vgm::next_function")
+            reset = patched.index("reset_genesis_surround_transport(456);")
+            self.assertLess(reset, seek_close)
+            self.assertGreater(reset, patched.index("reset_pcm_streams();"))
 
     def test_active_stack_has_no_decoder_side_omniphony_or_route_governor(self) -> None:
         master = self.read(PATCHES / "apply_enhanced_component.py")
