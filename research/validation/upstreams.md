@@ -47,3 +47,13 @@ conceptual usefulness != permission to copy
 ```
 
 The purpose of this registry is evidence routing and re-entry, not a second dependency database or architecture document.
+
+
+## Focused source-family re-entry maps
+
+When a task needs implementation-level detail rather than the broad evidence classes above, use the focused maps instead of reconstructing the quarry from conversation history:
+
+- [SNES / SPC upstream reference map](../formats/snes/snes-spc-upstream-reference-map.md)
+- [VGM / Genesis upstream reference map](../formats/vgm/vgm-genesis-upstream-reference-map.md)
+
+These maps record what each project can constrain, what it cannot establish, and which older repository commits already contain deeper experiments or integration work. They remain research routing documents, not dependency lockfiles.
