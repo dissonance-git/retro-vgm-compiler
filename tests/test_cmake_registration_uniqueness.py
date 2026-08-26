@@ -4,65 +4,85 @@ from collections import Counter
 from pathlib import Path
 
 
-EXECUTABLE_RE = re.compile(r"add_executable\s*\(\s*([A-Za-z0-9_.+-]+)", re.MULTILINE)
-TEST_RE = re.compile(r"add_test\s*\(\s*NAME\s+([A-Za-z0-9_.+-]+)", re.MULTILINE)
+PYTHON_REGISTRATION_RE = re.compile(
+    r"vgm_compiler_add_python_(?:unittest|test)\(\s*"
+    r"([A-Za-z0-9_.+-]+)\s+([A-Za-z0-9_.+-]+)\s+([A-Za-z0-9_.+-]+)\s*\)"
+)
 
 
 class CMakeRegistrationUniquenessTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(__file__).resolve().parents[1]
-        self.host_path = self.root / "cmake/host_transport_tests.cmake"
-        self.semantic_entry_path = self.root / "cmake/semantic_model_tests.cmake"
-        self.semantic_core_path = self.root / "cmake/semantic_model_tests_core.cmake"
-        self.host = self.host_path.read_text(encoding="utf-8")
-        self.semantic_entry = self.semantic_entry_path.read_text(encoding="utf-8")
-        self.semantic_core = self.semantic_core_path.read_text(encoding="utf-8")
-        self.semantic = self.semantic_core + "\n" + self.semantic_entry
+        self.project_cmake = (self.root / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.test_cmake = (self.root / "tests/CMakeLists.txt").read_text(encoding="utf-8")
 
-    def assert_unique_names(self, text: str, regex: re.Pattern[str], label: str) -> None:
-        names = regex.findall(text)
-        duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
-        self.assertEqual(duplicates, [], label)
+    def test_root_build_has_one_current_project_identity(self) -> None:
+        for marker in (
+            "project(vgm_compiler LANGUAGES CXX)",
+            "VGM_COMPILER_BUILD_TESTS",
+            "add_library(vgm_compiler_core STATIC",
+            "add_subdirectory(tests)",
+        ):
+            self.assertIn(marker, self.project_cmake)
 
-    def test_semantic_entry_includes_core_exactly_once(self) -> None:
-        self.assertEqual(self.semantic_entry.count("semantic_model_tests_core.cmake"), 1)
+        for retired in (
+            "foobar2000_game_audio_core",
+            "GAMEAUDIO_BUILD_CORE_TESTS",
+            "gameaudio_vgm_core",
+            "GAMEAUDIO_TEST_TARGETS",
+            "semantic_model_tests",
+            "host_transport_tests",
+        ):
+            self.assertNotIn(retired, self.project_cmake)
 
-    def test_each_owner_has_unique_executable_and_ctest_names(self) -> None:
-        for owner, text in (("host", self.host), ("semantic", self.semantic)):
-            with self.subTest(owner=owner, kind="executable"):
-                self.assert_unique_names(text, EXECUTABLE_RE, f"duplicate executable in {owner}")
-            with self.subTest(owner=owner, kind="ctest"):
-                self.assert_unique_names(text, TEST_RE, f"duplicate CTest name in {owner}")
+    def test_superseded_registry_files_are_gone(self) -> None:
+        for relative in (
+            "cmake/semantic_model_tests.cmake",
+            "cmake/semantic_model_tests_core.cmake",
+            "cmake/host_transport_tests.cmake",
+        ):
+            self.assertFalse((self.root / relative).exists(), relative)
 
-    def test_host_and_semantic_owners_do_not_compete_for_names(self) -> None:
-        host_executables = set(EXECUTABLE_RE.findall(self.host))
-        semantic_executables = set(EXECUTABLE_RE.findall(self.semantic))
+    def test_cpp_registration_is_derived_from_test_ownership(self) -> None:
+        self.assertIn("file(GLOB VGM_COMPILER_CPP_TEST_SOURCES CONFIGURE_DEPENDS", self.test_cmake)
+        self.assertIn('"${CMAKE_CURRENT_SOURCE_DIR}/model/*_test.cpp"', self.test_cmake)
+        self.assertIn('"${CMAKE_CURRENT_SOURCE_DIR}/vgm/*_test.cpp"', self.test_cmake)
+        self.assertIn('"${CMAKE_CURRENT_SOURCE_DIR}/spc/*_test.cpp"', self.test_cmake)
+
+        sources = sorted(
+            path
+            for directory in ("model", "vgm", "spc")
+            for path in (self.root / "tests" / directory).glob("*_test.cpp")
+        )
+        self.assertTrue(sources, "expected dependency-free C++ tests")
+
+        counts = Counter(path.stem for path in sources)
+        duplicates = sorted(name for name, count in counts.items() if count > 1)
         self.assertEqual(
-            sorted(host_executables & semantic_executables),
+            duplicates,
             [],
-            "a CMake target can have only one registration owner",
+            "derived CMake target names must be unique across test owners",
         )
 
-        host_tests = set(TEST_RE.findall(self.host))
-        semantic_tests = set(TEST_RE.findall(self.semantic))
-        self.assertEqual(
-            sorted(host_tests & semantic_tests),
-            [],
-            "a CTest name can have only one registration owner",
-        )
+    def test_python_contracts_have_one_registration_owner(self) -> None:
+        registrations = PYTHON_REGISTRATION_RE.findall(self.test_cmake)
+        self.assertTrue(registrations, "expected curated Python CTest contracts")
 
-    def test_studio_vgm_registry_is_semantic_owned(self) -> None:
-        self.assertNotIn("studio_frame_transport_test", self.host)
-        self.assertIn("studio_frame_transport_test", self.semantic)
+        names = [name for name, _directory, _script in registrations]
+        scripts = [f"{directory}/{script}" for _name, directory, script in registrations]
 
-        runtime_script = "tests/vgm/test_studio_hq_fm_runtime_patch.py"
-        occurrences = self.host.count(runtime_script) + self.semantic.count(runtime_script)
-        self.assertEqual(occurrences, 1)
-        self.assertIn(runtime_script, self.semantic)
+        duplicate_names = sorted(name for name, count in Counter(names).items() if count > 1)
+        duplicate_scripts = sorted(path for path, count in Counter(scripts).items() if count > 1)
+        self.assertEqual(duplicate_names, [], "a CTest name can have only one owner")
+        self.assertEqual(duplicate_scripts, [], "a Python test script can have only one CTest owner")
 
-    def test_phrase_arbitration_is_registered_in_semantic_owner(self) -> None:
-        self.assertIn("ionian_cadence_phrase_arbitration_test", self.semantic)
-        self.assertIn("NAME ionian_cadence_phrase_arbitration", self.semantic)
+        self.assertEqual(scripts.count("vgm/test_studio_hq_fm_runtime_patch.py"), 1)
+
+    def test_python_registrations_point_to_current_files(self) -> None:
+        for _name, directory, script in PYTHON_REGISTRATION_RE.findall(self.test_cmake):
+            path = self.root / "tests" / directory / script
+            with self.subTest(path=path.relative_to(self.root)):
+                self.assertTrue(path.is_file())
 
 
 if __name__ == "__main__":
