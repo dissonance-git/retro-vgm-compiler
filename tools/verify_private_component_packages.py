@@ -2,23 +2,9 @@
 """Verify the final private foobar component archives before bundling them.
 
 The inputs emit standard multichannel beds and ship no decoder-side Omniphony
-runtime. Validate exact package membership, PE machine/export contracts,
-forbidden private imports, archive safety, and the packaged x86 spcplayer /
-SNESAPU loader boundary.
-"""Verify the final private foobar component archives before bundling them.
-
-The build stages files in disposable directories, but the deletion gate is about
-what is actually shipped. This verifier reopens each renamed ZIP
-(`.fb2k-component`), checks the exact sibling payload expected by the runtime,
-and inspects the packaged PE images themselves. It validates machine type,
-exports, and private import boundaries so the process split cannot silently
-collapse into an accidental DLL dependency. On Windows it also extracts and
-loads each packaged Omniphony DLL, executes its ABI version functions, and starts
-the exact packaged x86 spcplayer far enough to reach its own usage path. That
-proves its sibling SNESAPU DLL can be resolved by the Windows loader. It rejects
-path traversal, duplicate case-insensitive names, nested layout, zero-byte
-runtime files, wrong architectures, missing runtime ABI exports, and forbidden
-private imports.
+runtime. This verifier checks exact package membership, PE machine/export
+contracts, forbidden private imports, archive safety, and on Windows starts the
+packaged x86 spcplayer far enough to prove its sibling SNESAPU DLL resolves.
 """
 
 from __future__ import annotations
