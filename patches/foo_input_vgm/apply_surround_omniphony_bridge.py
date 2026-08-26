@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Make the historical VGM Surround preference own spatial presentation.
+"""Make the historical VGM Surround preference own the source-native 7.1 bed.
 
 The old libvgm surround effect is a channel-inversion trick. Disable that effect
-and route the same persisted cfg_surround_sound switch into the already-built
-source-native Omniphony path instead. The generated runtime remains fail-closed:
-if source admission or Omniphony fails, the protected stereo chunk survives.
+and route the same persisted cfg_surround_sound switch into the fixed 7.1 source
+bed instead. The generated runtime remains fail-closed: if exact source delivery
+fails, the protected stereo chunk survives.
 """
 
 from __future__ import annotations
@@ -47,24 +47,26 @@ def main() -> int:
     replace_once(
         input_base,
         "\tpa_cfg.chnInvert = cfg_surround_sound ? 0x02 : 0x00;\n",
-        "\t// The persisted Surround preference now selects the source-native\n"
-        "\t// Omniphony path. Do not also run libvgm's historical inversion effect.\n"
+        "\t// The persisted Surround preference now selects the source-native 7.1 bed.\n"
+        "\t// Do not also run libvgm's historical inversion effect.\n"
         "\tpa_cfg.chnInvert = 0x00;\n",
         "disable legacy VGM surround inversion",
     )
 
     replace_once(
         shadow,
-        """\tif (!cfg_vgm_sem71_enabled || !sources_ready || !routes_ready
-\t\t|| !m_genesis_spatial_route_block.routes_complete)
+        """\tif (!cfg_vgm_sem71_enabled || !sources_ready || frame_count == 0
+\t\t|| frame_count > 8192u || chunk.get_channels() != 2
+\t\t|| chunk.get_srate() != m_sample_rate)
 """,
-        """\tif (!cfg_surround_sound || !sources_ready || !routes_ready
-\t\t|| !m_genesis_spatial_route_block.routes_complete)
+        """\tif (!cfg_surround_sound || !sources_ready || frame_count == 0
+\t\t|| frame_count > 8192u || chunk.get_channels() != 2
+\t\t|| chunk.get_srate() != m_sample_rate)
 """,
-        "route existing VGM Surround preference to Omniphony",
+        "route existing VGM Surround preference to 7.1 bed",
     )
 
-    print("foo_input_vgm Surround -> Omniphony bridge applied")
+    print("foo_input_vgm Surround -> source-native 7.1 bridge applied")
     return 0
 
 

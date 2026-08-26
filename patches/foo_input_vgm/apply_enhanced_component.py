@@ -126,25 +126,15 @@ def main() -> int:
     run(here / "apply_enhanced_dac_runtime.py", source)
     run(here / "apply_enhanced_dac_stream_session_reset.py", source)
     run(here / "apply_enhanced_dac_stream_mix.py", source)
-    # Spatial presentation consumes only already-finalized source choices. Keep
-    # it after every source-quality patch so presentation cannot affect admission.
+    # Surround consumes only already-finalized exact source choices. The first
+    # product bed is deliberately fixed and small: FM/front, PSG/sides, DAC/backs.
     run(here / "apply_spatial_selected_source_transport.py", source)
-    # The DAC observer owns an exact sample-boundary advance that historically
-    # occupied the old spatial route patch anchor. Expose that anchor only while
-    # applying the spatial patch, then restore the PCM advance immediately after
-    # the new route observation. The compiled source always contains both.
-    run(here / "apply_spatial_route_order_bridge.py", source, "prepare")
     run(here / "apply_spatial_omniphony_runtime.py", source)
-    run(here / "apply_spatial_route_order_bridge.py", source, "restore")
     # Reuse the historical Surround preference and neutralize libvgm's old
-    # channel-inversion surround effect before any audio reaches the user.
+    # channel-inversion trick before any audio reaches the user.
     run(here / "apply_surround_omniphony_bridge.py", source)
-    run(here / "apply_spatial_omniphony_rate_lifecycle.py", source)
-    # If Output: Omniphony is active it owns the one final headphone render.
-    # Otherwise preserve the already-proven direct source_ffi FullSphere path.
-    run(here / "apply_foobar_source_session.py", source)
     diagnose_generated_host(source)
-    print("foo_input_vgm Genesis enhanced + Surround/Omniphony component patch set applied")
+    print("foo_input_vgm Genesis source-native 7.1 Surround component patch set applied")
     return 0
 
 

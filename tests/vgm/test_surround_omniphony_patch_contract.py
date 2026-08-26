@@ -12,25 +12,26 @@ ROOT = Path(__file__).resolve().parents[2]
 PATCHES = ROOT / "patches" / "foo_input_vgm"
 
 
-class VgmSurroundOmniphonyPatchContractTest(unittest.TestCase):
+class VgmSurroundBedPatchContractTest(unittest.TestCase):
     def read(self, path: Path) -> str:
         return path.read_text(encoding="utf-8")
 
     def test_patch_scripts_remain_valid_python(self) -> None:
         for name in (
             "apply_enhanced_ui.py",
+            "apply_spatial_omniphony_runtime.py",
             "apply_surround_omniphony_bridge.py",
             "apply_enhanced_component.py",
         ):
             ast.parse(self.read(PATCHES / name), filename=name)
 
-    def test_existing_surround_preference_owns_spatial_presentation(self) -> None:
+    def test_existing_surround_preference_owns_7_1_presentation(self) -> None:
         bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
         self.assertIn("cfg_surround_sound", bridge)
         self.assertIn("pa_cfg.chnInvert = 0x00;", bridge)
         self.assertIn("!cfg_surround_sound || !sources_ready", bridge)
 
-    def test_bridge_executes_against_the_expected_generated_source_shape(self) -> None:
+    def test_bridge_executes_against_expected_generated_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             source = Path(temp_dir)
             input_base = source / "input_base.cpp"
@@ -40,8 +41,9 @@ class VgmSurroundOmniphonyPatchContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             shadow.write_text(
-                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || !routes_ready\n"
-                "\t\t|| !m_genesis_spatial_route_block.routes_complete)\n",
+                "\tif (!cfg_vgm_sem71_enabled || !sources_ready || frame_count == 0\n"
+                "\t\t|| frame_count > 8192u || chunk.get_channels() != 2\n"
+                "\t\t|| chunk.get_srate() != m_sample_rate)\n",
                 encoding="utf-8",
             )
 
@@ -61,38 +63,33 @@ class VgmSurroundOmniphonyPatchContractTest(unittest.TestCase):
             self.assertIn("!cfg_surround_sound || !sources_ready", patched_shadow)
             self.assertNotIn("cfg_vgm_sem71_enabled", patched_shadow)
 
-    def test_old_libvgm_surround_is_not_stacked_with_omniphony(self) -> None:
-        bridge = self.read(PATCHES / "apply_surround_omniphony_bridge.py")
-        self.assertIn("disable legacy VGM surround inversion", bridge)
-        self.assertNotIn("pa_cfg.chnInvert = cfg_surround_sound ? 0x02 : 0x00;\n\tpa_cfg.chnInvert", bridge)
-
-    def test_surround_opens_the_immersive_omniphony_presentation(self) -> None:
+    def test_runtime_redistributes_only_exact_delivered_families(self) -> None:
         runtime = self.read(PATCHES / "apply_spatial_omniphony_runtime.py")
-        self.assertIn("omniphony_source_spatial_full_sphere", runtime)
-        self.assertIn("config.externalization = 1u;", runtime)
+        self.assertIn("surround_bed_7_1.h", runtime)
+        self.assertIn("move_stereo_to_sides", runtime)
+        self.assertIn("move_stereo_to_backs", runtime)
+        self.assertIn("sn76489_tone0", runtime)
+        self.assertIn("sn76489_noise", runtime)
+        self.assertIn("ym2612_dac", runtime)
+        self.assertIn("audio_chunk::channel_config_7point1", runtime)
+        self.assertNotIn("omniphony_source_spatial_full_sphere", runtime)
+        self.assertNotIn("genesis_spatial_route_transport", runtime)
+        self.assertNotIn("realtime_musical_omniphony_pipeline", runtime)
 
-    def test_master_patch_orders_source_selection_before_surround_bridge(self) -> None:
+    def test_active_stack_has_no_decoder_side_omniphony_or_route_governor(self) -> None:
         master = self.read(PATCHES / "apply_enhanced_component.py")
-        runtime = 'run(here / "apply_spatial_omniphony_runtime.py", source)'
-        bridge = 'run(here / "apply_surround_omniphony_bridge.py", source)'
-        self.assertIn(runtime, master)
-        self.assertIn(bridge, master)
-        self.assertLess(master.index(runtime), master.index(bridge))
+        self.assertIn('run(here / "apply_spatial_selected_source_transport.py", source)', master)
+        self.assertIn('run(here / "apply_spatial_omniphony_runtime.py", source)', master)
+        self.assertIn('run(here / "apply_surround_omniphony_bridge.py", source)', master)
+        self.assertNotIn('run(here / "apply_spatial_route_order_bridge.py"', master)
+        self.assertNotIn('run(here / "apply_spatial_omniphony_rate_lifecycle.py"', master)
+        self.assertNotIn('run(here / "apply_foobar_source_session.py"', master)
 
-    def test_enhanced_remains_independent_and_no_second_spatial_ui_is_created(self) -> None:
+    def test_ui_label_is_exactly_surround(self) -> None:
         ui = self.read(PATCHES / "apply_enhanced_ui.py")
-        self.assertIn('CONTROL         "enhanced",IDC_ENHANCED_ENABLED_VGM', ui)
-        self.assertIn("cfg_surround_sound", ui)
-        self.assertIn("cfg_vgm_enhanced_enabled", ui)
+        self.assertIn('CONTROL         "Surround",IDC_SURROUND_SOUND', ui)
+        self.assertNotIn('"""Surround""" sound",IDC_SURROUND_SOUND', ui)
         self.assertNotIn('CONTROL         "Spatial"', ui)
-
-    def test_shared_product_contract_is_only_surround_plus_enhanced(self) -> None:
-        model = self.read(ROOT / "model" / "spatial_playback_options.h")
-        self.assertIn("bool surround = false;", model)
-        self.assertIn("bool enhanced = false;", model)
-        self.assertNotIn("source_full_sphere", model)
-        self.assertNotIn("externalization =", model)
-        self.assertNotIn("depth =", model)
 
 
 if __name__ == "__main__":

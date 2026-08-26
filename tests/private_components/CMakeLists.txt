@@ -114,17 +114,6 @@ set_tests_properties(
 )
 
 add_test(
-    NAME vgm_spatial_omniphony_rate_lifecycle_patch
-    COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
-        -s ${RETRO_ROOT}/tests/vgm
-        -p test_spatial_omniphony_rate_lifecycle_patch.py
-)
-set_tests_properties(
-    vgm_spatial_omniphony_rate_lifecycle_patch
-    PROPERTIES WORKING_DIRECTORY ${RETRO_ROOT}
-)
-
-add_test(
     NAME spc_private_48khz_output_patch
     COMMAND ${Python3_EXECUTABLE} -B -m unittest discover
         -s ${RETRO_ROOT}/tests/spc
