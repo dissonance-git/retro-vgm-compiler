@@ -445,8 +445,19 @@ def main() -> int:
     )
     replace_once(
         header,
-        "        m_psg_block_valid = false;\n",
-        "        m_psg_block_valid = false;\n        m_opm_block_valid = false;\n",
+        "    void invalidate_output_block() noexcept\n"
+        "    {\n"
+        "        m_output_count = 0;\n"
+        "        m_ym_block_valid = false;\n"
+        "        m_psg_block_valid = false;\n"
+        "    }\n",
+        "    void invalidate_output_block() noexcept\n"
+        "    {\n"
+        "        m_output_count = 0;\n"
+        "        m_ym_block_valid = false;\n"
+        "        m_psg_block_valid = false;\n"
+        "        m_opm_block_valid = false;\n"
+        "    }\n",
         "YM2151 output invalidation",
     )
     replace_once(
