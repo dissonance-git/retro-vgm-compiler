@@ -1,13 +1,16 @@
 #pragma once
 
 #include "motif_transformation_hypothesis.h"
+#include "part_motif_profile.h"
 #include "phrase_boundary_hypothesis.h"
+#include "phrase_relation_hypothesis.h"
 #include "phrase_role_evidence.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -263,6 +266,298 @@ inline phrase_role_evidence make_motif_return_recurrence_evidence(
     result.support_nodes = unique_phrase_reentry_support_nodes(
         std::move(result.support_nodes));
     return result;
+}
+
+inline phrase_role_evidence make_grounded_reentry_boundary_evidence(
+    const phrase_boundary_hypothesis& boundary,
+    time_span role_scope,
+    phrase_role_formal_scale formal_scale,
+    std::string source = "grounded-reentry-boundary-analysis") {
+    validate_phrase_role_scope(role_scope);
+    if (source.empty())
+        throw std::invalid_argument(
+            "grounded re-entry boundary evidence requires a source");
+    if (!phrase_boundary_supports_reentry(boundary))
+        throw std::invalid_argument(
+            "grounded new-phrase onset requires a structural or authored boundary");
+    if (role_scope.start != boundary.boundary)
+        throw std::invalid_argument(
+            "canonical new-phrase scope must begin at its boundary");
+
+    auto support_nodes = phrase_boundary_reentry_support_nodes(boundary);
+    if (support_nodes.empty())
+        throw std::invalid_argument(
+            "grounded re-entry boundary requires provenance support nodes");
+
+    phrase_role_evidence result;
+    result.role = phrase_role_kind::new_phrase_onset;
+    result.scope = std::move(role_scope);
+    result.formal_scale = formal_scale;
+    result.origin = phrase_role_evidence_origin::phrase_boundary_analysis;
+    result.polarity = phrase_role_evidence_polarity::supports;
+    result.status = evidence_status::hypothesis;
+    result.confidence = boundary.confidence;
+    result.source = std::move(source);
+    result.detail =
+        "grounded structural boundary licenses a candidate phrase start independently of performed re-onset";
+    result.support_nodes = std::move(support_nodes);
+    return result;
+}
+
+inline phrase_role_evidence make_performed_phrase_reonset_evidence(
+    const musical_execution_graph& graph,
+    const time_coordinate& boundary,
+    const std::vector<part_gesture_observation>& observations,
+    std::int64_t onset_tolerance_ticks,
+    time_span role_scope,
+    phrase_role_formal_scale formal_scale,
+    std::string source = "performed-phrase-reonset-analysis") {
+    validate_phrase_role_scope(role_scope);
+    if (source.empty())
+        throw std::invalid_argument(
+            "performed phrase re-onset evidence requires a source");
+    if (onset_tolerance_ticks < 0)
+        throw std::invalid_argument(
+            "performed phrase re-onset tolerance must be nonnegative");
+    if (observations.empty())
+        throw std::invalid_argument(
+            "performed phrase re-onset requires at least one observation");
+    if (role_scope.start != boundary)
+        throw std::invalid_argument(
+            "canonical performed re-onset boundary must equal the role-scope start");
+
+    std::map<node_id, double> best_part_strength;
+    std::vector<node_id> support_nodes;
+    evidence_status weakest_status = observations.front().status;
+
+    for (const auto& observation : observations) {
+        if (observation.part_id == 0 || observation.source_node == 0)
+            throw std::invalid_argument(
+                "performed re-onset observations require persistent-part and source ids");
+        if (!std::isfinite(observation.confidence)
+            || observation.confidence < 0.0 || observation.confidence > 1.0) {
+            throw std::invalid_argument(
+                "performed re-onset confidence must be finite and in [0, 1]");
+        }
+        if (!compatible_phrase_role_time_basis(boundary, observation.onset)
+            || observation.onset.tick < boundary.tick
+            || observation.onset.tick - boundary.tick > onset_tolerance_ticks
+            || !phrase_reentry_scope_contains(role_scope, observation.onset)) {
+            throw std::invalid_argument(
+                "performed re-onset must occur at or shortly after the grounded boundary");
+        }
+
+        const node* part = graph.find_node(observation.part_id);
+        if (part == nullptr)
+            throw std::invalid_argument(
+                "performed re-onset references an unknown persistent part");
+        const auto part_identity = read_persistent_part_motif_evidence(*part);
+
+        const node* source_node = graph.find_node(observation.source_node);
+        if (source_node == nullptr || !source_node->active.has_value()
+            || source_node->active->start != observation.onset) {
+            throw std::invalid_argument(
+                "performed re-onset timing must be grounded by its source node");
+        }
+
+        const double strength = std::min(
+            observation.confidence,
+            part_identity.confidence);
+        best_part_strength[observation.part_id] = std::max(
+            best_part_strength[observation.part_id],
+            strength);
+        support_nodes.push_back(observation.source_node);
+        weakest_status = static_cast<evidence_status>(std::max(
+            static_cast<std::uint8_t>(weakest_status),
+            static_cast<std::uint8_t>(observation.status)));
+    }
+
+    std::vector<double> strengths;
+    strengths.reserve(best_part_strength.size());
+    for (const auto& item : best_part_strength)
+        strengths.push_back(item.second);
+    std::sort(strengths.begin(), strengths.end(), std::greater<double>{});
+
+    double confidence = strengths.front();
+    if (strengths.size() >= 2)
+        confidence = strengths[1];
+    else
+        confidence = std::min(confidence, phrase_role_single_domain_ceiling);
+
+    phrase_role_evidence result;
+    result.role = phrase_role_kind::new_phrase_onset;
+    result.scope = std::move(role_scope);
+    result.formal_scale = formal_scale;
+    result.origin = phrase_role_evidence_origin::performance_reonset;
+    result.polarity = phrase_role_evidence_polarity::supports;
+    result.status = weakest_status;
+    result.confidence = confidence;
+    result.source = std::move(source);
+    result.detail =
+        "performed re-onset after the boundary is grounded across " +
+        std::to_string(best_part_strength.size()) +
+        " independently tracked persistent part(s)";
+    result.support_nodes = unique_phrase_reentry_support_nodes(
+        std::move(support_nodes));
+    return result;
+}
+
+inline phrase_role_hypothesis make_grounded_new_phrase_onset_hypothesis(
+    phrase_role_evidence boundary,
+    phrase_role_evidence reonset,
+    double proposed_confidence = 0.95) {
+    validate_phrase_role_evidence(boundary);
+    validate_phrase_role_evidence(reonset);
+    if (boundary.role != phrase_role_kind::new_phrase_onset
+        || reonset.role != phrase_role_kind::new_phrase_onset
+        || boundary.polarity != phrase_role_evidence_polarity::supports
+        || reonset.polarity != phrase_role_evidence_polarity::supports) {
+        throw std::invalid_argument(
+            "canonical new-phrase onset requires positive new-phrase evidence");
+    }
+    if (boundary.origin != phrase_role_evidence_origin::phrase_boundary_analysis
+        || reonset.origin != phrase_role_evidence_origin::performance_reonset) {
+        throw std::invalid_argument(
+            "canonical new-phrase onset requires independent boundary and performed re-onset domains");
+    }
+    if (!same_phrase_role_scope(boundary.scope, reonset.scope)
+        || boundary.formal_scale != reonset.formal_scale) {
+        throw std::invalid_argument(
+            "canonical new-phrase evidence must share scope and formal scale");
+    }
+
+    return make_phrase_role_hypothesis(
+        phrase_role_kind::new_phrase_onset,
+        boundary.scope,
+        boundary.formal_scale,
+        proposed_confidence,
+        {std::move(boundary), std::move(reonset)},
+        {phrase_role_kind::continuation});
+}
+
+inline bool phrase_relation_supports_canonical_return(
+    const phrase_relation_hypothesis& relation) noexcept {
+    const bool recurrence =
+        relation.kind == phrase_relation_kind::recurrence
+        || relation.kind == phrase_relation_kind::varied_recurrence;
+    return recurrence
+        && phrase_relation_from_motif_transformation(
+               relation.motif_transformation) == relation.kind;
+}
+
+inline phrase_role_hypothesis make_grounded_phrase_return_hypothesis(
+    const musical_execution_graph& graph,
+    const phrase_role_hypothesis& onset,
+    const phrase_relation_hypothesis& relation,
+    double proposed_confidence = 0.95,
+    std::string source = "grounded-phrase-return-analysis") {
+    if (source.empty())
+        throw std::invalid_argument("grounded phrase return requires a source");
+    if (onset.role != phrase_role_kind::new_phrase_onset
+        || !onset.cross_domain_grounded || onset.support_domains < 2) {
+        throw std::invalid_argument(
+            "canonical return requires a cross-domain grounded new-phrase onset");
+    }
+
+    bool has_boundary = false;
+    bool has_reonset = false;
+    for (const auto& item : onset.evidence) {
+        has_boundary = has_boundary
+            || (item.polarity == phrase_role_evidence_polarity::supports
+                && item.origin == phrase_role_evidence_origin::phrase_boundary_analysis);
+        has_reonset = has_reonset
+            || (item.polarity == phrase_role_evidence_polarity::supports
+                && item.origin == phrase_role_evidence_origin::performance_reonset);
+    }
+    if (!has_boundary || !has_reonset)
+        throw std::invalid_argument(
+            "canonical return requires boundary plus performed re-onset grounding");
+    if (!phrase_relation_supports_canonical_return(relation))
+        throw std::invalid_argument(
+            "canonical return requires recurrence or varied recurrence between phrase regions");
+    if (!std::isfinite(relation.confidence)
+        || relation.confidence < 0.0 || relation.confidence > 1.0) {
+        throw std::invalid_argument(
+            "canonical phrase-return recurrence confidence must be finite and in [0, 1]");
+    }
+
+    const node* first = graph.find_node(relation.first_phrase);
+    const node* second = graph.find_node(relation.second_phrase);
+    if (first == nullptr || second == nullptr
+        || relation.first_phrase == relation.second_phrase
+        || !is_phrase_region_node(*first) || !is_phrase_region_node(*second)
+        || !first->active.has_value() || !second->active.has_value()) {
+        throw std::invalid_argument(
+            "canonical return requires two distinct materialized phrase regions");
+    }
+    if (!first->active->end.has_value()
+        || first->active->end->tick > second->active->start.tick) {
+        throw std::invalid_argument(
+            "canonical return source phrase must precede the returning phrase");
+    }
+    if (!same_phrase_role_scope(*second->active, onset.scope))
+        throw std::invalid_argument(
+            "canonical return onset scope must equal the returning phrase region");
+    if (!source_nodes_inside_phrase(
+            graph, relation.first_motif_nodes, *first)
+        || !source_nodes_inside_phrase(
+            graph, relation.second_motif_nodes, *second)) {
+        throw std::invalid_argument(
+            "canonical return recurrence support must live inside its phrase regions");
+    }
+
+    std::vector<phrase_role_evidence> evidence;
+    evidence.reserve(onset.evidence.size() + 1);
+    for (auto item : onset.evidence) {
+        item.role = phrase_role_kind::return_role;
+        item.detail =
+            "return inherits grounded new-phrase onset: " + item.detail;
+        evidence.push_back(std::move(item));
+    }
+
+    phrase_role_evidence recurrence;
+    recurrence.role = phrase_role_kind::return_role;
+    recurrence.scope = onset.scope;
+    recurrence.formal_scale = onset.formal_scale;
+    recurrence.origin = phrase_role_evidence_origin::recurrence_analysis;
+    recurrence.polarity = phrase_role_evidence_polarity::supports;
+    recurrence.status = evidence_status::hypothesis;
+    recurrence.confidence = relation.confidence;
+    recurrence.source = std::move(source);
+    recurrence.detail =
+        std::string{"materialized earlier-to-later phrase relation is "} +
+        to_string(relation.kind) + " via " +
+        to_string(relation.motif_transformation);
+    recurrence.support_nodes = {
+        relation.first_phrase,
+        relation.second_phrase,
+    };
+    recurrence.support_nodes.insert(
+        recurrence.support_nodes.end(),
+        relation.first_motif_nodes.begin(),
+        relation.first_motif_nodes.end());
+    recurrence.support_nodes.insert(
+        recurrence.support_nodes.end(),
+        relation.second_motif_nodes.begin(),
+        relation.second_motif_nodes.end());
+    recurrence.support_nodes = unique_phrase_reentry_support_nodes(
+        std::move(recurrence.support_nodes));
+    evidence.push_back(std::move(recurrence));
+
+    // Recurrence is a required claim, not a decorative third witness. The
+    // canonical return can never outrun the earlier-to-later phrase relation.
+    const double bounded_proposal = std::min({
+        proposed_confidence,
+        onset.confidence,
+        relation.confidence,
+    });
+    return make_phrase_role_hypothesis(
+        phrase_role_kind::return_role,
+        onset.scope,
+        onset.formal_scale,
+        bounded_proposal,
+        std::move(evidence),
+        {phrase_role_kind::continuation});
 }
 
 } // namespace vgmtooling::model

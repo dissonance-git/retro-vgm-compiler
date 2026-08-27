@@ -25,7 +25,7 @@ The exact executable surface is owned by code and tests. This roadmap records ca
 
 Continuation evidence now has executable adapters for persistent-part trajectories that cross an arrival, ordered motif transformations, sustained reliable harmonic-transition chains, and explicit cross-boundary continuity from phrase-boundary analysis. Cadence-derived boundary evidence is kept visible but excluded from continuation support.
 
-New-phrase and return evidence now separates formal re-entry from recurrence. A grounded structural boundary can support a new-phrase onset candidate without naming the material, while a return requires both independent boundary evidence and a sufficiently strong earlier-to-later motif relation. Recurrence without a grounded boundary, rhythm-only echoes, and pre-boundary reappearances are rejected rather than promoted into formal syntax.
+New-phrase and return evidence now separates formal re-entry from recurrence. The lightweight adapter preserves a boundary-backed onset candidate, while the canonical path keeps phrase-boundary evidence and performed persistent-part re-onset as independent domains. Canonical return additionally requires a recurrence or varied-recurrence relation between two materialized phrase regions, and recurrence confidence is a hard ceiling. Recurrence without grounded re-entry, rhythm-only echoes, and pre-boundary reappearances are rejected rather than promoted into formal syntax.
 
 The active problem is now representing prolongation and delayed resolution across intervening material without flattening phrase syntax or treating local surface motion as proof that a larger harmonic process ended.
 
@@ -48,7 +48,7 @@ For Ionian `V → VI`, the discriminating question remains what happens after th
 
 1. **Phrase-role evidence objects — implemented.** `model/phrase_role_evidence.h` preserves role candidate, temporal scope, formal scale, independent support provenance, explicit same-scale incompatibility, and cross-scale coexistence without establishing a cadence class.
 2. **Continuation evidence — implemented.** `model/phrase_continuation_evidence.h` derives independent continuation support from persistent-part continuation, ordered motif transformation, sustained harmonic process, and cadence-independent cross-boundary continuity while rejecting one-sided/weak/broken witnesses.
-3. **New-phrase and return evidence — implemented.** `model/phrase_reentry_evidence.h` separates grounded structural re-entry from recurrence identity: post-boundary material can support a new-phrase onset candidate, while return evidence requires both a grounded boundary and an earlier-to-later motif recurrence/transformation across that boundary.
+3. **New-phrase and return evidence — implemented.** `model/phrase_reentry_evidence.h` preserves low-confidence boundary-backed re-entry candidates and adds a canonical cross-domain path: grounded boundary + performed persistent-part re-onset for new phrase, then a materialized earlier-to-later phrase recurrence/varied recurrence for return. Recurrence alone cannot bootstrap formal syntax or outrun its own confidence.
 4. **Prolongation and delayed-resolution relations — active.** Connect harmonic events across intervening material without flattening phrase syntax.
 5. **Multi-scale arbitration** allowing one event to be locally closing and globally continuational with explicit scope.
 6. **Real-corpus pressure** across heterogeneous source families and musical contexts.

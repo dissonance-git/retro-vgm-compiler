@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,66 @@ phrase_boundary_evidence boundary_evidence(
 
 bool close_enough(double first, double second) {
     return std::fabs(first - second) < 1e-9;
+}
+
+node_id add_persistent_part(
+    musical_execution_graph& graph,
+    const char* label,
+    double confidence) {
+    node value;
+    value.kind = node_kind::part;
+    value.layer = semantic_layer::musical_performance;
+    value.flow = flow_kind::stream;
+    value.label = label;
+    value.attributes.push_back({
+        "identity_scope",
+        std::string{"persistent_musical_part"},
+        evidence_status::hypothesis,
+        confidence,
+        "",
+    });
+    return graph.add_node(std::move(value));
+}
+
+node_id add_performance_event(
+    musical_execution_graph& graph,
+    const char* label,
+    std::int64_t tick) {
+    node value;
+    value.kind = node_kind::musical_event;
+    value.layer = semantic_layer::musical_performance;
+    value.flow = flow_kind::event;
+    value.label = label;
+    value.active = time_span{at(tick), at(tick)};
+    return graph.add_node(std::move(value));
+}
+
+part_gesture_observation gesture(
+    node_id source,
+    node_id part,
+    std::int64_t tick,
+    double confidence) {
+    part_gesture_observation result;
+    result.source_node = source;
+    result.part_id = part;
+    result.onset = at(tick);
+    result.status = evidence_status::derived;
+    result.confidence = confidence;
+    return result;
+}
+
+phrase_boundary_consensus consensus(
+    std::int64_t tick,
+    double confidence,
+    const std::vector<node_id>& parts) {
+    phrase_boundary_consensus result;
+    result.representative = at(tick);
+    result.alignment_span = time_span{at(tick), at(tick)};
+    result.confidence = confidence;
+    result.independent_part_ceiling = confidence;
+    result.supporting_parts = parts;
+    result.cross_part_grounded = parts.size() >= 2;
+    return result;
 }
 
 } // namespace
@@ -222,6 +283,175 @@ int main() {
         early_onset_rejected = true;
     }
     assert(early_onset_rejected);
+
+
+    // The canonical path keeps boundary detection and performed re-onset as
+    // independent evidence domains, then requires a materialized phrase-to-
+    // phrase recurrence before calling the later region a return.
+    {
+        musical_execution_graph canonical_graph;
+        const node_id melody = add_persistent_part(
+            canonical_graph, "canonical melody", 0.92);
+        const node_id bass = add_persistent_part(
+            canonical_graph, "canonical bass", 0.90);
+        const std::vector<node_id> canonical_parts{melody, bass};
+
+        const auto c0 = consensus(0, 0.90, canonical_parts);
+        const auto c1 = consensus(400, 0.86, canonical_parts);
+        const auto c2 = consensus(800, 0.84, canonical_parts);
+        const auto phrase_a = make_phrase_region_hypothesis(c0, c1);
+        const auto phrase_b = make_phrase_region_hypothesis(c1, c2);
+        const node_id phrase_a_id =
+            add_phrase_region_hypothesis(canonical_graph, phrase_a);
+        const node_id phrase_b_id =
+            add_phrase_region_hypothesis(canonical_graph, phrase_b);
+
+        const node_id canonical_gap =
+            add_timed_node(canonical_graph, "canonical gap", 400);
+        const node_id canonical_close =
+            add_timed_node(canonical_graph, "canonical motif close", 398);
+        const auto canonical_boundary = make_phrase_boundary_hypothesis(
+            at(400),
+            0.92,
+            {
+                boundary_evidence(
+                    phrase_boundary_evidence_kind::temporal_gap,
+                    phrase_boundary_evidence_origin::performance_timing,
+                    0.88,
+                    "canonical-gap",
+                    canonical_gap),
+                boundary_evidence(
+                    phrase_boundary_evidence_kind::motif_completion,
+                    phrase_boundary_evidence_origin::motif_analysis,
+                    0.86,
+                    "canonical-close",
+                    canonical_close),
+            });
+        assert(canonical_boundary.cross_domain_grounded);
+        assert(close_enough(canonical_boundary.confidence, 0.86));
+
+        const auto canonical_boundary_evidence =
+            make_grounded_reentry_boundary_evidence(
+                canonical_boundary,
+                phrase_b.span,
+                phrase_role_formal_scale::local_phrase);
+
+        const node_id melody_onset = add_performance_event(
+            canonical_graph, "canonical melody re-onset", 405);
+        const node_id bass_onset = add_performance_event(
+            canonical_graph, "canonical bass re-onset", 410);
+        const auto performed_reonset =
+            make_performed_phrase_reonset_evidence(
+                canonical_graph,
+                at(400),
+                {
+                    gesture(melody_onset, melody, 405, 0.91),
+                    gesture(bass_onset, bass, 410, 0.88),
+                },
+                16,
+                phrase_b.span,
+                phrase_role_formal_scale::local_phrase);
+        assert(performed_reonset.origin ==
+            phrase_role_evidence_origin::performance_reonset);
+        assert(close_enough(performed_reonset.confidence, 0.88));
+
+        const auto grounded_onset =
+            make_grounded_new_phrase_onset_hypothesis(
+                canonical_boundary_evidence,
+                performed_reonset);
+        assert(grounded_onset.support_domains == 2);
+        assert(grounded_onset.cross_domain_grounded);
+        assert(close_enough(grounded_onset.confidence, 0.86));
+        assert(!grounded_onset.role_established);
+
+        const node_id a1 = add_performance_event(
+            canonical_graph, "canonical A1", 100);
+        const node_id a2 = add_performance_event(
+            canonical_graph, "canonical A2", 200);
+        const node_id a3 = add_performance_event(
+            canonical_graph, "canonical A3", 300);
+        const node_id b1 = add_performance_event(
+            canonical_graph, "canonical B1", 500);
+        const node_id b2 = add_performance_event(
+            canonical_graph, "canonical B2", 600);
+        const node_id b3 = add_performance_event(
+            canonical_graph, "canonical B3", 700);
+
+        motif_transformation_hypothesis canonical_recurrence;
+        canonical_recurrence.kind =
+            motif_transformation_kind::near_recurrence;
+        canonical_recurrence.confidence = 0.82;
+        canonical_recurrence.first_nodes = {a1, a2, a3};
+        canonical_recurrence.second_nodes = {b1, b2, b3};
+        const auto canonical_relation = infer_phrase_relation(
+            canonical_graph,
+            phrase_a_id,
+            phrase_b_id,
+            canonical_recurrence);
+        assert(canonical_relation.kind == phrase_relation_kind::recurrence);
+        assert(close_enough(canonical_relation.confidence, 0.82));
+
+        const auto canonical_return =
+            make_grounded_phrase_return_hypothesis(
+                canonical_graph,
+                grounded_onset,
+                canonical_relation);
+        assert(canonical_return.support_domains == 3);
+        assert(canonical_return.cross_domain_grounded);
+        assert(close_enough(canonical_return.confidence, 0.82));
+        assert(!phrase_role_lists_incompatible(
+            canonical_return,
+            phrase_role_kind::new_phrase_onset));
+        assert(!canonical_return.role_established);
+
+        // A weak recurrence relation is a hard ceiling even when boundary and
+        // performed re-onset evidence are stronger.
+        auto weak_recurrence = canonical_relation;
+        weak_recurrence.confidence = 0.55;
+        const auto weak_return =
+            make_grounded_phrase_return_hypothesis(
+                canonical_graph,
+                grounded_onset,
+                weak_recurrence);
+        assert(close_enough(weak_return.confidence, 0.55));
+
+        // Boundary-only new-phrase evidence remains a useful candidate but
+        // cannot be promoted through the canonical return helper.
+        const auto boundary_only = make_phrase_role_hypothesis(
+            phrase_role_kind::new_phrase_onset,
+            phrase_b.span,
+            phrase_role_formal_scale::local_phrase,
+            0.95,
+            {canonical_boundary_evidence});
+        assert(!boundary_only.cross_domain_grounded);
+        bool boundary_only_return_rejected = false;
+        try {
+            (void)make_grounded_phrase_return_hypothesis(
+                canonical_graph,
+                boundary_only,
+                canonical_relation);
+        } catch (const std::invalid_argument&) {
+            boundary_only_return_rejected = true;
+        }
+        assert(boundary_only_return_rejected);
+
+        // A performed event before the formal boundary is not re-onset.
+        const node_id premature = add_performance_event(
+            canonical_graph, "canonical premature onset", 395);
+        bool premature_reonset_rejected = false;
+        try {
+            (void)make_performed_phrase_reonset_evidence(
+                canonical_graph,
+                at(400),
+                {gesture(premature, melody, 395, 0.90)},
+                16,
+                phrase_b.span,
+                phrase_role_formal_scale::local_phrase);
+        } catch (const std::invalid_argument&) {
+            premature_reonset_rejected = true;
+        }
+        assert(premature_reonset_rejected);
+    }
 
     return 0;
 }

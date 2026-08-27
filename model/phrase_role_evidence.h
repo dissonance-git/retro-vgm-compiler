@@ -42,6 +42,7 @@ enum class phrase_role_evidence_origin : std::uint8_t {
     recurrence_analysis,
     authored_source,
     external_annotation,
+    performance_reonset,
 };
 
 enum class phrase_role_evidence_polarity : std::uint8_t {
@@ -127,6 +128,7 @@ inline const char* to_string(phrase_role_evidence_origin origin) noexcept {
     case phrase_role_evidence_origin::recurrence_analysis: return "recurrence_analysis";
     case phrase_role_evidence_origin::authored_source: return "authored_source";
     case phrase_role_evidence_origin::external_annotation: return "external_annotation";
+    case phrase_role_evidence_origin::performance_reonset: return "performance_reonset";
     }
     return "unknown";
 }
