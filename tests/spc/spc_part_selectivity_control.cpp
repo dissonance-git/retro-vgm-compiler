@@ -60,9 +60,90 @@ std::uint64_t parse_seconds(const char* text) {
 
 struct cross_voice_control_result {
     std::size_t candidate_count = 0;
+    std::size_t inferred_count = 0;
+    std::size_t no_hypothesis_count = 0;
     std::size_t strong_count = 0;
     std::size_t rejected_count = 0;
+
+    std::size_t source_identity_support = 0;
+    std::size_t temporal_adjacency_support = 0;
+    std::size_t pitch_trajectory_support = 0;
+    std::size_t physical_slot_support = 0;
+    std::size_t identity_discontinuity_counter = 0;
+    std::size_t simultaneous_conflict_counter = 0;
+
+    std::size_t strong_source_identity_support = 0;
+    std::size_t strong_temporal_adjacency_support = 0;
+    std::size_t strong_pitch_trajectory_support = 0;
+    std::size_t strong_physical_slot_support = 0;
+    std::size_t strong_identity_discontinuity_counter = 0;
+    std::size_t strong_source_temporal_pitch_bundle = 0;
+
+    double strong_confidence_sum = 0.0;
+    double strong_confidence_min = 1.0;
+    double strong_confidence_max = 0.0;
 };
+
+bool has_evidence(
+    const persistent_part_hypothesis& hypothesis,
+    persistent_part_evidence_kind kind,
+    persistent_part_evidence_polarity polarity) {
+    for (const auto& evidence : hypothesis.evidence) {
+        if (evidence.kind == kind && evidence.polarity == polarity)
+            return true;
+    }
+    return false;
+}
+
+void observe_hypothesis_evidence(
+    const persistent_part_hypothesis& hypothesis,
+    bool strong,
+    cross_voice_control_result& result) {
+    const bool source = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::source_identity,
+        persistent_part_evidence_polarity::supports);
+    const bool temporal = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::temporal_adjacency,
+        persistent_part_evidence_polarity::supports);
+    const bool pitch = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::pitch_trajectory_continuity,
+        persistent_part_evidence_polarity::supports);
+    const bool slot = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::physical_slot_continuity,
+        persistent_part_evidence_polarity::supports);
+    const bool discontinuity = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::identity_discontinuity,
+        persistent_part_evidence_polarity::counters);
+    const bool overlap = has_evidence(
+        hypothesis,
+        persistent_part_evidence_kind::simultaneous_conflict,
+        persistent_part_evidence_polarity::counters);
+
+    result.source_identity_support += source ? 1u : 0u;
+    result.temporal_adjacency_support += temporal ? 1u : 0u;
+    result.pitch_trajectory_support += pitch ? 1u : 0u;
+    result.physical_slot_support += slot ? 1u : 0u;
+    result.identity_discontinuity_counter += discontinuity ? 1u : 0u;
+    result.simultaneous_conflict_counter += overlap ? 1u : 0u;
+
+    if (!strong)
+        return;
+
+    result.strong_source_identity_support += source ? 1u : 0u;
+    result.strong_temporal_adjacency_support += temporal ? 1u : 0u;
+    result.strong_pitch_trajectory_support += pitch ? 1u : 0u;
+    result.strong_physical_slot_support += slot ? 1u : 0u;
+    result.strong_identity_discontinuity_counter += discontinuity ? 1u : 0u;
+    result.strong_source_temporal_pitch_bundle += source && temporal && pitch ? 1u : 0u;
+    result.strong_confidence_sum += hypothesis.confidence;
+    result.strong_confidence_min = std::min(result.strong_confidence_min, hypothesis.confidence);
+    result.strong_confidence_max = std::max(result.strong_confidence_max, hypothesis.confidence);
+}
 
 cross_voice_control_result measure_cross_voice_control(
     const musical_execution_graph& graph,
@@ -121,11 +202,15 @@ cross_voice_control_result measure_cross_voice_control(
                 best->id,
                 "spc-cross-voice-null",
                 policy);
-            if (strong_persistent_part_transition(hypothesis)) {
+            ++result.inferred_count;
+            const bool strong = strong_persistent_part_transition(hypothesis);
+            observe_hypothesis_evidence(hypothesis, strong, result);
+            if (strong) {
                 ++result.strong_count;
                 continue;
             }
         } catch (const std::invalid_argument&) {
+            ++result.no_hypothesis_count;
             // Rejection is the expected null outcome when evidence is selective.
         }
         ++result.rejected_count;
@@ -204,6 +289,10 @@ int main(int argc, char** argv) {
             throw std::logic_error("SPC selectivity observed accounting is inconsistent");
         if (control.strong_count + control.rejected_count != control.candidate_count)
             throw std::logic_error("SPC selectivity null accounting is inconsistent");
+        if (control.inferred_count + control.no_hypothesis_count != control.candidate_count)
+            throw std::logic_error("SPC selectivity inference accounting is inconsistent");
+        if (control.strong_physical_slot_support != 0)
+            throw std::logic_error("cross-voice null cannot contain physical-slot continuity support");
 
         const double observed_rate = static_cast<double>(observed.strong_transition_count) /
             static_cast<double>(observed.candidate_transition_count);
@@ -211,6 +300,11 @@ int main(int argc, char** argv) {
             ? 0.0
             : static_cast<double>(control.strong_count) /
                 static_cast<double>(control.candidate_count);
+        const double strong_confidence_mean = control.strong_count == 0
+            ? 0.0
+            : control.strong_confidence_sum / static_cast<double>(control.strong_count);
+        const double strong_confidence_min = control.strong_count == 0
+            ? 0.0 : control.strong_confidence_min;
 
         std::cout
             << "SPC_PART_SELECTIVITY_CONTROL"
@@ -218,9 +312,25 @@ int main(int argc, char** argv) {
             << " observed_strong=" << observed.strong_transition_count
             << " observed_rate=" << observed_rate
             << " cross_voice_candidates=" << control.candidate_count
+            << " cross_voice_inferred=" << control.inferred_count
+            << " cross_voice_no_hypothesis=" << control.no_hypothesis_count
             << " cross_voice_strong=" << control.strong_count
             << " cross_voice_rejected=" << control.rejected_count
             << " cross_voice_rate=" << control_rate
+            << " evidence_source=" << control.source_identity_support
+            << " evidence_temporal=" << control.temporal_adjacency_support
+            << " evidence_pitch=" << control.pitch_trajectory_support
+            << " evidence_slot=" << control.physical_slot_support
+            << " counter_discontinuity=" << control.identity_discontinuity_counter
+            << " counter_overlap=" << control.simultaneous_conflict_counter
+            << " strong_source=" << control.strong_source_identity_support
+            << " strong_temporal=" << control.strong_temporal_adjacency_support
+            << " strong_pitch=" << control.strong_pitch_trajectory_support
+            << " strong_discontinuity=" << control.strong_identity_discontinuity_counter
+            << " strong_source_temporal_pitch=" << control.strong_source_temporal_pitch_bundle
+            << " strong_confidence_min=" << strong_confidence_min
+            << " strong_confidence_mean=" << strong_confidence_mean
+            << " strong_confidence_max=" << control.strong_confidence_max
             << '\n';
         return 0;
     } catch (const std::exception& error) {
