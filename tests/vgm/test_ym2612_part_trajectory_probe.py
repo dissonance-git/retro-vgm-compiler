@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import gzip
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+import tempfile
 import unittest
 
 
@@ -34,6 +36,18 @@ def event(tick: int, channel: int, pitch: float, patch: str):
 
 
 class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
+    def test_vgm_payload_compression_is_detected_from_bytes_not_suffix(self) -> None:
+        payload = b"Vgm " + bytes(64)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            compressed_named_vgm = root / "compressed.vgm"
+            compressed_named_vgm.write_bytes(gzip.compress(payload))
+            self.assertEqual(probe.motif_probe._read_vgm_payload(compressed_named_vgm), payload)
+
+            raw_named_vgz = root / "raw.vgz"
+            raw_named_vgz.write_bytes(payload)
+            self.assertEqual(probe.motif_probe._read_vgm_payload(raw_named_vgz), payload)
+
     def test_same_tick_projection_collapses_only_identical_observations(self) -> None:
         onsets = [
             event(100, 0, 100.0, "patch-a"),

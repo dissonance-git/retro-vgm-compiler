@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import gzip
 import importlib.util
 import json
 import math
@@ -39,12 +40,19 @@ def _load_base():
 base = _load_base()
 
 
+def _read_vgm_payload(path: Path) -> bytes:
+    """Read VGM payload bytes without trusting the filename as compression truth."""
+    source = path.read_bytes()
+    if source.startswith(b"\x1f\x8b"):
+        try:
+            return gzip.decompress(source)
+        except (OSError, EOFError) as exc:
+            raise ValueError("gzip-marked VGM source could not be decompressed") from exc
+    return source
+
+
 def _collect_onsets(path: Path):
-    raw = (
-        __import__("gzip").decompress(path.read_bytes())
-        if path.suffix.lower() == ".vgz"
-        else path.read_bytes()
-    )
+    raw = _read_vgm_payload(path)
     state = base.GenesisAuditState()
     onsets = []
     channel_map = {0: 0, 1: 1, 2: 2, 4: 3, 5: 4, 6: 5}
