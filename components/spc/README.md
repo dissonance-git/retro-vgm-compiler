@@ -138,6 +138,36 @@ synchronized whole-song reasoning
 
 Persistent-part analysis must use the strongest available combination of source/sample continuity, timing, control behavior, driver evidence when recovered, and other musical constraints. A hardware voice number is not enough.
 
+### Cross-voice handoff null
+
+Real-corpus pressure now gives this warning a stronger executable form. Pairwise cross-voice similarity is not enough even when it combines the same event-time BRR source, close timing, and source-relative pitch continuity. On the 31-cue creator-blind SPC panel, the handoff falsifier compressed:
+
+```text
+2,078 pairwise source/timing/pitch bundles
+-> 34 bidirectionally unique cross-voice associations
+-> 14 with strong same-voice flanks
+-> 14 capture-boundary-safe candidates
+-> 12 synchronized directed voice-swap cycles
+-> 2 non-cyclic candidates
+-> 0 uncontested candidates after same-voice competition
+```
+
+The cross-voice confidence ceiling therefore remains deliberate. One-in/one-out graph geometry is a useful falsifier and diagnostic, not a new independent evidence domain.
+
+Pinned N-SPC disassembly also shows that the ordinary Cube and Quintet music paths keep eight logical sequence lanes tied to fixed S-DSP voice-register bases. Therefore:
+
+```text
+cross-voice runtime similarity
+!= same recovered driver track moving slots
+
+fixed driver track lane
+!= proof that two distinct tracks form one musical part
+```
+
+If a future cross-voice persistent-part hypothesis is to exceed the current ceiling, it needs an independent authored relation between distinct driver tracks or another independent musical witness. Do not obtain that promotion by stacking more correlated runtime similarity.
+
+See `../../research/validation/spc-cross-voice-handoff-null.md`.
+
 ## Engineering foundation
 
 The editable SNESAPU source remains the implementation foundation. The supplied v2.21.3 package remains a behavior/version reference that must be reconciled in source form before audible enhancement claims rely on it.
