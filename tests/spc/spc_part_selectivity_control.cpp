@@ -58,6 +58,22 @@ std::uint64_t parse_seconds(const char* text) {
     return static_cast<std::uint64_t>(value);
 }
 
+struct cross_voice_context_result {
+    std::size_t bundle_candidate_count = 0;
+    std::size_t unique_outgoing_count = 0;
+    std::size_t unique_incoming_count = 0;
+    std::size_t bidirectionally_unique_count = 0;
+    std::size_t left_flanked_count = 0;
+    std::size_t right_flanked_count = 0;
+    std::size_t two_sided_flanked_count = 0;
+    std::size_t two_sided_unique_count = 0;
+};
+
+struct cross_voice_candidate_edge {
+    node_id first = 0;
+    node_id second = 0;
+};
+
 struct cross_voice_control_result {
     std::size_t candidate_count = 0;
     std::size_t inferred_count = 0;
@@ -93,6 +109,231 @@ bool has_evidence(
             return true;
     }
     return false;
+}
+
+bool same_episode_time_basis(
+    const time_coordinate& first,
+    const time_coordinate& second) noexcept {
+    return first.domain == second.domain &&
+        first.tick_rate != 0 &&
+        first.tick_rate == second.tick_rate &&
+        first.loop_iteration == second.loop_iteration;
+}
+
+bool within_part_gap(
+    const node& first,
+    const node& second,
+    const spc_part_continuity_policy& policy) noexcept {
+    if (!first.active.has_value() || !first.active->end.has_value() ||
+        !second.active.has_value())
+        return false;
+    const auto& end = *first.active->end;
+    const auto& start = second.active->start;
+    if (!same_episode_time_basis(end, start))
+        return false;
+    const std::int64_t gap = start.tick - end.tick;
+    if (gap < 0)
+        return false;
+    const double gap_seconds = static_cast<double>(gap) /
+        static_cast<double>(end.tick_rate);
+    return gap_seconds <= policy.max_gap_seconds;
+}
+
+bool same_physical_voice(const node& first, const node& second) noexcept {
+    const auto* first_voice = detail::spc_episode_physical_voice(first);
+    const auto* second_voice = detail::spc_episode_physical_voice(second);
+    return first_voice != nullptr && second_voice != nullptr &&
+        *first_voice == *second_voice;
+}
+
+bool cross_voice_bundle_candidate(
+    const musical_execution_graph& graph,
+    const node& first,
+    const node& second,
+    const spc_part_continuity_policy& policy) {
+    if (same_physical_voice(first, second) || !within_part_gap(first, second, policy))
+        return false;
+
+    try {
+        const auto hypothesis = infer_spc_persistent_part(
+            graph,
+            first.id,
+            second.id,
+            "spc-cross-voice-context",
+            policy);
+
+        const bool source = has_evidence(
+            hypothesis,
+            persistent_part_evidence_kind::source_identity,
+            persistent_part_evidence_polarity::supports);
+        const bool temporal = has_evidence(
+            hypothesis,
+            persistent_part_evidence_kind::temporal_adjacency,
+            persistent_part_evidence_polarity::supports);
+        const bool pitch = has_evidence(
+            hypothesis,
+            persistent_part_evidence_kind::pitch_trajectory_continuity,
+            persistent_part_evidence_polarity::supports);
+        const bool discontinuity = has_evidence(
+            hypothesis,
+            persistent_part_evidence_kind::identity_discontinuity,
+            persistent_part_evidence_polarity::counters);
+        const bool overlap = has_evidence(
+            hypothesis,
+            persistent_part_evidence_kind::simultaneous_conflict,
+            persistent_part_evidence_polarity::counters);
+
+        // This is deliberately the exact bundle that the prior ablation proved
+        // non-selective when used pairwise. The measurement asks whether graph
+        // context can discriminate it without silently treating context as a new
+        // independent evidence domain.
+        return source && temporal && pitch &&
+            !discontinuity && !overlap &&
+            hypothesis.proposed_confidence >= persistent_part_trajectory_link_threshold &&
+            hypothesis.confidence < persistent_part_trajectory_link_threshold;
+    } catch (const std::invalid_argument&) {
+        return false;
+    }
+}
+
+const node* nearest_same_voice_predecessor(
+    const std::vector<const node*>& episodes,
+    const node& target) noexcept {
+    if (!target.active.has_value())
+        return nullptr;
+    const auto* target_voice = detail::spc_episode_physical_voice(target);
+    if (target_voice == nullptr)
+        return nullptr;
+
+    const node* best = nullptr;
+    std::int64_t best_end = std::numeric_limits<std::int64_t>::min();
+    for (const node* candidate : episodes) {
+        if (candidate == nullptr || candidate->id == target.id ||
+            !candidate->active.has_value() || !candidate->active->end.has_value())
+            continue;
+        const auto* voice = detail::spc_episode_physical_voice(*candidate);
+        if (voice == nullptr || *voice != *target_voice)
+            continue;
+        const auto& end = *candidate->active->end;
+        const auto& start = target.active->start;
+        if (!same_episode_time_basis(end, start) || end.tick > start.tick)
+            continue;
+        if (end.tick > best_end || (end.tick == best_end &&
+            (best == nullptr || candidate->id > best->id))) {
+            best = candidate;
+            best_end = end.tick;
+        }
+    }
+    return best;
+}
+
+const node* nearest_same_voice_successor(
+    const std::vector<const node*>& episodes,
+    const node& target) noexcept {
+    if (!target.active.has_value() || !target.active->end.has_value())
+        return nullptr;
+    const auto* target_voice = detail::spc_episode_physical_voice(target);
+    if (target_voice == nullptr)
+        return nullptr;
+
+    const node* best = nullptr;
+    std::int64_t best_start = std::numeric_limits<std::int64_t>::max();
+    for (const node* candidate : episodes) {
+        if (candidate == nullptr || candidate->id == target.id ||
+            !candidate->active.has_value())
+            continue;
+        const auto* voice = detail::spc_episode_physical_voice(*candidate);
+        if (voice == nullptr || *voice != *target_voice)
+            continue;
+        const auto& end = *target.active->end;
+        const auto& start = candidate->active->start;
+        if (!same_episode_time_basis(end, start) || start.tick < end.tick)
+            continue;
+        if (start.tick < best_start || (start.tick == best_start &&
+            (best == nullptr || candidate->id < best->id))) {
+            best = candidate;
+            best_start = start.tick;
+        }
+    }
+    return best;
+}
+
+bool strong_same_voice_link(
+    const musical_execution_graph& graph,
+    const node* first,
+    const node* second,
+    const spc_part_continuity_policy& policy) {
+    if (first == nullptr || second == nullptr || !same_physical_voice(*first, *second))
+        return false;
+    try {
+        return strong_persistent_part_transition(infer_spc_persistent_part(
+            graph,
+            first->id,
+            second->id,
+            "spc-cross-voice-context-flank",
+            policy));
+    } catch (const std::invalid_argument&) {
+        return false;
+    }
+}
+
+cross_voice_context_result measure_cross_voice_context(
+    const musical_execution_graph& graph,
+    const spc_part_continuity_policy& policy) {
+    cross_voice_context_result result;
+    const auto episodes = graph.nodes_of_kind(node_kind::voice_instance);
+    std::vector<cross_voice_candidate_edge> edges;
+
+    // Multi-trajectory tracking / voice-separation pressure: preserve all
+    // plausible cross-voice edges first, then ask whether local trajectory
+    // context makes an edge structurally unique. Pairwise similarity alone has
+    // already failed its corpus null and remains capped.
+    for (const node* first : episodes) {
+        if (first == nullptr || !spc_episode_allows_part_successor(*first))
+            continue;
+        for (const node* second : episodes) {
+            if (second == nullptr || first->id == second->id)
+                continue;
+            if (cross_voice_bundle_candidate(graph, *first, *second, policy))
+                edges.push_back({first->id, second->id});
+        }
+    }
+
+    result.bundle_candidate_count = edges.size();
+    std::vector<std::size_t> outgoing(graph.nodes().size() + 1u, 0u);
+    std::vector<std::size_t> incoming(graph.nodes().size() + 1u, 0u);
+    for (const auto& edge : edges) {
+        ++outgoing[static_cast<std::size_t>(edge.first)];
+        ++incoming[static_cast<std::size_t>(edge.second)];
+    }
+
+    for (const auto& edge : edges) {
+        const node* first = graph.find_node(edge.first);
+        const node* second = graph.find_node(edge.second);
+        if (first == nullptr || second == nullptr)
+            throw std::logic_error("SPC handoff context edge references an unknown episode");
+
+        const bool unique_out = outgoing[static_cast<std::size_t>(edge.first)] == 1u;
+        const bool unique_in = incoming[static_cast<std::size_t>(edge.second)] == 1u;
+        result.unique_outgoing_count += unique_out ? 1u : 0u;
+        result.unique_incoming_count += unique_in ? 1u : 0u;
+        result.bidirectionally_unique_count += unique_out && unique_in ? 1u : 0u;
+
+        const node* predecessor = nearest_same_voice_predecessor(episodes, *first);
+        const node* successor = nearest_same_voice_successor(episodes, *second);
+        const bool left_flanked = strong_same_voice_link(
+            graph, predecessor, first, policy);
+        const bool right_flanked = strong_same_voice_link(
+            graph, second, successor, policy);
+
+        result.left_flanked_count += left_flanked ? 1u : 0u;
+        result.right_flanked_count += right_flanked ? 1u : 0u;
+        result.two_sided_flanked_count += left_flanked && right_flanked ? 1u : 0u;
+        result.two_sided_unique_count +=
+            left_flanked && right_flanked && unique_out && unique_in ? 1u : 0u;
+    }
+
+    return result;
 }
 
 void observe_hypothesis_evidence(
@@ -277,6 +518,7 @@ int main(int argc, char** argv) {
 
         spc_part_continuity_policy policy;
         const auto control = measure_cross_voice_control(graph, policy);
+        const auto context = measure_cross_voice_context(graph, policy);
         const auto observed = extract_spc_label_blind_corpus_features(
             graph,
             "spc-selectivity-runtime",
@@ -293,6 +535,17 @@ int main(int argc, char** argv) {
             throw std::logic_error("SPC selectivity inference accounting is inconsistent");
         if (control.strong_physical_slot_support != 0)
             throw std::logic_error("cross-voice null cannot contain physical-slot continuity support");
+        if (context.unique_outgoing_count > context.bundle_candidate_count ||
+            context.unique_incoming_count > context.bundle_candidate_count ||
+            context.bidirectionally_unique_count > context.bundle_candidate_count ||
+            context.left_flanked_count > context.bundle_candidate_count ||
+            context.right_flanked_count > context.bundle_candidate_count ||
+            context.two_sided_flanked_count > context.bundle_candidate_count ||
+            context.two_sided_unique_count > context.bundle_candidate_count)
+            throw std::logic_error("SPC handoff-context accounting exceeds candidate count");
+        if (context.two_sided_unique_count > context.two_sided_flanked_count ||
+            context.two_sided_unique_count > context.bidirectionally_unique_count)
+            throw std::logic_error("SPC handoff-context intersection accounting is inconsistent");
 
         const double observed_rate = static_cast<double>(observed.strong_transition_count) /
             static_cast<double>(observed.candidate_transition_count);
@@ -331,6 +584,14 @@ int main(int argc, char** argv) {
             << " strong_confidence_min=" << strong_confidence_min
             << " strong_confidence_mean=" << strong_confidence_mean
             << " strong_confidence_max=" << control.strong_confidence_max
+            << " handoff_bundle_candidates=" << context.bundle_candidate_count
+            << " handoff_unique_outgoing=" << context.unique_outgoing_count
+            << " handoff_unique_incoming=" << context.unique_incoming_count
+            << " handoff_bidirectional_unique=" << context.bidirectionally_unique_count
+            << " handoff_left_flanked=" << context.left_flanked_count
+            << " handoff_right_flanked=" << context.right_flanked_count
+            << " handoff_two_sided_flanked=" << context.two_sided_flanked_count
+            << " handoff_two_sided_unique=" << context.two_sided_unique_count
             << '\n';
         return 0;
     } catch (const std::exception& error) {
