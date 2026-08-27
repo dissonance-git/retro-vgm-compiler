@@ -163,10 +163,10 @@ public:
     bool ym_source_block_valid() const noexcept { return m_ym_block_valid; }
     bool psg_source_block_valid() const noexcept { return m_psg_block_valid; }
 
-    // Source admission is intentionally chip-scoped. It depends on the VGM
-    // device type/core/instance wiring below. No VGM system/platform metadata is consulted.
     bool source_topology_supported() const noexcept
     {
+        // Source admission is intentionally chip-scoped. It depends on the VGM
+        // device type/core/instance wiring below. No VGM system/platform metadata is consulted.
         const bool any = m_ym.expected || m_psg.expected;
         return any && !m_unsupported_genesis_topology
             && (!m_ym.expected || m_ym.attached)
