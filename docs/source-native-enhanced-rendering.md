@@ -8,7 +8,7 @@ Its target is:
 
 The accurate/reference renderer remains the scientific control. Historical precedents and literature belong under `research/rendering/`; this document owns only the durable rendering contract.
 
-## 1. Enhanced and spatial are orthogonal
+## 1. enhanced and spatial are orthogonal
 
 User-facing playback keeps **enhanced** and **spatial** independently controllable.
 
