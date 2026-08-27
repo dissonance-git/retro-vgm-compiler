@@ -92,6 +92,13 @@ struct spc_part_continuity_policy {
     double max_pitch_interval_octaves = 2.0;
 };
 
+// Same BRR source, local timing, and source-relative pitch can all remain useful
+// cross-voice evidence, but they do not establish that a musical part actually
+// handed off between two S-DSP slots. Preserve that hypothesis while keeping it
+// below strong trajectory-link promotion until an independent handoff witness is
+// modeled and arbitrated explicitly.
+constexpr double spc_unarbitrated_cross_voice_confidence_ceiling = 0.74;
+
 inline vgmtooling::model::persistent_part_hypothesis infer_spc_persistent_part(
     const vgmtooling::model::musical_execution_graph& graph,
     vgmtooling::model::node_id first_episode_id,
@@ -121,6 +128,8 @@ inline vgmtooling::model::persistent_part_hypothesis infer_spc_persistent_part(
         ? nullptr : std::get_if<std::uint64_t>(&first_voice_item->value);
     const auto* second_voice = second_voice_item == nullptr
         ? nullptr : std::get_if<std::uint64_t>(&second_voice_item->value);
+    const bool explicit_cross_voice = first_voice != nullptr && second_voice != nullptr &&
+        *first_voice != *second_voice;
     if (first_voice != nullptr && second_voice != nullptr && *first_voice == *second_voice) {
         evidence.push_back({
             persistent_part_evidence_kind::physical_slot_continuity,
@@ -247,10 +256,17 @@ inline vgmtooling::model::persistent_part_hypothesis infer_spc_persistent_part(
 
     // Runtime-only identity remains a strong hypothesis, not certainty.
     proposed = std::clamp(proposed, 0.0, 0.88);
-    return make_persistent_part_hypothesis(
+    auto hypothesis = make_persistent_part_hypothesis(
         proposed,
         {first_episode_id, second_episode_id},
         std::move(evidence));
+
+    if (explicit_cross_voice) {
+        hypothesis.confidence = std::min(
+            hypothesis.confidence,
+            spc_unarbitrated_cross_voice_confidence_ceiling);
+    }
+    return hypothesis;
 }
 
 } // namespace gameaudio::spc

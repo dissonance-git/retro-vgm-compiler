@@ -1,4 +1,5 @@
 #include "components/spc/spc_part_evidence.h"
+#include "model/persistent_part_trajectory.h"
 
 #include <cassert>
 #include <cstdint>
@@ -116,11 +117,13 @@ int main() {
 
     const node_id first = add_episode(graph, 0, 3200, 0);
     const node_id second = add_episode(graph, 3520, 6400, 0);
+    const node_id cross_voice = add_episode(graph, 3520, 6400, 1);
     const node_id overlap = add_episode(graph, 2000, 5000, 1);
     const node_id changed_source = add_episode(graph, 6720, 9000, 0);
 
     const node_id first_onset = add_key_on(graph, first, sample_a, 0, 0, 7, 0x1000);
     add_key_on(graph, second, sample_a, 3520, 0, 7, 0x1200);
+    add_key_on(graph, cross_voice, sample_a, 3520, 1, 7, 0x1200);
     add_key_on(graph, overlap, sample_a, 2000, 1, 7, 0x1100);
     add_key_on(graph, changed_source, sample_b, 6720, 0, 7, 0x1200);
 
@@ -136,7 +139,7 @@ int main() {
         policy);
     assert(strong.identity_bearing_support);
     assert(strong.cross_domain_grounded);
-    assert(strong.confidence >= 0.75);
+    assert(strong.confidence >= persistent_part_trajectory_link_threshold);
     assert(has_evidence(
         strong,
         persistent_part_evidence_kind::source_identity,
@@ -149,6 +152,35 @@ int main() {
         strong,
         persistent_part_evidence_kind::pitch_trajectory_continuity,
         persistent_part_evidence_polarity::supports));
+
+    const auto unresolved_handoff = infer_spc_persistent_part(
+        graph,
+        first,
+        cross_voice,
+        "synthetic-spc",
+        policy);
+    assert(unresolved_handoff.identity_bearing_support);
+    assert(unresolved_handoff.cross_domain_grounded);
+    assert(has_evidence(
+        unresolved_handoff,
+        persistent_part_evidence_kind::source_identity,
+        persistent_part_evidence_polarity::supports));
+    assert(has_evidence(
+        unresolved_handoff,
+        persistent_part_evidence_kind::temporal_adjacency,
+        persistent_part_evidence_polarity::supports));
+    assert(has_evidence(
+        unresolved_handoff,
+        persistent_part_evidence_kind::pitch_trajectory_continuity,
+        persistent_part_evidence_polarity::supports));
+    assert(!has_evidence(
+        unresolved_handoff,
+        persistent_part_evidence_kind::physical_slot_continuity,
+        persistent_part_evidence_polarity::supports));
+    assert(unresolved_handoff.proposed_confidence > spc_unarbitrated_cross_voice_confidence_ceiling);
+    assert(unresolved_handoff.confidence <= spc_unarbitrated_cross_voice_confidence_ceiling);
+    assert(unresolved_handoff.confidence < persistent_part_trajectory_link_threshold);
+    assert(!strong_persistent_part_transition(unresolved_handoff));
 
     const node_id part = add_persistent_part_hypothesis(graph, strong);
     assert(graph.find_node(part) != nullptr);
