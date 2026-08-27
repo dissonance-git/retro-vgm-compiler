@@ -296,6 +296,95 @@ def describe_trajectory_support_relations(
     return relations
 
 
+def summarize_trajectory_link_components(
+    candidates: Iterable[dict[str, Any]],
+    support_relations: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Group recurrence links only where explicit composable support connects them."""
+    candidate_by_id = {
+        str(item["candidate_id"]): dict(item)
+        for item in candidates
+    }
+    adjacency: dict[str, set[str]] = {
+        candidate_id: set()
+        for candidate_id in candidate_by_id
+    }
+    composable_edges: set[tuple[str, str]] = set()
+    unresolved_touch: set[str] = set()
+
+    for relation in support_relations:
+        first_id = str(relation["first_candidate_id"])
+        second_id = str(relation["second_candidate_id"])
+        if first_id not in candidate_by_id or second_id not in candidate_by_id:
+            raise ValueError("trajectory support relation references an unknown candidate")
+        pair = tuple(sorted((first_id, second_id)))
+        if relation["relation_kind"] == "composable_link_chain_candidate":
+            adjacency[first_id].add(second_id)
+            adjacency[second_id].add(first_id)
+            composable_edges.add(pair)
+        elif relation["relation_kind"] == "support_reuse_unresolved":
+            unresolved_touch.update((first_id, second_id))
+        else:
+            raise ValueError("unknown trajectory support-relation kind")
+
+    def candidate_key(candidate_id: str) -> tuple[int, int, str]:
+        item = candidate_by_id[candidate_id]
+        return (
+            int(item["channel"]),
+            int(item["boundary_tick"]),
+            candidate_id,
+        )
+
+    components: list[dict[str, Any]] = []
+    visited: set[str] = set()
+    for seed in sorted(candidate_by_id, key=candidate_key):
+        if seed in visited:
+            continue
+        stack = [seed]
+        member_ids: list[str] = []
+        visited.add(seed)
+        while stack:
+            current = stack.pop()
+            member_ids.append(current)
+            for neighbor in sorted(adjacency[current], key=candidate_key, reverse=True):
+                if neighbor in visited:
+                    continue
+                visited.add(neighbor)
+                stack.append(neighbor)
+
+        member_ids.sort(key=candidate_key)
+        member_set = set(member_ids)
+        component_edges = sorted(
+            pair
+            for pair in composable_edges
+            if pair[0] in member_set and pair[1] in member_set
+        )
+        members = [candidate_by_id[candidate_id] for candidate_id in member_ids]
+        components.append({
+            "candidate_ids": member_ids,
+            "supporting_channels": sorted({int(item["channel"]) for item in members}),
+            "boundary_ticks": [int(item["boundary_tick"]) for item in members],
+            "candidate_count": len(member_ids),
+            "composable_connection_count": len(component_edges),
+            "chained": len(component_edges) > 0,
+            "has_unresolved_support_reuse": any(
+                candidate_id in unresolved_touch
+                for candidate_id in member_ids
+            ),
+            "status": "recurrence_link_component_candidate",
+            "persistent_part_identity_established": False,
+        })
+
+    components.sort(
+        key=lambda item: (
+            item["boundary_ticks"][0] if item["boundary_ticks"] else 0,
+            item["supporting_channels"],
+            item["candidate_ids"],
+        )
+    )
+    return components
+
+
 def align_cross_trajectory_boundaries(
     candidates: Iterable[dict[str, Any]],
     *,
@@ -376,6 +465,7 @@ def analyze_onsets(
         minimum_gap_ratio=minimum_gap_ratio,
     )
     support_relations = describe_trajectory_support_relations(candidates)
+    link_components = summarize_trajectory_link_components(candidates, support_relations)
     aligned = align_cross_trajectory_boundaries(
         candidates,
         alignment_tolerance_ticks=alignment_tolerance_ticks,
@@ -398,9 +488,19 @@ def analyze_onsets(
             item["relation_kind"] == "support_reuse_unresolved"
             for item in support_relations
         ),
+        "trajectory_link_component_count": len(link_components),
+        "chained_link_component_count": sum(
+            bool(item["chained"])
+            for item in link_components
+        ),
+        "largest_link_component_candidate_count": max(
+            (int(item["candidate_count"]) for item in link_components),
+            default=0,
+        ),
         "cross_trajectory_boundary_candidate_count": len(aligned),
         "trajectory_candidates": candidates,
         "trajectory_support_relations": support_relations,
+        "trajectory_link_components": link_components,
         "cross_trajectory_boundary_candidates": aligned,
         "shared_model_promotion": {
             "persistent_part_identity": "blocked",
@@ -410,6 +510,7 @@ def analyze_onsets(
                 "probe_does_not_materialize_shared_graph_voice_episodes",
                 "probe_does_not_run_shared_persistent_part_conflict_arbitration",
                 "candidate_support_reuse_is_not_itself_an_identity_conflict",
+                "recurrence_link_components_are_not_persistent_musical_parts",
                 "cross_trajectory_candidate_is_not_cross_part_consensus",
             ],
         },
@@ -421,8 +522,10 @@ def analyze_onsets(
             "sufficient. A target requires unchanged core program, a large local timing "
             "gap, and repeated pitch-rhythm shape across that gap. Shared candidate support "
             "is reported explicitly; adjacent links may compose and are never relabeled as an "
-            "identity conflict by this probe. Targets remain below persistent-part and phrase "
-            "promotion until the shared graph admits and arbitrates them."
+            "identity conflict by this probe. Explicitly composable links may be grouped into "
+            "recurrence-link components, but those components are still not persistent musical "
+            "parts. Targets remain below persistent-part and phrase promotion until the shared "
+            "graph admits and arbitrates them."
         ),
     }
 

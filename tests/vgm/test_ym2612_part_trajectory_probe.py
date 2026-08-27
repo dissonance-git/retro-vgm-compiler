@@ -130,6 +130,14 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         self.assertEqual(result["trajectory_support_relation_count"], 1)
         self.assertEqual(result["composable_link_chain_candidate_count"], 1)
         self.assertEqual(result["unresolved_support_reuse_count"], 0)
+        self.assertEqual(result["trajectory_link_component_count"], 1)
+        self.assertEqual(result["chained_link_component_count"], 1)
+        self.assertEqual(result["largest_link_component_candidate_count"], 2)
+        component = result["trajectory_link_components"][0]
+        self.assertEqual(component["candidate_count"], 2)
+        self.assertEqual(component["composable_connection_count"], 1)
+        self.assertTrue(component["chained"])
+        self.assertFalse(component["persistent_part_identity_established"])
         relation = result["trajectory_support_relations"][0]
         self.assertEqual(relation["relation_kind"], "composable_link_chain_candidate")
         self.assertEqual(relation["shared_support_ticks"], [900, 1000, 1100])
@@ -138,6 +146,33 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         self.assertEqual(
             result["shared_model_promotion"]["persistent_part_identity"],
             "blocked",
+        )
+
+    def test_same_channel_without_shared_support_stays_in_separate_link_components(self) -> None:
+        onsets = [
+            event(0, 0, 100.0, "patch-a"),
+            event(100, 0, 112.5, "patch-a"),
+            event(200, 0, 125.0, "patch-a"),
+            event(900, 0, 200.0, "patch-a"),
+            event(1000, 0, 225.0, "patch-a"),
+            event(1100, 0, 250.0, "patch-a"),
+            event(2000, 0, 150.0, "patch-b"),
+            event(2100, 0, 168.75, "patch-b"),
+            event(2200, 0, 187.5, "patch-b"),
+            event(2900, 0, 300.0, "patch-b"),
+            event(3000, 0, 337.5, "patch-b"),
+            event(3100, 0, 375.0, "patch-b"),
+        ]
+        result = probe.analyze_onsets(onsets, source_name="synthetic-disconnected.vgm")
+
+        self.assertEqual(result["trajectory_candidate_count"], 2)
+        self.assertEqual(result["trajectory_support_relation_count"], 0)
+        self.assertEqual(result["trajectory_link_component_count"], 2)
+        self.assertEqual(result["chained_link_component_count"], 0)
+        self.assertEqual(result["largest_link_component_candidate_count"], 1)
+        self.assertEqual(
+            [item["candidate_count"] for item in result["trajectory_link_components"]],
+            [1, 1],
         )
 
     def test_distinct_channels_can_form_aligned_boundary_target_without_promotion(self) -> None:
@@ -230,12 +265,19 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
                 "support_relations": report["trajectory_support_relation_count"],
                 "composable_chains": report["composable_link_chain_candidate_count"],
                 "unresolved_support_reuse": report["unresolved_support_reuse_count"],
+                "link_components": report["trajectory_link_component_count"],
+                "chained_link_components": report["chained_link_component_count"],
+                "largest_link_component": report["largest_link_component_candidate_count"],
                 "cross_trajectory_boundaries": report[
                     "cross_trajectory_boundary_candidate_count"
                 ],
             })
 
         self.assertEqual(len(reports), 4)
+        self.assertTrue(any(item["trajectory_candidates"] > 0 for item in reports))
+        self.assertTrue(any(item["trajectory_candidates"] == 0 for item in reports))
+        self.assertTrue(any(item["composable_chains"] > 0 for item in reports))
+        self.assertTrue(any(item["chained_link_components"] > 0 for item in reports))
         print("YM2612_CROSS_WORK_TRAJECTORY_PRESSURE", reports)
 
 
