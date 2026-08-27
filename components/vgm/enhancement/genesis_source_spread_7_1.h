@@ -1,6 +1,6 @@
 #pragma once
 
-#include "genesis_selected_source_block.h"
+#include "selected_source_transport.h"
 #include "genesis_source_episode_7_1.h"
 #include "../../../model/surround_bed_7_1.h"
 
@@ -51,7 +51,7 @@ template <
     std::size_t MaxEpisodeEvents,
     typename ReferenceSample>
 bool project_genesis_source_spread_7_1(
-    const genesis_selected_source_block_storage<SourceFrames>& selected,
+    const selected_source_block_storage<genesis_recomposition_source_count, SourceFrames>& selected,
     const genesis_source_episode_block<MaxEpisodeEvents>& episodes,
     const ReferenceSample* reference_interleaved,
     std::size_t frame_count,

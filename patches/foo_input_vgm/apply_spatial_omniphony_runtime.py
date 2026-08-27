@@ -97,9 +97,8 @@ def main() -> int:
 
     replace_once(
         header,
-        '#include "../../enhancement/genesis_selected_source_queue.h"\n',
-        '#include "../../enhancement/genesis_selected_source_queue.h"\n'
-        '#include "../../enhancement/genesis_selected_source_block.h"\n'
+        '#include "../../enhancement/selected_source_transport.h"\n',
+        '#include "../../enhancement/selected_source_transport.h"\n'
         '#include "../../enhancement/genesis_source_spread_7_1.h"\n'
         '#include "../../../../model/surround_bed_7_1.h"\n',
         "Genesis 7.1 runtime includes",
@@ -109,7 +108,7 @@ def main() -> int:
         header,
         "\tgenesis_selected_source_queue_type m_genesis_selected_sources{};\n",
         "\tgenesis_selected_source_queue_type m_genesis_selected_sources{};\n"
-        "\tgameaudio::vgm::genesis_selected_source_block_storage<8192> m_genesis_delivered_sources{};\n"
+        "\tgameaudio::vgm::selected_source_block_storage<gameaudio::vgm::genesis_recomposition_source_count, 8192> m_genesis_delivered_sources{};\n"
         "\tgameaudio::vgm::genesis_source_episode_transport<2048, 256> m_genesis_surround_episodes{};\n"
         "\tvgmtooling::model::surround_7_1_bed_storage<8192> m_genesis_surround_bed{};\n"
         "\tstd::uint64_t m_genesis_delivered_ordinal = 0;\n"

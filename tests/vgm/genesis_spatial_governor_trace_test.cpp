@@ -1,5 +1,6 @@
-#include "components/vgm/enhancement/genesis_realtime_musical_omniphony_pipeline.h"
+#include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
+#include "components/vgm/enhancement/vgm_realtime_musical_omniphony_pipeline.h"
 
 #include <array>
 #include <cassert>
@@ -90,7 +91,7 @@ int main()
             std::sin(2.0 * pi * 1000.0 * time));
     }
 
-    using pipeline_type = genesis_realtime_musical_omniphony_pipeline<frames, 16, 16>;
+    using pipeline_type = vgm_realtime_musical_omniphony_pipeline<genesis_recomposition_source_count, frames, 16, 16>;
     pipeline_type::source_array sources{};
     pipeline_type::evidence_array evidence{};
 

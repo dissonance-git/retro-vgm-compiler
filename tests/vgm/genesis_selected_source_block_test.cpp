@@ -1,4 +1,5 @@
-#include "components/vgm/enhancement/genesis_selected_source_block.h"
+#include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
+#include "components/vgm/enhancement/selected_source_transport.h"
 
 #include <array>
 #include <cassert>
@@ -13,13 +14,13 @@ constexpr std::size_t fm1 =
 constexpr std::size_t psg0 =
     static_cast<std::size_t>(genesis_recomposition_source::sn76489_tone0);
 
-genesis_selected_source_frame reference_frame(
+selected_source_frame<genesis_recomposition_source_count> reference_frame(
     std::uint64_t ordinal,
     double fm_left,
     double fm_right,
     double psg_left,
     double psg_right) {
-    genesis_selected_source_frame frame{};
+    selected_source_frame<genesis_recomposition_source_count> frame{};
     frame.ordinal = ordinal;
     frame.source[fm1] = {fm_left, fm_right, true, true};
     frame.source[psg0] = {psg_left, psg_right, true, true};
@@ -30,12 +31,12 @@ genesis_selected_source_frame reference_frame(
 int main() {
     using namespace gameaudio::vgm;
 
-    genesis_selected_source_queue<8> queue;
+    selected_source_queue<genesis_recomposition_source_count, 8> queue;
     queue.reset(100u);
     assert(queue.push_reference(reference_frame(100u, 1.0, -2.0, 0.25, 0.5)));
     assert(queue.push_reference(reference_frame(101u, 3.0, -4.0, 0.75, 1.0)));
 
-    genesis_selected_source_block_storage<4> block;
+    selected_source_block_storage<genesis_recomposition_source_count, 4> block;
     assert(block.consume(queue, 100u, 2u));
     assert(block.valid());
     assert(block.first_ordinal() == 100u);
@@ -77,7 +78,7 @@ int main() {
     assert(queue.push_reference(reference_frame(240u, 0.0, 0.0, 0.0, 0.0)));
     assert(queue.push_reference(reference_frame(241u, 1.0, -1.0, 2.0, -2.0)));
     assert(!block.consume(queue, 240u, 1u));
-    assert(block.last_error() == genesis_selected_source_block_error::no_sources);
+    assert(block.last_error() == selected_source_block_error::no_sources);
     assert(queue.valid());
     assert(queue.size() == 1u);
     assert(block.consume(queue, 241u, 1u));
@@ -107,7 +108,7 @@ int main() {
     assert(queue.push_reference(first));
     assert(queue.push_reference(second));
     assert(!block.consume(queue, 300u, 2u));
-    assert(block.last_error() == genesis_selected_source_block_error::topology_changed);
+    assert(block.last_error() == selected_source_block_error::topology_changed);
     assert(!queue.valid());
 
     // Exactness is an admission constraint. The chip-neutral queue rejects an
@@ -120,12 +121,12 @@ int main() {
     assert(!queue.valid());
     assert(queue.size() == 0u);
     assert(!block.consume(queue, 400u, 1u));
-    assert(block.last_error() == genesis_selected_source_block_error::source_queue_invalid);
+    assert(block.last_error() == selected_source_block_error::source_queue_invalid);
 
     queue.reset(501u);
     assert(queue.push_reference(reference_frame(501u, 1.0, 1.0, 2.0, 2.0)));
     assert(!block.consume(queue, 500u, 1u));
-    assert(block.last_error() == genesis_selected_source_block_error::ordinal_mismatch);
+    assert(block.last_error() == selected_source_block_error::ordinal_mismatch);
     assert(!queue.valid());
 
     // Bad call parameters do not corrupt a coherent queue that has not been
@@ -133,7 +134,7 @@ int main() {
     queue.reset(600u);
     assert(queue.push_reference(reference_frame(600u, 1.0, 1.0, 2.0, 2.0)));
     assert(!block.consume(queue, 600u, 0u));
-    assert(block.last_error() == genesis_selected_source_block_error::invalid_frames);
+    assert(block.last_error() == selected_source_block_error::invalid_frames);
     assert(queue.valid());
     assert(queue.size() == 1u);
 

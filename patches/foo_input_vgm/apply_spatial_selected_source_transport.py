@@ -53,7 +53,8 @@ def main() -> int:
         header,
         '#include "../../enhancement/sn76489_deferred_source_queue.h"\n',
         '#include "../../enhancement/sn76489_deferred_source_queue.h"\n'
-        '#include "../../enhancement/genesis_selected_source_queue.h"\n',
+        '#include "../../enhancement/genesis_enhanced_recomposition.h"\n'
+        '#include "../../enhancement/selected_source_transport.h"\n',
         "selected Genesis source queue include",
     )
 
@@ -61,7 +62,7 @@ def main() -> int:
         header,
         "\tbool m_studio_deferred_psg_failed = false;\n",
         "\tbool m_studio_deferred_psg_failed = false;\n"
-        "\tusing genesis_selected_source_queue_type = gameaudio::vgm::genesis_selected_source_queue<16640>;\n"
+        "\tusing genesis_selected_source_queue_type = gameaudio::vgm::selected_source_queue<gameaudio::vgm::genesis_recomposition_source_count, 16640>;\n"
         "\tgenesis_selected_source_queue_type m_genesis_selected_sources{};\n"
         "\tstd::array<gameaudio::vgm::sn76489_deferred_source_frame, 8192> m_genesis_deferred_psg_source_scratch{};\n"
         "\tstd::array<gameaudio::vgm::ym2612_pcm_source_frame, 8192> m_genesis_pcm_source_scratch{};\n",
@@ -94,7 +95,7 @@ def main() -> int:
 
 	for (UINT32 frame = 0; frame < sample_count; ++frame)
 	{
-		gameaudio::vgm::genesis_selected_source_frame selected{};
+		gameaudio::vgm::selected_source_frame<gameaudio::vgm::genesis_recomposition_source_count> selected{};
 		selected.ordinal = static_cast<std::uint64_t>(base_playback_sample)
 			+ static_cast<std::uint64_t>(frame);
 

@@ -25,17 +25,17 @@ std::size_t channel_index(surround_7_1_channel channel)
 
 int main()
 {
-    genesis_selected_source_queue<4> queue;
+    selected_source_queue<genesis_recomposition_source_count, 4> queue;
     queue.reset(100u);
 
     for (std::uint64_t ordinal = 100u; ordinal < 102u; ++ordinal) {
-        genesis_selected_source_frame frame{};
+        selected_source_frame<genesis_recomposition_source_count> frame{};
         frame.ordinal = ordinal;
         frame.source[0] = {1.0, 0.5, true, true};
         assert(queue.push_reference(frame));
     }
 
-    genesis_selected_source_block_storage<2> selected;
+    selected_source_block_storage<genesis_recomposition_source_count, 2> selected;
     assert(selected.consume(queue, 100u, 2u));
 
     genesis_source_episode_block<4> episodes{};

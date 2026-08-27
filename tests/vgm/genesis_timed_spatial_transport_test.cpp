@@ -1,6 +1,6 @@
-#include "components/vgm/enhancement/genesis_spatial_evidence_queue.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
-#include "components/vgm/enhancement/genesis_timed_spatial_source_bus.h"
+#include "components/vgm/enhancement/spatial_route_transport.h"
+#include "components/vgm/enhancement/timed_spatial_source_bus.h"
 
 #include <array>
 #include <cassert>
@@ -41,7 +41,7 @@ int main() {
     // The render-ahead sideband keeps absolute output ordinals authoritative.
     // Same-ordinal transitions keep insertion order, while an event exactly at
     // the block end remains queued for the following delivered block.
-    genesis_spatial_evidence_queue<8> queue;
+    spatial_evidence_queue<genesis_recomposition_source_count, 8> queue;
     queue.reset();
     assert(queue.push({1002u, fm1_index, fm_evidence(true, false)}));
     assert(queue.push({1002u, psg0_index, psg_evidence(0x10u)}));
@@ -88,8 +88,8 @@ int main() {
     const float psg_left[frames] = {0.5f, 0.5f, 0.5f, 0.5f};
     const float psg_right[frames] = {0.5f, 0.5f, 0.5f, 0.5f};
 
-    genesis_timed_spatial_source_bus_storage<frames, 8>::source_array sources{};
-    genesis_timed_spatial_source_bus_storage<frames, 8>::evidence_array evidence{};
+    timed_spatial_source_bus_storage<genesis_recomposition_source_count, frames, 8>::source_array sources{};
+    timed_spatial_source_bus_storage<genesis_recomposition_source_count, frames, 8>::evidence_array evidence{};
     sources[fm1_index] = {fm_left, fm_right, true};
     sources[psg0_index] = {psg_left, psg_right, true};
     evidence[fm1_index] = fm_evidence(true, true);
@@ -100,7 +100,7 @@ int main() {
         {2u, fm1_index, fm_evidence(false, true)},
     }};
 
-    genesis_timed_spatial_source_bus_storage<frames, 8> bus;
+    timed_spatial_source_bus_storage<genesis_recomposition_source_count, frames, 8> bus;
     assert(bus.build(sources, evidence, frames, events.data(), events.size()));
     assert(bus.valid());
     const auto& block = bus.block();
@@ -124,7 +124,7 @@ int main() {
         genesis_recomposition_source::sn76489_tone1);
     assert(!bus.build(sources, evidence, frames, &absent_event, 1u));
     assert(bus.last_error() ==
-        genesis_timed_spatial_source_bus_error::event_for_missing_source);
+        timed_spatial_source_bus_error::event_for_missing_source);
 
     // Source-specific adapters preserve event order rather than sorting it.
     const std::array<spatial_source_evidence_event, 2> unordered{{
@@ -132,7 +132,7 @@ int main() {
         {1u, fm1_index, fm_evidence(false, true)},
     }};
     assert(!bus.build(sources, evidence, frames, unordered.data(), unordered.size()));
-    assert(bus.last_error() == genesis_timed_spatial_source_bus_error::unordered_events);
+    assert(bus.last_error() == timed_spatial_source_bus_error::unordered_events);
 
     return 0;
 }

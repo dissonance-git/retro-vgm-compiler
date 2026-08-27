@@ -1,5 +1,5 @@
 #include "components/vgm/enhancement/spatial_source_bus.h"
-#include "components/vgm/enhancement/ym2151_selected_source_transport.h"
+#include "components/vgm/enhancement/selected_source_transport.h"
 #include "components/vgm/enhancement/ym2151_spatial_route_transport.h"
 
 #include <cassert>
@@ -14,14 +14,14 @@ int main() {
         static_cast<std::size_t>(ym2151_recomposition_source::fm1);
 
     // Source quality has already been chosen when the lane enters transport.
-    ym2151_selected_source_queue<4> queue;
+    selected_source_queue<ym2151_recomposition_source_count, 4> queue;
     queue.reset(10u);
-    ym2151_selected_source_frame source_frame{};
+    selected_source_frame<ym2151_recomposition_source_count> source_frame{};
     source_frame.ordinal = 10u;
     source_frame.source[fm1] = {2.0, 0.0, true, true};
     assert(queue.push_reference(source_frame));
 
-    ym2151_selected_source_block_storage<2> selected;
+    selected_source_block_storage<ym2151_recomposition_source_count, 2> selected;
     assert(selected.consume(queue, 10u, 1u));
     assert(selected.valid());
     assert(selected.source_present(fm1));

@@ -1,4 +1,5 @@
-#include "components/vgm/enhancement/ym2151_selected_source_transport.h"
+#include "components/vgm/enhancement/selected_source_transport.h"
+#include "components/vgm/enhancement/ym2151_enhanced_recomposition.h"
 
 #include <cassert>
 #include <cstddef>
@@ -11,14 +12,14 @@ int main() {
     constexpr std::size_t fm8 =
         static_cast<std::size_t>(ym2151_recomposition_source::fm8);
 
-    ym2151_selected_source_queue<8> queue;
+    selected_source_queue<ym2151_recomposition_source_count, 8> queue;
     queue.reset(100u);
 
-    ym2151_selected_source_frame first{};
+    selected_source_frame<ym2151_recomposition_source_count> first{};
     first.ordinal = 100u;
     first.source[fm1] = {1.0, -1.0, true, true};
     first.source[fm8] = {0.0, 0.0, true, true};
-    ym2151_selected_source_frame second{};
+    selected_source_frame<ym2151_recomposition_source_count> second{};
     second.ordinal = 101u;
     second.source[fm1] = {2.0, -2.0, true, true};
     second.source[fm8] = {0.0, 0.0, true, true};
@@ -27,7 +28,7 @@ int main() {
     assert(queue.push_reference(second));
     assert(queue.replace_source(101u, fm1, 8.0, -8.0, true));
 
-    ym2151_selected_source_block_storage<4> block;
+    selected_source_block_storage<ym2151_recomposition_source_count, 4> block;
     assert(block.consume(queue, 100u, 2u));
     assert(block.valid());
     assert(block.source_present(fm1));
@@ -46,13 +47,13 @@ int main() {
     assert(queue.push_reference(first));
     assert(queue.push_reference(second));
     assert(!block.consume(queue, 200u, 2u));
-    assert(block.last_error() == ym2151_selected_source_block_error::topology_changed);
+    assert(block.last_error() == selected_source_block_error::topology_changed);
     assert(!queue.valid());
 
     // Presentation consumes already-selected lanes. Rejecting an inexact
     // enhanced candidate therefore leaves the exact reference OPM lane queued.
     queue.reset(300u);
-    ym2151_selected_source_frame reference{};
+    selected_source_frame<ym2151_recomposition_source_count> reference{};
     reference.ordinal = 300u;
     reference.source[fm1] = {2.0, -2.0, true, true};
     assert(queue.push_reference(reference));
