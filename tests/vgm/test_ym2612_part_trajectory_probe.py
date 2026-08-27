@@ -280,6 +280,68 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         self.assertTrue(any(item["chained_link_components"] > 0 for item in reports))
         print("YM2612_CROSS_WORK_TRAJECTORY_PRESSURE", reports)
 
+    def test_aa_harimanada_soundtrack_pressure_measures_recurrence_concentration(self) -> None:
+        corpus = ROOT / "tests" / "corpus" / "aa-harimanada-vgz"
+        fixtures = sorted(corpus.glob("*.vgz"))
+        self.assertEqual(len(fixtures), 22)
+
+        positive = []
+        candidate_total = 0
+        chained_component_total = 0
+        largest_component = 0
+        for fixture in fixtures:
+            report = probe.audit_file(fixture)
+            self.assertEqual(report["chip_scope"], "YM2612")
+            self.assertFalse(report["platform_identity_consulted"])
+            self.assertGreater(report["source_onset_observation_count"], 0)
+            self.assertEqual(
+                report["shared_model_promotion"]["persistent_part_identity"],
+                "blocked",
+            )
+            self.assertEqual(
+                report["shared_model_promotion"]["cross_part_phrase_boundary"],
+                "blocked",
+            )
+            self.assertEqual(report["shared_model_promotion"]["phrase_role"], "blocked")
+
+            candidate_count = report["trajectory_candidate_count"]
+            candidate_total += candidate_count
+            chained_component_total += report["chained_link_component_count"]
+            largest_component = max(
+                largest_component,
+                report["largest_link_component_candidate_count"],
+            )
+            if candidate_count > 0:
+                positive.append({
+                    "fixture": fixture.name,
+                    "trajectory_candidates": candidate_count,
+                    "support_relations": report["trajectory_support_relation_count"],
+                    "link_components": report["trajectory_link_component_count"],
+                    "chained_link_components": report["chained_link_component_count"],
+                    "largest_link_component": report[
+                        "largest_link_component_candidate_count"
+                    ],
+                    "cross_trajectory_boundaries": report[
+                        "cross_trajectory_boundary_candidate_count"
+                    ],
+                })
+
+        self.assertGreater(candidate_total, 0)
+        self.assertGreater(len(positive), 0)
+        self.assertGreater(chained_component_total, 0)
+        self.assertGreater(largest_component, 1)
+        print(
+            "AA_HARIMANADA_YM2612_SOUNDTRACK_PRESSURE",
+            {
+                "fixture_count": len(fixtures),
+                "positive_fixture_count": len(positive),
+                "trajectory_candidate_total": candidate_total,
+                "chained_link_component_total": chained_component_total,
+                "largest_link_component": largest_component,
+                "positive_fixtures": positive,
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
