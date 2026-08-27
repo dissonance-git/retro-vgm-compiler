@@ -123,6 +123,70 @@ int main() {
     }
 
     {
+        // SPC700 callbacks and DSP callbacks share a nominal device-clock rate
+        // but are not phase-aligned at frame boundaries. Preserve the raw
+        // backstep and causal callback order rather than clamping either clock.
+        spc_runtime_trace_recorder recorder;
+        recorder.observe_voice_event(event(20));
+        assert(recorder.observe_apuram_write_byte(
+            spc_runtime_ram_write_origin::spc700_cpu,
+            15,
+            spc_clock_rate,
+            0x2100,
+            0x22) == 1);
+        recorder.observe_voice_event(event(25));
+        assert(recorder.observe_apuram_write_byte(
+            spc_runtime_ram_write_origin::spc700_cpu,
+            18,
+            spc_clock_rate,
+            0x2101,
+            0x23) == 2);
+        recorder.flush_window();
+
+        const auto& trace = recorder.trace();
+        assert(trace.cross_lane_backstep_count == 2);
+        assert(trace.max_cross_lane_backstep_ticks == 7);
+        assert(trace.windows.front().records[0].tick == 20);
+        assert(trace.ram_writes[0].tick == 15);
+    }
+
+    {
+        // A backstep inside one producer lane is still invalid.
+        spc_runtime_trace_recorder recorder;
+        recorder.observe_voice_event(event(20));
+        bool threw = false;
+        try {
+            recorder.observe_voice_event(event(19));
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+
+        const std::uint8_t value = 0x44;
+        spc_runtime_trace_recorder cpu_recorder;
+        (void)cpu_recorder.observe_apuram_write(
+            spc_runtime_ram_write_origin::spc700_cpu,
+            20,
+            spc_clock_rate,
+            0x2200,
+            &value,
+            1);
+        threw = false;
+        try {
+            (void)cpu_recorder.observe_apuram_write(
+                spc_runtime_ram_write_origin::spc700_cpu,
+                19,
+                spc_clock_rate,
+                0x2201,
+                &value,
+                1);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        assert(threw);
+    }
+
+    {
         spc_runtime_trace_recorder recorder;
         auto invalid = event(0);
         invalid.tick_rate = 0;

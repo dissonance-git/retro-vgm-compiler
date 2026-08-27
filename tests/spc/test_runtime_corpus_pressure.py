@@ -55,6 +55,8 @@ def sidecar(
             "stored_event_count": stored,
             "dropped_event_count": dropped,
             "overflowed_window_count": overflowed,
+            "cross_lane_backstep_count": 2,
+            "max_cross_lane_backstep_ticks": 7,
         },
         "replay": {
             "windows_replayed": 2,
@@ -96,10 +98,18 @@ def sidecar(
 class SpcRuntimeCorpusPressureTest(unittest.TestCase):
     def test_valid_sidecar_preserves_balanced_runtime_and_part_evidence(self) -> None:
         metrics = pressure.validate_sidecar(sidecar())
+        self.assertEqual(metrics["cross_lane_backstep_count"], 2)
+        self.assertEqual(metrics["max_cross_lane_backstep_ticks"], 7)
         self.assertEqual(metrics["candidate_transition_count"], 5)
         self.assertEqual(metrics["strong_transition_count"], 3)
         self.assertEqual(metrics["rejected_transition_count"], 2)
         self.assertEqual(metrics["part_profile_count"], 1)
+
+    def test_backstep_diagnostics_must_remain_self_consistent(self) -> None:
+        payload = sidecar()
+        payload["capture"]["cross_lane_backstep_count"] = 0
+        with self.assertRaisesRegex(ValueError, "magnitude"):
+            pressure.validate_sidecar(payload)
 
     def test_capture_loss_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "lossless capture"):

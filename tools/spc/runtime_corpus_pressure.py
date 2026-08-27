@@ -52,10 +52,18 @@ def validate_sidecar(payload: dict[str, Any]) -> dict[str, int]:
     stored = _require_int(capture, "stored_event_count")
     dropped = _require_int(capture, "dropped_event_count")
     overflowed = _require_int(capture, "overflowed_window_count")
+    cross_lane_backsteps = _require_int(capture, "cross_lane_backstep_count")
+    max_cross_lane_backstep = _require_int(capture, "max_cross_lane_backstep_ticks")
     if stored <= 0:
         raise ValueError("SPC runtime pressure requires stored runtime events")
     if dropped != 0 or overflowed != 0:
         raise ValueError("SPC runtime pressure requires lossless capture")
+    if cross_lane_backsteps < 0 or max_cross_lane_backstep < 0:
+        raise ValueError("SPC cross-lane backstep diagnostics must be nonnegative")
+    if cross_lane_backsteps == 0 and max_cross_lane_backstep != 0:
+        raise ValueError("SPC backstep magnitude requires at least one cross-lane backstep")
+    if cross_lane_backsteps > 0 and max_cross_lane_backstep == 0:
+        raise ValueError("SPC cross-lane backsteps require a positive recorded magnitude")
 
     materialized = _require_int(replay, "records_materialized")
     continuity_breaks = _require_int(replay, "continuity_breaks")
@@ -104,6 +112,8 @@ def validate_sidecar(payload: dict[str, Any]) -> dict[str, int]:
 
     return {
         "stored_event_count": stored,
+        "cross_lane_backstep_count": cross_lane_backsteps,
+        "max_cross_lane_backstep_ticks": max_cross_lane_backstep,
         "voice_episode_count": voice_episodes,
         "eligible_episode_count": eligible,
         "candidate_transition_count": candidates,
@@ -164,6 +174,7 @@ def run_pressure(
             key: sum(item[key] for item in reports)
             for key in (
                 "stored_event_count",
+                "cross_lane_backstep_count",
                 "voice_episode_count",
                 "eligible_episode_count",
                 "candidate_transition_count",
@@ -173,6 +184,9 @@ def run_pressure(
                 "part_profile_count",
             )
         },
+        "max_cross_lane_backstep_ticks": max(
+            item["max_cross_lane_backstep_ticks"] for item in reports
+        ),
         "fixtures": reports,
         "promotion": {
             "cross_source_family_equivalence": "blocked",

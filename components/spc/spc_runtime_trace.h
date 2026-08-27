@@ -15,6 +15,64 @@ enum class spc_runtime_ram_write_origin : std::uint8_t {
     controlled_fixture,
 };
 
+enum class spc_runtime_clock_lane : std::uint8_t {
+    spc700 = 0,
+    dsp,
+    controlled,
+};
+
+constexpr std::size_t spc_runtime_clock_lane_count = 3;
+
+constexpr std::size_t spc_runtime_clock_lane_index(
+    spc_runtime_clock_lane lane) noexcept {
+    return static_cast<std::size_t>(lane);
+}
+
+inline const char* spc_runtime_clock_lane_name(
+    spc_runtime_clock_lane lane) noexcept {
+    switch (lane) {
+    case spc_runtime_clock_lane::spc700:
+        return "spc700";
+    case spc_runtime_clock_lane::dsp:
+        return "dsp";
+    case spc_runtime_clock_lane::controlled:
+        return "controlled";
+    }
+    return "unknown";
+}
+
+constexpr spc_runtime_clock_lane spc_runtime_clock_lane_for_ram_write(
+    spc_runtime_ram_write_origin origin) noexcept {
+    switch (origin) {
+    case spc_runtime_ram_write_origin::spc700_cpu:
+    case spc_runtime_ram_write_origin::ipl_rom_overlay:
+        return spc_runtime_clock_lane::spc700;
+    case spc_runtime_ram_write_origin::dsp_echo:
+        return spc_runtime_clock_lane::dsp;
+    case spc_runtime_ram_write_origin::controlled_fixture:
+        return spc_runtime_clock_lane::controlled;
+    }
+    return spc_runtime_clock_lane::controlled;
+}
+
+constexpr spc_runtime_clock_lane spc_runtime_clock_lane_for_event(
+    spc_voice_runtime_event_kind kind) noexcept {
+    switch (kind) {
+    case spc_voice_runtime_event_kind::key_on_accepted:
+    case spc_voice_runtime_event_kind::sample_phase_started:
+    case spc_voice_runtime_event_kind::release_entered:
+    case spc_voice_runtime_event_kind::became_inactive:
+    case spc_voice_runtime_event_kind::source_latched:
+        return spc_runtime_clock_lane::dsp;
+    case spc_voice_runtime_event_kind::routing_state_changed:
+    case spc_voice_runtime_event_kind::execution_reset:
+        return spc_runtime_clock_lane::spc700;
+    case spc_voice_runtime_event_kind::continuation_lost:
+        return spc_runtime_clock_lane::controlled;
+    }
+    return spc_runtime_clock_lane::controlled;
+}
+
 inline const char* spc_runtime_ram_write_origin_name(
     spc_runtime_ram_write_origin origin) noexcept {
     switch (origin) {
@@ -57,6 +115,8 @@ struct spc_runtime_trace_window {
 struct spc_runtime_trace {
     std::vector<spc_runtime_trace_ram_write> ram_writes;
     std::vector<spc_runtime_trace_window> windows;
+    std::uint64_t cross_lane_backstep_count = 0;
+    std::uint64_t max_cross_lane_backstep_ticks = 0;
 };
 
 } // namespace gameaudio::spc

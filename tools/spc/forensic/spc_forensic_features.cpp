@@ -237,7 +237,9 @@ void write_sidecar(
     out << "    \"window_count\": " << trace.windows.size() << ",\n";
     out << "    \"stored_event_count\": " << count_events(trace) << ",\n";
     out << "    \"dropped_event_count\": " << count_dropped_events(trace) << ",\n";
-    out << "    \"overflowed_window_count\": " << count_overflowed_windows(trace) << "\n";
+    out << "    \"overflowed_window_count\": " << count_overflowed_windows(trace) << ",\n";
+    out << "    \"cross_lane_backstep_count\": " << trace.cross_lane_backstep_count << ",\n";
+    out << "    \"max_cross_lane_backstep_ticks\": " << trace.max_cross_lane_backstep_ticks << "\n";
     out << "  },\n";
     out << "  \"replay\": {\n";
     out << "    \"windows_replayed\": " << replay.windows_replayed << ",\n";
