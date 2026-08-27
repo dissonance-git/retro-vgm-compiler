@@ -5,6 +5,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -106,6 +107,39 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
             path.write_text(new + new, encoding="utf-8")
             with self.assertRaises(RuntimeError):
                 strict.strict_replace_once(path, old, new, "fixture")
+
+    def test_forensic_composition_applies_native_spatial_before_runtime_state(self) -> None:
+        calls: list[str] = []
+        fake_root = pathlib.Path("/synthetic/snes-spc")
+
+        with (
+            mock.patch.object(
+                forensic.native_spatial,
+                "patch",
+                side_effect=lambda root: calls.append("native_spatial"),
+            ),
+            mock.patch.object(
+                forensic.strict.patcher,
+                "patch",
+                side_effect=lambda root: calls.append("runtime"),
+            ),
+            mock.patch.object(
+                forensic.strict,
+                "strict_replace_once",
+                side_effect=lambda *args, **kwargs: calls.append("ordering"),
+            ),
+            mock.patch.object(
+                forensic.spatial_register,
+                "patch",
+                side_effect=lambda root: calls.append("spatial_register"),
+            ),
+        ):
+            forensic.patch(fake_root)
+
+        self.assertEqual(
+            calls,
+            ["native_spatial", "runtime", "ordering", "spatial_register"],
+        )
 
     def test_forensic_ordering_patch_is_narrow_and_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

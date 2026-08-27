@@ -90,13 +90,14 @@ ORDERING_NEW = """#if defined(RETRO_VGM_SPC_FORENSIC_ORDERING) && RETRO_VGM_SPC_
 """
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source_root", type=Path)
-    args = parser.parse_args()
-    root = args.source_root.resolve()
+def patch(root: Path) -> None:
+    # The native-spatial observer must claim its pristine SPC_DSP state sentinel
+    # before runtime instrumentation inserts adjacent host-only state. This is a
+    # composition-order contract, not a relaxation of either strict patcher.
+    native_spatial.patch(root)
 
-    # First apply every runtime hook through the per-edit strict transformer.
+    # Apply every runtime hook through the per-edit strict transformer after the
+    # native observer has preserved its own exact source-shape obligation.
     strict.patcher.replace_once = strict.strict_replace_once
     strict.patcher.patch(root)
 
@@ -111,9 +112,12 @@ def main() -> None:
     # Observe exact live route/effect-send register state after real DSP writes.
     spatial_register.patch(root)
 
-    # Finally expose read-only dry/wet source amplitudes from the same pinned
-    # accurate DSP. The observer patch is independently exact-sentinel guarded.
-    native_spatial.patch(root)
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source_root", type=Path)
+    args = parser.parse_args()
+    patch(args.source_root.resolve())
 
 
 if __name__ == "__main__":
