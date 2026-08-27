@@ -8,6 +8,7 @@
 #include "components/spc/spc_snapshot_graph_adapter.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -75,6 +76,7 @@ struct cross_voice_handoff_detail {
     std::int64_t second_end_tick = 0;
     std::int64_t successor_start_tick = 0;
     bool boundary_safe = false;
+    bool synchronized_cycle = false;
 };
 
 struct cross_voice_context_result {
@@ -88,6 +90,9 @@ struct cross_voice_context_result {
     std::size_t two_sided_unique_count = 0;
     std::size_t boundary_safe_bidirectionally_unique_count = 0;
     std::size_t boundary_safe_two_sided_unique_count = 0;
+    std::size_t synchronized_cycle_two_sided_unique_count = 0;
+    std::size_t noncyclic_two_sided_unique_count = 0;
+    std::size_t boundary_safe_noncyclic_two_sided_unique_count = 0;
     std::vector<cross_voice_handoff_detail> two_sided_unique_details;
 };
 
@@ -347,6 +352,52 @@ bool handoff_is_capture_boundary_safe(
         first_end.tick <= capture_end_tick - margin_ticks;
 }
 
+constexpr std::int64_t snes_dsp_native_frame_clocks = 32;
+
+bool same_handoff_epoch(
+    const cross_voice_handoff_detail& first,
+    const cross_voice_handoff_detail& second) noexcept {
+    return std::llabs(first.first_start_tick - second.first_start_tick) <=
+            snes_dsp_native_frame_clocks &&
+        std::llabs(first.second_start_tick - second.second_start_tick) <=
+            snes_dsp_native_frame_clocks;
+}
+
+bool handoff_belongs_to_synchronized_cycle(
+    std::size_t edge_index,
+    const std::vector<cross_voice_handoff_detail>& edges) {
+    if (edge_index >= edges.size())
+        return false;
+
+    const auto& anchor = edges[edge_index];
+    if (anchor.first_voice >= 8 || anchor.second_voice >= 8)
+        return false;
+
+    std::array<bool, 8> visited{};
+    std::vector<std::uint64_t> frontier{anchor.second_voice};
+
+    while (!frontier.empty()) {
+        const auto voice = frontier.back();
+        frontier.pop_back();
+
+        if (voice == anchor.first_voice)
+            return true;
+        if (voice >= visited.size() || visited[voice])
+            continue;
+        visited[voice] = true;
+
+        for (const auto& candidate : edges) {
+            if (!same_handoff_epoch(anchor, candidate))
+                continue;
+            if (candidate.first_voice != voice || candidate.second_voice >= 8)
+                continue;
+            frontier.push_back(candidate.second_voice);
+        }
+    }
+
+    return false;
+}
+
 cross_voice_context_result measure_cross_voice_context(
     const musical_execution_graph& graph,
     const spc_part_continuity_policy& policy,
@@ -444,6 +495,20 @@ cross_voice_context_result measure_cross_voice_context(
                 successor->active->start.tick,
                 boundary_safe,
             });
+        }
+    }
+
+    for (std::size_t index = 0; index < result.two_sided_unique_details.size(); ++index) {
+        auto& detail = result.two_sided_unique_details[index];
+        detail.synchronized_cycle = handoff_belongs_to_synchronized_cycle(
+            index,
+            result.two_sided_unique_details);
+        if (detail.synchronized_cycle) {
+            ++result.synchronized_cycle_two_sided_unique_count;
+        } else {
+            ++result.noncyclic_two_sided_unique_count;
+            if (detail.boundary_safe)
+                ++result.boundary_safe_noncyclic_two_sided_unique_count;
         }
     }
 
@@ -662,6 +727,13 @@ int main(int argc, char** argv) {
             throw std::logic_error("SPC handoff-context accounting exceeds candidate count");
         if (context.two_sided_unique_details.size() != context.two_sided_unique_count)
             throw std::logic_error("SPC handoff detail count does not match two-sided unique count");
+        if (context.synchronized_cycle_two_sided_unique_count +
+                context.noncyclic_two_sided_unique_count !=
+            context.two_sided_unique_count)
+            throw std::logic_error("SPC handoff cycle partition does not match two-sided unique count");
+        if (context.boundary_safe_noncyclic_two_sided_unique_count >
+            context.noncyclic_two_sided_unique_count)
+            throw std::logic_error("SPC boundary-safe noncyclic handoffs exceed noncyclic handoffs");
         if (context.two_sided_unique_count > context.two_sided_flanked_count ||
             context.two_sided_unique_count > context.bidirectionally_unique_count ||
             context.boundary_safe_bidirectionally_unique_count >
@@ -724,6 +796,12 @@ int main(int argc, char** argv) {
             << context.boundary_safe_bidirectionally_unique_count
             << " handoff_boundary_safe_two_sided_unique="
             << context.boundary_safe_two_sided_unique_count
+            << " handoff_synchronized_cycle_two_sided_unique="
+            << context.synchronized_cycle_two_sided_unique_count
+            << " handoff_noncyclic_two_sided_unique="
+            << context.noncyclic_two_sided_unique_count
+            << " handoff_boundary_safe_noncyclic_two_sided_unique="
+            << context.boundary_safe_noncyclic_two_sided_unique_count
             << '\n';
 
         for (std::size_t index = 0; index < context.two_sided_unique_details.size(); ++index) {
@@ -746,6 +824,7 @@ int main(int argc, char** argv) {
                 << " second_end_tick=" << item.second_end_tick
                 << " successor_start_tick=" << item.successor_start_tick
                 << " boundary_safe=" << (item.boundary_safe ? 1 : 0)
+                << " synchronized_cycle=" << (item.synchronized_cycle ? 1 : 0)
                 << '\n';
         }
         return 0;
