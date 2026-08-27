@@ -58,6 +58,25 @@ std::uint64_t parse_seconds(const char* text) {
     return static_cast<std::uint64_t>(value);
 }
 
+
+struct cross_voice_handoff_detail {
+    std::uint64_t first_voice = 0;
+    std::uint64_t second_voice = 0;
+    std::uint64_t first_source_index = 0;
+    std::uint64_t second_source_index = 0;
+    std::uint64_t predecessor_pitch_rate = 0;
+    std::uint64_t first_pitch_rate = 0;
+    std::uint64_t second_pitch_rate = 0;
+    std::uint64_t successor_pitch_rate = 0;
+    std::int64_t predecessor_end_tick = 0;
+    std::int64_t first_start_tick = 0;
+    std::int64_t first_end_tick = 0;
+    std::int64_t second_start_tick = 0;
+    std::int64_t second_end_tick = 0;
+    std::int64_t successor_start_tick = 0;
+    bool boundary_safe = false;
+};
+
 struct cross_voice_context_result {
     std::size_t bundle_candidate_count = 0;
     std::size_t unique_outgoing_count = 0;
@@ -69,6 +88,7 @@ struct cross_voice_context_result {
     std::size_t two_sided_unique_count = 0;
     std::size_t boundary_safe_bidirectionally_unique_count = 0;
     std::size_t boundary_safe_two_sided_unique_count = 0;
+    std::vector<cross_voice_handoff_detail> two_sided_unique_details;
 };
 
 struct cross_voice_candidate_edge {
@@ -279,6 +299,27 @@ bool strong_same_voice_link(
     }
 }
 
+std::uint64_t episode_source_index(const node& episode) noexcept {
+    const auto* item = find_spc_performance_attribute(episode, "initial_source_index");
+    const auto* value = item == nullptr
+        ? nullptr : std::get_if<std::uint64_t>(&item->value);
+    return value == nullptr ? 0u : *value;
+}
+
+std::uint64_t episode_pitch_rate(
+    const musical_execution_graph& graph,
+    const node* episode) noexcept {
+    if (episode == nullptr)
+        return 0u;
+    const node* event = spc_episode_pitch_observation(graph, episode->id);
+    if (event == nullptr)
+        return 0u;
+    const auto* item = find_spc_performance_attribute(*event, "pitch_rate");
+    const auto* value = item == nullptr
+        ? nullptr : std::get_if<std::uint64_t>(&item->value);
+    return value == nullptr ? 0u : *value;
+}
+
 bool handoff_is_capture_boundary_safe(
     const node& first,
     const node& second,
@@ -373,6 +414,37 @@ cross_voice_context_result measure_cross_voice_context(
             boundary_safe && bidirectionally_unique ? 1u : 0u;
         result.boundary_safe_two_sided_unique_count +=
             boundary_safe && two_sided_unique ? 1u : 0u;
+
+        if (two_sided_unique) {
+            const auto* first_voice = detail::spc_episode_physical_voice(*first);
+            const auto* second_voice = detail::spc_episode_physical_voice(*second);
+            if (first_voice == nullptr || second_voice == nullptr ||
+                predecessor == nullptr || successor == nullptr ||
+                !predecessor->active.has_value() ||
+                !predecessor->active->end.has_value() ||
+                !first->active.has_value() || !first->active->end.has_value() ||
+                !second->active.has_value() || !second->active->end.has_value() ||
+                !successor->active.has_value())
+                throw std::logic_error("SPC two-sided handoff detail lacks required episode facts");
+
+            result.two_sided_unique_details.push_back({
+                *first_voice,
+                *second_voice,
+                episode_source_index(*first),
+                episode_source_index(*second),
+                episode_pitch_rate(graph, predecessor),
+                episode_pitch_rate(graph, first),
+                episode_pitch_rate(graph, second),
+                episode_pitch_rate(graph, successor),
+                predecessor->active->end->tick,
+                first->active->start.tick,
+                first->active->end->tick,
+                second->active->start.tick,
+                second->active->end->tick,
+                successor->active->start.tick,
+                boundary_safe,
+            });
+        }
     }
 
     return result;
@@ -588,6 +660,8 @@ int main(int argc, char** argv) {
             context.boundary_safe_bidirectionally_unique_count > context.bundle_candidate_count ||
             context.boundary_safe_two_sided_unique_count > context.bundle_candidate_count)
             throw std::logic_error("SPC handoff-context accounting exceeds candidate count");
+        if (context.two_sided_unique_details.size() != context.two_sided_unique_count)
+            throw std::logic_error("SPC handoff detail count does not match two-sided unique count");
         if (context.two_sided_unique_count > context.two_sided_flanked_count ||
             context.two_sided_unique_count > context.bidirectionally_unique_count ||
             context.boundary_safe_bidirectionally_unique_count >
@@ -651,6 +725,29 @@ int main(int argc, char** argv) {
             << " handoff_boundary_safe_two_sided_unique="
             << context.boundary_safe_two_sided_unique_count
             << '\n';
+
+        for (std::size_t index = 0; index < context.two_sided_unique_details.size(); ++index) {
+            const auto& item = context.two_sided_unique_details[index];
+            std::cerr
+                << "SPC_HANDOFF_EDGE"
+                << " edge_index=" << index
+                << " first_voice=" << item.first_voice
+                << " second_voice=" << item.second_voice
+                << " first_source_index=" << item.first_source_index
+                << " second_source_index=" << item.second_source_index
+                << " predecessor_pitch_rate=" << item.predecessor_pitch_rate
+                << " first_pitch_rate=" << item.first_pitch_rate
+                << " second_pitch_rate=" << item.second_pitch_rate
+                << " successor_pitch_rate=" << item.successor_pitch_rate
+                << " predecessor_end_tick=" << item.predecessor_end_tick
+                << " first_start_tick=" << item.first_start_tick
+                << " first_end_tick=" << item.first_end_tick
+                << " second_start_tick=" << item.second_start_tick
+                << " second_end_tick=" << item.second_end_tick
+                << " successor_start_tick=" << item.successor_start_tick
+                << " boundary_safe=" << (item.boundary_safe ? 1 : 0)
+                << '\n';
+        }
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "spc_part_selectivity_control: " << error.what() << '\n';

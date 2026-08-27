@@ -77,6 +77,7 @@ jobs:
           output_dir.mkdir(parents=True, exist_ok=True)
           panel_rows = []
           raw_lines = []
+          edge_lines = []
           seen = set()
 
           for cue in cues:
@@ -118,6 +119,17 @@ jobs:
               raw_lines.append(f"{cue_id} {line}")
               print(f"{cue_id} {line}")
 
+              for detail_line in completed.stderr.splitlines():
+                  if not detail_line.startswith("SPC_HANDOFF_EDGE "):
+                      if detail_line.strip():
+                          raise SystemExit(
+                              f"unexpected handoff diagnostic for {cue_id}: {detail_line}"
+                          )
+                      continue
+                  tagged = f"{cue_id} {detail_line}"
+                  edge_lines.append(tagged)
+                  print(tagged)
+
           (output_dir / "handoff-context.txt").write_text(
               "\n".join(raw_lines) + "\n",
               encoding="utf-8",
@@ -129,6 +141,11 @@ jobs:
               encoding="utf-8",
           )
 
+          (output_dir / "handoff-edge-details.txt").write_text(
+              ("\n".join(edge_lines) + "\n") if edge_lines else "",
+              encoding="utf-8",
+          )
+
           summary = {
               "schema": "spc-handoff-context-panel-v1",
               "claim_boundary": (
@@ -137,6 +154,7 @@ jobs:
                   "cross-voice confidence ceiling without independent evidence."
               ),
               "cue_count": len(panel_rows),
+              "two_sided_unique_detail_count": len(edge_lines),
               "cues_with_observed_candidates": sum(
                   row["observed_candidates"] > 0 for row in panel_rows
               ),
