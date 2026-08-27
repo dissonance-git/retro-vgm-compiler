@@ -171,6 +171,16 @@ add_executable(
 gameaudio_configure_forensic_first_party(spc_forensic_features)
 gameaudio_add_forensic_provenance(spc_forensic_features)
 
+# Research-only falsifier over the exact same runtime, replay graph, and
+# persistent-part inference as the feature extractor. It does not publish part
+# identity; it measures whether nearest later episodes on a different physical
+# voice can spuriously clear the same strong-link threshold.
+add_executable(
+    spc_part_selectivity_control
+    ${RETRO_VGM_COMPILER_ROOT}/tests/spc/spc_part_selectivity_control.cpp
+)
+gameaudio_configure_forensic_first_party(spc_part_selectivity_control)
+
 add_executable(
     spc_spatial_governor_trace
     ${CMAKE_CURRENT_LIST_DIR}/spc_spatial_governor_trace.cpp
