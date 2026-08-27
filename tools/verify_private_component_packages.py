@@ -364,6 +364,64 @@ def validate_package(
                 )
 
 
+def verify_private_import_contracts(vgm_path: Path, spc_path: Path) -> None:
+    """Prove private process/DLL boundaries from the actual packaged import tables."""
+    with zipfile.ZipFile(vgm_path, "r") as archive:
+        vgm_imports = {
+            name.casefold()
+            for name in inspect_pe_imports(archive.read("foo_input_vgm.dll"))
+        }
+    with zipfile.ZipFile(spc_path, "r") as archive:
+        spc_parent_imports = {
+            name.casefold()
+            for name in inspect_pe_imports(archive.read("foo_snesapu.dll"))
+        }
+        spcplayer_imports = {
+            name.casefold()
+            for name in inspect_pe_imports(archive.read("spcplayer.exe"))
+        }
+        snesapu_imports = {
+            name.casefold()
+            for name in inspect_pe_imports(archive.read("SNESAPU.dll"))
+        }
+
+    if "snesapu.dll" not in spcplayer_imports:
+        raise AssertionError(
+            "SPC spcplayer.exe must import sibling SNESAPU.dll through its fresh import library"
+        )
+
+    for label, imports in (
+        ("VGM foo_input_vgm.dll", vgm_imports),
+        ("SPC foo_snesapu.dll", spc_parent_imports),
+        ("SPC spcplayer.exe", spcplayer_imports),
+        ("SPC SNESAPU.dll", snesapu_imports),
+    ):
+        if "omniphony_source.dll" in imports:
+            raise AssertionError(
+                f"{label} must not import omniphony_source.dll; "
+                "Omniphony is sibling-dynamic-loaded"
+            )
+
+    if "snesapu.dll" in spc_parent_imports:
+        raise AssertionError(
+            "SPC x64 foo_snesapu.dll must not import x86 SNESAPU.dll; "
+            "the child process owns it"
+        )
+    if "snesapu.dll" in vgm_imports:
+        raise AssertionError("VGM foo_input_vgm.dll must not import SNESAPU.dll")
+
+    shared_libvgm = sorted(
+        name
+        for name in vgm_imports
+        if name.startswith("libvgm") and name.endswith(".dll")
+    )
+    if shared_libvgm:
+        raise AssertionError(
+            "VGM foo_input_vgm.dll unexpectedly imports shared libvgm runtime(s): "
+            f"{shared_libvgm}; private build requires static libvgm linkage"
+        )
+
+
 def validate_windows_runtime(spc_path: Path) -> None:
     if os.name != "nt":
         return
@@ -397,6 +455,7 @@ def main() -> int:
     spc_path = args.spc_package.resolve()
     validate_package(vgm_path, VGM_EXPECTED, VGM_RUNTIME_CONTRACTS)
     validate_package(spc_path, SPC_EXPECTED, SPC_RUNTIME_CONTRACTS)
+    verify_private_import_contracts(vgm_path, spc_path)
     validate_windows_runtime(spc_path)
     print("private foobar component packages verified")
     return 0
