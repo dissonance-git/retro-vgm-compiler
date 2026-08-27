@@ -73,6 +73,11 @@ cadential_arrival_hypothesis arrival_between(
     boundary.representative = second.projection.source_verticality.observation_time;
     boundary.confidence = 0.90;
     boundary.cross_part_grounded = cross_part_phrase_grounded;
+    // This downstream fixture models two independent boundary-analysis origins.
+    // Cross-part agreement alone is deliberately insufficient after the
+    // phrase-boundary independence guard.
+    boundary.cross_origin_grounded = true;
+    boundary.independently_grounded = cross_part_phrase_grounded;
 
     auto transition = infer_harmonic_transition(first, second);
     transition.confidence = 0.91;

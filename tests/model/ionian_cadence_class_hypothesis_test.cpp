@@ -89,8 +89,27 @@ part_phrase_boundary_hypothesis phrase_part(
     double confidence = 0.90) {
     part_phrase_boundary_hypothesis result;
     result.part_id = part_id;
-    result.boundary.boundary = at(tick);
-    result.boundary.confidence = confidence;
+    result.boundary = make_phrase_boundary_hypothesis(
+        at(tick),
+        confidence,
+        {
+            {phrase_boundary_evidence_kind::temporal_gap,
+             phrase_boundary_evidence_origin::performance_timing,
+             phrase_boundary_evidence_polarity::supports,
+             evidence_status::derived,
+             confidence,
+             "test phrase timing",
+             "independent timing witness for the downstream cadence fixture",
+             {}},
+            {phrase_boundary_evidence_kind::motif_completion,
+             phrase_boundary_evidence_origin::motif_analysis,
+             phrase_boundary_evidence_polarity::supports,
+             evidence_status::hypothesis,
+             confidence,
+             "test phrase motif",
+             "independent structural witness for the downstream cadence fixture",
+             {}},
+        });
     return result;
 }
 
