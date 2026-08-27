@@ -46,7 +46,8 @@ MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+)\)")
 CMAKE_PATH_RE = re.compile(
     r"(?<![A-Za-z0-9_.+-])"
     r"(CMakeLists\.txt|[A-Za-z0-9_./+-]+\."
-    r"(?:c|cc|cmake|cpp|h|hpp|json|md|ps1|py|sh|txt|yaml|yml))"
+    r"(?:cmake|cpp|hpp|json|yaml|yml|ps1|txt|cc|md|py|sh|c|h))"
+    r"(?![A-Za-z0-9_])"
 )
 
 
