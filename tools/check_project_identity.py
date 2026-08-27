@@ -42,7 +42,7 @@ REQUIRED_TEXT = {
     ),
     Path("docs/vgm-compiler-roadmap.md"): (
         "# VGM Compiler roadmap\n",
-        "## Active frontier: continuation evidence for phrase roles",
+        "## Active frontier: new-phrase and return evidence",
     ),
     Path("research/README.md"): (
         "# Research\n",
