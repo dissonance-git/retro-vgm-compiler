@@ -16,6 +16,7 @@ on:
       - "tests/corpus/america-oudan-ultra-quiz-spc/**"
       - "tests/corpus/battle-master-spc/**"
       - "tests/corpus/terranigma-spc/**"
+      - "research/projects/sonic3/spc-cube-blind-panel.json"
   workflow_dispatch:
 
 permissions:
@@ -53,20 +54,114 @@ jobs:
             "tests/corpus/battle-master-spc/01 - Opening.spc" \
             "tests/corpus/terranigma-spc/03 - Hometown.spc"
 
-      # Measurement-only on first introduction. The null must be observed before
-      # any margin becomes an acceptance criterion; this avoids tuning a gate to
-      # the same corpus that motivated the falsifier.
-      - name: Measure cross-voice persistent-part null
+      # Measurement-only. The four-fixture ablation showed that pairwise
+      # source/timing/pitch evidence is non-selective and that two-sided flanking
+      # remains common. Broaden only the surviving one-in/one-out discriminator
+      # across the preregistered creator-blind panel; do not turn this result into
+      # an acceptance margin on the corpus that measured it.
+      - name: Measure handoff context across blind SPC panel
         timeout-minutes: 5
         run: |
-          build-spc-runtime-pressure/spc_part_selectivity_control \
-            "tests/corpus/ancient-magic-spc/05 - Battle.spc" 3
-          build-spc-runtime-pressure/spc_part_selectivity_control \
-            "tests/corpus/america-oudan-ultra-quiz-spc/06 - Guam Wind.spc" 3
-          build-spc-runtime-pressure/spc_part_selectivity_control \
-            "tests/corpus/battle-master-spc/01 - Opening.spc" 3
-          build-spc-runtime-pressure/spc_part_selectivity_control \
-            "tests/corpus/terranigma-spc/03 - Hometown.spc" 3
+          set -euo pipefail
+          mkdir -p spc-runtime-pressure
+          python3 - <<'PY' > spc-runtime-pressure/handoff-panel.tsv
+          import json
+          from pathlib import Path
+
+          panel = json.loads(
+              Path("research/projects/sonic3/spc-cube-blind-panel.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          cues = panel["cues"]
+          if len(cues) != 31:
+              raise SystemExit(f"expected 31 blind-panel cues, found {len(cues)}")
+          seen = set()
+          for cue in cues:
+              cue_id = cue["cue_id"]
+              fixture = cue["fixture_path"]
+              if cue_id in seen:
+                  raise SystemExit(f"duplicate blind-panel cue id: {cue_id}")
+              seen.add(cue_id)
+              if not Path(fixture).is_file():
+                  raise SystemExit(f"missing blind-panel fixture: {cue_id}")
+              print(f"{cue_id}\t{fixture}")
+          PY
+
+          : > spc-runtime-pressure/handoff-context.txt
+          while IFS=      - name: Upload bounded SPC pressure evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spc-runtime-corpus-pressure
+          path: spc-runtime-pressure/
+          if-no-files-found: warn
+\t' read -r cue_id fixture; do
+            printf '%s ' "$cue_id" | tee -a spc-runtime-pressure/handoff-context.txt
+            build-spc-runtime-pressure/spc_part_selectivity_control "$fixture" 3 \
+              | tee -a spc-runtime-pressure/handoff-context.txt
+          done < spc-runtime-pressure/handoff-panel.tsv
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("spc-runtime-pressure/handoff-context.txt")
+          rows = []
+          for raw in path.read_text(encoding="utf-8").splitlines():
+              fields = raw.split()
+              if len(fields) < 3 or fields[1] != "SPC_PART_SELECTIVITY_CONTROL":
+                  raise SystemExit(f"unexpected handoff-context row: {raw}")
+              values = {}
+              for field in fields[2:]:
+                  key, value = field.split("=", 1)
+                  values[key] = float(value) if any(c in value for c in ".eE") else int(value)
+              rows.append({"cue_id": fields[0], **values})
+
+          if len(rows) != 31:
+              raise SystemExit(f"expected 31 handoff-context rows, found {len(rows)}")
+
+          summary = {
+              "schema": "spc-handoff-context-panel-v1",
+              "claim_boundary": (
+                  "Measurement-only data-association pressure. Unique local runtime "
+                  "association is not persistent-part identity and cannot lift the "
+                  "cross-voice confidence ceiling without independent evidence."
+              ),
+              "cue_count": len(rows),
+              "cues_with_observed_candidates": sum(
+                  row["observed_candidates"] > 0 for row in rows
+              ),
+              "cues_with_bundle_candidates": sum(
+                  row["handoff_bundle_candidates"] > 0 for row in rows
+              ),
+              "total_bundle_candidates": sum(
+                  row["handoff_bundle_candidates"] for row in rows
+              ),
+              "total_two_sided_flanked": sum(
+                  row["handoff_two_sided_flanked"] for row in rows
+              ),
+              "total_bidirectional_unique": sum(
+                  row["handoff_bidirectional_unique"] for row in rows
+              ),
+              "total_two_sided_unique": sum(
+                  row["handoff_two_sided_unique"] for row in rows
+              ),
+              "cues_with_bidirectional_unique": [
+                  row["cue_id"] for row in rows
+                  if row["handoff_bidirectional_unique"] > 0
+              ],
+              "cues_with_two_sided_unique": [
+                  row["cue_id"] for row in rows
+                  if row["handoff_two_sided_unique"] > 0
+              ],
+          }
+          Path("spc-runtime-pressure/handoff-context-summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print("SPC_HANDOFF_CONTEXT_PANEL", summary)
+          PY
 
       - name: Upload bounded SPC pressure evidence
         if: ${{ always() }}

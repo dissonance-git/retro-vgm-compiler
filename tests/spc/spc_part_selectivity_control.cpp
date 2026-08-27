@@ -524,8 +524,9 @@ int main(int argc, char** argv) {
             "spc-selectivity-runtime",
             policy);
 
-        if (observed.candidate_transition_count == 0)
-            throw std::runtime_error("SPC selectivity fixture produced no admitted adjacent candidates");
+        // A broad corpus panel may legitimately contain no admitted adjacent
+        // candidates. That is an earned null, not a harness failure; the fixed
+        // four-fixture runtime-pressure gate owns positive-path coverage.
         if (observed.strong_transition_count + observed.rejected_transition_count !=
             observed.candidate_transition_count)
             throw std::logic_error("SPC selectivity observed accounting is inconsistent");
@@ -547,8 +548,10 @@ int main(int argc, char** argv) {
             context.two_sided_unique_count > context.bidirectionally_unique_count)
             throw std::logic_error("SPC handoff-context intersection accounting is inconsistent");
 
-        const double observed_rate = static_cast<double>(observed.strong_transition_count) /
-            static_cast<double>(observed.candidate_transition_count);
+        const double observed_rate = observed.candidate_transition_count == 0
+            ? 0.0
+            : static_cast<double>(observed.strong_transition_count) /
+                static_cast<double>(observed.candidate_transition_count);
         const double control_rate = control.candidate_count == 0
             ? 0.0
             : static_cast<double>(control.strong_count) /
@@ -564,6 +567,7 @@ int main(int argc, char** argv) {
             << " observed_candidates=" << observed.candidate_transition_count
             << " observed_strong=" << observed.strong_transition_count
             << " observed_rate=" << observed_rate
+            << " observed_empty=" << (observed.candidate_transition_count == 0 ? 1 : 0)
             << " cross_voice_candidates=" << control.candidate_count
             << " cross_voice_inferred=" << control.inferred_count
             << " cross_voice_no_hypothesis=" << control.no_hypothesis_count
