@@ -1,6 +1,6 @@
 #pragma once
 
-#include "genesis_part_analysis_features.h"
+#include "genesis_analysis_features.h"
 #include "ym2612_episode_pitch_analysis.h"
 
 #include <stdexcept>
