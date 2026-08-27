@@ -42,7 +42,7 @@ REQUIRED_TEXT = {
     ),
     Path("docs/vgm-compiler-roadmap.md"): (
         "# VGM Compiler roadmap\n",
-        "## Active frontier: prolongation and delayed-resolution relations",
+        "## Active frontier: multi-scale phrase-role arbitration",
     ),
     Path("research/README.md"): (
         "# Research\n",

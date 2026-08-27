@@ -21,13 +21,15 @@ source/container reconstruction
 
 The exact executable surface is owned by code and tests. This roadmap records capability level, not a second symbol-by-symbol feature registry. Every transition remains an inference boundary and missing evidence remains visible.
 
-## Active frontier: prolongation and delayed-resolution relations
+## Active frontier: multi-scale phrase-role arbitration
 
 Continuation evidence now has executable adapters for persistent-part trajectories that cross an arrival, ordered motif transformations, sustained reliable harmonic-transition chains, and explicit cross-boundary continuity from phrase-boundary analysis. Cadence-derived boundary evidence is kept visible but excluded from continuation support.
 
 New-phrase and return evidence now separates formal re-entry from recurrence. The lightweight adapter preserves a boundary-backed onset candidate, while the canonical path keeps phrase-boundary evidence and performed persistent-part re-onset as independent domains. Canonical return additionally requires a recurrence or varied-recurrence relation between two materialized phrase regions, and recurrence confidence is a hard ceiling. Recurrence without grounded re-entry, rhythm-only echoes, and pre-boundary reappearances are rejected rather than promoted into formal syntax.
 
-The active problem is now representing prolongation and delayed resolution across intervening material without flattening phrase syntax or treating local surface motion as proof that a larger harmonic process ended.
+Long-range harmonic-span relations now preserve every local transition while proposing non-adjacent dependencies above the surface. Prolongation requires independent cross-span continuity plus a retained structural anchor. Delayed resolution requires continuity, evidence that the earlier process remained unresolved, and a later independently grounded structural arrival. Neither relation is allowed to name tonal function or cadence class, and strong contradictory evidence remains visible.
+
+The active problem is now multi-scale arbitration: allowing local closure, larger continuation, prolongation, and delayed resolution to coexist at explicitly different formal scales without forcing one label to erase another.
 
 Target role vocabulary still has to be earned by evidence such as:
 
@@ -49,8 +51,8 @@ For Ionian `V → VI`, the discriminating question remains what happens after th
 1. **Phrase-role evidence objects — implemented.** `model/phrase_role_evidence.h` preserves role candidate, temporal scope, formal scale, independent support provenance, explicit same-scale incompatibility, and cross-scale coexistence without establishing a cadence class.
 2. **Continuation evidence — implemented.** `model/phrase_continuation_evidence.h` derives independent continuation support from persistent-part continuation, ordered motif transformation, sustained harmonic process, and cadence-independent cross-boundary continuity while rejecting one-sided/weak/broken witnesses.
 3. **New-phrase and return evidence — implemented.** `model/phrase_reentry_evidence.h` preserves low-confidence boundary-backed re-entry candidates and adds a canonical cross-domain path: grounded boundary + performed persistent-part re-onset for new phrase, then a materialized earlier-to-later phrase recurrence/varied recurrence for return. Recurrence alone cannot bootstrap formal syntax or outrun its own confidence.
-4. **Prolongation and delayed-resolution relations — active.** Connect harmonic events across intervening material without flattening phrase syntax.
-5. **Multi-scale arbitration** allowing one event to be locally closing and globally continuational with explicit scope.
+4. **Prolongation and delayed-resolution relations — implemented.** `model/harmonic_span_relation.h` preserves contiguous surface harmony while representing non-adjacent prolongation or delayed-resolution candidates from independent evidence domains; it projects those relations into phrase-role evidence without establishing tonal function or cadence class.
+5. **Multi-scale arbitration — active.** Allow one event to be locally closing and globally continuational, prolonged, or unresolved with explicit scope.
 6. **Real-corpus pressure** across heterogeneous source families and musical contexts.
 
 ## Parallel priorities
