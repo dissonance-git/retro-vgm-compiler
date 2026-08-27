@@ -138,37 +138,96 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
 
         self.assertEqual(
             calls,
-            ["native_spatial", "runtime", "ordering", "spatial_register"],
+            [
+                "native_spatial",
+                "runtime",
+                "ordering",
+                "ordering",
+                "ordering",
+                "spatial_register",
+            ],
         )
 
-    def test_forensic_ordering_patch_is_narrow_and_idempotent(self) -> None:
+    def _apply_forensic_ordering_fixture(self, path: pathlib.Path) -> None:
+        strict.strict_replace_once(
+            path,
+            forensic.ORDERING_OLD,
+            forensic.ORDERING_NEW,
+            "forensic ordering fixture",
+        )
+        strict.strict_replace_once(
+            path,
+            forensic.CPU_WRITE_ACCESS_OLD,
+            forensic.CPU_WRITE_ACCESS_NEW,
+            "forensic write fixture",
+        )
+        strict.strict_replace_once(
+            path,
+            forensic.CPU_READ_ACCESS_OLD,
+            forensic.CPU_READ_ACCESS_NEW,
+            "forensic read fixture",
+        )
+
+    def test_forensic_ordering_patch_separates_shared_memory_hazards(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = pathlib.Path(temporary) / "SNES_SPC.cpp"
-            path.write_text(forensic.ORDERING_OLD, encoding="utf-8")
-            strict.strict_replace_once(
-                path,
-                forensic.ORDERING_OLD,
-                forensic.ORDERING_NEW,
-                "forensic ordering fixture",
+            path.write_text(
+                forensic.ORDERING_OLD
+                + forensic.CPU_WRITE_ACCESS_OLD
+                + forensic.CPU_READ_ACCESS_OLD,
+                encoding="utf-8",
             )
+
+            self._apply_forensic_ordering_fixture(path)
             patched = path.read_text(encoding="utf-8")
+
             self.assertIn("RETRO_VGM_SPC_FORENSIC_ORDERING", patched)
-            self.assertIn("if ( time > m.dsp_time )", patched)
+            self.assertIn("MEM_WRITE_ACCESS( time, addr )", patched)
+            self.assertIn("MEM_READ_ACCESS( time, addr )", patched)
+            self.assertIn("forensic_addr == 0xF1", patched)
+            self.assertIn("SPC_DSP::r_esa", patched)
+            self.assertIn("SPC_DSP::r_edl", patched)
+            self.assertIn("time > m.dsp_time", patched)
             self.assertIn("RUN_DSP( time, 0 );", patched)
             self.assertIn("#elif SPC_MORE_ACCURACY", patched)
             self.assertIn("RUN_DSP( time, max_reg_time );", patched)
-            strict.strict_replace_once(
-                path,
-                forensic.ORDERING_OLD,
-                forensic.ORDERING_NEW,
-                "forensic ordering fixture",
-            )
+            self.assertNotIn("\tMEM_ACCESS( time, addr )", patched)
+
+            # Exact idempotence remains mandatory for all three edits.
+            self._apply_forensic_ordering_fixture(path)
             self.assertEqual(path.read_text(encoding="utf-8"), patched)
+
+    def test_forensic_ordering_leaves_dsp_register_access_to_native_path(self) -> None:
+        # $F0-$FF are excluded from generic shared-RAM synchronization, except
+        # the write-side $F1 CONTROL transition which can replace the visible
+        # IPL window. $F3 therefore reaches dsp_read/dsp_write without a prior
+        # generic DSP catch-up and cannot trigger an accidental run(0).
+        self.assertIn(
+            "forensic_addr < 0xF0 || forensic_addr >= 0x100 || forensic_addr == 0xF1",
+            forensic.ORDERING_NEW,
+        )
+        self.assertIn(
+            "forensic_shared_ram = forensic_addr < 0xF0 || forensic_addr >= 0x100",
+            forensic.ORDERING_NEW,
+        )
+        self.assertNotIn("forensic_addr == 0xF3", forensic.ORDERING_NEW)
+        self.assertIn(
+            "\tMEM_WRITE_ACCESS( time, addr )",
+            forensic.CPU_WRITE_ACCESS_NEW,
+        )
+        self.assertIn(
+            "\tMEM_READ_ACCESS( time, addr )",
+            forensic.CPU_READ_ACCESS_NEW,
+        )
 
     def test_forensic_ordering_rejects_partial_edit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = pathlib.Path(temporary) / "SNES_SPC.cpp"
-            partial = forensic.ORDERING_NEW.replace("RUN_DSP( time, 0 );", "RUN_DSP( time, 1 );")
+            partial = forensic.ORDERING_NEW.replace(
+                "forensic_addr == 0xF1",
+                "forensic_addr == 0xF2",
+                1,
+            )
             path.write_text(partial, encoding="utf-8")
             with self.assertRaises(RuntimeError):
                 strict.strict_replace_once(
@@ -272,7 +331,7 @@ class SnesSpcRuntimePatcherTest(unittest.TestCase):
         self.assertIn("RETRO_VGM_SPC_FORENSIC_ORDERING=1", cmake)
         self.assertNotIn("SPC_MORE_ACCURACY=1", cmake)
         self.assertIn(
-            "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1-route-events-v1",
+            "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v2-native-spatial-v1-route-events-v1",
             cmake,
         )
         self.assertIn("snes_spc_native_spatial_observer_test", cmake)

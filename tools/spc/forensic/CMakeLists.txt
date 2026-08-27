@@ -33,7 +33,7 @@ set(
 )
 set(
     SNES_SPC_FORENSIC_PATCH_CONTRACT
-    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1-native-spatial-v1-route-events-v1"
+    "retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v2-native-spatial-v1-route-events-v1"
 )
 
 if(NOT SNES_SPC_FORENSIC_COMMIT STREQUAL
@@ -90,9 +90,11 @@ target_compile_definitions(gameaudio_snes_spc_forensic
         # also enables unrelated probabilistic timer-glitch behavior, which is
         # inappropriate for deterministic corpus evidence.
         SPC_MORE_ACCURACY=0
-        # Catch only the accurate DSP up at SPC700 memory-access boundaries so
-        # host callback order preserves the causal order between CPU writes and
-        # DSP/echo phases without importing the broader validation behavior.
+        # Forensic ordering v2 catches the accurate DSP only at actual shared-
+        # APURAM hazards: before ordinary CPU RAM writes, before reads that can
+        # observe DSP echo RAM, and before CONTROL replaces the visible IPL
+        # window. Native $F3 DSP register reads/writes keep their own upstream
+        # synchronization path. The broad stochastic validation mode stays off.
         RETRO_VGM_SPC_FORENSIC_ORDERING=1
 )
 

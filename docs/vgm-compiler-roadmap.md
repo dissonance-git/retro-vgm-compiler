@@ -39,6 +39,8 @@ A separate automatic SPC runtime-corpus gate now exercises the pinned SNESAPU fo
 
 The bounded SPC gate now also preserves an internal extractor progress sidecar at playback-block and phase boundaries. This separates capture cost from replay/materialization cost and feature-extraction cost without changing the captured facts or the musical acceptance rule; a killed fixture therefore leaves a last-known execution phase and bounded runtime counts rather than only an outer timeout.
 
+The first phase-instrumented real fixture identified the remaining timeout upstream of replay: not one 4096-scalar-sample capture block completed within 120 seconds. Re-entry into the pinned SNESAPU source showed that forensic ordering v1 pre-synchronized the DSP before every CPU memory access, including native $F3 DSP-register accesses that already synchronize themselves. Under the accurate DSP path that can turn the second synchronization into a zero-clock run and also fragments DSP execution at irrelevant reads. Ordering v2 now distinguishes ordinary APURAM writes, echo-overlap reads, and SPC700 register accesses; the provenance contract version advances with that correction while the corpus and musical acceptance criteria remain unchanged.
+
 The active problem remains broader real-corpus pressure: testing whether the positive phrase-role distinctions survive heterogeneous source families, styles, loop structures, and ambiguous arrivals without overfitting the synthetic witnesses that introduced them.
 
 Target role vocabulary still has to be earned by evidence such as:

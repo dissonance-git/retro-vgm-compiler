@@ -98,9 +98,9 @@ The sink still receives no ID666 text or catalog metadata. It observes only the 
 
 ## Causal host-order requirement
 
-Normal playback may let the SPC700 execute ahead of the DSP and catch the DSP up lazily. That host scheduling is acceptable for audio output but not for one ordered forensic trace: a later CPU RAM callback could otherwise arrive before an older DSP phase callback.
+Normal playback may let the SPC700 execute ahead of the DSP and catch the DSP up lazily. A forensic trace needs causal ordering at the actual shared-state hazards, but it must not flatten every CPU memory access into a DSP synchronization point.
 
-A broad upstream switch is deliberately **not** used to solve this. `SPC_MORE_ACCURACY` includes behavior beyond host callback synchronization, including an upstream probabilistic timer-glitch model. Importing that unrelated stochastic validation behavior would make deterministic corpus replay harder to defend.
+A broad upstream switch is deliberately **not** used. `SPC_MORE_ACCURACY` also enables unrelated probabilistic timer-glitch behavior, which would import stochastic validation semantics into deterministic corpus evidence.
 
 The isolated forensic build therefore uses:
 
@@ -110,9 +110,27 @@ SPC_MORE_ACCURACY=0
 RETRO_VGM_SPC_FORENSIC_ORDERING=1
 ```
 
-`RETRO_VGM_SPC_FORENSIC_ORDERING` is a local exact-sentinel patch to `MEM_ACCESS`. It catches the already-accurate DSP up before SPC700 memory accesses only when `time > m.dsp_time`, using the normal accurate `RUN_DSP` path. It does not enable upstream `SPC_MORE_ACCURACY` timer/glitch behavior.
+Ordering contract v2 separates three cases:
 
-This is an observation-order constraint, not a new musical assumption: callback order must preserve the hardware causal order already represented by the emulator.
+```text
+ordinary CPU write to shared APURAM
+→ catch accurate DSP to the CPU write time before mutation
+→ DSP reads due before the write remain causally older
+
+CPU read from ordinary APURAM
+→ catch DSP only when the address is inside the active echo buffer
+→ CPU can observe DSP-owned echo writes that are already due
+
+SPC700 $F0-$FF register access
+→ no generic RAM pre-catch
+→ $F3 DSP data reads/writes keep upstream dsp_read/dsp_write synchronization
+→ $F1 CONTROL is the write-side exception because IPL visibility can replace
+   the shared $FFC0-$FFFF RAM window
+```
+
+The strict `time > m.dsp_time` guard remains mandatory whenever the local forensic hook calls `RUN_DSP`. This is not merely a performance condition. Under the accurate `SPC_LESS_ACCURATE=0` path, a blanket pre-catch can make the subsequent native DSP-register synchronization see a zero clock delta; the patched DSP run loop requires positive work. Ordering v1 did exactly that by applying one `MEM_ACCESS` catch-up to both CPU reads and writes before their native register handling. The first real corpus fixture exposed the error by failing to complete even one 4096-scalar-sample block within 120 seconds.
+
+Ordering v2 is therefore a correction to the forensic execution contract, not a weakening of accuracy. It preserves the CPU↔DSP shared-memory hazards while leaving DSP-register phase ownership with the upstream path that already owns it.
 
 The default VGM Compiler build does not enable or fetch this dependency. The instrumented core lives behind the standalone `tools/spc/forensic/` CMake entrypoint.
 
@@ -267,7 +285,7 @@ tools/spc/forensic/spc_forensic_features.cpp
 The current sidecar patch-contract identifier is:
 
 ```text
-retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v1
+retro-vgm-compiler:snes-spc-runtime-hooks-v1-ordering-v2-native-spatial-v1-route-events-v1
 ```
 
 The vendor core reports only:
@@ -290,7 +308,7 @@ The recorder owns:
 RAM write serial
 trace index
 capture-window overflow accounting
-one monotonic observation clock contract
+producer-lane timing plus causal trace ordinal
 ```
 
 A vendor callback cannot choose its own RAM generation or trace ordinal.
@@ -345,7 +363,7 @@ Do not promote the instrumentation to real-corpus evidence until all are true:
 6. dropped capture observations create a hard continuity barrier;
 7. poisoned title/game/composer/ID666/GD3/external-tag nodes do not change extracted motif geometry;
 8. the pinned upstream core and local hook/ordering contract are recorded in provenance for every generated sidecar;
-9. CPU RAM callbacks and DSP callbacks remain monotonic under the narrow forensic memory-access synchronization;
+9. SPC700 and DSP producer lanes remain internally monotonic, cross-lane skew stays explicit, shared-APURAM hazards are ordered, and native DSP-register accesses cannot be preceded by a generic zero-delta catch-up;
 10. the direct accurate-DSP bridge regression compiles and executes against the actually patched pinned core;
 11. the forensic target remains deterministic and does not opt into the broad stochastic `SPC_MORE_ACCURACY` path.
 
