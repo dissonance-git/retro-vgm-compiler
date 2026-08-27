@@ -258,9 +258,9 @@ inline blind_structural_grammar_observation ionian_cadence_as_grammar_observatio
         std::string{cadence.source_root_position ? "true" : "false"} +
         ";target_root_position=" +
         std::string{cadence.target_root_position ? "true" : "false"} +
-        ";soprano_tonic=" +
-        std::string{cadence.final_soprano_observed
-            ? (cadence.final_soprano_tonic ? "true" : "false")
+        ";final_melodic_tonic=" +
+        std::string{cadence.final_melodic_arrival_grounded
+            ? (cadence.final_melodic_tonic ? "true" : "false")
             : "unresolved"};
 
     return make_blind_structural_observation(

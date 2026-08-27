@@ -15,7 +15,7 @@ genesis_fm_semantic_append_result ym_write(
     musical_execution_graph& graph,
     genesis_fm_semantic_graph_handle& handle,
     std::uint64_t tick,
-    std::uint64_t offset,
+    std::uint32_t offset,
     std::uint8_t reg,
     std::uint8_t data) {
     const std::uint8_t payload[] = {reg, data};
