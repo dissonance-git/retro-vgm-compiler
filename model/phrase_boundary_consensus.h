@@ -25,13 +25,18 @@ struct phrase_boundary_consensus {
     time_span alignment_span{};
     double confidence = 0.0;
     double independent_part_ceiling = 0.0;
+    double independent_origin_ceiling = 0.0;
     std::vector<node_id> supporting_parts;
+    std::vector<phrase_boundary_evidence_origin> supporting_origins;
     std::vector<phrase_boundary_hypothesis> part_hypotheses;
     bool cross_part_grounded = false;
+    bool cross_origin_grounded = false;
+    bool independently_grounded = false;
     bool authored_grounded = false;
 };
 
 constexpr double single_part_global_phrase_ceiling = 0.69;
+constexpr double nonindependent_global_phrase_ceiling = 0.69;
 
 inline bool compatible_phrase_boundary_time_basis(
     const time_coordinate& first,
@@ -39,6 +44,18 @@ inline bool compatible_phrase_boundary_time_basis(
     return first.domain == second.domain &&
            first.tick_rate == second.tick_rate &&
            first.loop_iteration == second.loop_iteration;
+}
+
+inline double phrase_boundary_consensus_independent_ceiling(
+    const std::map<phrase_boundary_evidence_origin, double>& support) {
+    if (support.empty())
+        return 0.0;
+    std::vector<double> strengths;
+    strengths.reserve(support.size());
+    for (const auto& item : support)
+        strengths.push_back(item.second);
+    std::sort(strengths.begin(), strengths.end(), std::greater<double>{});
+    return strengths.size() >= 2 ? strengths[1] : strengths[0];
 }
 
 inline phrase_boundary_consensus make_phrase_boundary_consensus(
@@ -52,6 +69,7 @@ inline phrase_boundary_consensus make_phrase_boundary_consensus(
     const time_coordinate basis = hypotheses.front().boundary.boundary;
     std::set<node_id> parts;
     std::map<node_id, double> best_part_confidence;
+    std::map<phrase_boundary_evidence_origin, double> best_origin_confidence;
     std::vector<std::int64_t> ticks;
     bool authored_grounded = false;
 
@@ -67,6 +85,14 @@ inline phrase_boundary_consensus make_phrase_boundary_consensus(
         best_part_confidence[item.part_id] = std::max(
             best_part_confidence[item.part_id],
             item.boundary.confidence);
+        for (const auto& evidence : item.boundary.evidence) {
+            validate_phrase_boundary_evidence(evidence);
+            if (evidence.polarity != phrase_boundary_evidence_polarity::supports)
+                continue;
+            best_origin_confidence[evidence.origin] = std::max(
+                best_origin_confidence[evidence.origin],
+                evidence.confidence);
+        }
         ticks.push_back(item.boundary.boundary.tick);
         authored_grounded = authored_grounded || item.boundary.authored_grounded;
     }
@@ -82,9 +108,11 @@ inline phrase_boundary_consensus make_phrase_boundary_consensus(
     for (const auto& item : best_part_confidence)
         strengths.push_back(item.second);
     std::sort(strengths.begin(), strengths.end(), std::greater<double>{});
-    const double independent_ceiling = strengths.size() >= 2
+    const double independent_part_ceiling = strengths.size() >= 2
         ? strengths[1]
         : strengths.front();
+    const double independent_origin_ceiling =
+        phrase_boundary_consensus_independent_ceiling(best_origin_confidence);
 
     phrase_boundary_consensus result;
     result.representative = basis;
@@ -93,17 +121,25 @@ inline phrase_boundary_consensus make_phrase_boundary_consensus(
         time_coordinate{basis.domain, minimum_tick, basis.tick_rate, basis.loop_iteration},
         time_coordinate{basis.domain, maximum_tick, basis.tick_rate, basis.loop_iteration},
     };
-    result.independent_part_ceiling = independent_ceiling;
+    result.independent_part_ceiling = independent_part_ceiling;
+    result.independent_origin_ceiling = independent_origin_ceiling;
     result.supporting_parts.assign(parts.begin(), parts.end());
+    for (const auto& item : best_origin_confidence)
+        result.supporting_origins.push_back(item.first);
     result.part_hypotheses.reserve(hypotheses.size());
     for (auto& item : hypotheses)
         result.part_hypotheses.push_back(std::move(item.boundary));
     result.cross_part_grounded = parts.size() >= 2;
+    result.cross_origin_grounded = best_origin_confidence.size() >= 2;
     result.authored_grounded = authored_grounded;
+    result.independently_grounded = authored_grounded ||
+        (result.cross_part_grounded && result.cross_origin_grounded);
 
-    double confidence = independent_ceiling;
-    if (!result.cross_part_grounded && !authored_grounded)
-        confidence = std::min(confidence, single_part_global_phrase_ceiling);
+    double confidence = std::min(
+        independent_part_ceiling,
+        independent_origin_ceiling);
+    if (!result.independently_grounded && !authored_grounded)
+        confidence = std::min(confidence, nonindependent_global_phrase_ceiling);
     result.confidence = confidence;
     return result;
 }
@@ -194,8 +230,29 @@ inline node_id add_phrase_boundary_consensus(
         "parts",
     });
     boundary.attributes.push_back({
+        "supporting_origin_count",
+        static_cast<std::uint64_t>(consensus.supporting_origins.size()),
+        evidence_status::derived,
+        1.0,
+        "evidence origins",
+    });
+    boundary.attributes.push_back({
         "cross_part_grounded",
         consensus.cross_part_grounded,
+        evidence_status::derived,
+        1.0,
+        "",
+    });
+    boundary.attributes.push_back({
+        "cross_origin_grounded",
+        consensus.cross_origin_grounded,
+        evidence_status::derived,
+        1.0,
+        "",
+    });
+    boundary.attributes.push_back({
+        "independently_grounded",
+        consensus.independently_grounded,
         evidence_status::derived,
         1.0,
         "",

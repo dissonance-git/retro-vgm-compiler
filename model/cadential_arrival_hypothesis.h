@@ -13,10 +13,6 @@
 namespace vgmtooling::model {
 
 struct cadential_arrival_hypothesis {
-    // Retain both transition endpoints and their harmonic identities. Downstream
-    // key-relative interpretation must be able to prove that its chord pair is
-    // the same event that licensed this arrival, not merely a compatible-looking
-    // root interval at the same arrival timestamp.
     time_coordinate departure_time{};
     time_coordinate arrival_time{};
     std::int64_t departure_root_pitch_class = 0;
@@ -68,7 +64,11 @@ inline cadential_arrival_hypothesis infer_cadential_arrival(
     result.root_motion_semitones = transition.directed_root_motion_semitones;
     result.root_interval_class = transition.root_interval_class;
     result.common_pitch_classes = transition.common_pitch_classes;
-    result.cross_part_phrase_grounded = boundary.cross_part_grounded || boundary.authored_grounded;
+    // Cross-part agreement is descriptive; cadence-facing phrase grounding also
+    // requires an independent evidence origin, unless an exact authored boundary
+    // already provides the stronger source-grounded route.
+    result.cross_part_phrase_grounded = boundary.authored_grounded ||
+        boundary.independently_grounded;
     result.harmonic_root_motion_reliable = transition.root_motion_reliable;
 
     result.confidence = std::min(
@@ -95,9 +95,6 @@ inline cadential_arrival_hypothesis infer_cadential_arrival(
     if (!result.harmonic_root_motion_reliable)
         result.confidence = std::min(result.confidence, unreliable_root_arrival_ceiling);
 
-    // This object deliberately remains function-neutral. Even strong phrase,
-    // harmony, and persistent-voice convergence does not establish tonic,
-    // dominant, authentic/plagal/deceptive class, mode, or key by itself.
     result.tonal_function_named = false;
     return result;
 }

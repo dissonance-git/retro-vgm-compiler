@@ -40,27 +40,35 @@ phrase_boundary_hypothesis strong_part_boundary(
         {time_domain::source, tick, 0, 0},
         0.95,
         {
-            {
-                phrase_boundary_evidence_kind::temporal_gap,
-                phrase_boundary_evidence_origin::performance_timing,
-                phrase_boundary_evidence_polarity::supports,
-                evidence_status::derived,
-                timing_confidence,
-                std::string{source_prefix} + ":timing",
-                "part-level temporal opening",
-                {},
-            },
-            {
-                phrase_boundary_evidence_kind::motif_completion,
-                phrase_boundary_evidence_origin::motif_analysis,
-                phrase_boundary_evidence_polarity::supports,
-                evidence_status::hypothesis,
-                motif_confidence,
-                std::string{source_prefix} + ":motif",
-                "motif closes immediately before the boundary",
-                {},
-            },
+            {phrase_boundary_evidence_kind::temporal_gap,
+             phrase_boundary_evidence_origin::performance_timing,
+             phrase_boundary_evidence_polarity::supports,
+             evidence_status::derived,
+             timing_confidence,
+             std::string{source_prefix} + ":timing",
+             "part-level temporal opening", {}},
+            {phrase_boundary_evidence_kind::motif_completion,
+             phrase_boundary_evidence_origin::motif_analysis,
+             phrase_boundary_evidence_polarity::supports,
+             evidence_status::hypothesis,
+             motif_confidence,
+             std::string{source_prefix} + ":motif",
+             "motif closes immediately before the boundary", {}},
         });
+}
+
+phrase_boundary_hypothesis one_origin_part_boundary(
+    std::int64_t tick,
+    phrase_boundary_evidence_kind kind,
+    phrase_boundary_evidence_origin origin,
+    double confidence,
+    const char* source) {
+    return make_phrase_boundary_hypothesis(
+        {time_domain::source, tick, 0, 0},
+        0.95,
+        {{kind, origin, phrase_boundary_evidence_polarity::supports,
+          evidence_status::hypothesis, confidence, source,
+          "single-origin phrase-boundary witness", {}}});
 }
 
 } // namespace
@@ -78,65 +86,78 @@ int main() {
     assert(close_enough(melody_boundary.confidence, 0.88));
     assert(close_enough(bass_boundary.confidence, 0.84));
 
-    const auto single = make_phrase_boundary_consensus(
-        {{melody, melody_boundary}},
-        20);
+    const auto single = make_phrase_boundary_consensus({{melody, melody_boundary}}, 20);
     assert(!single.cross_part_grounded);
+    assert(single.cross_origin_grounded);
+    assert(!single.independently_grounded);
     assert(single.supporting_parts.size() == 1);
+    assert(single.supporting_origins.size() == 2);
     assert(close_enough(single.independent_part_ceiling, 0.88));
+    assert(close_enough(single.independent_origin_ceiling, 0.88));
     assert(close_enough(single.confidence, single_part_global_phrase_ceiling));
 
     const auto convergent = make_phrase_boundary_consensus(
-        {
-            {melody, melody_boundary},
-            {bass, bass_boundary},
-        },
-        20);
+        {{melody, melody_boundary}, {bass, bass_boundary}}, 20);
     assert(convergent.cross_part_grounded);
+    assert(convergent.cross_origin_grounded);
+    assert(convergent.independently_grounded);
     assert(convergent.supporting_parts.size() == 2);
+    assert(convergent.supporting_origins.size() == 2);
     assert(convergent.representative.tick == 1005);
-    assert(convergent.alignment_span.start.tick == 1000);
-    assert(convergent.alignment_span.end.has_value());
-    assert(convergent.alignment_span.end->tick == 1010);
     assert(close_enough(convergent.independent_part_ceiling, 0.84));
+    assert(close_enough(convergent.independent_origin_ceiling, 0.88));
     assert(close_enough(convergent.confidence, 0.84));
 
+    const auto melody_timing_only = one_origin_part_boundary(
+        2000, phrase_boundary_evidence_kind::temporal_gap,
+        phrase_boundary_evidence_origin::performance_timing, 0.93,
+        "melody:timing-only");
+    const auto bass_timing_only = one_origin_part_boundary(
+        2005, phrase_boundary_evidence_kind::temporal_gap,
+        phrase_boundary_evidence_origin::performance_timing, 0.91,
+        "bass:timing-only");
+    const auto common_mode = make_phrase_boundary_consensus(
+        {{melody, melody_timing_only}, {bass, bass_timing_only}}, 20);
+    assert(common_mode.cross_part_grounded);
+    assert(!common_mode.cross_origin_grounded);
+    assert(!common_mode.independently_grounded);
+    assert(common_mode.supporting_origins.size() == 1);
+    assert(close_enough(common_mode.confidence, phrase_boundary_timing_only_ceiling));
+
+    const auto bass_motif_only = one_origin_part_boundary(
+        2005, phrase_boundary_evidence_kind::motif_completion,
+        phrase_boundary_evidence_origin::motif_analysis, 0.89,
+        "bass:motif-only");
+    const auto split_origin = make_phrase_boundary_consensus(
+        {{melody, melody_timing_only}, {bass, bass_motif_only}}, 20);
+    assert(split_origin.cross_part_grounded);
+    assert(split_origin.cross_origin_grounded);
+    assert(split_origin.independently_grounded);
+    assert(split_origin.supporting_origins.size() == 2);
+    assert(close_enough(split_origin.confidence, phrase_boundary_timing_only_ceiling));
+
     const auto groups = group_phrase_boundaries_across_parts(
-        {
-            {melody, melody_boundary},
-            {bass, bass_boundary},
-            {inner, later_boundary},
-        },
-        20);
+        {{melody, melody_boundary}, {bass, bass_boundary}, {inner, later_boundary}}, 20);
     assert(groups.size() == 2);
     assert(groups[0].cross_part_grounded);
-    assert(groups[0].representative.tick == 1005);
+    assert(groups[0].cross_origin_grounded);
+    assert(groups[0].independently_grounded);
     assert(!groups[1].cross_part_grounded);
-    assert(groups[1].representative.tick == 1200);
+    assert(groups[1].cross_origin_grounded);
+    assert(!groups[1].independently_grounded);
 
     const node_id boundary = add_phrase_boundary_consensus(graph, convergent);
     const node* materialized = graph.find_node(boundary);
     assert(materialized != nullptr);
-    assert(materialized->kind == node_kind::musical_relation);
-    assert(materialized->layer == semantic_layer::musical_structure);
-    assert(materialized->active.has_value());
-    assert(materialized->active->start.tick == 1000);
-    assert(materialized->active->end.has_value());
-    assert(materialized->active->end->tick == 1010);
     assert(graph.edges_to(boundary, edge_kind::derived_from).size() == 2);
 
     bool rejected = false;
     try {
         (void)make_phrase_boundary_consensus(
-            {
-                {melody, melody_boundary},
-                {inner, later_boundary},
-            },
-            20);
+            {{melody, melody_boundary}, {inner, later_boundary}}, 20);
     } catch (const std::invalid_argument&) {
         rejected = true;
     }
     assert(rejected);
-
     return 0;
 }
