@@ -34,6 +34,26 @@ def event(tick: int, channel: int, pitch: float, patch: str):
 
 
 class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
+    def test_same_tick_projection_collapses_only_identical_observations(self) -> None:
+        onsets = [
+            event(100, 0, 100.0, "patch-a"),
+            event(100, 0, 100.0, "patch-a"),
+            event(200, 0, 112.5, "patch-a"),
+            event(200, 0, 125.0, "patch-a"),
+            event(300, 1, 150.0, "patch-b"),
+        ]
+        normalized, stats = probe.normalize_same_tick_observations(onsets)
+
+        self.assertEqual(len(normalized), 2)
+        self.assertEqual(stats["raw_source_onsets"], 5)
+        self.assertEqual(stats["analysis_observations"], 2)
+        self.assertEqual(stats["same_tick_duplicate_collapses"], 1)
+        self.assertEqual(stats["same_tick_ambiguous_exclusions"], 2)
+        self.assertEqual(
+            [(item.channel, item.tick) for item in normalized],
+            [(0, 100), (1, 300)],
+        )
+
     def test_repeated_motif_across_gap_creates_bounded_trajectory_candidate(self) -> None:
         onsets = [
             event(0, 0, 100.0, "patch-a"),
@@ -114,7 +134,10 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["chip_scope"], "YM2612")
         self.assertFalse(first["platform_identity_consulted"])
+        self.assertGreater(first["source_onset_observation_count"], 0)
         self.assertGreater(first["observation_count"], 0)
+        self.assertGreaterEqual(first["same_tick_duplicate_collapses"], 0)
+        self.assertGreaterEqual(first["same_tick_ambiguous_exclusions"], 0)
         self.assertEqual(first["shared_model_promotion"]["persistent_part_identity"], "blocked")
         self.assertEqual(first["shared_model_promotion"]["cross_part_phrase_boundary"], "blocked")
         self.assertEqual(first["shared_model_promotion"]["phrase_role"], "blocked")
@@ -122,7 +145,10 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         print(
             "ANGEL_ISLAND_YM2612_TRAJECTORY_PRESSURE",
             {
-                "observations": first["observation_count"],
+                "source_onsets": first["source_onset_observation_count"],
+                "analysis_observations": first["observation_count"],
+                "same_tick_duplicate_collapses": first["same_tick_duplicate_collapses"],
+                "same_tick_ambiguous_exclusions": first["same_tick_ambiguous_exclusions"],
                 "trajectory_candidates": first["trajectory_candidate_count"],
                 "cross_trajectory_boundaries": first[
                     "cross_trajectory_boundary_candidate_count"

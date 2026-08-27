@@ -54,20 +54,64 @@ def _patch_core(event: Any) -> str:
     return value
 
 
+def _validate_event_fields(event: Any) -> None:
+    channel = int(getattr(event, "channel"))
+    if channel < 0 or channel > 5:
+        raise ValueError("YM2612 channel must lie in [0, 5]")
+    if float(getattr(event, "frequency_measure")) <= 0.0:
+        raise ValueError("YM2612 trajectory observation requires positive pitch measure")
+    _patch_core(event)
+
+
+def _analysis_identity(event: Any) -> tuple[str, float]:
+    _validate_event_fields(event)
+    return (_patch_core(event), float(getattr(event, "frequency_measure")))
+
+
+def normalize_same_tick_observations(
+    onsets: Iterable[Any],
+) -> tuple[list[Any], dict[str, int]]:
+    """Project exact key-on commands into unambiguous analysis observations.
+
+    Multiple identical commands on one channel at one source tick collapse into
+    one observation. If same-tick commands disagree on program or pitch, all of
+    them are excluded from this probe as ambiguous. Exact commands remain in the
+    source artifact; this projection does not rewrite them.
+    """
+    by_channel_tick: dict[tuple[int, int], list[Any]] = collections.defaultdict(list)
+    raw = list(onsets)
+    for event in raw:
+        _validate_event_fields(event)
+        by_channel_tick[(int(event.channel), int(event.tick))].append(event)
+
+    normalized: list[Any] = []
+    duplicate_collapses = 0
+    ambiguous_exclusions = 0
+    for key in sorted(by_channel_tick):
+        group = by_channel_tick[key]
+        identities = {_analysis_identity(event) for event in group}
+        if len(identities) == 1:
+            normalized.append(group[0])
+            duplicate_collapses += len(group) - 1
+        else:
+            ambiguous_exclusions += len(group)
+
+    normalized.sort(key=lambda item: (int(item.channel), int(item.tick)))
+    return normalized, {
+        "raw_source_onsets": len(raw),
+        "analysis_observations": len(normalized),
+        "same_tick_duplicate_collapses": duplicate_collapses,
+        "same_tick_ambiguous_exclusions": ambiguous_exclusions,
+    }
+
+
 def _validate_events(events: list[Any]) -> None:
-    if not events:
-        return
     previous_tick: int | None = None
     for event in events:
+        _validate_event_fields(event)
         tick = int(getattr(event, "tick"))
-        channel = int(getattr(event, "channel"))
-        if channel < 0 or channel > 5:
-            raise ValueError("YM2612 channel must lie in [0, 5]")
-        if float(getattr(event, "frequency_measure")) <= 0.0:
-            raise ValueError("YM2612 trajectory observation requires positive pitch measure")
-        _patch_core(event)
         if previous_tick is not None and tick <= previous_tick:
-            raise ValueError("YM2612 trajectory observations must be strictly ordered")
+            raise ValueError("normalized YM2612 trajectory observations must be strictly ordered")
         previous_tick = tick
 
 
@@ -260,7 +304,7 @@ def analyze_onsets(
 ) -> dict[str, Any]:
     if not source_name:
         raise ValueError("trajectory probe requires a source name")
-    observations = list(onsets)
+    observations, normalization = normalize_same_tick_observations(onsets)
     candidates = discover_trajectory_candidates(
         observations,
         motif_events=motif_events,
@@ -274,7 +318,10 @@ def analyze_onsets(
         "source": source_name,
         "chip_scope": "YM2612",
         "platform_identity_consulted": False,
-        "observation_count": len(observations),
+        "source_onset_observation_count": normalization["raw_source_onsets"],
+        "observation_count": normalization["analysis_observations"],
+        "same_tick_duplicate_collapses": normalization["same_tick_duplicate_collapses"],
+        "same_tick_ambiguous_exclusions": normalization["same_tick_ambiguous_exclusions"],
         "trajectory_candidate_count": len(candidates),
         "cross_trajectory_boundary_candidate_count": len(aligned),
         "trajectory_candidates": candidates,
@@ -291,7 +338,9 @@ def analyze_onsets(
         },
         "claim_boundary": (
             "This probe identifies conservative YM2612 trajectory and aligned-boundary "
-            "targets from source-timed key-on observations. Same channel alone is never "
+            "targets from source-timed key-on observations. Identical same-channel, same-tick "
+            "observations may collapse for analysis; conflicting same-tick observations are "
+            "excluded as ambiguous while exact commands remain preserved. Same channel alone is never "
             "sufficient. A target requires unchanged core program, a large local timing "
             "gap, and repeated pitch-rhythm shape across that gap. Targets remain below "
             "persistent-part and phrase promotion until the shared graph admits them."
