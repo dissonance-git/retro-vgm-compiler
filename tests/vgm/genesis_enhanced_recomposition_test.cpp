@@ -170,10 +170,11 @@ int main() {
     source_evidence[psg0_index] = make_genesis_spatial_source(
         genesis_spatial_device::sn76489_tone, 0, 0, 1, sn76489_authored_route(0xFF, 0));
 
-    const auto check_spatial_combination = [&](bool quality, bool surround) {
+    const auto check_spatial_combination = [&](bool stale_enhanced, bool surround) {
         spatial_playback_options options;
-        options.enhanced = quality;
+        options.enhanced = stale_enhanced;
         options.surround = surround;
+        assert(!uses_enhanced_renderer(options));
 
         const auto& selected = uses_enhanced_renderer(options)
             ? higher_quality_sources
@@ -191,10 +192,9 @@ int main() {
         assert(block.lanes[0].evidence.stereo_route.gain_preapplied);
         assert(block.lanes[1].evidence.stereo_route.gain_preapplied);
 
-        const float expected_fm0 = quality
-            ? static_cast<float>(std::sqrt((4.0 + 1.0) * 0.5))
-            : static_cast<float>(std::sqrt((1.0 + 0.25) * 0.5));
-        const float expected_psg0 = quality ? 0.50f : 0.25f;
+        const float expected_fm0 =
+            static_cast<float>(std::sqrt((1.0 + 0.25) * 0.5));
+        const float expected_psg0 = 0.25f;
         assert(std::abs(block.lanes[0].mono_pcm[0] - expected_fm0) < 1.0e-6f);
         assert(std::abs(block.lanes[1].mono_pcm[0] - expected_psg0) < 1.0e-6f);
 

@@ -108,7 +108,11 @@ int main() {
         answer.part_id,
         musical_part_role::counterline);
     assert(counterline != nullptr);
-    assert(counterline->hypothesis.confidence < 0.75);
+    assert(counterline->hypothesis.relationally_grounded);
+    assert(counterline->hypothesis.cross_domain_grounded);
+    // response=.81 and capped counterpoint=.72 are the two strongest supports;
+    // weaker salience remains provenance without diluting the proposal.
+    assert(std::fabs(counterline->hypothesis.confidence - 0.765) < 1e-9);
     assert(find_candidate(
         roles,
         answer.part_id,

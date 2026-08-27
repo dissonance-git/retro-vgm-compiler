@@ -57,18 +57,19 @@ int main() {
     assert(!vgmtooling::model::spatial_audio_lane_is_object_renderable(
         vgmtooling::model::spatial_audio_lane_kind::reference_mix));
 
-    // Both foobar components expose enhancement and spatialization as separate
-    // user choices. Renderer topology stays internal to Omniphony.
+    // Surround is the active product switch. Enhanced remains a future seam
+    // and stale persisted state cannot reactivate it in the current private build.
     vgmtooling::model::spatial_playback_options playback{};
     assert(!playback.surround);
     assert(!playback.enhanced);
+    assert(!vgmtooling::model::enhanced_playback_available);
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::reference_stereo);
     assert(!vgmtooling::model::uses_source_renderer(playback));
     assert(!vgmtooling::model::uses_enhanced_renderer(playback));
 
     playback.enhanced = true;
-    assert(vgmtooling::model::uses_enhanced_renderer(playback));
+    assert(!vgmtooling::model::uses_enhanced_renderer(playback));
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::reference_stereo);
     assert(!vgmtooling::model::uses_source_renderer(playback));
@@ -77,7 +78,7 @@ int main() {
     assert(vgmtooling::model::resolve_spatial_playback(playback)
         == vgmtooling::model::spatial_playback_path::source_spatial);
     assert(vgmtooling::model::uses_source_renderer(playback));
-    assert(vgmtooling::model::uses_enhanced_renderer(playback));
+    assert(!vgmtooling::model::uses_enhanced_renderer(playback));
 
     playback.enhanced = false;
     assert(!vgmtooling::model::uses_enhanced_renderer(playback));

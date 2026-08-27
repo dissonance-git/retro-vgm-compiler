@@ -59,6 +59,25 @@ int main() {
     };
     CHECK(higher_quality_source.valid());
 
+    // The transport itself remains source-realization agnostic. An explicitly
+    // supplied alternate producer can still traverse this seam even though the
+    // current product selector never chooses Enhanced.
+    spc_runtime_host_pipeline<8, 4, 8, 32> alternate_source_pipeline;
+    alternate_source_pipeline.reset(spatial_source_host_discontinuity::initialize, 100);
+    CHECK(alternate_source_pipeline.consume_snesapu_reference_window(
+        100,
+        frames,
+        0,
+        48000,
+        48000,
+        {nullptr, 0, false},
+        higher_quality_source));
+    const auto alternate_chunk = alternate_source_pipeline.pull(frames);
+    const float alternate_sqrt_half = static_cast<float>(std::sqrt(0.5));
+    CHECK(std::abs(
+        alternate_chunk.sources.lanes[0].mono_pcm[0]
+        - 2.0f * alternate_sqrt_half) < 1.0e-6f);
+
     // SRCE v2 is already at the protected host render rate, so unlike the exact
     // native libgme hook it remains valid if an offline/research producer uses a
     // higher host rate. Normal component playback is standardized at 48 kHz.
@@ -108,14 +127,15 @@ int main() {
     CHECK(std::abs(second.sources.lanes[9].mono_pcm[1] + 0.4f) < 1.0e-6f);
     CHECK(pipeline.buffered_frames() == 0);
 
-    // Exercise the real SNESAPU source transport at the normal 48 kHz playback
-    // rate for all four independent user-option combinations. Source selection
-    // depends only on the quality switch. Presentation depends only on surround.
-    for (int quality = 0; quality != 2; ++quality) {
+    // Exercise current product playback with both possible stale persisted
+    // Enhanced bits and both Surround states. Enhanced is hard-disabled, so the
+    // protected reference source remains selected in every product combination.
+    for (int stale_enhanced = 0; stale_enhanced != 2; ++stale_enhanced) {
         for (int surround = 0; surround != 2; ++surround) {
             spatial_playback_options options;
-            options.enhanced = quality != 0;
+            options.enhanced = stale_enhanced != 0;
             options.surround = surround != 0;
+            CHECK(!uses_enhanced_renderer(options));
 
             const auto selected_source = uses_enhanced_renderer(options)
                 ? higher_quality_source
@@ -134,9 +154,8 @@ int main() {
             const auto chunk = combination.pull(frames);
             CHECK(chunk.sources.frame_count == frames);
             CHECK(chunk.sources.lane_count == 10);
-            const float quality_scale = quality != 0 ? 2.0f : 1.0f;
             CHECK(std::abs(
-                chunk.sources.lanes[0].mono_pcm[0] - quality_scale * sqrt_half) < 1.0e-6f);
+                chunk.sources.lanes[0].mono_pcm[0] - sqrt_half) < 1.0e-6f);
             CHECK(chunk.sources.lanes[8].mono_pcm[0] == 0.1f);
             CHECK(chunk.sources.lanes[9].mono_pcm[0] == -0.1f);
 

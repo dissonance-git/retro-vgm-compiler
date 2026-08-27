@@ -110,14 +110,17 @@ int main() {
     assert(block.last_error() == genesis_selected_source_block_error::topology_changed);
     assert(!queue.valid());
 
-    // Exactness and output ordinals are identity constraints, not advisory data.
+    // Exactness is an admission constraint. The chip-neutral queue rejects an
+    // inexact reference frame immediately instead of carrying bad provenance to
+    // the delivered block.
     queue.reset(400u);
     auto inexact = reference_frame(400u, 1.0, 1.0, 2.0, 2.0);
     inexact.source[fm1].exact = false;
-    assert(queue.push_reference(inexact));
-    assert(!block.consume(queue, 400u, 1u));
-    assert(block.last_error() == genesis_selected_source_block_error::inexact_source);
+    assert(!queue.push_reference(inexact));
     assert(!queue.valid());
+    assert(queue.size() == 0u);
+    assert(!block.consume(queue, 400u, 1u));
+    assert(block.last_error() == genesis_selected_source_block_error::source_queue_invalid);
 
     queue.reset(501u);
     assert(queue.push_reference(reference_frame(501u, 1.0, 1.0, 2.0, 2.0)));
