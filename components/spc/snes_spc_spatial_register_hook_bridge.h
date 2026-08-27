@@ -30,7 +30,7 @@ inline void observe_snes_spc_spatial_route_state(
         return;
 
     spc_runtime_capture_record record{};
-    record.kind = spc_voice_runtime_event_kind::source_latched;
+    record.kind = spc_voice_runtime_event_kind::routing_state_changed;
     record.fields = spc_runtime_capture_field::voice
         | spc_runtime_capture_field::route_gain_left
         | spc_runtime_capture_field::route_gain_right
