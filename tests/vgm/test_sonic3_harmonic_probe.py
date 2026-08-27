@@ -95,6 +95,49 @@ class Sonic3HarmonicProbeTest(unittest.TestCase):
 
         self.assertEqual(probe.harmonic_signature(first), probe.harmonic_signature(second))
 
+    def test_real_corpus_surface_harmony_cannot_bootstrap_phrase_syntax(self) -> None:
+        fixture = (
+            ROOT
+            / "tests"
+            / "corpus"
+            / "sonic-3-knuckles"
+            / "01 - Angel Island Zone Act 1.vgz"
+        )
+        self.assertTrue(fixture.is_file())
+
+        result = probe.audit_file(fixture)
+
+        self.assertGreater(result["duration_ticks"], 0)
+        self.assertGreater(result["active_full_key_voice_ticks"], 0)
+        self.assertGreaterEqual(result["performed_pitch_projection_coverage"], 0.0)
+        self.assertLessEqual(result["performed_pitch_projection_coverage"], 1.0)
+        self.assertEqual(result["surface_scope"], "physical-channel FM execution")
+
+        # This is deliberately a negative promotion control on a complete
+        # historical cue. Surface harmonic candidates may exist, but physical
+        # channel evidence has not earned persistent musical parts, cross-part
+        # phrase boundaries, cadence class, or a phrase role.
+        promotion = result["shared_model_promotion"]
+        self.assertEqual(promotion["tonal_center"], "ranked_surface_candidate_only")
+        self.assertEqual(promotion["key_class"], "blocked")
+        self.assertEqual(promotion["functional_tendency"], "blocked")
+        self.assertEqual(promotion["cadence_class"], "blocked")
+        self.assertIn(
+            "no_persistent_part_voice_leading",
+            promotion["blocked_by"],
+        )
+        self.assertIn(
+            "no_cross_part_phrase_boundary_or_cadential_arrival",
+            promotion["blocked_by"],
+        )
+        self.assertFalse(
+            result["surface_function_shapes"]["functional_tendency_resolved"]
+        )
+        self.assertFalse(result["surface_function_shapes"]["cadence_resolved"])
+
+        for candidate in result["top_surface_tonal_candidates"]:
+            self.assertFalse(candidate["key_class_resolved"])
+
     def test_embedded_self_test(self) -> None:
         result = probe._synthetic_self_test()
         self.assertEqual(result["clean_top_candidate"]["mode"], "ionian")

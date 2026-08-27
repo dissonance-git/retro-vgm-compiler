@@ -31,7 +31,9 @@ Long-range harmonic-span relations now preserve every local transition while pro
 
 Multi-scale phrase-role arbitration now requires strict temporal nesting and a strictly broader formal scale before roles can coexist hierarchically. Local ending can coexist with larger continuation, prolongation, or delayed resolution without becoming a same-scale contradiction. A canonical nested-local-close-inside-global-continuation candidate is only derived when both inner and outer roles are independently cross-domain grounded.
 
-The active problem is now real-corpus pressure: testing whether these phrase-role distinctions survive heterogeneous source families, styles, loop structures, and ambiguous arrivals without overfitting the synthetic witnesses that introduced them.
+The first bounded real-corpus pressure gate now runs the existing label-blind YM2612 harmonic probe against the complete Angel Island Zone Act 1 corpus fixture. It requires measurable real execution evidence while explicitly keeping key, functional tendency, cadence class, and therefore phrase syntax blocked until persistent-part voice leading and cross-part phrase-arrival evidence exists.
+
+The active problem remains broader real-corpus pressure: testing whether the positive phrase-role distinctions survive heterogeneous source families, styles, loop structures, and ambiguous arrivals without overfitting the synthetic witnesses that introduced them.
 
 Target role vocabulary still has to be earned by evidence such as:
 
