@@ -1,7 +1,7 @@
 #include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
-#include "components/vgm/enhancement/genesis_realtime_musical_omniphony_pipeline.h"
+#include "components/vgm/enhancement/vgm_realtime_musical_omniphony_pipeline.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
-#include "components/vgm/enhancement/genesis_spatial_source_bus.h"
+#include "components/vgm/enhancement/spatial_source_bus.h"
 #include "model/spatial_playback_options.h"
 
 #include <array>
@@ -179,7 +179,7 @@ int main() {
         const auto& selected = uses_enhanced_renderer(options)
             ? higher_quality_sources
             : reference_sources;
-        genesis_spatial_source_bus_storage<frames> bus;
+        spatial_source_bus_storage<genesis_recomposition_source_count, frames> bus;
         assert(bus.build(selected, source_evidence, frames));
         assert(bus.valid());
         assert(bus.lane_count() == 2);
@@ -212,7 +212,7 @@ int main() {
     // Compile and exercise the outer Genesis -> Omniphony seam without a
     // renderer. It accepts the selected source set and validates it, but cannot
     // render until the independent Spatial host binds Omniphony.
-    genesis_realtime_musical_omniphony_pipeline<frames> omniphony;
+    vgm_realtime_musical_omniphony_pipeline<genesis_recomposition_source_count, frames> omniphony;
     std::array<float, genesis_recomposition_source_count * frames> source_scratch{};
     std::array<float, frames * 2> spatial_stereo{};
     const auto unbound_spatial = omniphony.process_selected_sources(

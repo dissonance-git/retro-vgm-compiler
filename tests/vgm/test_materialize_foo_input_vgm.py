@@ -39,8 +39,7 @@ def main() -> int:
             source / "input_vgm_shadow.cpp",
             source / "source_aware_vgm_player.h",
             source / "nuked_opn2_source_capture.h",
-            enhancement / "genesis_selected_source_queue.h",
-            enhancement / "genesis_selected_source_block.h",
+            enhancement / "selected_source_transport.h",
             enhancement / "genesis_source_episode_7_1.h",
             enhancement / "genesis_source_spread_7_1.h",
         )
@@ -53,8 +52,8 @@ def main() -> int:
         targets = (component / "Directory.Build.targets").read_text(encoding="utf-8-sig")
 
         for marker in (
-            "genesis_selected_source_queue",
-            "genesis_selected_source_block",
+            "selected_source_queue",
+            "selected_source_block_storage",
             "genesis_source_spread_7_1",
             "genesis_source_episode_transport",
             "m_supported_chip_surround_eligible",

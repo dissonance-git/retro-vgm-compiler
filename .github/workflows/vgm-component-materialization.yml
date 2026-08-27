@@ -102,8 +102,8 @@ jobs:
           $header = Get-Content (Join-Path $src 'input_vgm.h') -Raw
           $shadow = Get-Content (Join-Path $src 'input_vgm_shadow.cpp') -Raw
           foreach ($required in @(
-            'genesis_selected_source_queue',
-            'genesis_selected_source_block',
+            'selected_source_queue',
+            'selected_source_block_storage',
             'genesis_source_episode_transport',
             'genesis_source_spread_7_1',
             'surround_bed_7_1'
@@ -147,8 +147,7 @@ jobs:
             'src\source_aware_vgm_player.h',
             'src\linear_source_resampler.h',
             'src\nuked_opn2_source_capture.h',
-            '..\enhancement\genesis_selected_source_queue.h',
-            '..\enhancement\genesis_selected_source_block.h',
+            '..\enhancement\selected_source_transport.h',
             '..\enhancement\genesis_source_episode_7_1.h',
             '..\enhancement\genesis_source_spread_7_1.h'
           )

@@ -1,7 +1,7 @@
 #include "yamaha_opm_register.h"
 #include "ym2151_authority_state.h"
 #include "ym2151_enhanced_recomposition.h"
-#include "ym2151_selected_source_transport.h"
+#include "selected_source_transport.h"
 #include "ym2151_spatial_route_transport.h"
 
 #include <array>
@@ -150,16 +150,16 @@ int main() {
         static_cast<std::size_t>(ym2151_recomposition_source::fm1);
     constexpr std::size_t fm8_index =
         static_cast<std::size_t>(ym2151_recomposition_source::fm8);
-    ym2151_selected_source_queue<4> queue;
+    selected_source_queue<ym2151_recomposition_source_count, 4> queue;
     queue.reset(500u);
-    ym2151_selected_source_frame source_frame{};
+    selected_source_frame<ym2151_recomposition_source_count> source_frame{};
     source_frame.ordinal = 500u;
     source_frame.source[fm1_index] = {1.0, -1.0, true, true};
     source_frame.source[fm8_index] = {0.0, 0.0, true, true};
     assert(queue.push_reference(source_frame));
     assert(queue.replace_source(500u, fm1_index, 2.0, -2.0, true));
 
-    ym2151_selected_source_block_storage<2> delivered;
+    selected_source_block_storage<ym2151_recomposition_source_count, 2> delivered;
     assert(delivered.consume(queue, 500u, 1u));
     assert(delivered.valid());
     assert(delivered.source_present(fm1_index));

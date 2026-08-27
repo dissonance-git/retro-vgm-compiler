@@ -1,3 +1,4 @@
+#include "components/vgm/enhancement/genesis_enhanced_recomposition.h"
 #include "components/vgm/enhancement/genesis_spatial_source.h"
 #include "components/vgm/enhancement/spatial_route_transport.h"
 #include "components/vgm/enhancement/timed_spatial_source_bus.h"
