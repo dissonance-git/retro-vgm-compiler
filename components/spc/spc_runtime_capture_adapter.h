@@ -2,11 +2,13 @@
 
 #include "spc_runtime_capture.h"
 #include "spc_runtime_sample_adapter.h"
+#include "spc_runtime_trace.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 namespace gameaudio::spc {
 
@@ -83,6 +85,14 @@ inline void annotate_spc_capture_trace_record(
         1.0,
         "write_sequence",
     });
+    event->attributes.push_back({
+        "clock_lane",
+        std::string{spc_runtime_clock_lane_name(
+            spc_runtime_clock_lane_for_event(record.kind))},
+        evidence_status::derived,
+        1.0,
+        "producer_phase",
+    });
     if (has_field(record.fields, spc_runtime_capture_field::directory_loop_address)) {
         event->attributes.push_back({
             "directory_loop_address",
@@ -115,6 +125,13 @@ inline vgmtooling::model::node_id append_spc_capture_continuity_break(
     if (event != nullptr) {
         event->attributes.push_back({"trace_index", trace_index, evidence_status::exact, 1.0, "observation_order"});
         event->attributes.push_back({"ram_write_serial", ram_write_serial, evidence_status::exact, 1.0, "write_sequence"});
+        event->attributes.push_back({
+            "clock_lane",
+            std::string{spc_runtime_clock_lane_name(spc_runtime_clock_lane::controlled)},
+            evidence_status::derived,
+            1.0,
+            "producer_phase",
+        });
         event->attributes.push_back({"continuity_break_reason", std::string{reason}, evidence_status::derived, 1.0, ""});
         event->attributes.push_back({"dropped_records", dropped, evidence_status::exact, 1.0, "observations"});
     }

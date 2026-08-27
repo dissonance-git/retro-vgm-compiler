@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <stdexcept>
+#include <vector>
 
 using namespace vgmtooling::model;
 
@@ -332,6 +333,52 @@ int main() {
         rejected_cross_domain_span = true;
     }
     assert(rejected_cross_domain_span);
+
+    {
+        // Real runtime traces can contain many thousands of exact events and
+        // relations. Dense append-only IDs must remain directly reachable, and
+        // adjacency queries must scale with local degree rather than graph size.
+        musical_execution_graph runtime_sized;
+        constexpr std::size_t node_count = 16384;
+        std::vector<node_id> ids;
+        ids.reserve(node_count);
+
+        node trace_event;
+        trace_event.kind = node_kind::trace_event;
+        trace_event.layer = semantic_layer::synthesis;
+        trace_event.flow = flow_kind::event;
+        for (std::size_t index = 0; index < node_count; ++index)
+            ids.push_back(runtime_sized.add_node(trace_event));
+
+        edge_id last_edge = 0;
+        for (std::size_t index = 1; index < ids.size(); ++index) {
+            edge relation;
+            relation.kind = edge_kind::causes;
+            relation.from = ids[index - 1];
+            relation.to = ids[index];
+            last_edge = runtime_sized.add_edge(relation);
+        }
+
+        assert(runtime_sized.nodes().size() == node_count);
+        assert(runtime_sized.edges().size() == node_count - 1);
+        assert(runtime_sized.find_node(ids.front())->id == ids.front());
+        assert(runtime_sized.find_node(ids.back())->id == ids.back());
+        assert(runtime_sized.find_node(0) == nullptr);
+        assert(runtime_sized.find_node(ids.back() + 1) == nullptr);
+        assert(runtime_sized.find_edge(last_edge)->id == last_edge);
+        assert(runtime_sized.find_edge(0) == nullptr);
+        assert(runtime_sized.find_edge(last_edge + 1) == nullptr);
+
+        const std::size_t middle = node_count / 2;
+        const auto incoming = runtime_sized.edges_to(ids[middle], edge_kind::causes);
+        const auto outgoing = runtime_sized.edges_from(ids[middle], edge_kind::causes);
+        assert(incoming.size() == 1);
+        assert(outgoing.size() == 1);
+        assert(incoming[0]->from == ids[middle - 1]);
+        assert(outgoing[0]->to == ids[middle + 1]);
+        assert(runtime_sized.edges_from(999999).empty());
+        assert(runtime_sized.edges_to(999999).empty());
+    }
 
     return 0;
 }

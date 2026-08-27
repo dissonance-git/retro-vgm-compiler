@@ -124,14 +124,52 @@ def validate_sidecar(payload: dict[str, Any]) -> dict[str, int]:
     }
 
 
+def _write_progress(
+    path: Path | None,
+    *,
+    status: str,
+    reports: list[dict[str, Any]],
+    current_fixture_index: int | None = None,
+    error_kind: str | None = None,
+    returncode: int | None = None,
+    failed_obligations: list[str] | None = None,
+) -> None:
+    if path is None:
+        return
+    payload: dict[str, Any] = {
+        "schema": "spc-runtime-corpus-pressure-progress-v1",
+        "status": status,
+        "completed_fixture_count": len(reports),
+        "fixtures": reports,
+    }
+    if current_fixture_index is not None:
+        payload["current_fixture_index"] = current_fixture_index
+    if error_kind is not None:
+        payload["error_kind"] = error_kind
+    if returncode is not None:
+        payload["returncode"] = returncode
+    if failed_obligations:
+        payload["failed_obligations"] = failed_obligations
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def run_pressure(
     extractor: Path,
     fixtures: list[Path],
     output_dir: Path,
     seconds: int,
+    *,
+    fixture_timeout_seconds: int = 120,
+    progress_path: Path | None = None,
 ) -> dict[str, Any]:
     if seconds <= 0:
         raise ValueError("SPC corpus pressure seconds must be positive")
+    if fixture_timeout_seconds <= 0:
+        raise ValueError("SPC fixture timeout must be positive")
     if not extractor.is_file():
         raise ValueError(f"SPC forensic extractor is missing: {extractor}")
     if len(fixtures) < 2:
@@ -139,27 +177,94 @@ def run_pressure(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     reports: list[dict[str, Any]] = []
+    _write_progress(
+        progress_path,
+        status="running",
+        reports=reports,
+        current_fixture_index=1,
+    )
+
     for index, fixture in enumerate(fixtures, start=1):
         if not fixture.is_file():
+            _write_progress(
+                progress_path,
+                status="fixture_missing",
+                reports=reports,
+                current_fixture_index=index,
+                error_kind="missing_fixture",
+            )
             raise ValueError(f"SPC pressure fixture is missing: {fixture}")
+
         sidecar = output_dir / f"fixture-{index:03d}.json"
-        subprocess.run(
-            [str(extractor), str(fixture), str(sidecar), str(seconds)],
-            check=True,
-        )
-        payload = json.loads(sidecar.read_text(encoding="utf-8"))
-        metrics = validate_sidecar(payload)
+        try:
+            subprocess.run(
+                [str(extractor), str(fixture), str(sidecar), str(seconds)],
+                check=True,
+                timeout=fixture_timeout_seconds,
+            )
+        except subprocess.TimeoutExpired:
+            _write_progress(
+                progress_path,
+                status="fixture_timeout",
+                reports=reports,
+                current_fixture_index=index,
+                error_kind="extractor_timeout",
+            )
+            raise
+        except subprocess.CalledProcessError as error:
+            _write_progress(
+                progress_path,
+                status="fixture_error",
+                reports=reports,
+                current_fixture_index=index,
+                error_kind="extractor_error",
+                returncode=error.returncode,
+            )
+            raise
+
+        try:
+            payload = json.loads(sidecar.read_text(encoding="utf-8"))
+            metrics = validate_sidecar(payload)
+        except (OSError, json.JSONDecodeError, ValueError):
+            _write_progress(
+                progress_path,
+                status="sidecar_invalid",
+                reports=reports,
+                current_fixture_index=index,
+                error_kind="sidecar_validation_error",
+            )
+            raise
+
         reports.append({
             "fixture_index": index,
             **metrics,
         })
+        _write_progress(
+            progress_path,
+            status="running",
+            reports=reports,
+            current_fixture_index=index + 1 if index < len(fixtures) else index,
+        )
 
+    failed_obligations: list[str] = []
     if not any(item["strong_transition_count"] > 0 for item in reports):
-        raise ValueError("SPC corpus pressure requires at least one strong part transition")
+        failed_obligations.append("strong_part_transition")
     if not any(item["rejected_transition_count"] > 0 for item in reports):
-        raise ValueError("SPC corpus pressure requires at least one rejected part transition")
+        failed_obligations.append("rejected_part_transition")
     if not any(item["part_profile_count"] > 0 for item in reports):
-        raise ValueError("SPC corpus pressure requires at least one real motif profile")
+        failed_obligations.append("real_motif_profile")
+
+    if failed_obligations:
+        _write_progress(
+            progress_path,
+            status="acceptance_failed",
+            reports=reports,
+            failed_obligations=failed_obligations,
+        )
+        raise ValueError(
+            "SPC corpus pressure acceptance failed: " +
+            ", ".join(failed_obligations)
+        )
 
     summary = {
         "schema": "spc-runtime-corpus-pressure-v1",
@@ -170,6 +275,7 @@ def run_pressure(
         ),
         "fixture_count": len(reports),
         "execution_seconds_per_fixture": seconds,
+        "fixture_timeout_seconds": fixture_timeout_seconds,
         "totals": {
             key: sum(item[key] for item in reports)
             for key in (
@@ -194,6 +300,11 @@ def run_pressure(
             "creator_identity": "blocked",
         },
     }
+    _write_progress(
+        progress_path,
+        status="complete",
+        reports=reports,
+    )
     return summary
 
 
@@ -202,15 +313,23 @@ def main() -> int:
     parser.add_argument("--extractor", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--seconds", type=int, default=3)
+    parser.add_argument("--fixture-timeout-seconds", type=int, default=120)
+    parser.add_argument("--progress", type=Path)
     parser.add_argument("--summary", type=Path, required=True)
     parser.add_argument("fixtures", type=Path, nargs="+")
     args = parser.parse_args()
+
+    progress_path = args.progress
+    if progress_path is None:
+        progress_path = args.output_dir.parent / "progress.json"
 
     summary = run_pressure(
         args.extractor,
         args.fixtures,
         args.output_dir,
         args.seconds,
+        fixture_timeout_seconds=args.fixture_timeout_seconds,
+        progress_path=progress_path,
     )
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(

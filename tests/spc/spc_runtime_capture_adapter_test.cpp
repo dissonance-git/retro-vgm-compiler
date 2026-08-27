@@ -137,6 +137,8 @@ int main() {
     CHECK(std::get<std::uint64_t>(find_attribute(trace_events_after_first[0], "trace_index")->value) == 0);
     CHECK(std::get<std::uint64_t>(find_attribute(trace_events_after_first[1], "trace_index")->value) == 1);
     CHECK(std::get<std::uint64_t>(find_attribute(trace_events_after_first[1], "ram_write_serial")->value) == 0);
+    CHECK(std::get<std::string>(find_attribute(trace_events_after_first[0], "clock_lane")->value) == "dsp");
+    CHECK(std::get<std::string>(find_attribute(trace_events_after_first[1], "clock_lane")->value) == "dsp");
     CHECK(std::get<std::string>(find_attribute(trace_events_after_first[1], "runtime_sample_materialization")->value) == "materialized");
     CHECK(graph.edges_from(trace_events_after_first[1]->id, edge_kind::references).size() == 1);
 
@@ -201,6 +203,7 @@ int main() {
     const node* ordinal_gap = trace_events_after_gap[3];
     CHECK(std::get<std::string>(find_attribute(ordinal_gap, "event_kind")->value) == "continuation_lost");
     CHECK(std::get<std::uint64_t>(find_attribute(ordinal_gap, "trace_index")->value) == 3);
+    CHECK(std::get<std::string>(find_attribute(ordinal_gap, "clock_lane")->value) == "controlled");
     CHECK(std::get<std::string>(find_attribute(ordinal_gap, "continuity_break_reason")->value) == "trace_index_discontinuity");
     CHECK(std::get<std::uint64_t>(find_attribute(ordinal_gap, "dropped_records")->value) == 1);
     CHECK(has_flag(ordinal_gap->provenance[0].flags, provenance_flag::incomplete));

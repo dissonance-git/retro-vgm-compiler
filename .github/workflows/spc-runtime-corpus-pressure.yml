@@ -37,11 +37,14 @@ jobs:
         run: cmake --build build-spc-runtime-pressure --parallel 2 --target spc_forensic_features
 
       - name: Run preregistered SPC runtime corpus pressure
+        timeout-minutes: 10
         run: |
           python3 -B tools/spc/runtime_corpus_pressure.py \
             --extractor build-spc-runtime-pressure/spc_forensic_features \
             --output-dir spc-runtime-pressure/sidecars \
+            --progress spc-runtime-pressure/progress.json \
             --summary spc-runtime-pressure/summary.json \
+            --fixture-timeout-seconds 120 \
             --seconds 3 \
             "tests/corpus/ancient-magic-spc/05 - Battle.spc" \
             "tests/corpus/america-oudan-ultra-quiz-spc/06 - Guam Wind.spc" \
@@ -49,8 +52,9 @@ jobs:
             "tests/corpus/terranigma-spc/03 - Hometown.spc"
 
       - name: Upload bounded SPC pressure evidence
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: spc-runtime-corpus-pressure
           path: spc-runtime-pressure/
-          if-no-files-found: error
+          if-no-files-found: warn

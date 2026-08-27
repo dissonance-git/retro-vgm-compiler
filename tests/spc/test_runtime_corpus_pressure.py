@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -110,6 +113,57 @@ class SpcRuntimeCorpusPressureTest(unittest.TestCase):
         payload["capture"]["cross_lane_backstep_count"] = 0
         with self.assertRaisesRegex(ValueError, "magnitude"):
             pressure.validate_sidecar(payload)
+
+    def test_fixture_timeout_preserves_partial_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            extractor = root / "extractor"
+            extractor.write_text("", encoding="utf-8")
+            fixtures = [root / "a.spc", root / "b.spc"]
+            for fixture in fixtures:
+                fixture.write_bytes(b"fixture")
+            progress = root / "progress.json"
+
+            with mock.patch.object(
+                pressure.subprocess,
+                "run",
+                side_effect=pressure.subprocess.TimeoutExpired(
+                    cmd=["extractor"],
+                    timeout=1,
+                ),
+            ):
+                with self.assertRaises(pressure.subprocess.TimeoutExpired):
+                    pressure.run_pressure(
+                        extractor,
+                        fixtures,
+                        root / "sidecars",
+                        3,
+                        fixture_timeout_seconds=1,
+                        progress_path=progress,
+                    )
+
+            payload = json.loads(progress.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "fixture_timeout")
+            self.assertEqual(payload["error_kind"], "extractor_timeout")
+            self.assertEqual(payload["completed_fixture_count"], 0)
+            self.assertEqual(payload["current_fixture_index"], 1)
+
+    def test_fixture_timeout_budget_must_be_positive(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            extractor = root / "extractor"
+            extractor.write_text("", encoding="utf-8")
+            fixtures = [root / "a.spc", root / "b.spc"]
+            for fixture in fixtures:
+                fixture.write_bytes(b"fixture")
+            with self.assertRaisesRegex(ValueError, "timeout"):
+                pressure.run_pressure(
+                    extractor,
+                    fixtures,
+                    root / "sidecars",
+                    3,
+                    fixture_timeout_seconds=0,
+                )
 
     def test_capture_loss_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "lossless capture"):

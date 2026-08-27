@@ -209,6 +209,8 @@ public:
         validate_span(value.active);
         value.id = next_node_id_++;
         nodes_.push_back(std::move(value));
+        outgoing_edge_ids_.emplace_back();
+        incoming_edge_ids_.emplace_back();
         return nodes_.back().id;
     }
 
@@ -227,36 +229,37 @@ public:
             throw std::invalid_argument("explicit time mapping requires a maps_time_to edge");
         }
 
+        const node_id from = value.from;
+        const node_id to = value.to;
         value.id = next_edge_id_++;
         edges_.push_back(std::move(value));
-        return edges_.back().id;
+        const edge_id id = edges_.back().id;
+        outgoing_edge_ids_[static_cast<std::size_t>(from - 1u)].push_back(id);
+        incoming_edge_ids_[static_cast<std::size_t>(to - 1u)].push_back(id);
+        return id;
     }
 
+    // IDs are append-only, 1-based dense positions. Preserve that identity
+    // directly instead of linearly rescanning a runtime-sized graph.
     const node* find_node(node_id id) const noexcept {
-        for (const auto& value : nodes_) {
-            if (value.id == id) {
-                return &value;
-            }
-        }
-        return nullptr;
+        if (id == 0 || id > nodes_.size())
+            return nullptr;
+        const node& value = nodes_[static_cast<std::size_t>(id - 1u)];
+        return value.id == id ? &value : nullptr;
     }
 
     node* find_node(node_id id) noexcept {
-        for (auto& value : nodes_) {
-            if (value.id == id) {
-                return &value;
-            }
-        }
-        return nullptr;
+        if (id == 0 || id > nodes_.size())
+            return nullptr;
+        node& value = nodes_[static_cast<std::size_t>(id - 1u)];
+        return value.id == id ? &value : nullptr;
     }
 
     const edge* find_edge(edge_id id) const noexcept {
-        for (const auto& value : edges_) {
-            if (value.id == id) {
-                return &value;
-            }
-        }
-        return nullptr;
+        if (id == 0 || id > edges_.size())
+            return nullptr;
+        const edge& value = edges_[static_cast<std::size_t>(id - 1u)];
+        return value.id == id ? &value : nullptr;
     }
 
     std::vector<const node*> nodes_of_kind(node_kind kind) const {
@@ -271,20 +274,30 @@ public:
 
     std::vector<const edge*> edges_from(node_id from, std::optional<edge_kind> kind = std::nullopt) const {
         std::vector<const edge*> result;
-        for (const auto& value : edges_) {
-            if (value.from == from && (!kind.has_value() || value.kind == *kind)) {
+        if (from == 0 || from > outgoing_edge_ids_.size())
+            return result;
+
+        const auto& ids = outgoing_edge_ids_[static_cast<std::size_t>(from - 1u)];
+        result.reserve(ids.size());
+        for (edge_id id : ids) {
+            const edge& value = edges_[static_cast<std::size_t>(id - 1u)];
+            if (!kind.has_value() || value.kind == *kind)
                 result.push_back(&value);
-            }
         }
         return result;
     }
 
     std::vector<const edge*> edges_to(node_id to, std::optional<edge_kind> kind = std::nullopt) const {
         std::vector<const edge*> result;
-        for (const auto& value : edges_) {
-            if (value.to == to && (!kind.has_value() || value.kind == *kind)) {
+        if (to == 0 || to > incoming_edge_ids_.size())
+            return result;
+
+        const auto& ids = incoming_edge_ids_[static_cast<std::size_t>(to - 1u)];
+        result.reserve(ids.size());
+        for (edge_id id : ids) {
+            const edge& value = edges_[static_cast<std::size_t>(id - 1u)];
+            if (!kind.has_value() || value.kind == *kind)
                 result.push_back(&value);
-            }
         }
         return result;
     }
@@ -315,6 +328,8 @@ private:
     edge_id next_edge_id_ = 1;
     std::vector<node> nodes_;
     std::vector<edge> edges_;
+    std::vector<std::vector<edge_id>> outgoing_edge_ids_;
+    std::vector<std::vector<edge_id>> incoming_edge_ids_;
 };
 
 } // namespace vgmtooling::model
