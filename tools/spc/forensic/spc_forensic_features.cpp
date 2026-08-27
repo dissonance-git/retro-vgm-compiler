@@ -8,6 +8,7 @@
 #include "components/spc/spc_snapshot_graph_adapter.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -121,6 +122,65 @@ std::size_t count_ram_origin(
     for (const auto& write : trace.ram_writes)
         total += write.origin == origin ? 1u : 0u;
     return total;
+}
+
+using forensic_clock = std::chrono::steady_clock;
+
+void write_forensic_progress(
+    const std::string& output_path,
+    const char* phase,
+    std::uint64_t requested_seconds,
+    std::uint64_t scalar_samples_completed,
+    std::uint64_t scalar_samples_total,
+    const spc_runtime_trace& trace,
+    std::uint64_t next_trace_index,
+    forensic_clock::time_point started,
+    const vgmtooling::model::musical_execution_graph* graph = nullptr) {
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        forensic_clock::now() - started).count();
+
+    const std::string progress_path = output_path + ".progress.json";
+    std::ofstream out(progress_path, std::ios::binary | std::ios::trunc);
+    if (!out)
+        throw std::runtime_error("could not open SPC forensic progress sidecar");
+
+    out << "{\n";
+    out << "  \"schema\": \"spc-forensic-feature-progress-v1\",\n";
+    out << "  \"phase\": \"" << phase << "\",\n";
+    out << "  \"requested_seconds\": " << requested_seconds << ",\n";
+    out << "  \"scalar_samples_completed\": " << scalar_samples_completed << ",\n";
+    out << "  \"scalar_samples_total\": " << scalar_samples_total << ",\n";
+    out << "  \"elapsed_ms\": " << elapsed_ms << ",\n";
+    out << "  \"capture\": {\n";
+    out << "    \"ram_write_count\": " << trace.ram_writes.size() << ",\n";
+    out << "    \"stored_event_count\": " << count_events(trace) << ",\n";
+    out << "    \"dropped_event_count\": " << count_dropped_events(trace) << ",\n";
+    out << "    \"overflowed_window_count\": " << count_overflowed_windows(trace) << ",\n";
+    out << "    \"next_trace_index\": " << next_trace_index << "\n";
+    out << "  },\n";
+    if (graph != nullptr) {
+        out << "  \"graph\": {\n";
+        out << "    \"node_count\": " << graph->nodes().size() << ",\n";
+        out << "    \"edge_count\": " << graph->edges().size() << "\n";
+        out << "  },\n";
+    }
+    out << "  \"claim_boundary\": "
+        << "\"Execution-phase observability only; this file does not promote musical identity or phrase syntax.\"\n";
+    out << "}\n";
+
+    if (!out)
+        throw std::runtime_error("failed while writing SPC forensic progress sidecar");
+
+    std::cerr
+        << "SPC_FORENSIC_PHASE phase=" << phase
+        << " elapsed_ms=" << elapsed_ms
+        << " samples=" << scalar_samples_completed << "/" << scalar_samples_total
+        << " ram_writes=" << trace.ram_writes.size()
+        << " events=" << count_events(trace);
+    if (graph != nullptr)
+        std::cerr << " graph_nodes=" << graph->nodes().size()
+                  << " graph_edges=" << graph->edges().size();
+    std::cerr << '\n';
 }
 
 void write_double_array(std::ostream& out, const std::vector<double>& values) {
@@ -308,7 +368,21 @@ int main(int argc, char** argv) {
             throw std::runtime_error(std::string{"snes_spc load failed: "} + error);
         }
 
-        std::uint64_t scalar_samples_remaining = seconds * scalar_samples_per_second;
+        const auto forensic_started = forensic_clock::now();
+        const std::uint64_t scalar_samples_total =
+            seconds * scalar_samples_per_second;
+        std::uint64_t scalar_samples_remaining = scalar_samples_total;
+        std::uint64_t scalar_samples_completed = 0;
+        write_forensic_progress(
+            argv[2],
+            "capture-start",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            recorder.trace(),
+            recorder.next_trace_index(),
+            forensic_started);
+
         while (scalar_samples_remaining != 0) {
             const int block = static_cast<int>(std::min<std::uint64_t>(
                 scalar_samples_remaining,
@@ -320,8 +394,27 @@ int main(int argc, char** argv) {
             }
             recorder.flush_window();
             scalar_samples_remaining -= static_cast<std::uint64_t>(block);
+            scalar_samples_completed += static_cast<std::uint64_t>(block);
+            write_forensic_progress(
+                argv[2],
+                "capture-running",
+                seconds,
+                scalar_samples_completed,
+                scalar_samples_total,
+                recorder.trace(),
+                recorder.next_trace_index(),
+                forensic_started);
         }
 
+        write_forensic_progress(
+            argv[2],
+            "capture-complete",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            recorder.trace(),
+            recorder.next_trace_index(),
+            forensic_started);
         const auto trace = recorder.finish();
 
         vgmtooling::model::musical_execution_graph graph;
@@ -340,15 +433,46 @@ int main(int argc, char** argv) {
             vgmtooling::model::to_flags(
                 vgmtooling::model::provenance_flag::runtime_capture));
 
+        write_forensic_progress(
+            argv[2],
+            "replay-start",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            trace,
+            trace.windows.empty() ? 0u : trace.windows.back().next_trace_index,
+            forensic_started,
+            &graph);
         const auto replay = gameaudio::spc::replay_spc_runtime_trace(
             graph,
             runtime,
             samples,
             snapshot,
             trace);
+        write_forensic_progress(
+            argv[2],
+            "replay-complete",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            trace,
+            trace.windows.empty() ? 0u : trace.windows.back().next_trace_index,
+            forensic_started,
+            &graph);
+
         const auto features = gameaudio::spc::extract_spc_label_blind_corpus_features(
             graph,
             "instrumented-snes-spc-runtime");
+        write_forensic_progress(
+            argv[2],
+            "feature-extraction-complete",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            trace,
+            trace.windows.empty() ? 0u : trace.windows.back().next_trace_index,
+            forensic_started,
+            &graph);
 
         write_sidecar(
             argv[2],
@@ -357,6 +481,16 @@ int main(int argc, char** argv) {
             trace,
             replay,
             features);
+        write_forensic_progress(
+            argv[2],
+            "complete",
+            seconds,
+            scalar_samples_completed,
+            scalar_samples_total,
+            trace,
+            trace.windows.empty() ? 0u : trace.windows.back().next_trace_index,
+            forensic_started,
+            &graph);
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "spc_forensic_features: " << error.what() << '\n';
