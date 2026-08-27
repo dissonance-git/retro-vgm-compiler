@@ -1,0 +1,56 @@
+name: spc-runtime-corpus-pressure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/spc-runtime-corpus-pressure.yml"
+      - "components/spc/**"
+      - "model/**"
+      - "tools/spc/forensic/**"
+      - "tools/spc/patch_snes_spc_forensic.py"
+      - "tools/spc/runtime_corpus_pressure.py"
+      - "tests/spc/**"
+      - "tests/corpus/ancient-magic-spc/**"
+      - "tests/corpus/america-oudan-ultra-quiz-spc/**"
+      - "tests/corpus/battle-master-spc/**"
+      - "tests/corpus/terranigma-spc/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-runtime-pressure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runtime pressure contract tests
+        run: python3 -B -m unittest discover -s tests/spc -p 'test_runtime_corpus_pressure.py'
+
+      - name: Configure pinned forensic runtime
+        run: cmake -S tools/spc/forensic -B build-spc-runtime-pressure -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build label-blind feature extractor
+        run: cmake --build build-spc-runtime-pressure --parallel 2 --target spc_forensic_features
+
+      - name: Run preregistered SPC runtime corpus pressure
+        run: |
+          python3 -B tools/spc/runtime_corpus_pressure.py \
+            --extractor build-spc-runtime-pressure/spc_forensic_features \
+            --output-dir spc-runtime-pressure/sidecars \
+            --summary spc-runtime-pressure/summary.json \
+            --seconds 3 \
+            "tests/corpus/ancient-magic-spc/05 - Battle.spc" \
+            "tests/corpus/america-oudan-ultra-quiz-spc/06 - Guam Wind.spc" \
+            "tests/corpus/battle-master-spc/01 - Opening.spc" \
+            "tests/corpus/terranigma-spc/03 - Hometown.spc"
+
+      - name: Upload bounded SPC pressure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: spc-runtime-corpus-pressure
+          path: spc-runtime-pressure/
+          if-no-files-found: error
