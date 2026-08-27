@@ -1,50 +1,45 @@
 # Real-music corpus
 
-`tests/corpus/` is VGM Compiler's permanent immutable pressure surface for real digital game-music objects. Synthetic tests isolate mechanisms; the corpus tests whether those mechanisms survive contact with complete historical artifacts.
+`tests/corpus/` is VGM Compiler's immutable real-music pressure surface. Synthetic tests isolate mechanisms; the corpus asks whether those mechanisms survive complete historical artifacts.
 
 ## Canonical ownership
 
 ```text
-fixture bytes                canonical preserved evidence
-tests/corpus/manifest.json   machine-readable set inventory + provenance
-<corpus-id>.sha256           exact per-file hashes
-this README                   preservation / evidence / testing policy
+fixture bytes
+  immutable preserved evidence
+
+tests/corpus/manifest.json
+  machine-readable set inventory + provenance
+
+<corpus-id>.sha256
+  exact per-file identity
+
+this README
+  preservation / evidence / testing policy
 ```
 
-Do not maintain a second prose inventory of every set, dated expansion, file count, download, or digest. Git history records when the corpus grew; the manifest and hash inventories record what exists now.
-
-## Layout
-
-```text
-tests/corpus/
-├── README.md
-├── manifest.json
-├── <corpus-id>.sha256
-└── <corpus-id>/
-    └── immutable runnable files and required sidecars
-```
-
-The runnable/source files are canonical evidence objects. Preserve them byte-for-byte.
+Do not maintain a second prose inventory of sets, dates, counts, downloads, or hashes. Git records when the corpus changed; the manifest and hash inventories record what exists now.
 
 ## Preservation law
 
-Do not retag, normalize, recompress, rename for metadata cleanup, resample, rewrite headers, or otherwise modify a canonical corpus object merely to make analysis easier.
+Canonical corpus objects are byte evidence.
 
-The canonical supplied object depends on delivery:
+Do not retag, normalize, recompress, resample, rewrite headers, rename for metadata cleanup, or otherwise mutate an admitted fixture merely to simplify analysis.
+
+Delivery determines what is canonical:
 
 ```text
 direct runnable files
-→ preserve each exact file
+→ preserve exact files
 
 archive intentionally retained as evidence
-→ preserve archive bytes and hash
+→ preserve archive bytes + hash
 → extract without rewriting media
-→ record transformation/provenance
+→ retain transformation/provenance
+
+archive used only as transport
+→ do not keep a redundant copy by default
 ```
-
-A ZIP is not required merely to duplicate direct files already preserved canonically. If an archive was only a transport used to obtain the canonical runnable files, record its provenance/hash when required and do not keep redundant transport material by default.
-
-## Verification
 
 Use the repository-owned verifier:
 
@@ -52,104 +47,67 @@ Use the repository-owned verifier:
 python tools/corpus_import.py --verify
 ```
 
-To index a direct-file set already placed under `tests/corpus/<id>/`:
+To admit existing direct files:
 
 ```bash
 python tools/corpus_import.py --record-existing --id <id>
 ```
 
-Archive import remains available when the archive itself is the intended preservation object:
+Archive import remains available when the archive itself is the intended preservation object.
 
-```bash
-python tools/corpus_import.py --archive soundtrack.zip --id <id>
-```
+## Evidence boundary
 
-Verification should detect byte drift, path drift, and manifest/hash disagreement without rewriting the evidence.
-
-## Metadata is not one evidence class
-
-An embedded metadata field can be exact **as bytes in the artifact** while being stale, editorial, incomplete, or historically non-authoritative as a real-world claim.
+Exact artifact bytes do not make every embedded claim authoritative.
 
 ```text
 embedded metadata value
-!= authoritative musicological identity
-```
+!= authoritative historical identity
 
-For the user-supplied corpus, embedded artist fields such as VGM GD3 or SPC textual tags are not authoritative attribution labels.
-
-Where the user's curated foobar2000 external tags have been ingested by Helix, those tags may provide preferred user-facing library identity. They remain metadata provenance, not proof of composition, arrangement, programming, patch design, or authorship.
-
-If the external/library identity is unavailable to a standalone test, keep artist identity unknown unless an independently verified documentary source establishes it. Do not silently fall back to embedded artist text.
-
-## Cross-project ownership
-
-VGM Compiler owns:
-
-- immutable game-music fixture bytes and required routing sidecars;
-- hashes and source-family inventory;
-- source parsing/execution/synthesis/performance analysis;
-- corpus regressions that belong to game-music machinery.
-
-Helix may own:
-
-- canonical ingested library metadata;
-- broader historical/documentary research;
-- cross-project work identity and attribution evidence.
-
-Prefer small provenance joins when cross-project evidence is needed. Do not copy another project's database into this corpus to make a test appear self-contained.
-
-## Source-family boundaries
-
-The corpus deliberately contains materially different source classes. Admission proves only what the corresponding validator actually checks.
-
-### VGM / VGZ
-
-Strong source evidence may include exact logged commands, timing/order, declared clocks, embedded data blocks, and format-level structure.
-
-A valid VGM log does not by itself prove original driver-track identity, authored notation, or historical creator role. GD3 is artifact metadata, not execution truth.
-
-### SPC
-
-An SPC snapshot preserves CPU/RAM/S-DSP state at a capture point. Controlled execution may recover further runtime behavior, sample state, and voice evidence.
-
-A valid snapshot does not automatically prove authored note names, original driver parts, persistent musical parts, or perceptual streams.
-
-### NSF / NSFe / HES / KSS / SGC
-
-These retain executable program/data rather than a VGM-style register timeline. Container and playlist checks can establish bounded structural facts without establishing playback correctness, runtime semantics, or attribution.
-
-Extended M3U routing sidecars are canonical when required to select subsongs and are hashed as evidence even when they are not runnable objects themselves.
-
-### PSF-family / GSF / USF / 2SF / NCSF
-
-A shared xSF envelope can establish container structure, version, tags, CRC, dependencies, overlays, and byte provenance. Platform-specific effective objects remain distinct.
-
-```text
-shared envelope
-!= shared runtime
-!= shared driver
-!= shared sequence model
-!= shared voice model
-```
-
-A valid effective object does not establish a running machine or correct playback until that execution route is validated.
-
-### All families
-
-```text
-exact source fact
+valid source/container
+!= correct execution
 != recovered musical structure
 != listener/perceptual claim
 != historical attribution
 ```
 
-Higher analyses remain derived or hypothetical as appropriate and must retain their support route.
+VGM GD3, SPC text fields, xSF tags, and similar metadata may be exact as bytes while remaining editorial, stale, incomplete, or non-authoritative as musicological claims.
 
-## Artist and attribution controls
+Where user-curated external library metadata is available through Helix, it may provide preferred user-facing identity. That remains metadata provenance rather than proof of composition, arrangement, programming, sound design, or authorship.
 
-Corpus labels used to route controls must never leak into creator-blind feature extraction.
+If an independent identity source is unavailable, leave the claim unknown rather than silently promoting embedded tags.
 
-Especially for Sonic 3 and other mixed-credit material:
+## Source-family law
+
+The corpus intentionally contains materially different source families. Admission proves only what the corresponding parser/executor/test actually checks.
+
+Examples:
+
+```text
+VGM/VGZ
+  logged commands / clocks / timing / data blocks may be exact
+
+SPC
+  saved CPU/RAM/S-DSP state may be exact
+  later runtime evidence requires controlled execution
+
+NSF/HES/KSS/SGC and similar executable containers
+  program/data structure may be exact
+  runtime semantics require execution proof
+
+PSF/GSF/USF/2SF/NCSF
+  shared xSF envelope facts may be exact
+  platform-specific effective objects and runtimes remain distinct
+```
+
+A shared container does not imply a shared driver, sequence model, voice model, or runtime.
+
+Detailed source-family semantics belong to their component/research/test owners, not this corpus policy.
+
+## Attribution controls
+
+Creator or artist labels must not leak into creator-blind feature extraction.
+
+Preserve distinctions such as:
 
 ```text
 external artist tag
@@ -158,64 +116,68 @@ external artist tag
 sound-team credit
 != track-level composer proof
 
-shared patch / voice / MOD behavior
-!= authorship proof
-
-technical arrangement fingerprint
+patch / driver / implementation similarity
 != composition fingerprint
 
 prototype realization
 != final realization
 ```
 
-Attribution experiments must start from the exact work/version object and the creative role in dispute. Candidate labels enter only at the evaluation boundary required by the experiment.
+Attribution experiments begin from the exact work/version object and the creative role under test. Candidate labels enter only at the explicit evaluation boundary.
 
-## Analysis policy
+## Cross-project ownership
 
-The corpus is an empirical pressure surface, not a shortcut around provenance.
+VGM Compiler owns:
 
-Good corpus tests ask whether a bounded capability survives real material, for example:
+- immutable game-music fixture bytes and required sidecars;
+- hashes and source-family inventory;
+- parsing/execution/synthesis/performance regressions tied to game-music machinery.
 
-```text
-fixture parses/executes under its validated source contract
-loop boundary is preserved
-exact device/sample state remains rebuildable
-physical voice episodes remain bounded
-source-relative feature reports exact/derived/hypothesis/unknown correctly
-programmed control survives performance extraction
-persistent-part hypotheses respect continuity gaps
-phrase/cadence evidence does not become circular
-external metadata stays outside creator-blind features
-technical similarity does not promote itself to authorship
-reference/enhanced rendering preserve declared identities
-```
+Helix may own broader library metadata, documentary research, and cross-project identity/attribution evidence.
 
-Avoid broad golden aesthetic judgments. A test should name the capability and evidence boundary it protects.
+Join across projects through explicit provenance. Do not copy another project's database into this corpus merely to make a test self-contained.
 
 ## Derived artifacts
 
-Caches, sidecars, matrices, rankings, rendered audio, temporary extractions, and experiment reports are not canonical source evidence merely because they were computed from the corpus.
+A result computed from a canonical fixture is not automatically canonical evidence.
 
 ```text
-immutable corpus source
+immutable source
 → repeatable tool / controlled execution
 → derived object
 → hypothesis / comparison / report
 ```
 
-Track a derived artifact only when it is itself required as a frozen experimental witness, preregistration, or regression input. Disposable caches belong in ignored paths.
+Caches, matrices, rankings, rendered audio, temporary extractions, and analysis sidecars stay ignored/disposable unless an experiment explicitly promotes the exact bytes as a frozen witness, preregistration, or regression input.
 
-## Adding a corpus set
+## Good corpus tests
 
-A new set should have:
+A corpus test should name the capability and evidence boundary it protects.
 
-- a stable corpus ID and repository path;
+Useful questions include whether:
+
+- the fixture parses or executes under its admitted source contract;
+- loop/state boundaries remain valid;
+- source/device/sample state remains rebuildable;
+- physical voice episodes stay bounded;
+- missing evidence remains unknown rather than fabricated;
+- persistent-part or phrase hypotheses respect continuity gaps;
+- creator-blind extraction remains label-blind;
+- source replacement preserves declared identities;
+- a shared abstraction survives heterogeneous material.
+
+Avoid broad aesthetic golden tests unless the exact perceptual obligation and listening protocol are themselves the test.
+
+## Adding a set
+
+A new corpus set requires:
+
+- a stable corpus ID/path;
 - exact canonical bytes;
 - SHA-256 inventory;
 - source-family classification;
-- delivery/provenance record appropriate to the source;
-- known work/cue identifiers when justified;
-- device/platform information when determinable;
+- delivery/provenance record;
+- justified work/cue identifiers when available;
 - explicit limitations;
 - a reason the set adds discriminating coverage.
 
@@ -223,4 +185,4 @@ Do not invent missing metadata to make the manifest look complete.
 
 ## Governing principle
 
-> Preserve the artifact exactly, state only what the source establishes, and use the corpus to falsify abstractions that looked safe on synthetic examples.
+> **Preserve the artifact exactly, state only what the source establishes, and use real music to falsify abstractions that looked safe in isolation.**
