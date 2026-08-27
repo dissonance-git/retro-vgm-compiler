@@ -140,7 +140,7 @@ int main() {
             global_continuation);
     CHECK(composite.role ==
         phrase_role_kind::nested_local_close_inside_global_continuation);
-    CHECK(composite.scope == outer_scope);
+    CHECK(same_phrase_role_scope(composite.scope, outer_scope));
     CHECK(composite.formal_scale ==
         phrase_role_formal_scale::phrase_group);
     CHECK(composite.cross_domain_grounded);

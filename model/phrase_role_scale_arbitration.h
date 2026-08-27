@@ -167,8 +167,10 @@ make_nested_local_close_inside_global_continuation_hypothesis(
     }
     if (local_ending.role != phrase_role_kind::ending ||
         global_continuation.role != phrase_role_kind::continuation ||
-        local_ending.scope != arbitration.inner_scope ||
-        global_continuation.scope != arbitration.outer_scope ||
+        !same_phrase_role_scope(
+            local_ending.scope, arbitration.inner_scope) ||
+        !same_phrase_role_scope(
+            global_continuation.scope, arbitration.outer_scope) ||
         local_ending.formal_scale != arbitration.inner_scale ||
         global_continuation.formal_scale != arbitration.outer_scale) {
         throw std::invalid_argument(
