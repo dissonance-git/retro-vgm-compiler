@@ -9,26 +9,32 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Pin semantic ownership, not historical heading wording. These markers should
+# change only when the corresponding canonical responsibility changes.
 REQUIRED_TEXT = {
     Path("README.md"): (
         "# VGM Compiler\n",
-        "## Repository owners\n",
+        "## Repository landmarks\n",
         "docs/architecture.md",
         "docs/musical-understanding.md",
         "docs/vgm-compiler-roadmap.md",
-        "tests/README.md",
+        "tools/github_agent_bootstrap.py",
     ),
     Path("AGENTS.md"): (
-        "# AGENTS.md\n",
-        "## Enter the repository\n",
-        "## Context law\n",
+        "# VGM Compiler development contract\n",
+        "## 1. First-connection skill preflight\n",
+        "## 3. One owner per concept\n",
+        "## 4. Semantic collapse and cleanup\n",
+        "## 8. Repository mutation and concurrency\n",
+        "tools/github_agent_bootstrap.py",
         "docs/architecture.md",
         "docs/vgm-compiler-roadmap.md",
     ),
     Path("docs/architecture.md"): (
         "# VGM Compiler architecture\n",
-        "This is the canonical contract for VGM Compiler's shared semantics",
-        "## Objective\n",
+        "owns the shared semantic, provenance, evidence, identity, time, and abstraction laws",
+        "## 1. Linked representations\n",
+        "## 12. Architectural test\n",
     ),
     Path("docs/musical-understanding.md"): (
         "# Holistic musical understanding\n",
@@ -53,12 +59,19 @@ REQUIRED_TEXT = {
         "under the corpus owner",
         "## Test law\n",
     ),
+    Path("tools/github_agent_bootstrap.py"): (
+        'SCHEMA_VERSION = "vgm-github-agent-bootstrap-001.0"',
+        '"skill_preflight_path": ".agents/skills/skill-preflight/SKILL.md"',
+        '"freeze-github-head"',
+        '"run-skill-preflight"',
+    ),
 }
 
 FORBIDDEN_PATHS = (
     Path("tests/CORPUS.md"),
     Path("docs/audio-programming-languages.md"),
     Path("docs/openmusic-libraries.md"),
+    Path(".agents/github-connector.json"),
 )
 
 FORBIDDEN_TEXT = {
