@@ -1,61 +1,23 @@
 # VGM Compiler architecture
 
-This is the canonical contract for VGM Compiler's shared semantics, evidence discipline, and cross-source abstraction rules.
+This document owns the shared semantic, provenance, evidence, identity, time, and abstraction laws used across source families.
 
-## Objective
+The musical north star belongs in [`musical-understanding.md`](musical-understanding.md). Current project priority belongs in [`vgm-compiler-roadmap.md`](vgm-compiler-roadmap.md). Source-family investigations and literature belong under `research/`.
 
-VGM Compiler exists to understand digital game music deeply enough that analysis, reconstruction, explanation, attribution, rendering, conversion, and future porting can be treated as projections over one evidence-carrying musical model.
+## 1. Linked representations
 
-The difficult part is the middle:
+Game music may survive through authored source, native sequence data, register logs, executable rips, machine snapshots, ROM/driver code, samples/patches, rendered audio, transcriptions, and documentary evidence.
 
-```text
-native source / executable state / captured execution / audio
-        ↓
-source-specific semantics and execution
-        ↓
-physical synthesis + performed gestures
-        ↓
-persistent musical parts
-        ↓
-melody • bass • rhythm • harmony • timbre • articulation
-        ↓
-motif • phrase • cadence • counterpoint • form • arrangement
-        ↓
-whole-work / soundtrack model
-        ↓
-creator grammar • attribution • explanation • transformation
-```
-
-No output representation is canonical merely because it is convenient. MIDI, notation, chord labels, stems, prose, rendered PCM, or reconstructed source can all be useful while remaining lossy or hypothetical projections.
-
-## Linked representations, not one universal format
-
-A soundtrack may survive as or be observable through:
-
-```text
-MML / score / tracker / MIDI / native sequence
-VGM / VGZ register execution
-SPC machine snapshot and runtime continuation
-NSF / KSS / HES / xSF executable objects
-ROM / disassembly / driver source
-patches / samples / device state
-rendered audio
-external transcription or documentary evidence
-```
-
-These are complementary sensors over one musical phenomenon. Their distinctions are evidence.
+These are complementary sensors, not one universal format.
 
 ```text
 MIDI track
-!= authored voice
 != driver logical track
 != hardware channel
 != physical voice episode
 != persistent musical part
 != auditory stream
 ```
-
-Likewise:
 
 ```text
 MIDI note
@@ -66,113 +28,79 @@ MIDI note
 != notation spelling
 ```
 
-and:
-
 ```text
-MIDI program
-!= tracker instrument
-!= FM patch
-!= sample object
+program/instrument label
+!= patch/sample identity
+!= acoustic descriptor
 != audible instrument family
 != orchestration role
 ```
 
-Cross-representation alignment may be strong without becoming equivalence. A correspondence can be many-to-many, time-varying, and uncertain.
+Cross-representation alignment may be many-to-many, time-varying, uncertain, and still useful.
 
-## Source-specific semantics come first
+No output representation is canonical merely because it is convenient. MIDI, notation, chord labels, stems, prose, PCM, reconstructed source, and attribution remain projections or claims with their own provenance.
 
-A common model begins after the strongest source-native semantics available to that family have been preserved.
+## 2. Source-native semantics first
 
-### Authored symbolic/programming sources
+A shared model begins only after the strongest source-native semantics available to that family are preserved.
 
-MML, score-like source, trackers, MIDI, or validated native sequence data may expose notes, rests, ties, durations, meter, tempo, logical parts, loops, macros, instruments, articulation, modulation, and control flow directly.
+- authored symbolic/programming sources may expose notes, durations, logical parts, loops, instruments, articulation, modulation, and control flow directly;
+- VGM/VGZ establishes logged device commands/timing but does not automatically recover the original driver track or authored score;
+- SPC/NSF/HES/KSS/xSF-style objects may preserve executable state that requires controlled execution before higher semantics are available;
+- validated driver/sequence formats may expose stronger logical-track semantics than register logs while still requiring target-device realization;
+- rendered audio contributes acoustic/perceptual evidence that exact symbolic or execution state may not contain.
 
-Authored truth does not by itself prove later acoustic realization. Compiler, driver, allocation, synthesis, routing, and playback state may transform it.
+A downstream observation does not erase a stronger upstream fact. Different representations may answer different questions.
 
-### Logged execution traces
+## 3. Four orthogonal claim coordinates
 
-VGM/VGZ strongly establish the commands and timing present in the log, device clocks, register state, embedded PCM/ROM blocks, and source-local ordering.
-
-They generally do not prove the original driver track, original sequence opcode, composer-facing instrument name, authored notation, or persistent musical identity across dynamic hardware allocation.
-
-### Executable rips and machine snapshots
-
-SPC, NSF/NSFe, HES, KSS/SGC, PSF-family objects and related formats may preserve machine/program state, driver code/data, samples, saved device state, or enough executable context to recover higher semantics through controlled execution.
-
-A valid container or memory image is not automatically a validated running machine, decoded driver, recovered score, or correct playback result.
-
-### Driver and sequence formats
-
-Validated SMPS, GEMS, N-SPC, SSEQ and other engines can expose stronger logical-track and program semantics than a register log while still requiring a target device model for the realized sound.
-
-### Audio and perceptual evidence
-
-Rendered audio can expose grouping, salience, masking, acoustic overlap, timbral relations, groove, and other heard properties unavailable from symbolic or register state alone.
-
-When exact source state exists, an audio-derived estimate does not replace it. It observes a different projection.
-
-## Semantic layer, evidence state, provenance, and availability are orthogonal
-
-Every material claim should make four independent coordinates recoverable.
+Every material claim should keep four coordinates recoverable.
 
 ### Semantic layer
 
-Useful layers include:
+Examples include source representation, authored program, driver execution, synthesis/routing, musical performance, musical structure, acoustic realization, auditory interpretation, listener response, and musicological context.
 
-```text
-source representation
-authored program
-driver execution
-synthesis / routing
-musical performance
-musical structure
-acoustic realization
-auditory interpretation
-listener response
-musicological context
-```
-
-The ordering is explanatory, not a ladder of increasing truth. `musicological context` cross-cuts artifacts, versions, structures, performances, renders, and external evidence.
+The ordering is explanatory, not a truth ladder.
 
 ### Evidence state
 
 ```text
-exact       directly represented or deterministically recovered from validated state
-derived     deterministic or tightly constrained transformation of exact evidence
-hypothesis  interpretation with plausible alternatives
+exact
+  directly represented or deterministically recovered from validated state
+
+derived
+  deterministic or tightly constrained transformation of stronger support
+
+hypothesis
+  interpretation with plausible alternatives
 ```
-
-Examples:
-
-- exact VGM register write: exact source/execution evidence;
-- device pitch relation from validated registers: derived;
-- persistent part assignment without driver identity: hypothesis;
-- phrase boundary: usually hypothesis, perhaps strongly supported;
-- external documented credit: exact relative to that documentary source, not automatically proof of the role one wishes to infer.
 
 A hypothesis never overwrites its support.
 
 ### Provenance
 
-A claim should retain enough support to answer:
+A claim must retain enough support to answer:
 
-- which artifact, executor, observer, model, theory, or documentary witness produced it;
-- which lower claims it depends on;
-- which transformation connected them;
-- which limitations and alternatives remain.
+```text
+which artifact / executor / observer / model / document produced it?
+which lower claims does it depend on?
+which transformation connected them?
+which limitations and alternatives remain?
+```
 
-### Availability and capture quality
+### Availability/capture state
 
 ```text
 unknown != false
 unavailable != absent
-not applicable != unavailable
-exact relative to an artifact != complete preservation of the historical event
+not-applicable != unavailable
+missing capture != silence
+exact relative to one artifact != complete historical preservation
 ```
 
-Missing evidence must remain missing. Do not fill gaps with zeroes, false booleans, empty labels, or convenient inferred source history.
+Do not fill unavailable evidence with zeros, false booleans, empty labels, or invented source history.
 
-## Identity is always scoped
+## 4. Identity is scoped
 
 The word `identity` is unsafe without a noun.
 
@@ -187,257 +115,135 @@ artifact identity
 != authorship identity
 ```
 
-One work may survive in many byte-distinct artifacts. One part may move across hardware slots. Several physical sources may fuse perceptually. A shared patch may be reused across unrelated works. None of these implies the others.
+One work may have many byte-distinct artifacts. One musical part may migrate across physical voices. Several sources may fuse perceptually. Shared patches may appear across unrelated works.
 
-## Persistent musical identity
+### Persistent musical identity
 
-Persistent-part recovery is a central bridge from execution to musical understanding because implementation resources are not stable musical entities.
+Hardware resources are not stable musical entities.
 
-```text
-authored / logical part
-        ↓ may be allocated through
-running synthesis voice
-        ↓ occupies
-physical hardware slot
-```
-
-The mapping may move, split, fuse, restart, be stolen, or become temporarily unobservable.
-
-Evidence should prefer the strongest available source-supported relation:
+Prefer the strongest available continuity evidence:
 
 1. explicit authored part identity;
 2. validated driver/logical-track identity;
-3. persistent exact synthesis/instrument/sample identity when semantically relevant;
-4. control continuity such as pitch, modulation, or envelope trajectories;
-5. temporal, contour, and articulation continuity;
-6. pitch/register proximity and overlap constraints;
-7. perceptual stream/grouping evidence when the question concerns hearing.
+3. stable exact synthesis/sample/patch identity when musically relevant;
+4. control continuity such as pitch/modulation/envelope trajectories;
+5. temporal/contour/articulation continuity;
+6. pitch/register/overlap constraints;
+7. perceptual grouping when the question concerns hearing.
 
-This is not one universal scalar score. Evidence can conflict and can mean different things in different source families.
+When explicit identity is absent, model candidate successor relations among bounded events/voice episodes and build trajectories from those relations. Do not replace that evidence graph with one universal continuity score.
 
-### Relation-first recovery
+## 5. Programmed control can be musical evidence
 
-When explicit identity is unavailable, model candidate successor relations among bounded performance events or voice episodes, then build trajectories from those relations.
-
-```text
-performance event A
-+ compatible timing
-+ compatible pitch/control trajectory
-+ compatible patch/sample evidence
-+ continuity constraints
-        ↓
-candidate successor relation
-        ↓
-persistent-part hypothesis
-```
-
-Symbolic sources can supervise what stable part identity looks like downstream. Execution sources can reveal where symbolic transcriptions flattened meaningful articulation, timbre, allocation, or release behavior. Neither representation becomes canonical truth.
-
-## Programmed expression is musical evidence
-
-Exact control is not implementation residue merely because it lives below notation.
+Exact low-level control is not automatically implementation residue.
 
 ```text
 exact programmed control
 != derived musical gesture
-!= higher expressive interpretation
+!= expressive interpretation
 ```
 
-Pitch envelopes, gate behavior, vibrato, detune, duty-cycle changes, FM operator changes, sample retriggers, rhythmic echo, modulation, and dynamic trajectories can be exact execution facts that support musical interpretations.
+Pitch envelopes, gate behavior, vibrato, detune, duty changes, FM-operator motion, sample retriggers, rhythmic echo, modulation, routing, and dynamic trajectories may be exact execution facts.
 
-Calling an exact pitch envelope a `scooped attack` is an interpretation supported by that control history. The interpretation does not replace the history.
+A phrase such as `scooped attack` is an interpretation supported by those facts, not a replacement for them.
 
-## Time is plural
+## 6. Time is plural
 
 Authored, score, driver, device, sample, acoustic, and perceptual time are related but not interchangeable.
 
-Mappings may be piecewise because of tempo changes, loops, scheduler behavior, expressive timing, resampling, latency, capture gaps, or alignment uncertainty.
+Mappings may be piecewise because of tempo changes, loops, scheduler behavior, modulation, resampling, latency, capture gaps, or alignment uncertainty. Preserve time mappings as evidence when later claims depend on them.
 
-Time-domain mappings are evidence objects. Do not hide them in convenience conversions when a later inference depends on the distinction.
+Callback boundaries, decoder blocks, and logging chunks are transport unless the source proves otherwise.
 
-## Musical understanding is a dependency graph
+## 7. Higher analysis descends to support
 
-Higher analysis can summarize lower evidence, but it may not silently repair or skip uncertainty.
+Musical understanding is a dependency graph, not a flat feature table and not a universal processing ladder.
 
-A useful orientation is:
+Higher analysis may summarize lower evidence but may not silently repair uncertainty, create missing part identity, or bootstrap itself circularly.
 
-```text
-performance evidence
-        ↓
-pitch / rhythm / part relations
-        ↓
-harmony / tonality / voice leading
-        ↓
-cadence / phrase / motivic relations
-        ↓
-form / hierarchy / arrangement
-        ↓
-whole-work / soundtrack relations
-        ↓
-creator grammar / attribution / discourse
-```
-
-The real topology is a graph. Authored source may bypass inverse pitch recovery. Documentary evidence may constrain attribution directly. Auditory grouping may affect harmonic interpretation when note ownership is ambiguous.
-
-Therefore:
+Important separations include:
 
 ```text
-analysis order != truth order != time order
+performed pitches != chord spelling != harmonic function
+boundary != phrase role
+sonority != cadence
+section boundary != form
+source behavior != listener expectation
+musical effect != documented creator intention
+similarity != authorship
 ```
 
-## Harmonic dependencies
+Several analyses may coexist when the evidence underdetermines theory.
 
-Do not collapse `sounding pitches` into `chord`.
+Detailed targets for melody, harmony, phrase syntax, counterpoint, form, arrangement, timbre, whole-work structure, soundtrack structure, and creator grammar live in [`musical-understanding.md`](musical-understanding.md).
 
-```text
-performed pitch activity
-        ↓
-harmonic segmentation
-        ↓
-chord-tone / figuration hypotheses
-        ↓
-root / quality / inversion candidates
-        ↓
-local tonal-center / key candidates
-        ↓
-harmonic function
-        ↓
-progression / harmonic rhythm
-        ↓
-preparation / prolongation / resolution relations
-```
+## 8. Attribution roles remain distinct
 
-Executable music contains passing and neighbor tones, arpeggiation, suspensions, anticipations, pedals, staggered attacks, held tones, portamento, echo, ornamentation, and allocation artifacts.
-
-```text
-pitch active at t != chord member at t
-pitch-class set != chord spelling != root != inversion != function
-local tonal center != global key
-chord list != progression
-```
-
-Several analyses can coexist when the evidence underdetermines theory.
-
-## Phrase, cadence, and form
-
-A boundary is not yet a phrase role. A sonority is not yet a cadence. A section boundary is not yet form.
-
-Cadence classification must combine local morphology with independent grouping/formal evidence and longer-range syntax. Never allow a cadence label to provide the phrase completion used to prove that same cadence.
-
-For ambiguous arrivals such as Ionian `V → VI`, preserve simultaneous candidate interpretations when supported:
-
-```text
-local closure evidence at VI
-+
-continuation through VI
-+
-later grounded V → I
-→ local close + larger-scale continuation can coexist
-```
-
-Final class establishment belongs downstream of phrase-role evidence, not chord morphology alone.
-
-Form similarly depends on recurrence, contrast, transformation, phrase function, tonal/harmonic planning, orchestration, texture, and temporal hierarchy rather than a flat list of detected sections.
-
-## Timbre, synthesis, and instrument identity
-
-```text
-synthesis-object identity
-!= acoustic descriptor
-!= perceptual instrument-family label
-!= historical acoustic-instrument identity
-```
-
-An authored label such as `strings` may be exact at the authored layer. A classifier output such as `violin_family` is a model/perceptual hypothesis. A higher-quality reconstruction is an acoustic-realization candidate, not recovered historical source truth.
-
-Timbre can also carry structural musical information. Patch/sample choice, envelope, register, articulation, modulation, and routing may participate in phrase, orchestration, role, and form.
-
-## Auditory interpretation and listener response
-
-Auditory organization is distinct from emotional or evaluative response.
-
-Candidate auditory claims include stream grouping, fusion/segregation, continuity, foreground/background, masking, salience, perceived beat/meter, and spatial organization.
-
-Listener response includes expectation, surprise, familiarity, memory, emotion, pleasure, groove, attention, and aesthetic judgment under an explicit listener/model context.
-
-The same source and render can support different listener-response hypotheses under different cultural, learning, memory, or task contexts.
-
-Human-facing language is a discourse projection over the evidence, not a new truth layer. See `human-musical-discourse.md`.
-
-## Attribution and musicological context
-
-Keep creative roles distinct:
+Keep creative/technical roles separate:
 
 ```text
 composition
 != arrangement
-!= sequence / sound-data programming
-!= driver / engine programming
-!= patch / sample design
+!= sequence/sound-data programming
+!= driver/engine programming
+!= patch/sample design
 != final realization
 ```
 
-All modalities may contribute to attribution, but role provenance determines what the contribution means. A patch, control, or arrangement habit may support composer attribution only when historical evidence shows the composer controlled that layer.
+Feature similarity can rank hypotheses. It cannot establish historical authorship by itself.
 
-Core law:
+Documentary evidence is exact relative to the document/witness, not automatically proof of the role being inferred.
 
-```text
-artifact identity
-!= musical similarity
-!= work/version identity
-!= authorship
-```
+## 9. Shared-model admission
 
-Similarity can rank or strengthen hypotheses. It cannot establish historical authorship by itself.
-
-## Shared-model admission rule
-
-A mechanism becomes shared only when materially different source families need the same semantic relation without losing useful native evidence.
+A mechanism becomes shared only when materially different source families require the same semantic relation without losing useful native evidence.
 
 ```text
 shared implementation convenience != shared semantic law
 ```
 
-A shared xSF envelope does not imply one platform runtime. Yamaha chip-family resemblance does not imply one register ontology. Two analyzers wanting the same helper does not make the helper a musical universal.
+A shared container does not imply one runtime. Similar chip families do not imply one register ontology. Two analyzers wanting the same helper does not make that helper a musical universal.
 
-Promote abstractions by agreement **and disagreement** across independent sources.
+Promote abstractions using agreement and disagreement across independent sources.
 
-## Rendering and transformation
+## 10. Rendering and transformation
 
-The accurate/reference path remains the scientific control. Source-native enhancement may relax implementation ceilings only when it preserves the adopted musical/instrument identity and keeps the intervention explicit and reversible.
+The accurate/reference path remains the scientific control.
 
-A backend may intentionally lose information, but the loss must be declared.
+Source-native enhancement may relax implementation ceilings only when the adopted musical/instrument identity survives and the intervention is explicit, reversible, and independently testable. See [`source-native-enhanced-rendering.md`](source-native-enhanced-rendering.md).
+
+Spatial presentation consumes source-aware objects without rewriting source authorship. See [`omniphony-realtime-spatial-path.md`](omniphony-realtime-spatial-path.md).
+
+A backend may intentionally lose information, but the loss must be named.
 
 ```text
-source A → semantic model → backend B
-                     ↓
-                re-analyze B
-                     ↓
-                semantic model'
+source A
+→ semantic model
+→ backend B
+→ re-analyze B
+→ semantic model'
 ```
 
-Semantic round trips are verification surfaces. Byte identity is not required unless the contract says so; preservation obligations must be named.
+Semantic round trips are verification surfaces. Byte identity is required only where the relevant contract says so.
 
-See `source-native-enhanced-rendering.md` for the enhancement contract and `omniphony-realtime-spatial-path.md` for the spatial handoff.
+## 11. Cross-project boundary
 
-## Cross-project boundary
+VGM Compiler owns game-music source semantics, execution/reconstruction, musical analysis, rendering, and source-native playback bridges.
 
-VGM Compiler owns executable game-music source semantics, source-native execution/reconstruction, musical analysis, rendering, and playback bridges.
+libaural may contribute auditory evidence. Omniphony may consume source-aware spatial objects. Helix may own broader research continuity and cross-project evidence.
 
-libaural may contribute general auditory evidence. Omniphony may consume source-aware spatial objects. Helix may own broader research continuity, library identity, and cross-project historical evidence.
+Evidence may cross boundaries. Do not copy another project's ontology, durable database, workspace state, or current-status system into this repository.
 
-Evidence can cross boundaries without copying another project's ontology or database into this repository.
+## 12. Architectural test
 
-## Architectural test
-
-For every new abstraction ask:
+For a proposed shared abstraction ask:
 
 1. What exact problem does it solve?
-2. Which source families independently require it?
-3. What native distinctions would it erase?
-4. What evidence state and provenance does it carry?
-5. What happens when the required evidence is unavailable?
-6. Can a higher claim descend back to its support?
-7. Is this a durable semantic contract, or merely an implementation convenience?
+2. Which materially different source families require it?
+3. What native distinctions could it erase?
+4. Which semantic layer/evidence state/provenance does it carry?
+5. What happens when required evidence is unavailable?
+6. Can every higher claim descend to support?
+7. Is this durable semantic law or merely implementation convenience?
 
 If the answer is unclear, keep the mechanism source-local or research-local until a discriminating test earns promotion.

@@ -18,6 +18,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 SPC_PROVIDER_CONTRACTS = ROOT / "tests" / "spc_provider_contracts"
 ROOT_PYTHON_CONTRACT_PATTERNS = (
+    "test_agent_entry_contract.py",
     "test_private_component_import_contract.py",
     "test_repository_catalog_projection.py",
 )

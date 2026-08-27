@@ -1,313 +1,151 @@
 # Source-native enhanced rendering
 
-VGM Compiler's enhanced renderer is not a generic remastering stage, a MIDI/SoundFont conversion path, or a new arrangement of old game music.
+VGM Compiler's enhanced renderer is not a generic remaster, MIDI/SoundFont conversion, or new arrangement.
 
 Its target is:
 
-> **the highest-fidelity realization of the same executable musical idea that the surviving evidence can support, after relaxing implementation ceilings that are not themselves part of the music's adopted identity.**
+> **the highest-fidelity realization of the same executable musical idea that surviving evidence can support after relaxing implementation ceilings that are not part of the music's adopted identity.**
 
-The accurate/reference renderer remains the scientific control.
+The accurate/reference renderer remains the scientific control. Historical precedents and literature belong under `research/rendering/`; this document owns only the durable rendering contract.
 
-## Playback controls are orthogonal
+## 1. Enhanced and spatial are orthogonal
 
-User-facing playback must expose **spatial** and **enhanced** as separate checked options.
+User-facing playback keeps **enhanced** and **spatial** independently controllable.
 
 ```text
-spatial off + enhanced off
-    reference synthesis / reconstruction
-    + protected historical stereo presentation
+enhanced off + spatial off
+  reference synthesis/reconstruction + protected historical stereo
 
-spatial on + enhanced off
-    reference synthesis / reconstruction
-    + source-aware Omniphony presentation
+enhanced off + spatial on
+  reference synthesis/reconstruction + source-aware Omniphony presentation
 
-spatial off + enhanced on
-    source-native enhanced synthesis / reconstruction
-    + protected stereo presentation
+enhanced on + spatial off
+  source-native enhanced synthesis/reconstruction + protected stereo
 
-spatial on + enhanced on
-    source-native enhanced synthesis / reconstruction
-    + source-aware Omniphony presentation
+enhanced on + spatial on
+  source-native enhanced synthesis/reconstruction + source-aware Omniphony
 ```
-
-Neither checkbox may silently enable the other.
-
-This distinction is architectural, not merely UI policy:
 
 ```text
 enhanced
-changes how the known source object is synthesized / reconstructed
+  changes how a known source object is synthesized/reconstructed
 
 spatial
-changes how causal source lanes are presented after source rendering
+  changes how causal source objects are presented after source rendering
 ```
 
-The exact/reference path therefore remains available under every experiment. A quality intervention can be judged without changing geometry, and a spatial intervention can be judged without changing synthesis quality.
+Neither control may silently enable the other.
 
-The dependency-free playback option model must preserve this independence so the foobar VGM and SNES/SPC shells can expose the two controls consistently.
-
-## Counterfactual realization
-
-Historical game music often passed through severe production constraints:
-
-```text
-composer / sound programmer
-        ↓
-authored musical and synthesis intent
-        ↓
-limited tools / driver grammar / manual data entry
-        ↓
-limited storage / RAM / channels / sample bandwidth / arithmetic / effects memory
-        ↓
-shipped executable realization
-```
-
-enhanced rendering asks what can be safely relaxed **without changing the work into another arrangement or instrument system**.
-
-This is not the same as assuming that every historical limitation was bad.
-
-A limitation may have been:
-
-- an unwanted production burden;
-- a storage or quality compromise;
-- a boundary the composer adapted around;
-- a source of useful technique;
-- an artifact deliberately adopted into the final instrument identity.
-
-The renderer must determine which case applies at the level of the specific source object.
-
-See `../research/rendering/historical-constraint-friction-counterfactual-rendering.md` for practitioner evidence.
-
-## Evidence ladder
+## 2. Evidence ladder
 
 Use the strongest available basis for a less-constrained realization:
 
 ```text
-A  documented creator intention / creator-approved less-constrained realization
-B  same-production higher-quality source, master, prototype or CD version
-C  exact upstream sample/patch plus known transformation into the game asset
-D  deterministic hardware limitation with an identity-preservation test
-E  cross-source or corpus inference
-F  purely aesthetic enhancement hypothesis
+A  documented creator intention / approved less-constrained realization
+B  same-production higher-quality source/master/prototype/version
+C  exact upstream sample/patch + known transformation into game asset
+D  deterministic hardware limitation + identity-preservation test
+E  cross-source/corpus inference
+F  aesthetic enhancement hypothesis
 ```
 
-Only `A` supports strong wording about creator intention by itself.
+Only `A` supports strong creator-intent wording by itself. `B` and `C` still require checking whether historical preparation became musically meaningful. `D` through `F` remain reversible experiments.
 
-`B` and `C` can strongly support reconstruction, but they still require checking whether the transformation into the shipped asset became musically meaningful.
+## 3. Preserve versus relax
 
-`D` through `F` remain reversible experiments.
-
-## Preserve versus relax
-
-Always preserve unless the source itself proves otherwise:
+Preserve unless source evidence establishes otherwise:
 
 - note/event identity;
-- exact or source-authored timing relationships;
-- groove and phrasing;
-- logical part relationships;
+- authored/source timing, groove, and phrasing;
+- logical-part relationships;
 - patch/sample/instrument identity;
-- programmed articulation;
-- programmed modulation and automation;
+- articulation and modulation;
 - source-specific expressive gestures;
-- deliberate effect timing and musical function;
-- structural density and arrangement;
-- important nonlinear or degraded behavior that the instrument was designed around.
+- deliberate effect timing/function;
+- structural density/arrangement;
+- nonlinear/degraded behavior adopted into instrument identity.
 
-Possible ceilings to relax when evidence supports it:
+Potential ceilings to relax independently when evidence permits:
 
-- source-sample degradation caused only by storage pressure;
-- BRR/PCM quantization losses;
+- storage-driven sample degradation/quantization;
 - low-quality interpolation;
-- avoidable aliasing or imaging;
+- avoidable aliasing/imaging;
 - limited arithmetic precision;
-- DAC reconstruction quality;
+- DAC/reconstruction ceilings;
 - output bandwidth;
-- final summation precision and headroom;
+- final summation precision/headroom;
 - memory-limited echo/reverb realization;
 - storage-driven truncation or crude loop preparation;
-- physical-output defects not used as part of patch identity.
+- physical-output defects not musically adopted.
 
-## Mega Drive / Genesis and other VGM devices
+Historical limitation is not synonymous with unwanted defect. A constraint can be a burden, compromise, compositional boundary, technique source, or part of the resulting instrument.
 
-The enhanced target is not a generic modern synth substituted for the emulated device.
+## 4. Device-native enhancement
 
-For YM2612, conceptually:
+Do not replace a native source family with a generic modern synth merely to improve fidelity.
+
+### FM / PSG / PCM and related VGM devices
+
+Preserve the source-described synthesis system and programmed identity. For YM2612, conceptually:
 
 ```text
-same FM algorithm
-same operator ratios / levels / envelopes
-same modulation / feedback / LFO behavior
+same algorithm
+same operator relationships
+same envelopes / feedback / modulation
 same notes / timing / articulation
-same programmed patch identity
-        ↓
-higher-quality source-native FM realization
+same patch identity
+→ candidate higher-quality realization
 ```
 
-The experiment may relax selected hardware ceilings separately, such as numerical precision, bandwidth, reconstruction, DAC quality, or summation.
+Relax numerical precision, bandwidth, DAC behavior, summation, or other ceilings one at a time. If a device artifact materially defines a patch, it remains part of that instrument until controlled evidence earns a safe replacement.
 
-The same rule extends to other VGM devices: improve the **native synthesis mechanism** whose state the VGM actually describes. PSG, OPN/OPM/OPL-family FM, PCM/DAC, wavetable and other devices should get device-specific enhanced renderers rather than one global stereo enhancer.
+The intended result is a higher-quality descendant of the same instrument, not an unrelated pristine preset.
 
-But if a patch depends on a device-specific artifact, nonlinearity, quantization behavior, alias structure, or modulation interaction for its identity, that behavior remains part of the instrument until listening/evidence proves a safe higher-quality equivalent.
+### SNES / S-DSP
 
-The intended perceptual result is closer to:
-
-> the best possible descendant of the same instrument
-
-than:
-
-> replace the original patch with a pristine unrelated synthesizer preset.
-
-## SNES / S-DSP
-
-The SNES path is especially suitable for source-native reconstruction because the shipped instruments are already sample based.
-
-The intended route is:
+The useful intervention occurs upstream of the finished 32 kHz bus when exact source voices are available.
 
 ```text
-exact SPC / BRR sample identity
-+ exact pitch / envelope / loop / articulation history
-+ exact echo / routing behavior
-        ↓
-upstream sample provenance when available
-        ↓
-identify historical edits / truncation / filtering / looping / BRR encoding
-        ↓
-preserve intentional transformations
-+ relax unwanted degradation
-        ↓
-higher-quality realization of the same instrument design
+exact SPC/BRR source identity
++ pitch/envelope/loop/articulation history
++ routing/echo evidence
+→ source-native reconstruction
+→ optional proven upstream sample relation
+→ preserve intentional preparation
++ relax unwanted loss
 ```
 
-This can sound substantially cleaner than a normal S-DSP output, but **upsampling 32 kHz output by itself does not restore information that was never present**. The useful interventions happen earlier and per source:
+Preserve fractional pitch/phase trajectories, envelopes, loops, noise/pitch modulation, signed routing, and shared echo semantics.
 
-- reconstruct each BRR voice with a higher-quality interpolation/reconstruction law;
-- keep fractional phase and pitch trajectories at higher precision;
-- preserve exact envelopes, loops, noise/pitch-modulation state and signed stereo routing;
-- improve per-voice arithmetic and final summation/headroom where safe;
-- reconstruct the shared echo field independently rather than baking it into every voice;
-- when an upstream pre-BRR source is proven, use it only with the historical game-preparation transformation separated from unavoidable loss.
+When a proven pre-BRR source exists, do not automatically substitute it. Compare upstream source, game-prepared source, BRR representation, and shipped realization. The question is which historical changes were technical loss and which became part of the instrument.
 
-Normal product playback uses **48 kHz as both the live enhanced DSP/reconstruction rate and the final playback rate**. The point of the improvement is not the number 48,000 itself. It is that the improved trajectory is evaluated in the source domain before the historical finished-bus bottleneck. Verified upstream samples can use the longer studio reconstruction law at that exact live phase; the lower rung uses SNESAPU's source interpolation at the same 48 kHz execution rate.
+Normal product playback uses 48 kHz for the live enhanced reconstruction/final playback path. This does not imply that original S-DSP output contained missing ultrasonic information. A 96 kHz route is an offline/research comparison unless controlled evidence shows a product-relevant benefit that survives the final output condition.
 
-A 96 kHz render remains useful as an offline/research comparison. It can test whether extra oversampling headroom changes aliasing or nonlinear edge cases enough to matter. It is not the normal playback contract and it is not evidence that the original 32 kHz S-DSP output contained ultrasonic detail waiting to be recovered. If a 96 kHz experiment does not survive a controlled 48 kHz final-output comparison, the extra realtime cost has not earned a place in the product path.
+## 5. Source-native boundary
 
-If an original pre-BRR sample is discovered, do not automatically replace the game sample with it.
+When exact native voices are observable, improve them before the constrained historical final mixer rather than trying to repair only finished stereo.
 
-Instead compare:
+Do not route game music through MIDI/SoundFont/VST as the canonical intermediate merely because those ecosystems provide high-quality synthesis features. Such formats may remain interoperability/analysis projections.
 
-```text
-upstream source sample
-↔ game-prepared sample
-↔ BRR-encoded sample
-↔ shipped render
-```
+Source-family memory/storage constraints are title/system-specific evidence. Do not universalize one budget across machines or games.
 
-The important question is which changes were only technical loss and which changes became part of the instrument.
-
-A modern high-end sampler or VST is a useful **quality analogy**, not the planned backend. The renderer remains source-native.
-
-## GBA software-mixer precedent
-
-A useful community precedent appears in the 2014 HCS/Sonic Retro discussion around GBA music extraction and Donkey Kong Country 3.
-
-One experiment reverse-engineered the game's software mixer and tapped the mixed sample stream before the GBA DirectSound/DMA output stage and before emulator resampling. The author then explicitly considered moving farther upstream to **per-instrument interpolation** with sinc-like reconstruction. The same discussion distinguishes the higher-quality stored source samples from the compromised software-mixed playback path.
-
-Sources:
-
-- https://hcs64.com/mboard/forumlong.php?showthread=37780
-- preserved Sonic Retro discussion in the research corpus
-
-This is not evidence that every GBA soundtrack should be converted to MIDI/SoundFont, nor is it creator-intent evidence. It is an important implementation precedent for the architectural rule:
-
-```text
-when exact source voices are observable,
-improve them before the constrained historical mixer,
-rather than trying to repair only the final stereo bus
-```
-
-That is the same direction the SPC path should take once exact native pre-pan voice capture is connected to enhanced reconstruction.
-
-## SoundFonts, DLS, MIDI and VST ecosystems
-
-These are research observatories.
-
-They help expose established ideas about:
-
-- multisampling;
-- key/velocity zones;
-- envelopes;
-- modulation;
-- filters;
-- pitch control;
-- bank/program identity;
-- sample looping;
-- realtime synthesis quality;
-- effect routing;
-- rendering precision.
-
-They are not the canonical intermediate representation and are not the planned foobar playback engine.
-
-```text
-VGM / SPC / native driver
-→ common musical meaning when justified
-→ source-native enhanced renderer
-
-not
-
-VGM / SPC
-→ MIDI
-→ SoundFont
-→ final answer
-```
-
-MIDI/SF2/DLS exports may still exist as projections for interoperability or analysis.
-
-## Memory nuance
-
-Do not universalize one memory figure across systems or games.
-
-### SNES
-
-The S-SMP/S-DSP audio subsystem has 64 KiB of local RAM. That space may contain or support:
-
-- driver/code/data;
-- sequence state;
-- BRR samples;
-- sample-directory structures;
-- echo buffer/state;
-- other engine-specific audio data.
-
-Graphics do not literally consume this local audio RAM. Cartridge ROM is a separate whole-game storage constraint.
-
-### Mega Drive / Genesis
-
-Cartridge ROM is shared across the game and allocations among code, graphics, music data, PCM, tables and other assets are title specific.
-
-Therefore VGM Compiler should record actual per-game resource evidence when available rather than assume one generic soundtrack budget.
-
-The important project principle is broader:
-
-> **historical audio was often forced to fit inside a small resource envelope; enhanced playback need not reproduce that envelope when the musical identity survives its removal.**
-
-## Validation
+## 6. Validation
 
 Every relaxed ceiling is a separate experiment.
 
-Do not simultaneously change sample reconstruction, interpolation, FM precision, DAC behavior, mixing, echo and stereo presentation and then call the result better.
+For one candidate:
 
-For one proposed relaxation:
+1. retain the exact/reference control;
+2. state the changed historical ceiling;
+3. state the evidence that relaxing it is allowed;
+4. state identity features locked by the test;
+5. render control and candidate under the same musical execution;
+6. measure structural/acoustic differences;
+7. listen under route-clean, level-aware conditions;
+8. include a control where the historical artifact should remain when applicable;
+9. keep only improvements that preserve musical/instrument identity and function.
 
-1. retain the exact/reference path;
-2. state which historical ceiling is changing;
-3. state the evidence that the ceiling is unwanted or safely relaxable;
-4. state which identity features are locked;
-5. render reference and candidate under the same musical execution;
-6. measure structural/perceptual differences;
-7. listen;
-8. test at least one control where the corresponding historical artifact should remain;
-9. retain only improvements that preserve recognition, phrasing, instrument identity and musical function.
-
-For product-facing validation, test the four playback quadrants independently:
+Test the four playback quadrants independently:
 
 ```text
 reference + stereo
@@ -316,32 +154,12 @@ enhanced  + stereo
 enhanced  + spatial
 ```
 
-A regression in one quadrant must not be hidden by an improvement in another.
+A regression in one quadrant cannot be hidden by an improvement in another.
 
-## Historical-intent wording
+## 7. Wording
 
-Use precise language.
+Prefer `less-constrained realization`, `source-supported reconstruction`, `higher-fidelity realization`, `counterfactual source-native render`, or `candidate closer to documented creator intent` when those phrases match the evidence.
 
-Prefer:
+Do not claim `this is what the composer intended`, `this is the original uncompressed version`, or `this is how the music was meant to sound` unless direct evidence supports that exact statement.
 
-```text
-less constrained realization
-source-supported reconstruction
-higher-fidelity realization
-counterfactual source-native render
-candidate closer to documented creator intent
-```
-
-Avoid claiming:
-
-```text
-this is what the composer intended
-this is the original uncompressed version
-this is how the music was meant to sound
-```
-
-unless direct evidence actually supports that claim.
-
-## Project rule
-
-> **Recover intention where evidence exists, relax unwanted implementation ceilings where identity survives, and preserve the constraints that the music actually adopted as part of itself.**
+> **Recover intention where evidence exists, relax unwanted implementation ceilings where identity survives, and preserve constraints that the music adopted as part of itself.**

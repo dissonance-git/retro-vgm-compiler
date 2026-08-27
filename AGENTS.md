@@ -1,76 +1,231 @@
-# AGENTS.md
+# VGM Compiler development contract
 
-This file is the operating contract for coding agents. Project identity and repository ownership live in `README.md`; semantic and evidence laws live in `docs/architecture.md`; the musical target lives in `docs/musical-understanding.md`; active priorities live in `docs/vgm-compiler-roadmap.md`. Do not restate those contracts here.
+This file is the canonical operating law for repository work.
 
-## Enter the repository
+> **More capability, fewer conceptual machines.**
+>
+> **One concept, one writable owner.**
+>
+> **Living owners keep current obligations. Git keeps the walk.**
 
-For substantive work:
+Direct user correction or instruction outranks repository prose.
+
+## 1. First-connection skill preflight
+
+Every substantive reasoning-agent entry inherits [`.agents/skills/skill-preflight/SKILL.md`](.agents/skills/skill-preflight/SKILL.md).
+
+Before repository, research, implementation, review, or publication action:
+
+```text
+identify VGM Compiler
+→ read current AGENTS.md authority
+→ read the smallest relevant README.md identity/routing surface
+→ enumerate .agents/skills/*/SKILL.md
+→ compare skill names/descriptions with the exact obligation
+→ select process/control skills first
+→ read selected current skill bodies
+→ build the smallest sufficient context
+→ act
+→ verify
+```
+
+Do not front-load every skill body. Skill awareness is broad; skill-body retrieval is selective. Current repository bytes outrank remembered procedure.
+
+A plausible applicable skill must be inspected when omitting it could change decomposition, evidence collection, falsification, mutation, concurrency handling, publication, re-entry, or capability-debt handling.
+
+If `AGENTS.md`, `README.md`, `.agents/skills/`, or the task obligation changes materially during a long run, refresh skill awareness.
+
+The first-connection funnel applies to reasoning-agent transports, including GitHub-connector sessions. Low-level exact API callers are not required to imitate an autonomous agent bootstrap.
+
+## 2. Enter through current authority
+
+For substantive repository work:
 
 ```text
 current main HEAD
 → README.md
-→ AGENTS.md
+→ AGENTS.md at the same HEAD
+→ selected current skills
 → smallest task owner
 → recent commits touching that owner
 → exact code / test / contract
 ```
 
-Use `python tools/repository_catalog.py --focus <concept>` before broad repository search. Search inside the selected owner before widening. Use the unfiltered catalog only when repository shape itself is the task.
+For a local checkout, use `python tools/repository_catalog.py --focus <concept>` when its mechanical projection can cheaply narrow the task.
 
-Read the roadmap only when the task depends on project priority or current frontier. Read durable contracts only when the touched surface depends on them. Do not load every project document by default.
+Read `docs/vgm-compiler-roadmap.md` only when current priority/frontier matters. Read durable contracts only when the touched surface depends on them.
 
-## Change law
+Work from `main`. Do not create branches or pull requests unless explicitly requested. Never force-push. Preserve unrelated concurrent work.
 
-1. Work from current `main`. Do not create branches or pull requests unless explicitly requested.
-2. Re-read a file from current `main` immediately before replacing it.
-3. Prefer one canonical owner over a peer summary, redirect document, duplicate registry, compatibility tombstone, or manually maintained index.
-4. Git history owns superseded repository state. Keep historical-origin material only when it remains current evidence, provenance, a reproducibility input, or an implementation obligation.
-5. Preserve unrelated concurrent work. Never force-push.
-6. Never rewrite immutable corpus bytes or imported upstream evidence during cleanup or refactoring.
-7. Generated data, caches, build products, and task projections are disposable unless a current contract explicitly makes an artifact canonical evidence.
-8. After publication, verify the resulting commit and distinguish executed evidence from intended behavior.
+## 3. One owner per concept
 
-Direct user correction outranks repository prose.
-
-## Authority discipline
-
-A project fact should have one writable authority.
-
-Before adding or duplicating a file, section, registry, wrapper, or abstraction, ask:
+Canonical roles are:
 
 ```text
-What exact obligation does this object uniquely own?
-Does a current owner already exist?
-Can this relation be derived instead of stored?
-Would this create a second place that can become stale?
+README.md
+  repository identity / routing
+
+AGENTS.md
+  repository / evidence / concurrency / publication law
+
+docs/architecture.md
+  shared semantic / provenance / evidence / abstraction law
+
+docs/musical-understanding.md
+  musical north star
+
+docs/vgm-compiler-roadmap.md
+  current unresolved/active frontier
+
+focused docs/*.md
+  distinct durable subsystem contracts
+
+research/
+  bounded evidence / experiments / controls / preregistration
+
+model/
+  source-independent semantics that earned sharing
+
+components/
+  source-family/device/driver/execution/rendering implementation
+
+tests/
+  executable invariants + immutable real-music controls
+
+tools/
+  reusable operations + derived projections
+
+imports/
+  immutable external inputs
+
+patches/
+  maintained external-source transformations
+
+.github/workflows/
+  executable validation / packaging routes
+
+.agents/
+  agent procedure / connector re-entry only
 ```
 
-If the first question has no strong answer, extend or derive from an existing owner instead.
+Generated inventories, search results, task maps, caches, status summaries, connector overlays, and handoff capsules are projections. They are not peer truth stores.
 
-Current-state statements belong in `docs/vgm-compiler-roadmap.md`. Durable semantic laws belong in `docs/architecture.md`. Musical goals belong in `docs/musical-understanding.md`. Repository identity and routing belong in `README.md`.
+## 4. Semantic collapse and cleanup
 
-Specialized documents under `docs/` must own a distinct durable contract. Research material belongs under the narrowest durable question in `research/`; it does not become architecture merely by being detailed.
+Repository cleanup is:
 
-## Context law
+```text
+identify current obligations + exact evidence
+→ choose one owner for every overlap
+→ fold surviving consequences into owners/tests
+→ derive recoverable views
+→ remove duplicate/completed/lifecycle-shaped surfaces
+→ verify inbound routes and protected behavior
+→ let Git retain the walk
+```
 
-Human attention and model context are finite compute.
+Before keeping or adding a file, registry, cache, abstraction, wrapper, directory, status surface, or research artifact, ask:
 
-- Route to the smallest canonical owner that can answer the task.
-- Prefer mechanically derived relations over duplicated prose navigation.
-- Read relation shape before opening every related file in full.
-- Widen context only when required recall, uncertainty, or verification demands it.
-- A smaller context is better only when correctness, provenance, required recall, task capability, and verification are preserved or improved.
-- When two correct designs are otherwise equivalent, prefer the one requiring fewer searches, fewer repeated explanations, and less context to reach the same verified conclusion.
+1. What current obligation does it uniquely own?
+2. Is there already a canonical owner?
+3. Can the relation or inventory be derived mechanically?
+4. Is the exact object still required evidence or only repository history?
+5. Which weaker surface can disappear if this survives?
 
-The target is useful reasoning per unit of context, not arbitrary brevity.
+Prefer existing owner over parallel owner, derive over duplicate, fold over archive, semantic names over lifecycle names, and executable invariants over prose duplication.
 
-## Semantic discipline
+Do not create active canonical namespaces such as `new`, `v2`, `final`, `replacement`, `old`, `archive`, `legacy`, `misc`, or `backup` merely to avoid understanding ownership.
 
-Do not invent local substitutes for project-wide evidence or semantic laws. When work crosses source fact, musical inference, perceptual claim, documentary evidence, provenance, identity, or availability, follow `docs/architecture.md` exactly.
+Historical material stays tracked only when the exact bytes remain current evidence, provenance, a reproducibility input, an immutable corpus fixture, or an implementation obligation. Otherwise Git history is sufficient.
 
-Preserve source-native semantics before normalization. Shared abstractions are earned when materially different source families need the same relation without losing useful native distinctions.
+Never rewrite immutable corpus bytes or imported upstream evidence during cleanup/refactoring.
 
-## Verification
+## 5. Naming and hierarchy
+
+Conventional root files keep conventional names.
+
+New human-facing Markdown, folders, task/handoff keys, route labels, and repository slugs use lowercase kebab-case when external contracts permit it. Python scripts and identifiers use lowercase snake_case. Language-native code identifiers keep their language convention.
+
+Existing external ABI/schema IDs, third-party paths, and compatibility filenames stay exact until a deliberate migration proves every consumer.
+
+Folders own stable semantic categories, not chronology or work sessions.
+
+## 6. Evidence and semantic discipline
+
+Follow `docs/architecture.md` when work crosses source fact, musical inference, perceptual claim, documentary evidence, provenance, identity, or availability.
+
+Preserve source-native semantics before normalization. Shared abstractions are earned only when materially different source families require the same semantic relation without erasing useful native distinctions.
+
+Keep `exact`, `derived`, `hypothesis`, `unknown`, `unavailable`, and `not-applicable` distinct. Unknown is not false. Missing capture is not silence. A hypothesis does not overwrite its support.
+
+Research can pressure a durable contract, but research detail does not become architecture merely because it is extensive.
+
+## 7. Research and corpus law
+
+`research/` may retain exact evidence objects when regeneration is insufficient for the current experiment/reproducibility obligation. Derived caches, matrices, reports, and feature projections remain disposable unless explicitly promoted by their owner.
+
+A named game is normally a control/testbed unless the game itself is the integrative research question.
+
+A promotion from research into shared semantics requires a discriminating route such as:
+
+```text
+explicit evidence object
++ provenance / uncertainty
++ executable falsifier
++ independent source-family/corpus pressure when applicable
+→ candidate shared capability
+```
+
+Do not weaken a corpus or acceptance gate merely to make a run complete.
+
+## 8. Repository mutation and concurrency
+
+Repository changes use [`.agents/skills/repo-change/SKILL.md`](.agents/skills/repo-change/SKILL.md).
+
+GitHub-backed work additionally uses [`.agents/skills/github-workspace/SKILL.md`](.agents/skills/github-workspace/SKILL.md). Long or hot-`main` connector work also uses [`.agents/skills/github-workspace-liveness/SKILL.md`](.agents/skills/github-workspace-liveness/SKILL.md).
+
+The operating loop is:
+
+```text
+observe exact state
+→ orient narrowly
+→ stage an overlay
+→ verify what can actually execute
+→ refresh awareness of current main
+→ continue from the newest accepted head
+```
+
+Remote movement is awareness before conflict. Path-disjoint concurrent work may still introduce useful evidence, tests, helpers, or owners. Absorb relevant positive interference without discarding unaffected task progress.
+
+Validation belongs to an exact target SHA. A pass from one commit does not transfer to another.
+
+For substantial direct-main agent commits, use retrospective routing trailers after the actual diff/validation state is known:
+
+```text
+vgm-task: <lowercase-kebab-case-key>
+vgm-change-kind: <actual-landed-kind>
+vgm-validation: <actual-validation-state>
+vgm-handoff: <optional issue numbers>
+```
+
+These trailers are coordination hints, not evidence.
+
+## 9. Runtime capability and Codex handoff
+
+Repository control and fresh runtime execution are separate capabilities.
+
+Finish all repository-native work first. If a concrete actionable remainder is blocked specifically by the current interface/runtime, use [`.agents/skills/codex-handoff/SKILL.md`](.agents/skills/codex-handoff/SKILL.md).
+
+The authoritative capability-debt queue is open GitHub issues with:
+
+```text
+title prefix: CODEX:
+body marker: <!-- vgm-compiler-codex-handoff:v1 -->
+```
+
+Do not create a parallel JSON/Markdown queue.
+
+## 10. Verification
 
 Default core route:
 
@@ -80,8 +235,18 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Prefer focused tests first, then broader suites when the touched surface warrants them. Use real corpus controls when a claim crosses from implementation into preserved music.
+Prefer focused tests first, then broader suites proportionate to the change. Use real corpus controls when a claim crosses from implementation into preserved music.
 
-Do not call CI green unless a runner executed successfully. Do not weaken an acceptance gate merely to obtain an artifact.
+Keep source correctness, semantic correctness, compile/link success, unit/integration tests, real-corpus behavior, package/runtime verification, and perceptual/listening validation separate.
 
-Private foobar2000 VGM/SPC delivery is owned by `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1`. A DLL compile or archive creation alone is not publish-ready.
+Do not call CI green unless a runner executed successfully. A workflow not planned, runner/backend startup failure, workflow runtime failure, test failure, and successful execution are different states.
+
+Private foobar2000 VGM/SPC delivery is owned by `.github/workflows/private-foobar-build.yml` and `tools/build_private_foobar_components.ps1`. A DLL compile or archive alone is not delivery proof.
+
+## 11. Completion
+
+Before publication, refresh `main`, inspect changed supporting/protected premises, preserve concurrent work, inspect the exact candidate diff, run or route proportionate validation, and remove duplicate surfaces made redundant by the change.
+
+After publication, re-fetch `main`, verify the intended commit and paths/content, inspect target-SHA validation, and report only what actually executed.
+
+Do not create a history document to memorialize completed cleanup. The repository should be cheaper to understand and safer to resume after every change.
