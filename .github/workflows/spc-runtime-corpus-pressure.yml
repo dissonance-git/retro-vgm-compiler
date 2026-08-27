@@ -62,64 +62,72 @@ jobs:
       - name: Measure handoff context across blind SPC panel
         timeout-minutes: 5
         run: |
-          set -euo pipefail
-          mkdir -p spc-runtime-pressure
-          python3 - <<'PY' > spc-runtime-pressure/handoff-panel.tsv
-          import json
-          from pathlib import Path
-
-          panel = json.loads(
-              Path("research/projects/sonic3/spc-cube-blind-panel.json").read_text(
-                  encoding="utf-8"
-              )
-          )
-          cues = panel["cues"]
-          if len(cues) != 31:
-              raise SystemExit(f"expected 31 blind-panel cues, found {len(cues)}")
-          seen = set()
-          for cue in cues:
-              cue_id = cue["cue_id"]
-              fixture = cue["fixture_path"]
-              if cue_id in seen:
-                  raise SystemExit(f"duplicate blind-panel cue id: {cue_id}")
-              seen.add(cue_id)
-              if not Path(fixture).is_file():
-                  raise SystemExit(f"missing blind-panel fixture: {cue_id}")
-              print(f"{cue_id}\t{fixture}")
-          PY
-
-          : > spc-runtime-pressure/handoff-context.txt
-          while IFS=      - name: Upload bounded SPC pressure evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: spc-runtime-corpus-pressure
-          path: spc-runtime-pressure/
-          if-no-files-found: warn
-\t' read -r cue_id fixture; do
-            printf '%s ' "$cue_id" | tee -a spc-runtime-pressure/handoff-context.txt
-            build-spc-runtime-pressure/spc_part_selectivity_control "$fixture" 3 \
-              | tee -a spc-runtime-pressure/handoff-context.txt
-          done < spc-runtime-pressure/handoff-panel.tsv
-
           python3 - <<'PY'
           import json
           from pathlib import Path
+          import subprocess
 
-          path = Path("spc-runtime-pressure/handoff-context.txt")
-          rows = []
-          for raw in path.read_text(encoding="utf-8").splitlines():
-              fields = raw.split()
-              if len(fields) < 3 or fields[1] != "SPC_PART_SELECTIVITY_CONTROL":
-                  raise SystemExit(f"unexpected handoff-context row: {raw}")
+          panel_path = Path("research/projects/sonic3/spc-cube-blind-panel.json")
+          panel = json.loads(panel_path.read_text(encoding="utf-8"))
+          cues = panel["cues"]
+          if len(cues) != 31:
+              raise SystemExit(f"expected 31 blind-panel cues, found {len(cues)}")
+
+          output_dir = Path("spc-runtime-pressure")
+          output_dir.mkdir(parents=True, exist_ok=True)
+          panel_rows = []
+          raw_lines = []
+          seen = set()
+
+          for cue in cues:
+              cue_id = cue["cue_id"]
+              fixture = Path(cue["fixture_path"])
+              if cue_id in seen:
+                  raise SystemExit(f"duplicate blind-panel cue id: {cue_id}")
+              seen.add(cue_id)
+              if not fixture.is_file():
+                  raise SystemExit(f"missing blind-panel fixture: {cue_id}")
+
+              completed = subprocess.run(
+                  [
+                      "build-spc-runtime-pressure/spc_part_selectivity_control",
+                      str(fixture),
+                      "3",
+                  ],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              line = completed.stdout.strip()
+              fields = line.split()
+              if not fields or fields[0] != "SPC_PART_SELECTIVITY_CONTROL":
+                  raise SystemExit(
+                      f"unexpected handoff-context output for {cue_id}: {line}"
+                  )
+
               values = {}
-              for field in fields[2:]:
+              for field in fields[1:]:
                   key, value = field.split("=", 1)
-                  values[key] = float(value) if any(c in value for c in ".eE") else int(value)
-              rows.append({"cue_id": fields[0], **values})
+                  values[key] = (
+                      float(value)
+                      if any(char in value for char in ".eE")
+                      else int(value)
+                  )
 
-          if len(rows) != 31:
-              raise SystemExit(f"expected 31 handoff-context rows, found {len(rows)}")
+              panel_rows.append({"cue_id": cue_id, **values})
+              raw_lines.append(f"{cue_id} {line}")
+              print(f"{cue_id} {line}")
+
+          (output_dir / "handoff-context.txt").write_text(
+              "\n".join(raw_lines) + "\n",
+              encoding="utf-8",
+          )
+          (output_dir / "handoff-panel.tsv").write_text(
+              "\n".join(
+                  f"{cue['cue_id']}\t{cue['fixture_path']}" for cue in cues
+              ) + "\n",
+              encoding="utf-8",
+          )
 
           summary = {
               "schema": "spc-handoff-context-panel-v1",
@@ -128,35 +136,35 @@ jobs:
                   "association is not persistent-part identity and cannot lift the "
                   "cross-voice confidence ceiling without independent evidence."
               ),
-              "cue_count": len(rows),
+              "cue_count": len(panel_rows),
               "cues_with_observed_candidates": sum(
-                  row["observed_candidates"] > 0 for row in rows
+                  row["observed_candidates"] > 0 for row in panel_rows
               ),
               "cues_with_bundle_candidates": sum(
-                  row["handoff_bundle_candidates"] > 0 for row in rows
+                  row["handoff_bundle_candidates"] > 0 for row in panel_rows
               ),
               "total_bundle_candidates": sum(
-                  row["handoff_bundle_candidates"] for row in rows
+                  row["handoff_bundle_candidates"] for row in panel_rows
               ),
               "total_two_sided_flanked": sum(
-                  row["handoff_two_sided_flanked"] for row in rows
+                  row["handoff_two_sided_flanked"] for row in panel_rows
               ),
               "total_bidirectional_unique": sum(
-                  row["handoff_bidirectional_unique"] for row in rows
+                  row["handoff_bidirectional_unique"] for row in panel_rows
               ),
               "total_two_sided_unique": sum(
-                  row["handoff_two_sided_unique"] for row in rows
+                  row["handoff_two_sided_unique"] for row in panel_rows
               ),
               "cues_with_bidirectional_unique": [
-                  row["cue_id"] for row in rows
+                  row["cue_id"] for row in panel_rows
                   if row["handoff_bidirectional_unique"] > 0
               ],
               "cues_with_two_sided_unique": [
-                  row["cue_id"] for row in rows
+                  row["cue_id"] for row in panel_rows
                   if row["handoff_two_sided_unique"] > 0
               ],
           }
-          Path("spc-runtime-pressure/handoff-context-summary.json").write_text(
+          (output_dir / "handoff-context-summary.json").write_text(
               json.dumps(summary, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
           )
