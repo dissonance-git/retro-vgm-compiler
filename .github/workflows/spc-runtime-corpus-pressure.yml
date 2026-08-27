@@ -193,6 +193,18 @@ jobs:
                   row["handoff_boundary_safe_noncyclic_two_sided_unique"]
                   for row in panel_rows
               ),
+              "total_same_voice_competed_two_sided_unique": sum(
+                  row["handoff_same_voice_competed_two_sided_unique"]
+                  for row in panel_rows
+              ),
+              "total_uncontested_two_sided_unique": sum(
+                  row["handoff_uncontested_two_sided_unique"]
+                  for row in panel_rows
+              ),
+              "total_boundary_safe_uncontested_two_sided_unique": sum(
+                  row["handoff_boundary_safe_uncontested_two_sided_unique"]
+                  for row in panel_rows
+              ),
               "cues_with_bidirectional_unique": [
                   row["cue_id"] for row in panel_rows
                   if row["handoff_bidirectional_unique"] > 0
@@ -220,6 +232,14 @@ jobs:
               "cues_with_boundary_safe_noncyclic_two_sided_unique": [
                   row["cue_id"] for row in panel_rows
                   if row["handoff_boundary_safe_noncyclic_two_sided_unique"] > 0
+              ],
+              "cues_with_uncontested_two_sided_unique": [
+                  row["cue_id"] for row in panel_rows
+                  if row["handoff_uncontested_two_sided_unique"] > 0
+              ],
+              "cues_with_boundary_safe_uncontested_two_sided_unique": [
+                  row["cue_id"] for row in panel_rows
+                  if row["handoff_boundary_safe_uncontested_two_sided_unique"] > 0
               ],
           }
           (output_dir / "handoff-context-summary.json").write_text(

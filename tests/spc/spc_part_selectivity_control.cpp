@@ -77,6 +77,8 @@ struct cross_voice_handoff_detail {
     std::int64_t successor_start_tick = 0;
     bool boundary_safe = false;
     bool synchronized_cycle = false;
+    bool source_same_voice_successor = false;
+    bool target_same_voice_predecessor = false;
 };
 
 struct cross_voice_context_result {
@@ -93,6 +95,9 @@ struct cross_voice_context_result {
     std::size_t synchronized_cycle_two_sided_unique_count = 0;
     std::size_t noncyclic_two_sided_unique_count = 0;
     std::size_t boundary_safe_noncyclic_two_sided_unique_count = 0;
+    std::size_t same_voice_competed_two_sided_unique_count = 0;
+    std::size_t uncontested_two_sided_unique_count = 0;
+    std::size_t boundary_safe_uncontested_two_sided_unique_count = 0;
     std::vector<cross_voice_handoff_detail> two_sided_unique_details;
 };
 
@@ -478,6 +483,21 @@ cross_voice_context_result measure_cross_voice_context(
                 !successor->active.has_value())
                 throw std::logic_error("SPC two-sided handoff detail lacks required episode facts");
 
+            const node* source_successor =
+                nearest_same_voice_successor(episodes, *first);
+            const node* target_predecessor =
+                nearest_same_voice_predecessor(episodes, *second);
+            const bool source_same_voice_successor = strong_same_voice_link(
+                graph,
+                first,
+                source_successor,
+                policy);
+            const bool target_same_voice_predecessor = strong_same_voice_link(
+                graph,
+                target_predecessor,
+                second,
+                policy);
+
             result.two_sided_unique_details.push_back({
                 *first_voice,
                 *second_voice,
@@ -494,6 +514,9 @@ cross_voice_context_result measure_cross_voice_context(
                 second->active->end->tick,
                 successor->active->start.tick,
                 boundary_safe,
+                false,
+                source_same_voice_successor,
+                target_same_voice_predecessor,
             });
         }
     }
@@ -509,6 +532,17 @@ cross_voice_context_result measure_cross_voice_context(
             ++result.noncyclic_two_sided_unique_count;
             if (detail.boundary_safe)
                 ++result.boundary_safe_noncyclic_two_sided_unique_count;
+        }
+
+        const bool same_voice_competed =
+            detail.source_same_voice_successor ||
+            detail.target_same_voice_predecessor;
+        if (same_voice_competed) {
+            ++result.same_voice_competed_two_sided_unique_count;
+        } else {
+            ++result.uncontested_two_sided_unique_count;
+            if (detail.boundary_safe)
+                ++result.boundary_safe_uncontested_two_sided_unique_count;
         }
     }
 
@@ -734,6 +768,13 @@ int main(int argc, char** argv) {
         if (context.boundary_safe_noncyclic_two_sided_unique_count >
             context.noncyclic_two_sided_unique_count)
             throw std::logic_error("SPC boundary-safe noncyclic handoffs exceed noncyclic handoffs");
+        if (context.same_voice_competed_two_sided_unique_count +
+                context.uncontested_two_sided_unique_count !=
+            context.two_sided_unique_count)
+            throw std::logic_error("SPC same-voice competition partition does not match unique handoffs");
+        if (context.boundary_safe_uncontested_two_sided_unique_count >
+            context.uncontested_two_sided_unique_count)
+            throw std::logic_error("SPC boundary-safe uncontested handoffs exceed uncontested handoffs");
         if (context.two_sided_unique_count > context.two_sided_flanked_count ||
             context.two_sided_unique_count > context.bidirectionally_unique_count ||
             context.boundary_safe_bidirectionally_unique_count >
@@ -802,6 +843,12 @@ int main(int argc, char** argv) {
             << context.noncyclic_two_sided_unique_count
             << " handoff_boundary_safe_noncyclic_two_sided_unique="
             << context.boundary_safe_noncyclic_two_sided_unique_count
+            << " handoff_same_voice_competed_two_sided_unique="
+            << context.same_voice_competed_two_sided_unique_count
+            << " handoff_uncontested_two_sided_unique="
+            << context.uncontested_two_sided_unique_count
+            << " handoff_boundary_safe_uncontested_two_sided_unique="
+            << context.boundary_safe_uncontested_two_sided_unique_count
             << '\n';
 
         for (std::size_t index = 0; index < context.two_sided_unique_details.size(); ++index) {
@@ -825,6 +872,10 @@ int main(int argc, char** argv) {
                 << " successor_start_tick=" << item.successor_start_tick
                 << " boundary_safe=" << (item.boundary_safe ? 1 : 0)
                 << " synchronized_cycle=" << (item.synchronized_cycle ? 1 : 0)
+                << " source_same_voice_successor="
+                << (item.source_same_voice_successor ? 1 : 0)
+                << " target_same_voice_predecessor="
+                << (item.target_same_voice_predecessor ? 1 : 0)
                 << '\n';
         }
         return 0;
