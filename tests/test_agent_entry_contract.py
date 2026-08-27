@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS = ROOT / "AGENTS.md"
 README = ROOT / "README.md"
-CONNECTOR = ROOT / ".agents" / "github-connector.json"
 SKILLS = ROOT / ".agents" / "skills"
+BOOTSTRAP = ROOT / "tools" / "github_agent_bootstrap.py"
 
 REQUIRED_SKILLS = {
     "skill-preflight",
@@ -39,12 +41,9 @@ class AgentEntryContractTests(unittest.TestCase):
             discovered.add(name)
 
         self.assertTrue(REQUIRED_SKILLS.issubset(discovered))
-        self.assertEqual(
-            (SKILLS / "skill-preflight" / "SKILL.md").is_file(),
-            True,
-        )
+        self.assertTrue((SKILLS / "skill-preflight" / "SKILL.md").is_file())
 
-    def test_root_authority_requires_skill_preflight(self) -> None:
+    def test_root_authority_requires_live_bootstrap_and_skill_preflight(self) -> None:
         agents = AGENTS.read_text(encoding="utf-8")
         readme = README.read_text(encoding="utf-8")
         for token in (
@@ -54,59 +53,66 @@ class AgentEntryContractTests(unittest.TestCase):
             "github-workspace-liveness",
             "repo-change",
             "codex-handoff",
+            "tools/github_agent_bootstrap.py",
+            "derive/fetch current agent bootstrap",
         ):
             self.assertIn(token, agents)
 
-        self.assertIn(".agents/github-connector.json", readme)
+        self.assertIn("tools/github_agent_bootstrap.py", readme)
         self.assertIn(".agents/skills/", readme)
+        self.assertNotIn(".agents/github-connector.json", readme)
 
-    def test_connector_declares_first_connection_funnel(self) -> None:
-        data = json.loads(CONNECTOR.read_text(encoding="utf-8"))
-        self.assertEqual(
-            data["schema_version"],
-            "vgm-compiler-github-connector-002.0",
+    def test_bootstrap_is_derived_from_current_git_and_live_skills(self) -> None:
+        completed = subprocess.run(
+            [sys.executable, str(BOOTSTRAP), "--json"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
         )
-        self.assertFalse(data["canonical_truth"])
-        self.assertFalse(data["writable_state"])
-
-        funnel = data["first_connection"]
-        self.assertEqual(funnel[0], "identify-vgm-compiler")
-        self.assertIn("read-current-agents-authority", funnel)
-        self.assertIn("enumerate-live-agent-skills", funnel)
-        self.assertIn("run-skill-preflight", funnel)
-        self.assertLess(
-            funnel.index("run-skill-preflight"),
-            funnel.index("act"),
-        )
-        self.assertEqual(funnel[-1], "verify")
-
-        awareness = data["skill_awareness"]
+        data = json.loads(completed.stdout)
+        self.assertEqual(data["schema_version"], "vgm-github-agent-bootstrap-001.0")
+        self.assertEqual(data["system"], "VGM Compiler")
+        self.assertEqual(data["transport"], "github-connector")
+        self.assertEqual(data["authority_path"], "AGENTS.md")
+        self.assertEqual(data["identity_path"], "README.md")
         self.assertEqual(
-            awareness["canonical_inventory"],
-            ".agents/skills/*/SKILL.md",
-        )
-        self.assertEqual(
-            awareness["preflight_owner"],
+            data["skill_preflight_path"],
             ".agents/skills/skill-preflight/SKILL.md",
         )
-        self.assertEqual(awareness["catalog"], "derive-from-current-tree")
-        self.assertFalse(awareness["remembered_skill_bodies_are_authoritative"])
-
-    def test_connector_rules_pin_concurrency_and_validation(self) -> None:
-        rules = "\n".join(
-            json.loads(CONNECTOR.read_text(encoding="utf-8"))["connector_rules"]
+        self.assertEqual(
+            data["skill_catalog"]["canonical_truth"],
+            ".agents/skills/*/SKILL.md",
         )
-        for token in (
-            "exact main HEAD and tree",
-            "search for discovery only",
-            "moved main as awareness before conflict",
-            "absorb useful concurrent work",
-            "Bound publication retries",
-            "Never force-push",
-            "target-SHA-bound",
-            "CODEX",
-        ):
-            self.assertIn(token, rules)
+        self.assertGreaterEqual(data["skill_catalog"]["count"], len(REQUIRED_SKILLS))
+        self.assertEqual(len(data["skill_catalog"]["sha256"]), 64)
+        self.assertEqual(data["bootstrap_sequence"][0], "identify-vgm-compiler")
+        self.assertIn("freeze-github-head", data["bootstrap_sequence"])
+        self.assertLess(
+            data["bootstrap_sequence"].index("run-skill-preflight"),
+            data["bootstrap_sequence"].index("act"),
+        )
+        self.assertEqual(data["bootstrap_sequence"][-1], "verify")
+
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        tree = subprocess.run(
+            ["git", "rev-parse", "HEAD^{tree}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.assertEqual(data["head_sha"], head)
+        self.assertEqual(data["tree_sha"], tree)
+
+    def test_static_connector_state_is_not_a_required_owner(self) -> None:
+        self.assertFalse((ROOT / ".agents" / "github-connector.json").exists())
 
 
 if __name__ == "__main__":

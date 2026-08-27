@@ -37,6 +37,8 @@ If `AGENTS.md`, `README.md`, `.agents/skills/`, or the task obligation changes m
 
 The first-connection funnel applies to reasoning-agent transports, including GitHub-connector sessions. Low-level exact API callers are not required to imitate an autonomous agent bootstrap.
 
+For GitHub-native work, the preferred bootstrap is derived from current repository state rather than stored as a mutable connector map. When local execution is available, `python tools/github_agent_bootstrap.py --json` emits the exact-head/tree, authority path, skill-preflight owner, live skill count/fingerprint, and bootstrap sequence. Connector-only agents should emulate that packet from exact GitHub evidence at the current head. A stored bootstrap packet is disposable projection state, never repository truth.
+
 ## 2. Enter through current authority
 
 For substantive repository work:
@@ -179,6 +181,22 @@ explicit evidence object
 Do not weaken a corpus or acceptance gate merely to make a run complete.
 
 ## 8. Repository mutation and concurrency
+
+Reasoning-agent GitHub entry is:
+
+```text
+connect
+→ identify VGM Compiler
+→ derive/fetch current agent bootstrap
+→ read AGENTS.md authority
+→ run live skill preflight
+→ state exact obligation
+→ acquire smallest sufficient context
+→ act
+→ verify
+```
+
+A GitHub transport must not present the repository as a generic tool bag while omitting this funnel.
 
 Repository changes use [`.agents/skills/repo-change/SKILL.md`](.agents/skills/repo-change/SKILL.md).
 

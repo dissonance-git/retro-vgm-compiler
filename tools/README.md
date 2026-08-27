@@ -2,6 +2,14 @@
 
 `tools/` contains reusable repository-facing commands. A tool exposes an operation. It does not become a second database, manual registry, or status diary.
 
+For reasoning-agent first connection, derive the current bootstrap instead of trusting a stored snapshot:
+
+```bash
+python tools/github_agent_bootstrap.py --json
+```
+
+The bootstrap is disposable and fingerprints the live skill inventory. It does not replace `AGENTS.md` or the skill bodies it points to.
+
 For repository-wide navigation start at [`../README.md`](../README.md). For a concept-scoped projection run:
 
 ```bash

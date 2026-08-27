@@ -61,7 +61,7 @@ Useful namespace owners:
 - [`research/README.md`](research/README.md)
 - [`tools/README.md`](tools/README.md)
 
-Reasoning agents entering through GitHub use [`.agents/github-connector.json`](.agents/github-connector.json) for first-connection routing and the live [`.agents/skills/`](.agents/skills/) inventory for current procedure. The skill inventory is canonical; any catalog of it is derived.
+Reasoning agents entering through GitHub use the derived bootstrap emitted by [`tools/github_agent_bootstrap.py`](tools/github_agent_bootstrap.py) plus the live [`.agents/skills/`](.agents/skills/) inventory. No committed connector-state file owns first-connection truth; the bootstrap is rebuilt from the current Git snapshot and current skill bytes.
 
 ## Build and verification
 
