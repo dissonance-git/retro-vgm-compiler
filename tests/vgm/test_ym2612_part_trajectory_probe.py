@@ -98,6 +98,34 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
         result = probe.analyze_onsets(onsets, source_name="synthetic.vgm")
         self.assertEqual(result["trajectory_candidate_count"], 0)
 
+    def test_shared_support_can_compose_without_becoming_identity_conflict(self) -> None:
+        onsets = [
+            event(0, 0, 100.0, "patch-a"),
+            event(100, 0, 112.5, "patch-a"),
+            event(200, 0, 125.0, "patch-a"),
+            event(900, 0, 200.0, "patch-a"),
+            event(1000, 0, 225.0, "patch-a"),
+            event(1100, 0, 250.0, "patch-a"),
+            event(1800, 0, 300.0, "patch-a"),
+            event(1900, 0, 337.5, "patch-a"),
+            event(2000, 0, 375.0, "patch-a"),
+        ]
+        result = probe.analyze_onsets(onsets, source_name="synthetic-chain.vgm")
+
+        self.assertEqual(result["trajectory_candidate_count"], 2)
+        self.assertEqual(result["trajectory_support_relation_count"], 1)
+        self.assertEqual(result["composable_link_chain_candidate_count"], 1)
+        self.assertEqual(result["unresolved_support_reuse_count"], 0)
+        relation = result["trajectory_support_relations"][0]
+        self.assertEqual(relation["relation_kind"], "composable_link_chain_candidate")
+        self.assertEqual(relation["shared_support_ticks"], [900, 1000, 1100])
+        self.assertFalse(relation["persistent_part_identity_established"])
+        self.assertFalse(relation["identity_conflict_established"])
+        self.assertEqual(
+            result["shared_model_promotion"]["persistent_part_identity"],
+            "blocked",
+        )
+
     def test_distinct_channels_can_form_aligned_boundary_target_without_promotion(self) -> None:
         onsets = []
         for channel, scale, patch in ((0, 1.0, "patch-a"), (1, 1.5, "patch-b")):
@@ -155,6 +183,46 @@ class Ym2612PartTrajectoryProbeTest(unittest.TestCase):
                 ],
             },
         )
+
+    def test_real_corpus_pressure_spans_multiple_ym2612_works(self) -> None:
+        fixtures = [
+            ROOT / "tests" / "corpus" / "sonic-3-knuckles" / "01 - Angel Island Zone Act 1.vgz",
+            ROOT / "tests" / "corpus" / "aa-harimanada-vgz" / "02 - Fierce God of Flame.vgz",
+            ROOT / "tests" / "corpus" / "battle-golfer-yui-vgz" / "03 - Smile On.vgz",
+            ROOT / "tests" / "corpus" / "toki-vgm" / "02 - Caves.vgm",
+        ]
+        reports = []
+        for fixture in fixtures:
+            self.assertTrue(fixture.is_file(), fixture)
+            report = probe.audit_file(fixture)
+            self.assertEqual(report["chip_scope"], "YM2612")
+            self.assertFalse(report["platform_identity_consulted"])
+            self.assertGreater(report["source_onset_observation_count"], 0)
+            self.assertGreater(report["observation_count"], 0)
+            self.assertEqual(
+                report["shared_model_promotion"]["persistent_part_identity"],
+                "blocked",
+            )
+            self.assertEqual(
+                report["shared_model_promotion"]["cross_part_phrase_boundary"],
+                "blocked",
+            )
+            self.assertEqual(report["shared_model_promotion"]["phrase_role"], "blocked")
+            reports.append({
+                "fixture": fixture.name,
+                "source_onsets": report["source_onset_observation_count"],
+                "analysis_observations": report["observation_count"],
+                "trajectory_candidates": report["trajectory_candidate_count"],
+                "support_relations": report["trajectory_support_relation_count"],
+                "composable_chains": report["composable_link_chain_candidate_count"],
+                "unresolved_support_reuse": report["unresolved_support_reuse_count"],
+                "cross_trajectory_boundaries": report[
+                    "cross_trajectory_boundary_candidate_count"
+                ],
+            })
+
+        self.assertEqual(len(reports), 4)
+        print("YM2612_CROSS_WORK_TRAJECTORY_PRESSURE", reports)
 
 
 if __name__ == "__main__":

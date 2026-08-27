@@ -193,7 +193,9 @@ def discover_trajectory_candidates(
                     continue
 
                 boundary_tick = int(right[0].tick)
-                support_ticks = [int(item.tick) for item in left + right]
+                left_support_ticks = [int(item.tick) for item in left]
+                right_support_ticks = [int(item.tick) for item in right]
+                support_ticks = left_support_ticks + right_support_ticks
                 candidates.append({
                     "candidate_id": _candidate_id(channel, patch, boundary_tick),
                     "chip": "YM2612",
@@ -205,6 +207,8 @@ def discover_trajectory_candidates(
                     "gap_ratio": gap_ratio,
                     "motif_events_per_side": motif_events,
                     "motif_signature": left_signature,
+                    "left_support_ticks": left_support_ticks,
+                    "right_support_ticks": right_support_ticks,
                     "support_ticks": support_ticks,
                     "evidence": {
                         "physical_slot_continuity": True,
@@ -229,6 +233,67 @@ def discover_trajectory_candidates(
         )
     )
     return candidates
+
+
+def describe_trajectory_support_relations(
+    candidates: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Describe shared support without prematurely declaring identity conflict.
+
+    A source observation may participate in two adjacent recurrence links that
+    compose into a longer trajectory candidate. Shared support is therefore an
+    ambiguity/provenance fact first, not a conflict verdict.
+    """
+    ordered = sorted(
+        (dict(item) for item in candidates),
+        key=lambda item: (
+            int(item["channel"]),
+            int(item["boundary_tick"]),
+            str(item["candidate_id"]),
+        ),
+    )
+    relations: list[dict[str, Any]] = []
+    for index, first in enumerate(ordered):
+        first_channel = int(first["channel"])
+        first_support = set(int(tick) for tick in first["support_ticks"])
+        first_left = [int(tick) for tick in first.get("left_support_ticks", [])]
+        first_right = [int(tick) for tick in first.get("right_support_ticks", [])]
+        for second in ordered[index + 1 :]:
+            if int(second["channel"]) != first_channel:
+                continue
+            second_support = set(int(tick) for tick in second["support_ticks"])
+            shared = sorted(first_support & second_support)
+            if not shared:
+                continue
+
+            second_left = [int(tick) for tick in second.get("left_support_ticks", [])]
+            second_right = [int(tick) for tick in second.get("right_support_ticks", [])]
+            composable = (
+                first_right == second_left
+                or second_right == first_left
+            )
+            relations.append({
+                "first_candidate_id": str(first["candidate_id"]),
+                "second_candidate_id": str(second["candidate_id"]),
+                "channel": first_channel,
+                "shared_support_ticks": shared,
+                "relation_kind": (
+                    "composable_link_chain_candidate"
+                    if composable
+                    else "support_reuse_unresolved"
+                ),
+                "persistent_part_identity_established": False,
+                "identity_conflict_established": False,
+            })
+
+    relations.sort(
+        key=lambda item: (
+            int(item["channel"]),
+            str(item["first_candidate_id"]),
+            str(item["second_candidate_id"]),
+        )
+    )
+    return relations
 
 
 def align_cross_trajectory_boundaries(
@@ -310,6 +375,7 @@ def analyze_onsets(
         motif_events=motif_events,
         minimum_gap_ratio=minimum_gap_ratio,
     )
+    support_relations = describe_trajectory_support_relations(candidates)
     aligned = align_cross_trajectory_boundaries(
         candidates,
         alignment_tolerance_ticks=alignment_tolerance_ticks,
@@ -323,8 +389,18 @@ def analyze_onsets(
         "same_tick_duplicate_collapses": normalization["same_tick_duplicate_collapses"],
         "same_tick_ambiguous_exclusions": normalization["same_tick_ambiguous_exclusions"],
         "trajectory_candidate_count": len(candidates),
+        "trajectory_support_relation_count": len(support_relations),
+        "composable_link_chain_candidate_count": sum(
+            item["relation_kind"] == "composable_link_chain_candidate"
+            for item in support_relations
+        ),
+        "unresolved_support_reuse_count": sum(
+            item["relation_kind"] == "support_reuse_unresolved"
+            for item in support_relations
+        ),
         "cross_trajectory_boundary_candidate_count": len(aligned),
         "trajectory_candidates": candidates,
+        "trajectory_support_relations": support_relations,
         "cross_trajectory_boundary_candidates": aligned,
         "shared_model_promotion": {
             "persistent_part_identity": "blocked",
@@ -333,6 +409,7 @@ def analyze_onsets(
             "blocked_by": [
                 "probe_does_not_materialize_shared_graph_voice_episodes",
                 "probe_does_not_run_shared_persistent_part_conflict_arbitration",
+                "candidate_support_reuse_is_not_itself_an_identity_conflict",
                 "cross_trajectory_candidate_is_not_cross_part_consensus",
             ],
         },
@@ -342,8 +419,10 @@ def analyze_onsets(
             "observations may collapse for analysis; conflicting same-tick observations are "
             "excluded as ambiguous while exact commands remain preserved. Same channel alone is never "
             "sufficient. A target requires unchanged core program, a large local timing "
-            "gap, and repeated pitch-rhythm shape across that gap. Targets remain below "
-            "persistent-part and phrase promotion until the shared graph admits them."
+            "gap, and repeated pitch-rhythm shape across that gap. Shared candidate support "
+            "is reported explicitly; adjacent links may compose and are never relabeled as an "
+            "identity conflict by this probe. Targets remain below persistent-part and phrase "
+            "promotion until the shared graph admits and arbitrates them."
         ),
     }
 
