@@ -67,6 +67,8 @@ struct cross_voice_context_result {
     std::size_t right_flanked_count = 0;
     std::size_t two_sided_flanked_count = 0;
     std::size_t two_sided_unique_count = 0;
+    std::size_t boundary_safe_bidirectionally_unique_count = 0;
+    std::size_t boundary_safe_two_sided_unique_count = 0;
 };
 
 struct cross_voice_candidate_edge {
@@ -277,9 +279,37 @@ bool strong_same_voice_link(
     }
 }
 
+bool handoff_is_capture_boundary_safe(
+    const node& first,
+    const node& second,
+    const spc_part_continuity_policy& policy,
+    std::uint64_t execution_seconds) noexcept {
+    if (!first.active.has_value() || !first.active->end.has_value() ||
+        !second.active.has_value())
+        return false;
+
+    const auto& first_end = *first.active->end;
+    const auto& second_start = second.active->start;
+    if (!same_episode_time_basis(first_end, second_start))
+        return false;
+
+    const auto margin_ticks = static_cast<std::int64_t>(
+        policy.max_gap_seconds * static_cast<double>(first_end.tick_rate));
+    const auto capture_end_tick = static_cast<std::int64_t>(
+        execution_seconds * first_end.tick_rate);
+
+    // Uniqueness can only be trusted against truncation when the complete
+    // association horizon exists before the target and after the source.
+    // Otherwise an unseen earlier/later competitor could make one-in/one-out
+    // uniqueness a capture-window artifact.
+    return second_start.tick >= margin_ticks &&
+        first_end.tick <= capture_end_tick - margin_ticks;
+}
+
 cross_voice_context_result measure_cross_voice_context(
     const musical_execution_graph& graph,
-    const spc_part_continuity_policy& policy) {
+    const spc_part_continuity_policy& policy,
+    std::uint64_t execution_seconds) {
     cross_voice_context_result result;
     const auto episodes = graph.nodes_of_kind(node_kind::voice_instance);
     std::vector<cross_voice_candidate_edge> edges;
@@ -328,9 +358,21 @@ cross_voice_context_result measure_cross_voice_context(
 
         result.left_flanked_count += left_flanked ? 1u : 0u;
         result.right_flanked_count += right_flanked ? 1u : 0u;
+        const bool boundary_safe = handoff_is_capture_boundary_safe(
+            *first,
+            *second,
+            policy,
+            execution_seconds);
+        const bool bidirectionally_unique = unique_out && unique_in;
+        const bool two_sided_unique =
+            left_flanked && right_flanked && bidirectionally_unique;
+
         result.two_sided_flanked_count += left_flanked && right_flanked ? 1u : 0u;
-        result.two_sided_unique_count +=
-            left_flanked && right_flanked && unique_out && unique_in ? 1u : 0u;
+        result.two_sided_unique_count += two_sided_unique ? 1u : 0u;
+        result.boundary_safe_bidirectionally_unique_count +=
+            boundary_safe && bidirectionally_unique ? 1u : 0u;
+        result.boundary_safe_two_sided_unique_count +=
+            boundary_safe && two_sided_unique ? 1u : 0u;
     }
 
     return result;
@@ -518,7 +560,7 @@ int main(int argc, char** argv) {
 
         spc_part_continuity_policy policy;
         const auto control = measure_cross_voice_control(graph, policy);
-        const auto context = measure_cross_voice_context(graph, policy);
+        const auto context = measure_cross_voice_context(graph, policy, seconds);
         const auto observed = extract_spc_label_blind_corpus_features(
             graph,
             "spc-selectivity-runtime",
@@ -542,10 +584,18 @@ int main(int argc, char** argv) {
             context.left_flanked_count > context.bundle_candidate_count ||
             context.right_flanked_count > context.bundle_candidate_count ||
             context.two_sided_flanked_count > context.bundle_candidate_count ||
-            context.two_sided_unique_count > context.bundle_candidate_count)
+            context.two_sided_unique_count > context.bundle_candidate_count ||
+            context.boundary_safe_bidirectionally_unique_count > context.bundle_candidate_count ||
+            context.boundary_safe_two_sided_unique_count > context.bundle_candidate_count)
             throw std::logic_error("SPC handoff-context accounting exceeds candidate count");
         if (context.two_sided_unique_count > context.two_sided_flanked_count ||
-            context.two_sided_unique_count > context.bidirectionally_unique_count)
+            context.two_sided_unique_count > context.bidirectionally_unique_count ||
+            context.boundary_safe_bidirectionally_unique_count >
+                context.bidirectionally_unique_count ||
+            context.boundary_safe_two_sided_unique_count >
+                context.boundary_safe_bidirectionally_unique_count ||
+            context.boundary_safe_two_sided_unique_count >
+                context.two_sided_unique_count)
             throw std::logic_error("SPC handoff-context intersection accounting is inconsistent");
 
         const double observed_rate = observed.candidate_transition_count == 0
@@ -596,6 +646,10 @@ int main(int argc, char** argv) {
             << " handoff_right_flanked=" << context.right_flanked_count
             << " handoff_two_sided_flanked=" << context.two_sided_flanked_count
             << " handoff_two_sided_unique=" << context.two_sided_unique_count
+            << " handoff_boundary_safe_bidirectional_unique="
+            << context.boundary_safe_bidirectionally_unique_count
+            << " handoff_boundary_safe_two_sided_unique="
+            << context.boundary_safe_two_sided_unique_count
             << '\n';
         return 0;
     } catch (const std::exception& error) {
