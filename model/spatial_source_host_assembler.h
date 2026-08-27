@@ -105,8 +105,6 @@ public:
             return fail(spatial_source_host_assembler_error::invalid_block);
         if (block.lane_count > MaxLanes)
             return fail(spatial_source_host_assembler_error::invalid_block);
-        if (block.lane_count > MaxLanes)
-            return fail(spatial_source_host_assembler_error::invalid_block);
         if (block.frame_count > CapacityFrames - buffered_frames_)
             return fail(spatial_source_host_assembler_error::capacity_exceeded);
 
