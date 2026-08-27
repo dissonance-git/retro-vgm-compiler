@@ -42,7 +42,7 @@ REQUIRED_TEXT = {
     ),
     Path("docs/vgm-compiler-roadmap.md"): (
         "# VGM Compiler roadmap\n",
-        "## Active frontier: multi-scale phrase-role arbitration",
+        "## Active frontier: real-corpus pressure for phrase syntax",
     ),
     Path("research/README.md"): (
         "# Research\n",
