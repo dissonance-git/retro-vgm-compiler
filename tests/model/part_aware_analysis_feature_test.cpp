@@ -1,5 +1,5 @@
-#include "components/spc/spc_part_analysis_features.h"
-#include "components/vgm/enhancement/genesis_part_analysis_features.h"
+#include "components/spc/spc_analysis_features.h"
+#include "components/vgm/enhancement/genesis_analysis_features.h"
 #include "model/persistent_part_hypothesis.h"
 
 #include <cassert>
