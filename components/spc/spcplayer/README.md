@@ -1,37 +1,41 @@
 # source-aware spcplayer
 
-This directory is the canonical VGM Compiler home for the 32-bit `spcplayer.exe` child used by the foobar SPC component.
+`spcplayer.exe` is the 32-bit child process used by the private foobar SPC path. It owns the process seam around the patched SNESAPU reference renderer; source semantics themselves remain in `components/spc/` and the SNESAPU patch contract remains in [`../../../patches/snesapu/README.md`](../../../patches/snesapu/README.md).
 
-It was mined from `dissonance-git/vgmspc` at the SRCE-v2 transport cut `2b7ec8bbd7326eabee3ba39bb91130b9b128e74b` (`spc: splice framed source packets across foobar requests`). The executable behavior preserved here is the useful process seam, not the old repository layout:
+## Process contract
 
 ```text
-SPCP input
-    ↓
-patched SNESAPU reference render
-    ↓
-reference PCM
-    + optional TLEM block-end evidence
-    + optional SRCE v2 causal source/control planes
-    ↓
-stdout framed stream consumed by the x64 foo_snesapu parent
+SPCP setup/input
+→ patched SNESAPU reference execution
+→ protected reference PCM
+   + optional timing evidence
+   + optional causal source/control planes
+→ framed stdout stream
+→ x64 foobar parent
 ```
 
-## One SRCE v2 ABI
+The child must not invent musical identity or spatial geometry. It transports exact/bounded runtime evidence produced by the patched source engine.
 
-The historical child duplicated SRCE v2 constants and the 24-byte packet header in `spcplayer.h`. That duplication has been removed. Both the child and the current parent-side transport now use:
+## SRCE v2 ABI
+
+The canonical wire definition is:
 
 ```text
 components/spc/snesapu_source_wire_v2.h
 ```
 
-`spcplayer.h` retains compatibility names only so the historical parent controller can be migrated without creating a second wire definition.
+Both child and parent-side transport use that owner. Compatibility names in `spcplayer.h` exist only for the historical parent-controller surface and must not become a second wire definition.
 
-## SNESAPU is an explicit build dependency
+Versioned transport/wire names are compatibility contracts. Rename them only with complete consumer migration and ABI validation.
 
-The old `vgmspc` tree checked in `spcplayer/lib/Win32/snesapu.lib`. That binary is deliberately not migrated. `spcplayer.vcxproj` requires:
+## Build dependency
 
-- `SNESAPUIncludeDir`: headers from the exact SNESAPU source tree being built;
-- `SNESAPULibDir`: directory containing the freshly generated `snesapu.lib` from that same patched build.
+The child links against the same freshly built patched SNESAPU source tree whose source-capture exports are being validated. Do not use a stale checked-in `snesapu.lib`.
+
+Required MSBuild properties:
+
+- `SNESAPUIncludeDir`: headers from the exact patched SNESAPU tree;
+- `SNESAPULibDir`: directory containing the matching generated `snesapu.lib`.
 
 Example:
 
@@ -43,8 +47,10 @@ msbuild components/spc/spcplayer/spcplayer.vcxproj \
   /p:SNESAPULibDir=<patched-spcplay>/build/lib/Win32
 ```
 
-The eventual Windows integration workflow owns the exact staging paths. The invariant is that the child must link against the same patched SNESAPU build whose source-capture exports are verified, never a stale repository binary.
+The Windows/private-build workflow owns exact staging paths.
 
-## License and provenance
+## Provenance
 
-The migrated `spcplayer` source retains its Mozilla Public License 2.0 notices. The preserved historical migration ledger records why this code moved and which portions of the old project were intentionally not carried forward.
+This process seam was recovered from the former `dissonance-git/vgmspc` lineage at the proven SRCE-v2 transport cut. Git history and the immutable import/bootstrap owners retain the migration detail; this README keeps only the current process, ABI, and build obligations.
+
+The source retains its applicable Mozilla Public License 2.0 notices.

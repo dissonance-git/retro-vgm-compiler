@@ -2,29 +2,13 @@
 
 Sonic 3 & Knuckles is an integrative research testbed for VGM Compiler.
 
-The project asks one broad question:
+The project asks:
 
 > Can the system recover enough musical, implementation, version, and documentary structure to reason defensibly about composition, arrangement, programming, realization, and disputed authorship without collapsing those roles into one label?
 
-The project deliberately couples several evidence layers while preserving their boundaries.
+This directory owns the bounded Sonic 3 research program and its frozen controls/evidence objects. It does not own general VGM Compiler semantics or creator-attribution law.
 
-## Project chapters
-
-- [`attribution.md`](attribution.md) is the broad composer / arranger / programmer attribution program and control design.
-- [`cue-attribution-board.md`](cue-attribution-board.md) is the conservative cue-by-cue evidence map for the committed 58-track Sonic 3 & Knuckles corpus. Known composers, source-family constraints, arrangement/programming evidence, version lineage, candidates, and unresolved cues remain separate.
-- [`sonic3-cube-target-panel.json`](sonic3-cube-target-panel.json) freezes the Sonic-side Cube attribution experiment: Marble Garden/Takaoka and Boss 2/Hikichi anchors; six unresolved target work families; Senoue/Kashima composer decoys; Nagao/Setsumaru role confounds; and prototype/final version controls.
-- [`harmonic-form.md`](harmonic-form.md) is the executable harmonic/tonal/form pressure test, including the blind VGM surface-harmony lane and the promotion path into persistent-part, key, function, cadence, tonal-region, and creator-grammar evidence.
-- [`psg-role-semantics.md`](psg-role-semantics.md) models Sonic 3's mixed YM2612+SN76489 arrangement surface: independent PSG tone, FM/PSG doubling or shadowing, PSG noise/percussion behavior, and the rule that hardware register position is not musical bass function.
-- [`rom-forensics.md`](rom-forensics.md) studies ROM-level implementation evidence and how it constrains attribution without turning implementation into composition evidence.
-- [`smps-pitch-recovery.md`](smps-pitch-recovery.md) studies inverse recovery of source-side SMPS pitch trajectories from downstream YM2612 execution.
-- [`cross-representation-controls.md`](cross-representation-controls.md) provides paired VGM/SPC and cross-representation controls for separating composition, arrangement, implementation, and format effects.
-- [`attribution-control-admissions.jsonl`](attribution-control-admissions.jsonl) is the role-specific, exact-fixture supervision boundary. Locator metadata cannot become a composer control without an independent admission here.
-- [`cube-calibration-policy.json`](cube-calibration-policy.json) defines the evidence-safe Takaoka-versus-Hikichi calibration program, including strict soundtrack-held-out transfer, team-level validation worlds, joint-composition, disputed-mapping, weak-recollection, and third-party holdouts.
-- [`spc-cube-blind-panel.json`](spc-cube-blind-panel.json) freezes the 31-cue Ancient Magic / Terranigma / America Oudan / Battle Master SPC panel used to create creator-blind runtime geometry before the evidence reveal.
-- [`monster-maker-3-soundtest-mapping-hypothesis.json`](monster-maker-3-soundtest-mapping-hypothesis.json) preregisters the staged Monster Maker 3 pack-order versus documented sound-test mapping test. Its conditional Takaoka/Hikichi mappings are hypotheses, never admissions, until machine-state or independent musical evidence verifies the mapping.
-- [`curated-attribution-hypotheses.json`](curated-attribution-hypotheses.json) is the machine-readable hypothesis surface used by the project tooling; it is revisable evaluation context rather than attribution ground truth.
-
-## Shared project model
+## Integrative model
 
 ```text
 documentary / historical evidence
@@ -46,11 +30,11 @@ creator grammar across independent soundtracks
 role-aware attribution hypotheses
 ```
 
-No arrow means equivalence. Each layer can support, contradict, or refine another while retaining its own provenance.
+No arrow means equivalence. Each layer may support, contradict, or refine another while retaining its own provenance.
 
-## Role boundary
+## Creative-role boundary
 
-The project must always preserve:
+Always preserve:
 
 ```text
 composition
@@ -62,35 +46,30 @@ composition
 != final device realization
 ```
 
-A ROM or SMPS fingerprint may strongly support an implementation or arrangement hypothesis while giving little direct composer evidence. Conversely, structural musical evidence can support composition-level reasoning even when the final Mega Drive realization was implemented by someone else.
+A ROM, patch, driver, or SMPS fingerprint may strongly support an implementation or arrangement claim while carrying little direct composer evidence. Structural musical evidence may support composition-level reasoning even when another person implemented the final Mega Drive realization.
 
 ## Version boundary
 
-Prototype, retail, Sonic 3, Sonic & Knuckles, later ports, soundtrack releases, and derivative arrangements are evidence objects in a lineage, not duplicate files to be normalized away.
+Prototype, retail, Sonic 3, Sonic & Knuckles, later ports, soundtrack releases, and derivative arrangements are evidence objects in a lineage rather than interchangeable copies.
 
-The project should be able to represent:
+The model must allow:
 
 ```text
 same musical work
-+
-different arrangement
-+
-different implementation
-+
-different version lineage
++ different arrangement
++ different implementation
++ different version lineage
 ```
 
-without losing any of those identities.
+without losing any identity dimension.
 
 ## Attribution discipline
 
-Sonic 3 is the held-out target environment, not the whole creator-training world.
+Sonic 3 is a held-out target environment, not the whole creator-training world.
 
-Creator-facing rules become substantially stronger when they survive outside Sonic 3 across different soundtracks, platforms, arrangers, drivers, and production contexts.
+Creator-facing rules become stronger only when they survive independent soundtracks, platforms, arrangers, drivers, and production contexts. Attribution is therefore a capstone pressure test of musical understanding, not metadata classification.
 
-The project therefore treats attribution as a capstone stress test of musical understanding rather than a metadata-classification task.
-
-A future result should explain separately:
+A defensible output separates:
 
 ```text
 composer hypothesis
@@ -104,10 +83,22 @@ unresolved alternatives
 confidence
 ```
 
-A single `artist = X` answer is not an acceptable project output.
+A single `artist = X` result is not sufficient.
+
+## Routing
+
+Route by research obligation rather than filename inventory:
+
+- broad role-aware attribution and controls stay in this project;
+- harmonic/form pressure stays with the project's harmonic/form owner;
+- ROM/driver/source recovery stays with the corresponding forensic owner;
+- cross-representation controls stay with the cross-representation owner;
+- frozen panels, preregistrations, admissions, mappings, and calibration policies remain tracked only when their exact bytes are current experimental evidence.
+
+Use the tree or `tools/repository_catalog.py --focus sonic3` for current artifact inventory. Do not mirror every file here.
 
 ## Project rule
 
-New Sonic 3 research that participates in this same attribution / source / realization testbed belongs here rather than as a new peer-level file under `research/`.
+New work belongs here only when Sonic 3 itself is the integrative research object. A named Sonic 3 cue used merely as a generic mechanism test belongs with the mechanism owner instead.
 
-Add a new chapter only when it has a genuinely distinct experimental object or evidence contract. Otherwise extend an existing chapter.
+Extend an existing chapter or evidence owner before creating a peer narrative. Promote general rules out of this project only after independent pressure earns them.
