@@ -1,0 +1,178 @@
+name: GitLab SNESAPU patch audio bisect
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gitlab-snesapu-audio-bisect.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bisect:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      GITLAB_REF: b80ab1a7cc9abc50cb33ab7b5dd2da33212aa46e
+      SPCPLAY_REF: fc770e268ecacb4523699e2edc5c0efdf80957d6
+    steps:
+      - name: Clone exact GitLab diagnostic source
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --no-checkout https://gitlab.com/dissonance-git/vgm-compiler.git source
+          if ($LASTEXITCODE -ne 0) { throw "GitLab clone failed" }
+          git -C source config core.autocrlf false
+          git -C source fetch origin $env:GITLAB_REF --depth=1
+          if ($LASTEXITCODE -ne 0) { throw "GitLab fetch failed" }
+          git -C source checkout --detach $env:GITLAB_REF
+          if ($LASTEXITCODE -ne 0) { throw "GitLab checkout failed" }
+          $actual = (git -C source rev-parse HEAD).Trim()
+          if ($actual -ne $env:GITLAB_REF) { throw "SHA mismatch: $actual" }
+          Write-Host "GITLAB_EXACT_BISECT_SOURCE_OK $actual"
+
+      - name: Install NASM and locate x86 MSVC
+        shell: pwsh
+        run: |
+          choco install nasm --version=2.16.3 --allow-downgrade -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "NASM install failed" }
+          $nasm = @(
+            'C:\Program Files\NASM\nasm.exe',
+            'C:\Program Files (x86)\NASM\nasm.exe',
+            'C:\ProgramData\chocolatey\bin\nasm.exe'
+          ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $nasm) {
+            $nasm = Get-ChildItem 'C:\ProgramData\chocolatey\lib\nasm' -Filter nasm.exe -File -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $nasm) { throw "nasm.exe not found" }
+          (Split-Path $nasm -Parent) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:Path = "$(Split-Path $nasm -Parent);$env:Path"
+
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vs = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
+          if (-not $vs) { throw "VS C++ toolchain not found" }
+          $vcvars32 = Join-Path $vs 'VC\Auxiliary\Build\vcvars32.bat'
+          "VCVARS32=$vcvars32" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Clone pinned SPCPlay base
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/dgrfactory/spcplay.git spcplay-base
+          if ($LASTEXITCODE -ne 0) { throw "SPCPlay clone failed" }
+          git -C spcplay-base config core.autocrlf false
+          git -C spcplay-base checkout --detach $env:SPCPLAY_REF
+          if ($LASTEXITCODE -ne 0) { throw "SPCPlay pin checkout failed" }
+
+      - name: Build direct audio probe
+        shell: pwsh
+        run: |
+          $cmd = Join-Path $env:RUNNER_TEMP 'build-probe.cmd'
+          @"
+          @echo off
+          call "$env:VCVARS32"
+          if errorlevel 1 exit /b 10
+          cl /nologo /EHsc /std:c++17 /O2 /DUNICODE /D_UNICODE "source\tests\integration\snesapu-runtime\snesapu_audio_decode_probe.cpp" /Fe:"$env:RUNNER_TEMP\snesapu_audio_decode_probe.exe"
+          exit /b %errorlevel%
+          "@ | Set-Content -LiteralPath $cmd -Encoding ASCII
+          & cmd.exe /d /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw "probe compile failed: $LASTEXITCODE" }
+
+      - name: Bisect patched SNESAPU audio
+        shell: pwsh
+        run: |
+          $fixture = (Resolve-Path 'source\tests\corpus\ancient-magic-spc\05 - Battle.spc').Path
+          $probe = "$env:RUNNER_TEMP\snesapu_audio_decode_probe.exe"
+          $results = Join-Path $env:GITHUB_WORKSPACE 'snesapu-audio-bisect.txt'
+
+          function Fresh-Stage([string]$name) {
+            $root = Join-Path $env:RUNNER_TEMP "spcplay-$name"
+            if (Test-Path $root) { Remove-Item $root -Recurse -Force }
+            git clone --quiet --local "$env:GITHUB_WORKSPACE\spcplay-base" $root
+            if ($LASTEXITCODE -ne 0) { throw "local stage clone failed: $name" }
+            git -C $root checkout --quiet --detach $env:SPCPLAY_REF
+            return $root
+          }
+
+          function Apply-Patch([string]$root, [string]$script) {
+            python -B "source\patches\snesapu\$script" $root
+            if ($LASTEXITCODE -ne 0) { throw "patch failed: $script" }
+          }
+
+          function Build-Dll([string]$root, [string]$name) {
+            $dllRoot = Join-Path $root 'snesapu.dll'
+            $cmd = Join-Path $env:RUNNER_TEMP "build-$name.cmd"
+            @"
+          @echo off
+          call "$env:VCVARS32"
+          if errorlevel 1 exit /b 10
+          cd /d "$dllRoot"
+          if not exist Release mkdir Release
+          nasm -f win32 -O2 APU.asm -o Release\APU.obj
+          if errorlevel 1 exit /b 11
+          nasm -f win32 -O2 DSP.asm -o Release\DSP.obj
+          if errorlevel 1 exit /b 12
+          nasm -f win32 -O2 SPC700.asm -o Release\SPC700.obj
+          if errorlevel 1 exit /b 13
+          rc /nologo /fo Release\version.res version.rc
+          if errorlevel 1 exit /b 21
+          cl /nologo /Gz /MT /W3 /O2 /Ob0 /D NDEBUG /D _USRDLL /c SNESAPU.cpp /FoRelease\SNESAPU.obj
+          if errorlevel 1 exit /b 22
+          link /nologo /dll /machine:I386 /nodefaultlib /def:SNESAPU.def /out:Release\SNESAPU.dll /implib:Release\snesapu.lib Release\SNESAPU.obj Release\version.res Release\APU.obj Release\DSP.obj Release\SPC700.obj
+          if errorlevel 1 exit /b 23
+          exit /b 0
+          "@ | Set-Content -LiteralPath $cmd -Encoding ASCII
+            & cmd.exe /d /c $cmd
+            if ($LASTEXITCODE -ne 0) { throw "DLL build failed: $name stage=$LASTEXITCODE" }
+            return (Join-Path $dllRoot 'Release\SNESAPU.dll')
+          }
+
+          function Probe-Stage([string]$name, [string[]]$patches) {
+            $root = Fresh-Stage $name
+            foreach ($script in $patches) { Apply-Patch $root $script }
+            $dll = Build-Dll $root $name
+            $line = (& $probe $dll $fixture 144000 | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0) { throw "audio probe failed structurally: $name" }
+            "$name $line" | Tee-Object -FilePath $results -Append
+          }
+
+          Probe-Stage 'A-win32-abi' @(
+            'apply_windows_assembly_abi.py'
+          )
+          Probe-Stage 'B-source-capture-v2' @(
+            'apply_windows_assembly_abi.py',
+            'apply_source_capture.py',
+            'upgrade_source_capture_v2.py'
+          )
+          Probe-Stage 'C-pre-brr' @(
+            'apply_windows_assembly_abi.py',
+            'apply_source_capture.py',
+            'upgrade_source_capture_v2.py',
+            'apply_prebrr_provider.py'
+          )
+          Probe-Stage 'D-studio-provider' @(
+            'apply_windows_assembly_abi.py',
+            'apply_source_capture.py',
+            'upgrade_source_capture_v2.py',
+            'apply_prebrr_provider.py',
+            'apply_studio_source_provider.py'
+          )
+          Probe-Stage 'E-full-stack' @(
+            'apply_windows_assembly_abi.py',
+            'apply_source_capture.py',
+            'upgrade_source_capture_v2.py',
+            'apply_prebrr_provider.py',
+            'apply_studio_source_provider.py',
+            'fix_public_provider_typedefs.py',
+            'fix_legacy_proc_parameter_alias.py'
+          )
+
+          Get-Content $results
+
+      - name: Upload bisect evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: snesapu-audio-bisect-${{ github.sha }}
+          path: snesapu-audio-bisect.txt
+          if-no-files-found: error
+          retention-days: 14
