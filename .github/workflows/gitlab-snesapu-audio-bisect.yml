@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 35
     env:
-      GITLAB_REF: e3178373e146867f68d77d9694792b352b445cec
+      GITLAB_REF: f18dd0a6c1e5bb83ba3e89d8abd06e31e1a0683d
       SPCPLAY_REF: fc770e268ecacb4523699e2edc5c0efdf80957d6
     steps:
       - name: Clone exact GitLab diagnostic source
@@ -155,7 +155,8 @@ jobs:
             'apply_source_capture.py',
             'upgrade_source_capture_v2.py',
             'apply_prebrr_provider.py',
-            'apply_studio_source_provider.py'
+            'apply_studio_source_provider.py',
+            'fix_legacy_proc_parameter_alias.py'
           )
           Probe-Stage 'E-full-stack' @(
             'apply_windows_assembly_abi.py',
