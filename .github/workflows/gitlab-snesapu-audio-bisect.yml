@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 35
     env:
-      GITLAB_REF: b80ab1a7cc9abc50cb33ab7b5dd2da33212aa46e
+      GITLAB_REF: e3178373e146867f68d77d9694792b352b445cec
       SPCPLAY_REF: fc770e268ecacb4523699e2edc5c0efdf80957d6
     steps:
       - name: Clone exact GitLab diagnostic source
