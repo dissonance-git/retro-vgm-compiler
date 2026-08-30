@@ -1,0 +1,120 @@
+name: GitLab exact VGM private foobar build
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gitlab-private-foobar-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      GITLAB_REF: e4cc6e542a600e0a98777eec05ce1e3b5b623f92
+    steps:
+      - name: Clone exact GitLab VGM Compiler source
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --no-checkout https://gitlab.com/dissonance-git/vgm-compiler.git source
+          if ($LASTEXITCODE -ne 0) { throw "GitLab clone failed: $LASTEXITCODE" }
+          git -C source config core.autocrlf false
+          git -C source fetch origin $env:GITLAB_REF --depth=1
+          if ($LASTEXITCODE -ne 0) { throw "GitLab fetch failed: $LASTEXITCODE" }
+          git -C source checkout --detach $env:GITLAB_REF
+          if ($LASTEXITCODE -ne 0) { throw "GitLab checkout failed: $LASTEXITCODE" }
+          $actual = (git -C source rev-parse HEAD).Trim()
+          if ($actual -ne $env:GITLAB_REF) { throw "GitLab SHA mismatch actual=$actual expected=$env:GITLAB_REF" }
+          Push-Location source
+          python -B tools/verify_build_source_provenance.py . --expected-commit $env:GITLAB_REF
+          if ($LASTEXITCODE -ne 0) { throw "exact source provenance failed" }
+          Pop-Location
+          Write-Host "GITLAB_EXACT_VGM_SOURCE_OK $actual"
+
+      - name: Ensure native build tools
+        shell: pwsh
+        run: |
+          $nasmPackageVersion = '2.16.3'
+          $nasmBinaryVersion = '2.16.03'
+          choco install nasm --version=$nasmPackageVersion --allow-downgrade -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "NASM install failed: $LASTEXITCODE" }
+          if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
+            choco install 7zip -y --no-progress
+          }
+          $nasmCandidates = @(
+            'C:\Program Files\NASM\nasm.exe',
+            'C:\Program Files (x86)\NASM\nasm.exe',
+            'C:\ProgramData\chocolatey\bin\nasm.exe'
+          )
+          $nasmExePath = $nasmCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $nasmExePath -and (Test-Path 'C:\ProgramData\chocolatey\lib\nasm')) {
+            $nasmExePath = Get-ChildItem 'C:\ProgramData\chocolatey\lib\nasm' -Filter nasm.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $nasmExePath) { throw 'nasm.exe not found' }
+          $nasmDir = Split-Path $nasmExePath -Parent
+          $nasmDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:Path = "$nasmDir;$env:Path"
+          $nasmVersion = (& $nasmExePath -v | Out-String).Trim()
+          if ($nasmVersion -notmatch "NASM version $([regex]::Escape($nasmBinaryVersion))\b") {
+            throw "Unexpected NASM version: $nasmVersion"
+          }
+          git --version
+          python --version
+          cmake --version
+          7z | Select-Object -First 2
+
+      - name: Run richer Omniphony source-feed guards
+        shell: pwsh
+        working-directory: source
+        run: |
+          python -B -m unittest tests.vgm.test_surround_omniphony_patch_contract
+          if ($LASTEXITCODE -ne 0) { throw 'VGM Omniphony patch contract failed' }
+          python -B tests/vgm/test_materialize_foo_input_vgm.py
+          if ($LASTEXITCODE -ne 0) { throw 'VGM materialization contract failed' }
+          python -B -m unittest tests.test_omniphony_runtime_abi_contract
+          if ($LASTEXITCODE -ne 0) { throw 'Omniphony ABI mirror contract failed' }
+
+      - name: Build and audit private foobar components
+        shell: pwsh
+        working-directory: source
+        run: |
+          $wtlInclude = Join-Path $PWD '.private-component-build\WTL\Include'
+          $env:INCLUDE = "$wtlInclude;$env:INCLUDE"
+          $rsp = Join-Path $PWD 'Directory.Build.rsp'
+          '/p:ConformanceMode=false' | Set-Content -LiteralPath $rsp -Encoding ASCII
+          $env:_CL_ = "$env:_CL_ /permissive /Zc:twoPhase-"
+          try {
+            ./tools/run_private_foobar_build_with_diagnostics.ps1
+          } finally {
+            Remove-Item -LiteralPath $rsp -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Execute packaged SNESAPU runtime contract
+        shell: pwsh
+        working-directory: source
+        run: |
+          ./tools/verify_snesapu_package_runtime.ps1
+
+      - name: Show exact artifact evidence
+        shell: pwsh
+        working-directory: source
+        run: |
+          Get-Content dist/private-components/build-manifest.json
+          Get-Content dist/private-components/SHA256SUMS.txt
+
+      - name: Upload exact GitLab private components
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-private-foobar-${{ github.sha }}
+          path: |
+            source/dist/private-components/foo_input_vgm.private.fb2k-component
+            source/dist/private-components/foo_snesapu.private.fb2k-component
+            source/dist/private-components/private-foobar-vgm-spc.zip
+            source/dist/private-components/build-manifest.json
+            source/dist/private-components/SHA256SUMS.txt
+            source/dist/private-components/README.txt
+          if-no-files-found: error
+          retention-days: 14
