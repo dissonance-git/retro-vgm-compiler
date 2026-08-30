@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     env:
-      GITLAB_REF: ae154dc24e3c46a38ed85f316435ab2e5bd430db
+      GITLAB_REF: b00979bd9d6ce91c4190830417253987fe49643e
     steps:
       - name: Clone exact GitLab VGM Compiler source
         shell: pwsh
