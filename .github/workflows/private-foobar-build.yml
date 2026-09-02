@@ -1,5 +1,8 @@
 name: Private foobar binary build
 
+env:
+  GITLAB_REF: 350c14b794db7c14eee002c4ff2a6baef8f62ddb
+
 on:
   workflow_dispatch:
   push:
@@ -41,19 +44,26 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - name: Checkout exact source
+      - name: Checkout build carrier
         uses: actions/checkout@v4
 
-      - name: Normalize exact source bytes
+      - name: Fetch exact GitLab VGM Compiler source
         shell: pwsh
         run: |
-          # The bootstrap audits compare working-tree bytes against Git objects.
-          # Configure line endings before force-restoring the checkout so Windows
-          # cannot make a clean commit appear modified after checkout.
           git config --local core.autocrlf false
-          git reset --hard "$env:GITHUB_SHA"
-          python -B tools/verify_build_source_provenance.py . --expected-commit "$env:GITHUB_SHA"
-          if ($LASTEXITCODE -ne 0) { throw 'exact source normalization failed' }
+          git remote remove gitlab 2>$null
+          git remote add gitlab https://gitlab.com/dissonance-git/vgm-compiler.git
+          git fetch --no-tags --depth 1 gitlab $env:GITLAB_REF
+          if ($LASTEXITCODE -ne 0) { throw 'GitLab source fetch failed' }
+          git checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'GitLab source checkout failed' }
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($actual -ne $env:GITLAB_REF.ToLowerInvariant()) {
+            throw "GitLab source mismatch: expected $env:GITLAB_REF got $actual"
+          }
+          python -B tools/verify_build_source_provenance.py . --expected-commit "$env:GITLAB_REF"
+          if ($LASTEXITCODE -ne 0) { throw 'exact GitLab source normalization failed' }
+          Write-Host "GITLAB_SOURCE_OK $actual"
 
       - name: Publish running locator for connected clients
         shell: pwsh
