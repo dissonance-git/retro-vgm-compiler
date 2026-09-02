@@ -55,8 +55,13 @@ jobs:
           git remote add gitlab https://gitlab.com/dissonance-git/vgm-compiler.git
           git fetch --no-tags --depth 1 gitlab $env:GITLAB_REF
           if ($LASTEXITCODE -ne 0) { throw 'GitLab source fetch failed' }
-          git checkout --detach FETCH_HEAD
-          if ($LASTEXITCODE -ne 0) { throw 'GitLab source checkout failed' }
+          # The GitHub checkout is only a disposable workflow carrier. Windows
+          # may have already materialized it with different line endings, so
+          # replace it atomically with the canonical GitLab tree.
+          git reset --hard FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'GitLab source reset failed' }
+          git clean -ffd
+          if ($LASTEXITCODE -ne 0) { throw 'GitLab source clean failed' }
           $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
           if ($actual -ne $env:GITLAB_REF.ToLowerInvariant()) {
             throw "GitLab source mismatch: expected $env:GITLAB_REF got $actual"
