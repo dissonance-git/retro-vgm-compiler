@@ -1,7 +1,7 @@
 name: Private foobar binary build
 
 env:
-  GITLAB_REF: 17ddf89c7183f601b3d5dc7962ec69ad08d76e8b
+  GITLAB_REF: 45fa6adcf1c3d2a8bb19d4f5e3138b4ad125d78f
 
 on:
   workflow_dispatch:
